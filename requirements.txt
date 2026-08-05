@@ -1,0 +1,7 @@
+opencv-python>=4.8.0
+mediapipe>=0.10.0
+numpy>=1.24.0
+scipy>=1.10.0
+fastdtw>=0.3.4
+streamlit>=1.30.0
+pillow>=10.0.0

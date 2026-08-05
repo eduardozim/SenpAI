@@ -1,0 +1,1 @@
+# Shinpanai package initialization
