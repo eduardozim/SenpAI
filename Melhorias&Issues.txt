@@ -1,0 +1,13 @@
+MELHORIAS
+
+- Identificar o Kenshi que teve o golpe validado
+- Detecção em tempo real
+- Manter o video em uma coluna e o relatório ao lado
+
+
+
+
+ISSUE
+
+- Usar a GPU quando disponível para a detecção
+

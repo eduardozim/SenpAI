@@ -57,6 +57,16 @@ class CalibrationEngine:
             "zanshin": weight_zanshin / total_w
         }
 
+    def update_and_save_profile(self, profile_key: str, updated_config: Dict[str, Any]):
+        """Atualiza a configuração do perfil selecionado e persiste no JSON de perfis."""
+        self.profiles[profile_key] = updated_config
+        if profile_key == self.current_profile_key:
+            self.active_config = updated_config.copy()
+            
+        os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
+        with open(self.config_path, "w", encoding="utf-8") as f:
+            json.dump(self.profiles, f, indent=2, ensure_ascii=False)
+
     def evaluate_strike(
         self,
         target_score: float,

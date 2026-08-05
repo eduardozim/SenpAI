@@ -14,6 +14,7 @@ if sys.stdout.encoding != 'utf-8':
 
 from src.pipeline import ShinpanaiPipeline
 from src.utils.demo_generator import generate_demo_kendo_video
+from src.engine.feedback_manager import FeedbackManager
 
 def main():
     parser = argparse.ArgumentParser(description="Shinpanai - AI Kendo Match Analysis System")
@@ -21,9 +22,30 @@ def main():
     parser.add_argument("--output", type=str, default="output_annotated.mp4", help="Caminho para salvar o vídeo anotado")
     parser.add_argument("--profile", type=str, default="normal", choices=["rigido", "normal", "permissivo"],
                         help="Perfil de calibração de arbitragem (rigido, normal, permissivo)")
+    parser.add_argument("--mode", type=str, default="user", choices=["user", "learning"],
+                        help="Modo de operação: 'user' (padrão) ou 'learning' (aprendizagem)")
+    parser.add_argument("--optimize-profile", action="store_true",
+                        help="Executa otimização por reforço no perfil selecionado usando o dataset de feedback registrado")
     parser.add_argument("--demo", action="store_true", help="Gera um vídeo sintético de demonstração e executa o teste")
 
     args = parser.parse_args()
+
+    feedback_mgr = FeedbackManager()
+
+    if args.optimize_profile:
+        print(f"[Shinpanai - Aprendizagem] Otimizando o perfil '{args.profile}' com base no histórico de feedback...")
+        pipeline_temp = ShinpanaiPipeline(calibration_profile=args.profile)
+        curr_cfg = pipeline_temp.calibrator.active_config
+        new_cfg, opt_stats = feedback_mgr.optimize_profile_config(args.profile, curr_cfg)
+        
+        if opt_stats["status"] == "no_data":
+            print(f"[Shinpanai - Aprendizagem] {opt_stats['message']}")
+        else:
+            pipeline_temp.calibrator.update_and_save_profile(args.profile, new_cfg)
+            print(f"[Shinpanai - Aprendizagem] Perfil '{args.profile}' recalibrado com sucesso!")
+            for chg in opt_stats["changes"]:
+                print(f"  - {chg}")
+        return
 
     video_path = args.video
 
@@ -32,7 +54,7 @@ def main():
         video_path = generate_demo_kendo_video("demo_kendo_match.mp4")
         print(f"[Shinpanai] Vídeo sintético criado em: {video_path}")
 
-    print(f"[Shinpanai] Iniciando processamento do vídeo: {video_path}")
+    print(f"[Shinpanai] Modo de Operação: '{args.mode.upper()}'")
     print(f"[Shinpanai] Aplicando perfil de calibração: '{args.profile}'")
 
     pipeline = ShinpanaiPipeline(calibration_profile=args.profile)
