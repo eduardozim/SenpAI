@@ -1,50 +1,129 @@
-# Walkthrough de Implementação - Shinpanai (AI Kendo Referee & Analytical System)
+===============================================================================
+                       SHINPANAI (審判 AI) - GUIA RÁPIDO
+        Sistema de Arbitragem e Análise Biomecânica de Kendo com IA
+===============================================================================
 
-Implementamos a estrutura completa do sistema **Shinpanai** para detecção de golpes em vídeos de lutas de Kendo, avaliação biomecânica dos critérios de *Yuko-datotsu*, crítica textual explicativa e motor de calibração de sensibilidade ajustável.
+O Shinpanai é um sistema de visão computacional e análise biomecânica projetado
+para avaliar golpes em lutas de Kendo de acordo com o conceito de Yuko-Datotsu
+e o princípio do Ki-Ken-Tai-Ichi (Espírito, Espada e Corpo em um só).
 
----
+-------------------------------------------------------------------------------
+1. REQUISITOS E INSTALAÇÃO
+-------------------------------------------------------------------------------
 
-## 🚀 Arquivos Criados e Estrutura do Projeto
+Requisitos:
+- Python 3.10 ou 3.11
+- Ambiente Virtual (.venv recomendado)
 
-* [`config/calibration_profiles.json`](file:///d:/Projetos/Shinpanai/Dev/config/calibration_profiles.json): Definição dos perfis de arbitragem (Rígido, Normal, Permissivo) e pesos de Ki-Ken-Tai-Ichi.
-* [`src/vision/pose_detector.py`](file:///d:/Projetos/Shinpanai/Dev/src/vision/pose_detector.py): Rastreamento de keypoints 3D (33 landmarks) via MediaPipe Pose.
-* [`src/vision/shinai_tracker.py`](file:///d:/Projetos/Shinpanai/Dev/src/vision/shinai_tracker.py): Projeção vetorial do Kensen (ponta da espada) e zonas de impacto (*Men*, *Kote*, *Do*, *Tsuki*).
-* [`src/analytics/event_spotter.py`](file:///d:/Projetos/Shinpanai/Dev/src/analytics/event_spotter.py): Algoritmo adaptativo de detecção de eventos e classificação temporal de golpes na luta.
-* [`src/analytics/biomechanics.py`](file:///d:/Projetos/Shinpanai/Dev/src/analytics/biomechanics.py): Cálculo numérico de precisão do alvo, sincronismo pé-mão (*Fumikomi*), alinhamento da coluna (*Postura*) e *Zanshin*.
-* [`src/engine/calibrator.py`](file:///d:/Projetos/Shinpanai/Dev/src/engine/calibrator.py): Motor de calibração de sensibilidade com suporte a limiares dinâmicos e customização manual.
-* [`src/engine/reporter.py`](file:///d:/Projetos/Shinpanai/Dev/src/engine/reporter.py): Gerador de diagnósticos em português detalhando o status e correções necessárias.
-* [`src/pipeline.py`](file:///d:/Projetos/Shinpanai/Dev/src/pipeline.py): Pipeline orquestrador end-to-end de vídeo.
-* [`main.py`](file:///d:/Projetos/Shinpanai/Dev/main.py): CLI interativa para execução do sistema.
-* [`app.py`](file:///d:/Projetos/Shinpanai/Dev/app.py): Interface Web Interativa em Streamlit com painel de calibração e visualização de vídeos.
+Dependências principais:
+- opencv-python
+- mediapipe
+- numpy / scipy
+- fastdtw
+- streamlit (para a interface web)
 
----
+Instalação das dependências:
+   pip install -r requirements.txt
+   (ou usando uv: uv pip install -r requirements.txt)
 
-## 🧪 Testes e Validação Realizados
+-------------------------------------------------------------------------------
+2. INSTRUÇÕES DE USO (COMO EXECUTAR)
+-------------------------------------------------------------------------------
 
-1. **Ambiente Virtual**: Criado com Python 3.11 via `uv` com 56 pacotes (OpenCV, MediaPipe, NumPy, SciPy, FastDTW, Streamlit).
-2. **Execução CLI (`main.py --demo`)**:
-   - Vídeo sintético de teste processado com sucesso.
-   - Evento de golpe detectado e registrado no timestamp `00:01.633`.
-   - Diagnóstico detalhado gerado especificando os escores de Alvo, Fumikomi (deslocamento ms), Postura e Zanshin.
-3. **Teste de Calibração (`--profile rigido`, `--profile normal`, `--profile permissivo`)**:
-   - Limiares e pesos aplicados dinamicamente.
+--- A. INTERFACE WEB INTERATIVA (STREAMLIT - RECOMENDADO) ---
+Para iniciar o dashboard web com reprodutor de vídeo, gráficos e sliders:
 
----
+   streamlit run app.py
+   (ou no Windows: .\.venv\Scripts\streamlit.exe run app.py)
 
-## 💻 Como Utilizar a Aplicação
+Recursos da Interface Web:
+- Upload de vídeos de lutas (.mp4, .avi, .mov) ou geração de vídeo demo sintético.
+- Alternância entre Modo Usuário (análise limpa) e Modo Aprendizagem.
+- Seleção e personalização fina de perfis de arbitragem em tempo real.
+- Visualização de vídeos anotados com suporte a esqueleto 3D e zonas de impacto.
+- Painel de anotação e treinamento adaptativo por aprendizagem por reforço.
 
-### 1. Interface Web (Dashboard Interativo)
-Para abrir o painel web com sliders de calibração e reprodutor de vídeo anotado:
-```powershell
-.\.venv\Scripts\streamlit.exe run app.py
-```
+--- B. LINHA DE COMANDO (CLI) ---
+Para processar vídeos diretamente no terminal:
 
-### 2. Linha de Comando (CLI)
-Para analisar qualquer vídeo de luta de Kendo gravado:
-```powershell
-.\.venv\Scripts\python.exe main.py --video "caminho/do/video.mp4" --profile normal
-```
-Ou para rodar o teste de demonstração rápida:
-```powershell
-.\.venv\Scripts\python.exe main.py --demo
-```
+- Executar análise com vídeo próprio (perfil normal padrão):
+   python main.py --video "caminho/do/seu_video.mp4"
+
+- Executar teste rápido de demonstração (vídeo sintético gerado automaticamente):
+   python main.py --demo
+
+- Especificar perfil de arbitragem:
+   python main.py --video "video.mp4" --profile rigido
+
+- Especificar caminho do vídeo anotado de saída:
+   python main.py --video "video.mp4" --output "meu_resultado.mp4"
+
+- Otimizar perfil com base no dataset de feedback gravado:
+   python main.py --profile normal --optimize-profile
+
+-------------------------------------------------------------------------------
+3. OPÇÕES E FLAGS DA LINHA DE COMANDO (CLI)
+-------------------------------------------------------------------------------
+
+Sintaxe: python main.py [OPÇÕES]
+
+Opções disponíveis:
+  --video CAMINHO         Caminho para o vídeo de entrada (.mp4, .avi).
+  --output CAMINHO        Caminho para salvar o vídeo anotado.
+                          (Padrão: output_annotated.mp4)
+  --profile PERFIL        Perfil de arbitragem a aplicar:
+                          - normal     : Treino geral / Keiko (Padrão)
+                          - rigido     : Campeonato / Exame de Dan
+                          - permissivo : Iniciantes / Educacional
+  --mode MODO             Modo de operação:
+                          - user       : Análise padrão (Padrão)
+                          - learning   : Ativa recursos para registro de feedback
+  --optimize-profile      Executa o motor de aprendizagem por reforço para
+                          recalibrar o perfil selecionado com base nas
+                          anotações gravadas em data/feedback_dataset.json.
+  --demo                  Gera um vídeo sintético de demonstração e executa a
+                          arbitragem sem necessidade de vídeo externo.
+
+-------------------------------------------------------------------------------
+4. MODOS DE OPERAÇÃO
+-------------------------------------------------------------------------------
+
+1. MODO USUÁRIO (user):
+   Projetado para atletas, alunos e treinadores. Exibe diretamente o status dos
+   golpes (✅ IPPON / ❌ INVÁLIDO), diagnósticos biomecânicos e orientações de
+   correção técnica sem poluição visual.
+
+2. MODO APRENDIZAGEM (learning):
+   Projetado para árbitros e especialistas. Permite rotular os resultados da IA:
+   - TP (True Positive): Golpe correto / Validação confirmada.
+   - FP (False Positive): Golpe validado indevidamente pela IA.
+   - FN (False Negative): Golpe válido que a IA deixou de identificar.
+   As anotações alimentam o otimizador por reforço para recalibrar
+   automaticamente os limiares e pesos do perfil.
+
+-------------------------------------------------------------------------------
+5. PERFIS DE ARBITRAGEM (SENSIBILIDADE)
+-------------------------------------------------------------------------------
+
+- Treino Geral / Keiko (Normal):
+  Limiar mínimo: 65%. Equilíbrio ideal entre precisão técnica e tolerância.
+- Campeonato / Audit de Dan (Rígido):
+  Limiar mínimo: 82%. Exige execução perfeita de Ki-Ken-Tai-Ichi e Zanshin.
+- Iniciantes / Educacional (Permissivo):
+  Limiar mínimo: 45%. Foco na atração ao alvo correto, tolerando pequenas falhas
+  de postura e sincronismo.
+- Personalizado (Custom):
+  Disponível na interface Web para ajuste manual de pesos e limiares via sliders.
+
+-------------------------------------------------------------------------------
+6. CRITÉRIOS AVALIADOS (KI-KEN-TAI-ICHI)
+-------------------------------------------------------------------------------
+
+- Alvo / Impacto (Ken): Precisão do impacto do Kensen na zona de ataque (Men, Kote, Do, Tsuki).
+- Fumikomi (Tai): Sincronismo entre o impacto do pé no solo e a aceleração dos pulsos.
+- Postura Corporal (Tai): Alinhamento da coluna e estabilidade no momento do golpe.
+- Zanshin (Ki): Manutenção da prontidão e postura nos frames após o impacto.
+
+Para documentação técnica completa, detalhamento dos algoritmos e histórico de
+mudanças, consulte o arquivo Manual.txt.
+===============================================================================
