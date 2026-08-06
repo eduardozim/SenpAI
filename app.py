@@ -72,6 +72,22 @@ st.markdown("""
         border-radius: 0.5rem;
         margin-bottom: 1rem;
     }
+    /* Estilização da Coluna Fixa (Sticky) do Vídeo */
+    div[data-testid="stColumn"]:has(div.sticky-video-marker) {
+        position: -webkit-sticky;
+        position: sticky;
+        top: 1rem;
+        align-self: flex-start;
+        z-index: 99;
+    }
+    /* Card de Métricas do Combate */
+    .summary-card {
+        background-color: #1E293B;
+        border-radius: 0.75rem;
+        border: 1px solid #334155;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -134,191 +150,229 @@ if app_mode == "user":
 else:
     st.markdown('<div class="mode-banner-learning">🎓 <b>Modo Aprendizagem por Reforço Ativo:</b> Você pode rotular detecções corretas (TP) ou falsos positivos (FP) e registrar golpes perdidos (FN) para otimizar dinamicamente o perfil selecionado.</div>', unsafe_allow_html=True)
 
-# --- ÁREA PRINCIPAL: UPLOAD DE VÍDEO ---
-col_left, col_right = st.columns([1, 1])
-
-with col_left:
-    st.subheader("📹 Carregar Vídeo da Luta")
-    input_source = st.radio("Fonte do Vídeo", ["Vídeo Sintético de Teste (Demo)", "Fazer Upload de Vídeo (.mp4, .avi)"])
+# --- ÁREA PRINCIPAL: CARREGAMENTO DE VÍDEO E CONFIGURAÇÃO ---
+with st.expander("📹 Carregar / Selecionar Vídeo da Luta", expanded=("analysis_result" not in st.session_state)):
+    col_in1, col_in2 = st.columns([1, 1])
     
-    video_file_path = None
+    video_file_path = st.session_state.get("video_file_path", None)
     
-    if input_source == "Vídeo Sintético de Teste (Demo)":
-        if st.button("🎬 Gerar Novo Vídeo Demo"):
-            video_file_path = generate_demo_kendo_video("demo_kendo_match.mp4")
-            st.success("Vídeo sintético gerado com sucesso!")
-        else:
-            if not os.path.exists("demo_kendo_match.mp4"):
+    with col_in1:
+        st.subheader("Fonte do Vídeo")
+        input_source = st.radio("Selecione a Origem", ["Vídeo Sintético de Teste (Demo)", "Fazer Upload de Vídeo (.mp4, .avi)"])
+        
+        if input_source == "Vídeo Sintético de Teste (Demo)":
+            if st.button("🎬 Gerar Novo Vídeo Demo"):
                 video_file_path = generate_demo_kendo_video("demo_kendo_match.mp4")
+                st.session_state["video_file_path"] = video_file_path
+                st.success("Vídeo sintético gerado com sucesso!")
             else:
-                video_file_path = "demo_kendo_match.mp4"
-    else:
-        uploaded_file = st.file_uploader("Selecione o vídeo da luta de Kendo", type=["mp4", "avi", "mov"])
-        if uploaded_file is not None:
-            tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-            tfile.write(uploaded_file.read())
-            video_file_path = tfile.name
+                if not os.path.exists("demo_kendo_match.mp4"):
+                    video_file_path = generate_demo_kendo_video("demo_kendo_match.mp4")
+                else:
+                    video_file_path = "demo_kendo_match.mp4"
+                st.session_state["video_file_path"] = video_file_path
+        else:
+            uploaded_file = st.file_uploader("Selecione o vídeo da luta de Kendo", type=["mp4", "avi", "mov"])
+            if uploaded_file is not None:
+                tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+                tfile.write(uploaded_file.read())
+                video_file_path = tfile.name
+                st.session_state["video_file_path"] = video_file_path
 
-    if video_file_path and os.path.exists(video_file_path):
-        st.video(video_file_path)
+    with col_in2:
+        st.subheader("Executar Arbitragem")
+        st.markdown("Clique abaixo para iniciar o rastreamento de pose, detecção de impactos e avaliação de Yuko-Datotsu.")
+        if video_file_path and st.button("⚡ Executar Arbitragem com Shinpanai", type="primary", use_container_width=True):
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            status_text.text("Inicializando pipeline de visão e pose tracking...")
 
-with col_right:
-    st.subheader("🚀 Análise da Luta")
-    if video_file_path and st.button("⚡ Executar Arbitragem com Shinpanai", type="primary"):
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        status_text.text("Inicializando pipeline de visão e pose tracking...")
+            def update_p(p):
+                progress_bar.progress(min(1.0, max(0.0, p)))
+                status_text.text(f"Processando frames... {int(p*100)}%")
 
-        def update_p(p):
-            progress_bar.progress(min(1.0, max(0.0, p)))
-            status_text.text(f"Processando frames... {int(p*100)}%")
+            pipeline = ShinpanaiPipeline(calibration_profile=profile_choice if profile_choice != "custom" else "normal")
+            
+            if profile_choice == "custom":
+                pipeline.calibrator.update_custom_settings(
+                    min_total_score=min_score_pct / 100.0,
+                    weight_target=w_target,
+                    weight_fumikomi=w_fumikomi,
+                    weight_posture=w_posture,
+                    weight_zanshin=w_zanshin
+                )
 
-        pipeline = ShinpanaiPipeline(calibration_profile=profile_choice if profile_choice != "custom" else "normal")
-        
-        if profile_choice == "custom":
-            pipeline.calibrator.update_custom_settings(
-                min_total_score=min_score_pct / 100.0,
-                weight_target=w_target,
-                weight_fumikomi=w_fumikomi,
-                weight_posture=w_posture,
-                weight_zanshin=w_zanshin
+            annotated_output = "annotated_match.mp4"
+            analysis_result = pipeline.process_video(
+                video_path=video_file_path,
+                output_video_path=annotated_output,
+                progress_callback=update_p
             )
 
-        annotated_output = "annotated_match.mp4"
-        analysis_result = pipeline.process_video(
-            video_path=video_file_path,
-            output_video_path=annotated_output,
-            progress_callback=update_p
-        )
+            st.session_state["analysis_result"] = analysis_result
+            st.session_state["annotated_output"] = annotated_output
+            status_text.text("Análise concluída!")
+            progress_bar.progress(1.0)
+            st.rerun()
 
-        st.session_state["analysis_result"] = analysis_result
-        st.session_state["annotated_output"] = annotated_output
-        status_text.text("Análise concluída!")
-        progress_bar.progress(1.0)
+video_file_path = st.session_state.get("video_file_path", None)
 
-# --- ABA DE RESULTADOS E DIAGNÓSTICO ---
-if "analysis_result" in st.session_state:
-    res = st.session_state["analysis_result"]
+# --- PAINEL PRINCIPAL: DIVISÃO EM COLUNAS (VÍDEO FIXO + LISTA COM SCROLL) ---
+if video_file_path or "analysis_result" in st.session_state:
     st.markdown("---")
-    st.header("📊 Relatório da Luta & Diagnóstico de Golpes")
-
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Duração da Luta", f"{res['duration_seconds']}s")
-    m2.metric("Total de Frames", res['total_frames'])
-    m3.metric("Golpes Detectados", res['events_detected_count'])
-    m4.metric("Perfil de Arbitragem", res['profile_applied'])
-
-    st.markdown("### 🥊 Golpes Identificados na Luta")
     
-    video_name_simple = os.path.basename(res.get("video_path", "video.mp4"))
-
-    if not res["events"]:
-        st.warning("Nenhum evento claro de golpe foi identificado neste trecho de vídeo.")
-    else:
-        for idx, ev_data in enumerate(res["events"]):
-            ev = ev_data["event_info"]
-            eval_info = ev_data["evaluation"]
-            event_id_str = f"event_{idx+1}_frame_{ev['impact_frame']}"
-            
-            with st.expander(f"Golpe #{idx+1}: {ev['type']} no timestamp {ev['timestamp']} - Status: {'✅ IPPON' if eval_info['is_valid'] else '❌ INVÁLIDO'}", expanded=True):
-                c_a, c_b = st.columns([1, 2])
-                
-                with c_a:
-                    st.markdown(f"**Tipo de Técnica:** `{ev['type']}`")
-                    st.markdown(f"**Instante do Impacto:** `{ev['timestamp']}` (Frame {ev['impact_frame']})")
-                    st.markdown(f"**Pontuação Obtida:** `{eval_info['total_score']}%`")
-                    st.markdown(f"**Limiar Exigido:** `{eval_info['min_required']}%`")
-                    
-                    if eval_info['is_valid']:
-                        st.markdown('<div class="valid-badge">✅ PONTO VÁLIDO (YUKO-DATOTSU)</div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown('<div class="invalid-badge">❌ GOLPE INVÁLIDO</div>', unsafe_allow_html=True)
-
-                    # INTERFACE DE FEEDBACK (APENAS NO MODO APRENDIZAGEM)
-                    if app_mode == "learning":
-                        st.markdown("---")
-                        st.markdown("**🎓 Anotação para Aprendizagem por Reforço:**")
-                        
-                        btn_col1, btn_col2 = st.columns(2)
-                        
-                        if btn_col1.button(f"👍 Correto (TP)", key=f"btn_tp_{idx}"):
-                            feedback_mgr.save_feedback(
-                                video_name=video_name_simple,
-                                profile_key=profile_choice,
-                                event_id=event_id_str,
-                                label="TP",
-                                sub_scores=eval_info.get("sub_scores", {}),
-                                total_score=eval_info.get("total_score", 0.0),
-                                strike_type=ev['type'],
-                                timestamp=ev['timestamp']
-                            )
-                            st.toast(f"✅ Anotado como Correto (TP) no perfil '{profile_choice}'!", icon="👍")
-
-                        if btn_col2.button(f"👎 Falso Positivo (FP)", key=f"btn_fp_{idx}"):
-                            feedback_mgr.save_feedback(
-                                video_name=video_name_simple,
-                                profile_key=profile_choice,
-                                event_id=event_id_str,
-                                label="FP",
-                                sub_scores=eval_info.get("sub_scores", {}),
-                                total_score=eval_info.get("total_score", 0.0),
-                                strike_type=ev['type'],
-                                timestamp=ev['timestamp']
-                            )
-                            st.toast(f"❌ Anotado como Falso Positivo (FP) no perfil '{profile_choice}'!", icon="👎")
-
-                with c_b:
-                    st.markdown(ev_data["diagnostic_report"])
-
-    # REGISTRO DE GOLPES PERDIDOS E TREINAMENTO (MODO APRENDIZAGEM)
-    if app_mode == "learning":
-        st.markdown("---")
-        st.subheader("➕ Registrar Golpe Perdido (Falso Negativo - FN)")
-        st.markdown("Se a IA deixou de identificar um golpe ocorrido na luta, insira as informações abaixo para ensinar o sistema:")
+    col_video, col_results = st.columns([5, 7])
+    
+    # 🎥 COLUNA ESQUERDA (FIXA / STICKY): VÍDEO + RESUMO DE MÉTRICAS
+    with col_video:
+        st.markdown('<div class="sticky-video-marker"></div>', unsafe_allow_html=True)
+        st.subheader("🎥 Vídeo da Luta")
         
-        fn_col1, fn_col2, fn_col3 = st.columns([1, 1, 1])
-        fn_timestamp = fn_col1.text_input("Timestamp do Golpe (ex: 00:02.500)", value="00:00.000")
-        fn_strike_type = fn_col2.selectbox("Técnica Executada", ["MEN", "KOTE", "DO", "TSUKI"])
-        fn_notes = fn_col3.text_input("Observação / Motivo", value="Golpe rápido não detectado")
+        # Alternador de exibição de vídeo (Anotado AI vs Original)
+        has_annotated = "annotated_output" in st.session_state and os.path.exists(st.session_state.get("annotated_output", ""))
         
-        if st.button("➕ Adicionar Golpe Perdido ao Dataset"):
-            feedback_mgr.save_feedback(
-                video_name=video_name_simple,
-                profile_key=profile_choice,
-                event_id=f"fn_{fn_timestamp}",
-                label="FN",
-                strike_type=fn_strike_type,
-                timestamp=fn_timestamp,
-                notes=fn_notes
+        if has_annotated:
+            video_type = st.radio(
+                "Exibição do Vídeo:",
+                ["🎥 Vídeo Anotado (Pose & Tracking)", "📹 Vídeo Original"],
+                horizontal=True
             )
-            st.success(f"Golpe Perdido ({fn_strike_type} às {fn_timestamp}) registrado no dataset de treino!")
-
-        st.markdown("---")
-        st.subheader(f"🧠 Painel de Otimização por Reforço - Perfil '{profile_choice.upper()}'")
-        
-        stats = feedback_mgr.get_stats(profile_key=profile_choice)
-        
-        s1, s2, s3, s4 = st.columns(4)
-        s1.metric("Total Anotações", stats["total_feedback"])
-        s2.metric("Acertos (TP)", stats["true_positives"])
-        s3.metric("Falsos Positivos (FP)", stats["false_positives"])
-        s4.metric("Precisão Atual", f"{stats['precision_pct']}%")
-
-        if st.button("🚀 Treinar e Atualizar Perfil Selecionado", type="primary"):
-            updated_config, opt_summary = feedback_mgr.optimize_profile_config(profile_choice, current_p)
+            selected_video = st.session_state["annotated_output"] if "Anotado" in video_type else video_file_path
+        else:
+            selected_video = video_file_path
             
-            if opt_summary["status"] == "no_data":
-                st.warning(opt_summary["message"])
-            else:
-                pipeline_temp = ShinpanaiPipeline(calibration_profile=profile_choice)
-                pipeline_temp.calibrator.update_and_save_profile(profile_choice, updated_config)
-                
-                st.success(f"🎉 O perfil '{profile_choice}' foi recalibrado com sucesso!")
-                st.markdown("**Resumo das Otimizações Aplicadas:**")
-                for chg in opt_summary["changes"]:
-                    st.markdown(f"- {chg}")
+        if selected_video and os.path.exists(selected_video):
+            st.video(selected_video)
+        else:
+            st.info("Nenhum vídeo disponível para reprodução.")
+            
+        # Métricas resumidas do combate na coluna do vídeo
+        if "analysis_result" in st.session_state:
+            res = st.session_state["analysis_result"]
+            st.markdown('<div class="summary-card">', unsafe_allow_html=True)
+            st.markdown("##### 📌 Resumo do Combate")
+            m1, m2 = st.columns(2)
+            m1.metric("Duração", f"{res['duration_seconds']}s")
+            m2.metric("Total Frames", res['total_frames'])
+            
+            m3, m4 = st.columns(2)
+            m3.metric("Golpes Detectados", res['events_detected_count'])
+            m4.metric("Perfil Aplicado", res['profile_applied'])
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    st.markdown("---")
-    if os.path.exists(st.session_state.get("annotated_output", "")):
-        st.subheader("🎥 Vídeo Anotado com Tracking de Pose e Alvos")
-        st.video(st.session_state["annotated_output"])
+    # 📊 COLUNA DIREITA (SCROLLABLE): LISTA DOS GOLPES IDENTIFICADOS & DIAGNÓSTICO
+    with col_results:
+        st.subheader("🥊 Golpes Identificados & Diagnóstico")
+        
+        if "analysis_result" not in st.session_state:
+            st.info("👈 Clique em **⚡ Executar Arbitragem** para visualizar a análise detalhada dos golpes.")
+        else:
+            res = st.session_state["analysis_result"]
+            video_name_simple = os.path.basename(res.get("video_path", "video.mp4"))
+            
+            # Container com barra de rolagem dedicada para os golpes
+            with st.container(height=680):
+                if not res["events"]:
+                    st.warning("Nenhum evento claro de golpe foi identificado neste trecho de vídeo.")
+                else:
+                    for idx, ev_data in enumerate(res["events"]):
+                        ev = ev_data["event_info"]
+                        eval_info = ev_data["evaluation"]
+                        event_id_str = f"event_{idx+1}_frame_{ev['impact_frame']}"
+                        
+                        with st.expander(f"Golpe #{idx+1}: {ev['type']} @ {ev['timestamp']} - {'✅ IPPON' if eval_info['is_valid'] else '❌ INVÁLIDO'}", expanded=True):
+                            c_a, c_b = st.columns([1, 1.5])
+                            
+                            with c_a:
+                                st.markdown(f"**Técnica:** `{ev['type']}`")
+                                st.markdown(f"**Timestamp:** `{ev['timestamp']}` (Frame {ev['impact_frame']})")
+                                st.markdown(f"**Pontuação:** `{eval_info['total_score']}%` (Exigido: `{eval_info['min_required']}%`)")
+                                
+                                if eval_info['is_valid']:
+                                    st.markdown('<div class="valid-badge">✅ PONTO VÁLIDO</div>', unsafe_allow_html=True)
+                                else:
+                                    st.markdown('<div class="invalid-badge">❌ GOLPE INVÁLIDO</div>', unsafe_allow_html=True)
+
+                                # INTERFACE DE FEEDBACK (MODO APRENDIZAGEM)
+                                if app_mode == "learning":
+                                    st.markdown("---")
+                                    st.markdown("**🎓 Anotação (Reforço):**")
+                                    
+                                    btn_col1, btn_col2 = st.columns(2)
+                                    
+                                    if btn_col1.button(f"👍 Correto", key=f"btn_tp_{idx}"):
+                                        feedback_mgr.save_feedback(
+                                            video_name=video_name_simple,
+                                            profile_key=profile_choice,
+                                            event_id=event_id_str,
+                                            label="TP",
+                                            sub_scores=eval_info.get("sub_scores", {}),
+                                            total_score=eval_info.get("total_score", 0.0),
+                                            strike_type=ev['type'],
+                                            timestamp=ev['timestamp']
+                                        )
+                                        st.toast(f"✅ Anotado como Correto (TP)!", icon="👍")
+
+                                    if btn_col2.button(f"👎 Falso Positivo", key=f"btn_fp_{idx}"):
+                                        feedback_mgr.save_feedback(
+                                            video_name=video_name_simple,
+                                            profile_key=profile_choice,
+                                            event_id=event_id_str,
+                                            label="FP",
+                                            sub_scores=eval_info.get("sub_scores", {}),
+                                            total_score=eval_info.get("total_score", 0.0),
+                                            strike_type=ev['type'],
+                                            timestamp=ev['timestamp']
+                                        )
+                                        st.toast(f"❌ Anotado como Falso Positivo (FP)!", icon="👎")
+
+                            with c_b:
+                                st.markdown(ev_data["diagnostic_report"])
+
+                # PAINEL DE APRENDIZAGEM E REGISTRO DE FALSOS NEGATIVOS (MODO APRENDIZAGEM)
+                if app_mode == "learning":
+                    st.markdown("---")
+                    st.subheader("➕ Registrar Golpe Perdido (Falso Negativo - FN)")
+                    st.markdown("Se a IA deixou de identificar um golpe ocorrido, registre abaixo:")
+                    
+                    fn_col1, fn_col2 = st.columns(2)
+                    fn_timestamp = fn_col1.text_input("Timestamp (ex: 00:02.500)", value="00:00.000", key="fn_ts_input")
+                    fn_strike_type = fn_col2.selectbox("Técnica Executada", ["MEN", "KOTE", "DO", "TSUKI"], key="fn_type_input")
+                    fn_notes = st.text_input("Observação", value="Golpe rápido não detectado", key="fn_notes_input")
+                    
+                    if st.button("➕ Adicionar Golpe Perdido ao Dataset", use_container_width=True):
+                        feedback_mgr.save_feedback(
+                            video_name=video_name_simple,
+                            profile_key=profile_choice,
+                            event_id=f"fn_{fn_timestamp}",
+                            label="FN",
+                            strike_type=fn_strike_type,
+                            timestamp=fn_timestamp,
+                            notes=fn_notes
+                        )
+                        st.success(f"Golpe Perdido ({fn_strike_type} às {fn_timestamp}) registrado!")
+
+                    st.markdown("---")
+                    st.subheader(f"🧠 Painel de Otimização - Perfil '{profile_choice.upper()}'")
+                    
+                    stats = feedback_mgr.get_stats(profile_key=profile_choice)
+                    
+                    s1, s2, s3, s4 = st.columns(4)
+                    s1.metric("Anotações", stats["total_feedback"])
+                    s2.metric("Acertos (TP)", stats["true_positives"])
+                    s3.metric("Falsos Pos. (FP)", stats["false_positives"])
+                    s4.metric("Precisão", f"{stats['precision_pct']}%")
+
+                    if st.button("🚀 Treinar e Atualizar Perfil", type="primary", use_container_width=True):
+                        updated_config, opt_summary = feedback_mgr.optimize_profile_config(profile_choice, current_p)
+                        
+                        if opt_summary["status"] == "no_data":
+                            st.warning(opt_summary["message"])
+                        else:
+                            pipeline_temp = ShinpanaiPipeline(calibration_profile=profile_choice)
+                            pipeline_temp.calibrator.update_and_save_profile(profile_choice, updated_config)
+                            
+                            st.success(f"🎉 O perfil '{profile_choice}' foi recalibrado com sucesso!")
+                            st.markdown("**Resumo das Otimizações Aplicadas:**")
+                            for chg in opt_summary["changes"]:
+                                st.markdown(f"- {chg}")
