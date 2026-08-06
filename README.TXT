@@ -38,6 +38,8 @@ Para iniciar o dashboard web com reprodutor de vídeo, gráficos e sliders:
 
 Recursos da Interface Web:
 - Upload de vídeos de lutas (.mp4, .avi, .mov) ou geração de vídeo demo sintético.
+- Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de golpes com barra de rolagem à direita.
+- Alternador de exibição no player: Vídeo Anotado (Visão AI) vs Vídeo Original.
 - Alternância entre Modo Usuário (análise limpa) e Modo Aprendizagem.
 - Seleção e personalização fina de perfis de arbitragem em tempo real.
 - Visualização de vídeos anotados com suporte a esqueleto 3D e zonas de impacto.

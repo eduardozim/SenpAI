@@ -2,9 +2,9 @@ MELHORIAS
 
 - Identificar o Kenshi que teve o golpe validado
 - Detecção em tempo real
-- Manter o video em uma coluna e o relatório ao lado
 
-
+[CONCLUÍDO]
+- Manter o vídeo em uma coluna fixa (sticky) e a lista de golpes/relatório com barra de rolagem ao lado (v1.2.1)
 
 
 ISSUE

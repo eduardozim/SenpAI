@@ -147,7 +147,19 @@ O projeto inclui testes automatizados em `unittest` para validar a integridade d
 
 ## 5. Registro de Mudanças e Histórico de Versões (Changelog)
 
-### `[v1.2.0]` — 2026-08-06 *(Versão Atual)*
+### `[v1.2.1]` — 2026-08-06 *(Versão Atual)*
+
+> [!NOTE]
+> **Melhorias na Interface Web**
+> - Reestruturação do Dashboard Web no Streamlit ([app.py](file:///d:/Projetos/Shinpanai/Dev/app.py)) com layout responsivo em duas colunas.
+> - **Coluna Fixa (*Sticky Video Column*)**: O vídeo da luta (ou vídeo anotado da IA) fica ancorado à esquerda da página mesmo durante a rolagem.
+> - **Coluna de Golpes Rolável**: A lista de golpes identificados, diagnósticos biomecânicos e painel de aprendizado adaptativo possuem barra de rolagem dedicada à direita (`st.container(height=680)`).
+> - Alternador direto de exibição no player: Vídeo Anotado com Visão AI vs Vídeo Original.
+> - Cartão com resumo de métricas do combate incorporado na coluna do vídeo.
+
+---
+
+### `[v1.2.0]` — 2026-08-06
 
 > [!NOTE]
 > **Adicionado**
@@ -189,7 +201,10 @@ Com base no planejamento do projeto ([Melhorias&Issues.txt](file:///d:/Projetos/
 
 1. **Identificação Individualizada dos Kenshi**: Distinção autônoma entre Aka / Shiro na luta.
 2. **Processamento em Tempo Real**: Detecção e análise em tempo real (Stream de câmera/Webcam).
-3. **Layout Responsivo Avançado**: Vídeo anotado e relatório técnico lado a lado no Streamlit.
+
+### ✅ Funcionalidades Concluídas
+
+1. **Layout Responsivo com Vídeo Fixo (Sticky) e Relatório Rolável**: Implementado na v1.2.1 em [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py).
 
 ### 🐛 Issues & Performance
 
