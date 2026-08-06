@@ -125,5 +125,5 @@ Opções disponíveis:
 - Zanshin (Ki): Manutenção da prontidão e postura nos frames após o impacto.
 
 Para documentação técnica completa, detalhamento dos algoritmos e histórico de
-mudanças, consulte o arquivo Manual.txt.
+mudanças, consulte o arquivo manual.md.
 ===============================================================================
