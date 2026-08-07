@@ -8,6 +8,8 @@
 - **Seleção de Graduação (Dan)**: Seleção de graduação (Dan) para o revisor no modo aprendizagem.
 - **Suporte ao Protocolo RTCP**: Incluir suporte ao protocolo RTCP para permitir mais câmeras.
 - **Modo de Treino de Kendo**: Incluir modo de treino de Kendo onde dará dicas de melhorias nas técnicas e recomendará exercícios de desenvolvimento do Kenshi.
+- **Testes Automatizados**: Criação de auto testes automatizados da aplicação.
+
 
 ---
 
