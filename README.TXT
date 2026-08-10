@@ -128,4 +128,5 @@ Opções disponíveis:
 
 Para documentação técnica completa, detalhamento dos algoritmos e histórico de
 mudanças, consulte o arquivo manual.md.
-===============================================================================
+
+

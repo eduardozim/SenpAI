@@ -195,17 +195,29 @@ O projeto inclui testes automatizados em `unittest` para validar a integridade d
 
 ## 6. Roadmap e Pendências Conhecidas (Melhorias & Issues)
 
-Com base no planejamento do projeto ([Melhorias&Issues.txt](file:///d:/Projetos/Shinpanai/Dev/Melhorias&Issues.txt)), as seguintes funcionalidades estão mapeadas:
+Com base no planejamento do projeto ([Melhorias&Issues.md](file:///d:/Projetos/Shinpanai/Dev/Melhorias&Issues.md)), a versão final será composta por **3 Nodos Principais de Operação**:
 
-### 🚀 Melhorias Futuras
+1. **Modo de Treinamento**: Dicas de melhorias técnicas, exercícios, avaliação de exame de graduação (Kyu/Dan) e revisão por reforço com seleção de graduação (Dan) do revisor.
+2. **Modo de Arbitragem Gravada (Modo Atual)**: Análise biomecânica, arbitragem assistida em vídeos gravados e revisão por reforço (RL) com seleção de graduação (Dan) do revisor para calibração dinâmica.
+3. **Modo de Detecção em Tempo Real**: Arbitragem e sinalização ao vivo via webcam/câmeras de transmissão com suporte a RTCP.
 
-1. **Identificação Individualizada dos Kenshi**: Distinção autônoma entre Aka / Shiro na luta.
-2. **Processamento em Tempo Real**: Detecção e análise em tempo real (Stream de câmera/Webcam).
+### 🚀 Outras Melhorias Futuras
+
+1. **Menu de Configurações Centralizado**: Painel dedicado para centralizar preferências do sistema, calibrações, seleção do modo de processamento (**CPU exclusivo** vs **GPU quando presente**) e streams de câmera.
+2. **Identificação Individualizada dos Kenshi**: Distinção autônoma entre Aka / Shiro na luta.
+3. **Expandir Testes Automatizados**: Auto-testes da aplicação.
 
 ### ✅ Funcionalidades Concluídas
 
-1. **Layout Responsivo com Vídeo Fixo (Sticky) e Relatório Rolável**: Implementado na v1.2.1 em [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py).
+1. **Modo de Arbitragem Gravada**: Implementação base e consolidação do modo atual.
+2. **Layout Responsivo com Vídeo Fixo (Sticky) e Relatório Rolável**: Implementado na v1.2.1 em [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py).
 
 ### 🐛 Issues & Performance
 
 1. **Aceleração via GPU**: Suporte a GPU (CUDA / TensorRT / PyTorch) no MediaPipe Pose para elevar a taxa de FPS durante o processamento de vídeos em alta resolução.
+2. **Marcações em Vídeo**: Ajustes na renderização do vídeo com marcações anatômicas.
+
+---
+
+
+
