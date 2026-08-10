@@ -35,6 +35,7 @@ A versão final do **Shinpanai** será organizada em **3 Nodos / Modos Principai
 - **Estabilização e Correção de Imagem**: Corrigir tremores, distorção de lente, contraste e baixa iluminação.
 - **Sincronização Multicâmera**: Alinhar automaticamente transmissões por timestamp, áudio ou evento visual.
 - **Detecção de Câmera Inadequada**: Alertar quando o ângulo não permitir avaliar corretamente determinado critério técnico.
+- **Remoção de Vídeo de Demonstração**: Remover a opção de seleção/geração de vídeo sintético de demonstração da interface, mantendo apenas a análise de vídeos reais via upload ou transmissão ao vivo.
 
 ### 3. Arbitragem e Regras (Modo Live & Geral)
 - **Detecção de Área e Limites do Shiai-jo**: Identificar saídas de quadra, posição relativa dos atletas e eventos próximos às bordas.
