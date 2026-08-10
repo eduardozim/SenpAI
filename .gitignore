@@ -1,14 +1,3 @@
-# Virtual Environment
-.venv/
-venv/
-ENV/
-
-# Python Cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
 # Media Files / Videos
 *.mp4
 *.avi
