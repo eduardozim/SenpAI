@@ -1,5 +1,9 @@
 """
 Shinpanai - CLI Principal para Execução de Análise de Lutas de Kendo.
+Suporta os 3 Modos Principais de Operação:
+1. 'recorded' (Modo de Arbitragem Gravada)
+2. 'training' (Modo de Treinamento & Aprendizado)
+3. 'realtime' (Modo de Detecção em Tempo Real)
 """
 
 import sys
@@ -25,8 +29,8 @@ def main():
     parser.add_argument("--output", type=str, default="output_annotated.mp4", help="Caminho para salvar o vídeo anotado")
     parser.add_argument("--profile", type=str, default="normal", choices=["rigido", "normal", "permissivo"],
                         help="Perfil de calibração de arbitragem (rigido, normal, permissivo)")
-    parser.add_argument("--mode", type=str, default="user", choices=["user", "learning"],
-                        help="Modo de operação: 'user' (padrão) ou 'learning' (aprendizagem)")
+    parser.add_argument("--mode", type=str, default="recorded", choices=["recorded", "training", "realtime", "user", "learning"],
+                        help="Modo de operação: 'recorded' (Arbitragem Gravada), 'training' (Treinamento & Aprendizado) ou 'realtime' (Detecção em Tempo Real)")
     parser.add_argument("--device", type=str, default=default_device, choices=["cpu", "gpu"],
                         help="Dispositivo de processamento: 'cpu' (somente CPU) ou 'gpu' (GPU NVIDIA quando disponível)")
     parser.add_argument("--optimize-profile", action="store_true",
@@ -35,19 +39,29 @@ def main():
 
     args = parser.parse_args()
 
+    # Mapeamento para nomes padronizados
+    mode_map = {
+        "user": "recorded",
+        "learning": "training",
+        "recorded": "recorded",
+        "training": "training",
+        "realtime": "realtime"
+    }
+    active_mode = mode_map.get(args.mode, "recorded")
+
     feedback_mgr = FeedbackManager()
 
     if args.optimize_profile:
-        print(f"[Shinpanai - Aprendizagem] Otimizando o perfil '{args.profile}' com base no histórico de feedback...")
+        print(f"[Shinpanai - Treinamento] Otimizando o perfil '{args.profile}' com base no histórico de feedback...")
         pipeline_temp = ShinpanaiPipeline(calibration_profile=args.profile, device_preference=args.device)
         curr_cfg = pipeline_temp.calibrator.active_config
         new_cfg, opt_stats = feedback_mgr.optimize_profile_config(args.profile, curr_cfg)
         
         if opt_stats["status"] == "no_data":
-            print(f"[Shinpanai - Aprendizagem] {opt_stats['message']}")
+            print(f"[Shinpanai - Treinamento] {opt_stats['message']}")
         else:
             pipeline_temp.calibrator.update_and_save_profile(args.profile, new_cfg)
-            print(f"[Shinpanai - Aprendizagem] Perfil '{args.profile}' recalibrado com sucesso!")
+            print(f"[Shinpanai - Treinamento] Perfil '{args.profile}' recalibrado com sucesso!")
             for chg in opt_stats["changes"]:
                 print(f"  - {chg}")
         return
@@ -59,7 +73,7 @@ def main():
         video_path = generate_demo_kendo_video("demo_kendo_match.mp4")
         print(f"[Shinpanai] Vídeo sintético criado em: {video_path}")
 
-    print(f"[Shinpanai] Modo de Operação: '{args.mode.upper()}'")
+    print(f"[Shinpanai] Modo de Operação: '{active_mode.upper()}'")
     print(f"[Shinpanai] Aplicando perfil de calibração: '{args.profile}'")
     print(f"[Shinpanai] Preferência de Hardware Solicitada: '{args.device.upper()}'")
 

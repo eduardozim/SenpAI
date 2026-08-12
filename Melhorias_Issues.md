@@ -4,21 +4,21 @@
 
 A versão final do **Shinpanai** será organizada em **3 Nodos / Modos Principais de Operação**:
 
-1. **Modo de Treinamento (Treino de Kendo & Aprendizado)**
-   - **Análise Técnica e Exercícios**: Incluir modo de treino de Kendo onde a IA fornecerá dicas de melhorias nas técnicas e recomendará exercícios de desenvolvimento específicos para o Kenshi.
-   - **Avaliação de Exame de Graduação**: Módulo específico para simulação e avaliação diagnóstica de exames de graduação (Kyu / Dan), testando a conformidade com os exigentes critérios de cada nível.
-   - **Seleção de Graduação (Dan) na Revisão por Reforço**: Seleção da graduação (Dan) do revisor no painel de feedback/aprendizagem por reforço para calibrar o grau de rigor e exigência dos treinamentos e diagnósticos.
-   - **Acompanhamento Biomecânico**: Avaliação detalhada de postura, sincronismo (*Fumikomi*) e *Zanshin*.
+1. **Modo de Detecção em Tempo Real**
+   - **Processamento Ao Vivo**: Processamento e detecção instantânea de golpes via transmissão ao vivo (Webcam / Câmeras de transmissão).
+   - **Suporte Multi-Câmera (RTCP)**: Incluir suporte ao protocolo RTCP/RTSP para integração de múltiplos ângulos de câmera.
+   - **Sinalização Instantânea**: Exibição em tempo real dos pontos válidos durante a luta.
 
-2. **Modo de Arbitragem Gravada (Modo Atual)**
+2. **Modo de Arbitragem Gravada**
    - **Arbitragem Assistida em Vídeo**: Processamento e análise de vídeos pré-gravados de combates de Kendo.
    - **Detecção e Scoring**: Validação de *Yuko-Datotsu* com score ponderado (*Ki-Ken-Tai-Ichi*), corte automático de clipes e geração de relatórios diagnósticos.
    - **Aprendizagem por Reforço & Seleção de Graduação (Dan)**: Otimização contínua de perfis de calibração via feedback do usuário (TP, FP, FN) incorporando a seleção de graduação (Dan) do revisor para ajustar dinamicamente a sensibilidade dos limiares.
 
-3. **Modo de Detecção em Tempo Real**
-   - **Processamento Ao Vivo**: Processamento e detecção instantânea de golpes via transmissão ao vivo (Webcam / Câmeras de transmissão).
-   - **Suporte Multi-Câmera (RTCP)**: Incluir suporte ao protocolo RTCP/RTSP para integração de múltiplos ângulos de câmera.
-   - **Sinalização Instantânea**: Exibição em tempo real dos pontos válidos durante a luta.
+3. **Modo de Treinamento & Aprendizado**
+   - **Análise Técnica e Exercícios**: Incluir modo de treino de Kendo onde a IA fornecerá dicas de melhorias nas técnicas e recomendará exercícios de desenvolvimento específicos para o Kenshi.
+   - **Avaliação de Exame de Graduação**: Módulo específico para simulação e avaliação diagnóstica de exames de graduação (Kyu / Dan), testando a conformidade com os exigentes critérios de cada nível.
+   - **Seleção de Graduação (Dan) na Revisão por Reforço**: Seleção da graduação (Dan) do revisor no painel de feedback/aprendizagem por reforço para calibrar o grau de rigor e exigência dos treinamentos e diagnósticos.
+   - **Acompanhamento Biomecânico**: Avaliação detalhada de postura, sincronismo (*Fumikomi*) e *Zanshin*.
 
 ---
 
@@ -155,3 +155,6 @@ Para garantir a estabilidade e a qualidade do Shinpanai, o desenvolvimento deve 
 - **Mover Seleção de CPU e GPU para Página de Configurações**: Estruturação da navegação multi-páginas, movendo a gestão de hardware para uma página dedicada de configurações (v1.3.0).
 - **Remoção de Vídeo de Demonstração**: Remoção da opção de geração/seleção de vídeo sintético de demonstração da interface, mantendo apenas a análise de vídeos reais de lutas via upload (v1.3.0).
 - **Processamento por GPU (PyTorch CUDA)**: Utilização da GPU NVIDIA quando disponível para aceleração da detecção de pose e inferência dos modelos (v1.3.0).
+- **Modo de Arbitragem Gravada**: Renomeado modo Usuário para "Modo de Arbitragem Gravada" (análise de vídeos gravados de combates).
+- **Modo de Treinamento & Aprendizado**: Renomeado modo Aprendizagem para "Modo de Treinamento & Aprendizado" (reforço, anotação TP/FP/FN e otimização por Dan).
+- **Modo de Detecção em Tempo Real**: Implementação da detecção ao vivo via Webcam local ou streams de câmeras IP (RTSP/RTCP) com métricas de FPS e ticker de alertas instantâneos.
