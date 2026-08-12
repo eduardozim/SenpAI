@@ -105,7 +105,7 @@ A versão final do **Shinpanai** será organizada em **3 Nodos / Modos Principai
 ## 🐛 Issues & Bugs Conhecidos
 
 - **Processamento & Hardware**:
-  - Usar GPU quando disponível para aceleração da detecção de pose e inferência.
+  - Issue de performance quando está no modo GPU: Ganho de velocidade/FPS insuficiente no modo GPU necessitando otimização fina de pipeline e carregamento de tensores em VRAM.
   - Falta de fallback automático quando a GPU não suporta o modelo ou fica sem memória (OOM).
   - Resultados não reprodutíveis entre execuções em CPU e GPU.
   - Vazamento de memória (memory leak) durante o processamento de vídeos longos ou transmissões ao vivo.
@@ -150,3 +150,8 @@ Para garantir a estabilidade e a qualidade do Shinpanai, o desenvolvimento deve 
 
 - **Modo de Arbitragem Gravada**: Definição e consolidação do modo de análise de vídeos pré-gravados do sistema.
 - **Layout Responsivo Web**: Manter o vídeo em uma coluna fixa (sticky) e a lista de golpes/relatório com barra de rolagem ao lado (v1.2.1).
+- **Menu de Configurações**: Criação do Menu de Configurações centralizado para gerenciar os parâmetros globais da aplicação (v1.3.0).
+- **Seleção de Hardware (CPU vs GPU)**: Implementação do seletor entre modo CPU (exclusivo) e GPU (quando presente) com detecção dinâmica e fallback automático (v1.3.0).
+- **Mover Seleção de CPU e GPU para Página de Configurações**: Estruturação da navegação multi-páginas, movendo a gestão de hardware para uma página dedicada de configurações (v1.3.0).
+- **Remoção de Vídeo de Demonstração**: Remoção da opção de geração/seleção de vídeo sintético de demonstração da interface, mantendo apenas a análise de vídeos reais de lutas via upload (v1.3.0).
+- **Processamento por GPU (PyTorch CUDA)**: Utilização da GPU NVIDIA quando disponível para aceleração da detecção de pose e inferência dos modelos (v1.3.0).

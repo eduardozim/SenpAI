@@ -15,8 +15,11 @@ if sys.stdout.encoding != 'utf-8':
 from src.pipeline import ShinpanaiPipeline
 from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager
+from src.utils.settings_manager import get_processing_device
+from src.utils.hardware import validate_and_setup_gpu_requirements
 
 def main():
+    default_device = get_processing_device()
     parser = argparse.ArgumentParser(description="Shinpanai - AI Kendo Match Analysis System")
     parser.add_argument("--video", type=str, help="Caminho para o arquivo de vídeo de luta (.mp4, .avi)")
     parser.add_argument("--output", type=str, default="output_annotated.mp4", help="Caminho para salvar o vídeo anotado")
@@ -24,6 +27,8 @@ def main():
                         help="Perfil de calibração de arbitragem (rigido, normal, permissivo)")
     parser.add_argument("--mode", type=str, default="user", choices=["user", "learning"],
                         help="Modo de operação: 'user' (padrão) ou 'learning' (aprendizagem)")
+    parser.add_argument("--device", type=str, default=default_device, choices=["cpu", "gpu"],
+                        help="Dispositivo de processamento: 'cpu' (somente CPU) ou 'gpu' (GPU NVIDIA quando disponível)")
     parser.add_argument("--optimize-profile", action="store_true",
                         help="Executa otimização por reforço no perfil selecionado usando o dataset de feedback registrado")
     parser.add_argument("--demo", action="store_true", help="Gera um vídeo sintético de demonstração e executa o teste")
@@ -34,7 +39,7 @@ def main():
 
     if args.optimize_profile:
         print(f"[Shinpanai - Aprendizagem] Otimizando o perfil '{args.profile}' com base no histórico de feedback...")
-        pipeline_temp = ShinpanaiPipeline(calibration_profile=args.profile)
+        pipeline_temp = ShinpanaiPipeline(calibration_profile=args.profile, device_preference=args.device)
         curr_cfg = pipeline_temp.calibrator.active_config
         new_cfg, opt_stats = feedback_mgr.optimize_profile_config(args.profile, curr_cfg)
         
@@ -56,8 +61,14 @@ def main():
 
     print(f"[Shinpanai] Modo de Operação: '{args.mode.upper()}'")
     print(f"[Shinpanai] Aplicando perfil de calibração: '{args.profile}'")
+    print(f"[Shinpanai] Preferência de Hardware Solicitada: '{args.device.upper()}'")
 
-    pipeline = ShinpanaiPipeline(calibration_profile=args.profile)
+    if args.device == "gpu":
+        gpu_val = validate_and_setup_gpu_requirements(auto_install=True)
+        print(f"[Shinpanai - Hardware Check] {gpu_val['message']}")
+
+    pipeline = ShinpanaiPipeline(calibration_profile=args.profile, device_preference=args.device)
+    print(f"[Shinpanai] Status de Hardware: {pipeline.device_status_message}")
     
     def on_progress(p):
         print(f"\rProgress: {int(p * 100)}%", end="", flush=True)

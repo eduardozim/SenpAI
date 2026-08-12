@@ -25,7 +25,8 @@ A estrutura de arquivos do projeto está organizada de forma modular:
 ```text
 Dev/
 ├── config/
-│   └── calibration_profiles.json   # Configurações e pesos dos perfis de arbitragem
+│   ├── calibration_profiles.json   # Configurações e pesos dos perfis de arbitragem
+│   └── settings.json               # Configurações globais do sistema (CPU/GPU)
 ├── data/
 │   └── feedback_dataset.json       # Base de dados de anotações (TP/FP/FN) para RL
 ├── src/
@@ -37,16 +38,19 @@ Dev/
 │   │   ├── feedback_manager.py     # Motor de Aprendizagem por Reforço e Otimização
 │   │   └── reporter.py             # Gerador de relatórios diagnósticos textuais
 │   ├── utils/
-│   │   └── demo_generator.py       # Gerador sintético de vídeos de teste de Kendo
+│   │   ├── demo_generator.py       # Gerador sintético de vídeos de teste de Kendo
+│   │   ├── hardware.py             # Detecção de GPU NVIDIA e resolução de fallback CPU
+│   │   └── settings_manager.py     # Gerenciamento e persistência das configurações do sistema
 │   ├── vision/
 │   │   ├── pose_detector.py        # Rastreamento de esqueleto 3D via MediaPipe
 │   │   └── shinai_tracker.py       # Estimação do Kensen e zonas anatômicas de alvo
 │   └── pipeline.py                 # Pipeline orquestrador end-to-end de vídeo
 ├── tests/
-│   └── test_feedback_loop.py       # Suíte de testes unitários para a malha de feedback
-├── app.py                          # Dashboard Web Interativo em Streamlit
-├── main.py                         # Interface de Linha de Comando (CLI)
-├── Melhorias&Issues.txt            # Registro de pendências e melhorias futuras
+│   ├── test_feedback_loop.py       # Suíte de testes unitários para a malha de feedback
+│   └── test_hardware_settings.py   # Testes automatizados de hardware e configurações
+├── app.py                          # Dashboard Web Interativo em Streamlit (com Menu de Configurações)
+├── main.py                         # Interface de Linha de Comando (CLI com flag --device)
+├── Melhorias_Issues.md             # Registro de pendências e visão de versão final
 ├── README.TXT                      # Manual simplificado de uso rápido
 └── manual.md                       # Manual técnico completo e log de mudanças (este arquivo)
 ```
@@ -170,6 +174,15 @@ O projeto inclui testes automatizados em `unittest` para validar a integridade d
 > - Painel de métricas de acurácia (Precisão %, Recall %, Total de Anotações) na interface Web.
 > - Testes automatizados para a malha de feedback em [test_feedback_loop.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_feedback_loop.py).
 > - Documentação reestruturada em formato Markdown ([manual.md](file:///d:/Projetos/Shinpanai/Dev/manual.md)) e manual simplificado ([README.TXT](file:///d:/Projetos/Shinpanai/Dev/README.TXT)).
+
+---
+
+### `[v1.3.0]` — 2026-08-12
+
+- **Menu de Configurações Centralizado**: Implementado no [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py) com seletor de acelerador de hardware (CPU Somente vs GPU NVIDIA quando disponível).
+- **Módulo de Hardware e Configurações**: Detecção dinâmica multi-nível de GPU NVIDIA e resolução de fallback transparente para CPU ([hardware.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/hardware.py) e [settings_manager.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/settings_manager.py)).
+- **Suporte a CLI**: Adicionado parâmetro `--device {cpu,gpu}` no [main.py](file:///d:/Projetos/Shinpanai/Dev/main.py).
+- **Atualização de Requisitos**: Inclusão de instruções de instalação de pacotes CUDA (PyTorch CUDA e ONNX Runtime GPU) no [requirements.txt](file:///d:/Projetos/Shinpanai/Dev/requirements.txt) e [README.TXT](file:///d:/Projetos/Shinpanai/Dev/README.TXT).
 
 ---
 

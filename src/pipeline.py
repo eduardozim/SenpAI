@@ -14,10 +14,14 @@ from src.analytics.event_spotter import EventSpotter
 from src.analytics.biomechanics import BiomechanicsAnalyzer
 from src.engine.calibrator import CalibrationEngine
 from src.engine.reporter import DiagnosticReporter
+from src.utils.hardware import get_effective_device
 
 class ShinpanaiPipeline:
-    def __init__(self, calibration_profile: str = "normal"):
-        self.pose_detector = PoseDetector()
+    def __init__(self, calibration_profile: str = "normal", device_preference: str = "cpu"):
+        self.device_preference = device_preference
+        self.effective_device, self.device_status_message, self.gpu_info = get_effective_device(device_preference)
+        
+        self.pose_detector = PoseDetector(device=self.effective_device)
         self.shinai_tracker = ShinaiTracker()
         self.event_spotter = EventSpotter()
         self.biomechanics = BiomechanicsAnalyzer()
@@ -136,5 +140,7 @@ class ShinpanaiPipeline:
             "duration_seconds": round(total_frames / fps, 2),
             "events_detected_count": len(analyzed_events),
             "profile_applied": self.calibrator.active_config.get("name", "Custom"),
+            "device_used": self.effective_device,
+            "device_status": self.device_status_message,
             "events": analyzed_events
         }

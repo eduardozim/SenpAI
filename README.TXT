@@ -11,9 +11,11 @@ e o princípio do Ki-Ken-Tai-Ichi (Espírito, Espada e Corpo em um só).
 1. REQUISITOS E INSTALAÇÃO
 -------------------------------------------------------------------------------
 
-Requisitos:
+Requisitos de Sistema:
 - Python 3.10 ou 3.11
 - Ambiente Virtual (.venv recomendado)
+- Processador CPU (Processamento Padrão)
+- Opcional para Modo GPU: Placa aceleradora NVIDIA (GeForce RTX/GTX) com drivers CUDA.
 
 Dependências principais:
 - opencv-python
@@ -26,6 +28,9 @@ Instalação das dependências:
    pip install -r requirements.txt
    (ou usando uv: uv pip install -r requirements.txt)
 
+Para habilitação opcional de aceleração CUDA em GPU NVIDIA:
+   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
 -------------------------------------------------------------------------------
 2. INSTRUÇÕES DE USO (COMO EXECUTAR)
 -------------------------------------------------------------------------------
@@ -37,6 +42,7 @@ Para iniciar o dashboard web com reprodutor de vídeo, gráficos e sliders:
    (ou no Windows: .\.venv\Scripts\streamlit.exe run app.py)
 
 Recursos da Interface Web:
+- Menu de Configurações para seleção entre Processamento por CPU Somente ou GPU (quando houver).
 - Upload de vídeos de lutas (.mp4, .avi, .mov) ou geração de vídeo demo sintético.
 - Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de golpes com barra de rolagem à direita.
 - Alternador de exibição no player: Vídeo Anotado (Visão AI) vs Vídeo Original.
@@ -51,8 +57,8 @@ Para processar vídeos diretamente no terminal:
 - Executar análise com vídeo próprio (perfil normal padrão):
    python main.py --video "caminho/do/seu_video.mp4"
 
-- Executar teste rápido de demonstração (vídeo sintético gerado automaticamente):
-   python main.py --demo
+- Executar teste rápido de demonstração com GPU NVIDIA (se disponível):
+   python main.py --demo --device gpu
 
 - Especificar perfil de arbitragem:
    python main.py --video "video.mp4" --profile rigido
@@ -77,6 +83,9 @@ Opções disponíveis:
                           - normal     : Treino geral / Keiko (Padrão)
                           - rigido     : Campeonato / Exame de Dan
                           - permissivo : Iniciantes / Educacional
+  --device DISPOSITIVO    Dispositivo de processamento:
+                          - cpu        : Somente CPU (Padrão)
+                          - gpu        : GPU NVIDIA (quando houver, com fallback para CPU)
   --mode MODO             Modo de operação:
                           - user       : Análise padrão (Padrão)
                           - learning   : Ativa recursos para registro de feedback
