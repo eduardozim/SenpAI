@@ -14,7 +14,7 @@ No Kendo tradicional, a atribuição de um ponto válido (*Yuko-Datotsu*) é reg
 - **Ken (剣)**: Espada / Precisão do impacto do Shinai no alvo
 - **Tai (体)**: Corpo / Sincronismo do pisar (*Fumikomi-ashi*) e postura corporal
 
-O Shinpanai traduz esses princípios marciais milenares em algoritmos numéricos de alta precisão através da análise cinemática de esqueletos 3D, projeção vetorial da espada (*Shinai*) e aprendizado por reforço (*Reinforcement Learning*).
+O Shinpanai traduz esses princípios marciais em algoritmos numéricos de alta precisão através da análise cinemática de esqueletos 3D, projeção vetorial da espada (*Shinai*) e aprendizado por reforço (*Reinforcement Learning*).
 
 ---
 
@@ -151,6 +151,17 @@ O projeto inclui testes automatizados em `unittest` para validar a integridade d
 
 ## 5. Registro de Mudanças e Histórico de Versões (Changelog)
 
+---
+
+### `[v1.3.0]` — 2026-08-12
+
+- **Menu de Configurações Centralizado**: Implementado no [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py) com seletor de acelerador de hardware (CPU Somente vs GPU NVIDIA quando disponível).
+- **Módulo de Hardware e Configurações**: Detecção dinâmica multi-nível de GPU NVIDIA e resolução de fallback transparente para CPU ([hardware.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/hardware.py) e [settings_manager.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/settings_manager.py)).
+- **Suporte a CLI**: Adicionado parâmetro `--device {cpu,gpu}` no [main.py](file:///d:/Projetos/Shinpanai/Dev/main.py).
+- **Atualização de Requisitos**: Inclusão de instruções de instalação de pacotes CUDA (PyTorch CUDA e ONNX Runtime GPU) no [requirements.txt](file:///d:/Projetos/Shinpanai/Dev/requirements.txt) e [README.TXT](file:///d:/Projetos/Shinpanai/Dev/README.TXT).
+
+---
+
 ### `[v1.2.1]` — 2026-08-06 *(Versão Atual)*
 
 > [!NOTE]
@@ -177,15 +188,6 @@ O projeto inclui testes automatizados em `unittest` para validar a integridade d
 
 ---
 
-### `[v1.3.0]` — 2026-08-12
-
-- **Menu de Configurações Centralizado**: Implementado no [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py) com seletor de acelerador de hardware (CPU Somente vs GPU NVIDIA quando disponível).
-- **Módulo de Hardware e Configurações**: Detecção dinâmica multi-nível de GPU NVIDIA e resolução de fallback transparente para CPU ([hardware.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/hardware.py) e [settings_manager.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/settings_manager.py)).
-- **Suporte a CLI**: Adicionado parâmetro `--device {cpu,gpu}` no [main.py](file:///d:/Projetos/Shinpanai/Dev/main.py).
-- **Atualização de Requisitos**: Inclusão de instruções de instalação de pacotes CUDA (PyTorch CUDA e ONNX Runtime GPU) no [requirements.txt](file:///d:/Projetos/Shinpanai/Dev/requirements.txt) e [README.TXT](file:///d:/Projetos/Shinpanai/Dev/README.TXT).
-
----
-
 ### `[v1.1.0]` — 2026-08-01
 
 - **Dashboard Web Interativo** desenvolvido em Streamlit ([app.py](file:///d:/Projetos/Shinpanai/Dev/app.py)) com estilização CSS customizada.
@@ -204,33 +206,7 @@ O projeto inclui testes automatizados em `unittest` para validar a integridade d
 - Gerador sintético de vídeos de teste de Kendo ([demo_generator.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/demo_generator.py)).
 - CLI principal para execução do pipeline ([main.py](file:///d:/Projetos/Shinpanai/Dev/main.py)).
 
----
 
-## 6. Roadmap e Pendências Conhecidas (Melhorias & Issues)
-
-Com base no planejamento do projeto ([Melhorias&Issues.md](file:///d:/Projetos/Shinpanai/Dev/Melhorias&Issues.md)), a versão final será composta por **3 Nodos Principais de Operação**:
-
-1. **Modo de Treinamento**: Dicas de melhorias técnicas, exercícios, avaliação de exame de graduação (Kyu/Dan) e revisão por reforço com seleção de graduação (Dan) do revisor.
-2. **Modo de Arbitragem Gravada (Modo Atual)**: Análise biomecânica, arbitragem assistida em vídeos gravados e revisão por reforço (RL) com seleção de graduação (Dan) do revisor para calibração dinâmica.
-3. **Modo de Detecção em Tempo Real**: Arbitragem e sinalização ao vivo via webcam/câmeras de transmissão com suporte a RTCP.
-
-### 🚀 Outras Melhorias Futuras
-
-1. **Menu de Configurações Centralizado**: Painel dedicado para centralizar preferências do sistema, calibrações, seleção do modo de processamento (**CPU exclusivo** vs **GPU quando presente**) e streams de câmera.
-2. **Identificação Individualizada dos Kenshi**: Distinção autônoma entre Aka / Shiro na luta.
-3. **Expandir Testes Automatizados**: Auto-testes da aplicação.
-
-### ✅ Funcionalidades Concluídas
-
-1. **Modo de Arbitragem Gravada**: Implementação base e consolidação do modo atual.
-2. **Layout Responsivo com Vídeo Fixo (Sticky) e Relatório Rolável**: Implementado na v1.2.1 em [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py).
-
-### 🐛 Issues & Performance
-
-1. **Aceleração via GPU**: Suporte a GPU (CUDA / TensorRT / PyTorch) no MediaPipe Pose para elevar a taxa de FPS durante o processamento de vídeos em alta resolução.
-2. **Marcações em Vídeo**: Ajustes na renderização do vídeo com marcações anatômicas.
-
----
 
 
 

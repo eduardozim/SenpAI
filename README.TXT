@@ -14,7 +14,6 @@ e o princípio do Ki-Ken-Tai-Ichi (Espírito, Espada e Corpo em um só).
 Requisitos de Sistema:
 - Python 3.10 ou 3.11
 - Ambiente Virtual (.venv recomendado)
-- Processador CPU (Processamento Padrão)
 - Opcional para Modo GPU: Placa aceleradora NVIDIA (GeForce RTX/GTX) com drivers CUDA.
 
 Dependências principais:
@@ -46,7 +45,7 @@ Recursos da Interface Web:
 - Upload de vídeos de lutas (.mp4, .avi, .mov) ou geração de vídeo demo sintético.
 - Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de golpes com barra de rolagem à direita.
 - Alternador de exibição no player: Vídeo Anotado (Visão AI) vs Vídeo Original.
-- Alternância entre Modo Usuário (análise limpa) e Modo Aprendizagem.
+- 3 modos de uso: Tempo real, luta gravada e treinamento e aprimoramento
 - Seleção e personalização fina de perfis de arbitragem em tempo real.
 - Visualização de vídeos anotados com suporte a esqueleto 3D e zonas de impacto.
 - Painel de anotação e treinamento adaptativo por aprendizagem por reforço.
