@@ -10,9 +10,7 @@ A versão final do **Shinpanai** será organizada em **3 Nodos / Modos Principai
    - **Sinalização Instantânea**: Exibição em tempo real dos pontos válidos durante a luta.
 
 2. **Modo de Arbitragem Gravada**
-   - **Arbitragem Assistida em Vídeo**: Processamento e análise de vídeos pré-gravados de combates de Kendo.
    - **Detecção e Scoring**: Validação de *Yuko-Datotsu* com score ponderado (*Ki-Ken-Tai-Ichi*), corte automático de clipes e geração de relatórios diagnósticos.
-   - **Aprendizagem por Reforço & Seleção de Graduação (Dan)**: Otimização contínua de perfis de calibração via feedback do usuário (TP, FP, FN) incorporando a seleção de graduação (Dan) do revisor para ajustar dinamicamente a sensibilidade dos limiares.
 
 3. **Modo de Treinamento & Aprendizado**
    - **Análise Técnica e Exercícios**: Incluir modo de treino de Kendo onde a IA fornecerá dicas de melhorias nas técnicas e recomendará exercícios de desenvolvimento específicos para o Kenshi.
@@ -35,7 +33,6 @@ A versão final do **Shinpanai** será organizada em **3 Nodos / Modos Principai
 - **Estabilização e Correção de Imagem**: Corrigir tremores, distorção de lente, contraste e baixa iluminação.
 - **Sincronização Multicâmera**: Alinhar automaticamente transmissões por timestamp, áudio ou evento visual.
 - **Detecção de Câmera Inadequada**: Alertar quando o ângulo não permitir avaliar corretamente determinado critério técnico.
-- **Remoção de Vídeo de Demonstração**: Remover a opção de seleção/geração de vídeo sintético de demonstração da interface, mantendo apenas a análise de vídeos reais via upload ou transmissão ao vivo.
 
 ### 3. Arbitragem e Regras (Modo Live & Geral)
 - **Detecção de Área e Limites do Shiai-jo**: Identificar saídas de quadra, posição relativa dos atletas e eventos próximos às bordas.
@@ -94,10 +91,8 @@ A versão final do **Shinpanai** será organizada em **3 Nodos / Modos Principai
 - **Menu de Configurações Centralizado**: Painel para gerenciar os parâmetros globais da aplicação:
   - **Processamento Hardware**: Seleção entre modo **CPU (exclusivo)** ou **GPU (quando presente)** para aceleração de detecção de pose e inferência de IA.
   - **Calibração & Limiares**: Escolha e ajuste fino dos perfis de arbitragem e critérios técnicos.
-  - **Gestão & Exportação de Treinamentos**: Permitir exportar os treinamentos realizados com filtro pelo Dan (graduação do aplicador/revisor), além de funcionalidade para resetar o treinamento ao padrão inicial do sistema.
   - **Câmeras & Rede**: Parâmetros de suporte ao protocolo RTCP/RTSP para múltiplas câmeras.
   - **Interface & Preferências**: Opções visuais e de exibição do dashboard.
-- **Licença & Disclaimer (Open Code)**: Incluir disclaimer legal oficial de Licença de Código Aberto (*Open Code / Open Source License*), definindo o uso livre para estudo, modificação e contribuição comunitária, com isenção de responsabilidade (*AS IS*).
 - **Testes Automatizados**: Expansão contínua da cobertura de testes unitários, de integração e e2e da aplicação.
 
 ---
@@ -148,12 +143,16 @@ Para garantir a estabilidade e a qualidade do Shinpanai, o desenvolvimento deve 
 
 ## ✅ Concluídas
 
+- **Arbitragem Assistida em Vídeo**: Processamento e análise biomecânica de vídeos pré-gravados de combates com pontuação ponderada (Ki-Ken-Tai-Ichi), cortes de clipes e relatórios diagnósticos no Modo de Arbitragem Gravada.
+- **Aprendizagem por Reforço & Seleção de Graduação (Dan)**: Otimização contínua de perfis de calibração via feedback do usuário (TP, FP, FN) incorporando a seleção de graduação (Dan) do revisor para ajustar dinamicamente a sensibilidade dos limiares.
+- **Remoção de Vídeo de Demonstração**: Remoção da opção de seleção/geração de vídeo sintético de demonstração da interface, mantendo apenas a análise de vídeos reais via upload ou transmissão ao vivo (v1.3.0).
+- **Gestão & Exportação de Treinamentos**: Permitir exportar os treinamentos realizados com filtro pelo Dan (graduação do aplicador/revisor), carregar pacotes baixados e resetar o treinamento ao padrão inicial do sistema (v1.4.0 / v1.5.0).
+- **Licença & Disclaimer (Open Code)**: Licença oficial de código aberto (GNU General Public License v3.0 em `LICENSE.txt`), definindo uso livre para estudo, modificação e contribuição comunitária com isenção de responsabilidade (*AS IS*).
 - **Modo de Arbitragem Gravada**: Definição e consolidação do modo de análise de vídeos pré-gravados do sistema.
 - **Layout Responsivo Web**: Manter o vídeo em uma coluna fixa (sticky) e a lista de golpes/relatório com barra de rolagem ao lado (v1.2.1).
 - **Menu de Configurações**: Criação do Menu de Configurações centralizado para gerenciar os parâmetros globais da aplicação (v1.3.0).
 - **Seleção de Hardware (CPU vs GPU)**: Implementação do seletor entre modo CPU (exclusivo) e GPU (quando presente) com detecção dinâmica e fallback automático (v1.3.0).
 - **Mover Seleção de CPU e GPU para Página de Configurações**: Estruturação da navegação multi-páginas, movendo a gestão de hardware para uma página dedicada de configurações (v1.3.0).
-- **Remoção de Vídeo de Demonstração**: Remoção da opção de geração/seleção de vídeo sintético de demonstração da interface, mantendo apenas a análise de vídeos reais de lutas via upload (v1.3.0).
 - **Processamento por GPU (PyTorch CUDA)**: Utilização da GPU NVIDIA quando disponível para aceleração da detecção de pose e inferência dos modelos (v1.3.0).
 - **Modo de Arbitragem Gravada**: Renomeado modo Usuário para "Modo de Arbitragem Gravada" (análise de vídeos gravados de combates).
 - **Modo de Treinamento & Aprendizado**: Renomeado modo Aprendizagem para "Modo de Treinamento & Aprendizado" (reforço, anotação TP/FP/FN e otimização por Dan).
@@ -162,4 +161,3 @@ Para garantir a estabilidade e a qualidade do Shinpanai, o desenvolvimento deve 
 - **Governança de Treinamento no Menu de Configurações**: Seção de governança no Menu de Configurações contendo contador de treinamentos realizados, nível médio (Dan) dos treinamentos, tabela de quantidade de treinamentos por Dan, opção de apagar treinamento (reset ao estágio inicial), opção de baixar treinamento atual (pacote JSON contendo Dan e data de cada treinamento) e opção de carregar treinamento baixado anteriormente com recalibração imediata (v1.4.0).
 - **Suíte de Testes Automatizados de Governança por Dan**: Implementação do arquivo `tests/test_dan_training_governance.py` garantindo cobertura de código para todo o fluxo de revisão por Dan, retreinamento e gestão de pacotes de dados (v1.4.0).
 - **Sistema de Diagnóstico, Alertas & Log de Debug (v1.5.0)**: Módulo central de logging (`logger_manager.py`) retendo logs no disco (`logs/shinpanai_debug.log`) e em memória, Seção 4 no menu de configurações com monitoramento em tempo real de alertas (com filtro por `ERROR`, `WARNING`, `INFO`, `DEBUG`), registro automático de resets de treinamento, importações/exportações de pacotes JSON e retreinamentos por Dan no log, botão de download do log de debug, ferramenta de diagnóstico automatizado, badges de status de golpe (CONFIRMADO / EDITADO), botões de reset de revisão e suíte de testes unitários (`test_logger_manager.py`).
-
