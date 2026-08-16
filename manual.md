@@ -28,27 +28,33 @@ Dev/
 │   ├── calibration_profiles.json   # Configurações e pesos dos perfis de arbitragem
 │   └── settings.json               # Configurações globais do sistema (CPU/GPU)
 ├── data/
-│   └── feedback_dataset.json       # Base de dados de anotações (TP/FP/FN) para RL
+│   ├── feedback_dataset.json       # Base de dados de anotações (TP/FP/FN/Dan) para RL
+│   └── training_history.json       # Histórico de sessões de treinamento e revisões por Dan
+├── logs/
+│   └── shinpanai_debug.log         # Arquivo consolidado de logs, erros e alertas do sistema
 ├── src/
 │   ├── analytics/
 │   │   ├── biomechanics.py         # Cálculo numérico dos critérios de Yuko-Datotsu
 │   │   └── event_spotter.py        # Detecção temporal de picos cinemáticos e golpes
 │   ├── engine/
 │   │   ├── calibrator.py           # Motor de pontuação e validação de limiares
-│   │   ├── feedback_manager.py     # Motor de Aprendizagem por Reforço e Otimização
+│   │   ├── feedback_manager.py     # Motor de Aprendizagem por Reforço, Governança por Dan e Otimização
 │   │   └── reporter.py             # Gerador de relatórios diagnósticos textuais
 │   ├── utils/
 │   │   ├── demo_generator.py       # Gerador sintético de vídeos de teste de Kendo
 │   │   ├── hardware.py             # Detecção de GPU NVIDIA e resolução de fallback CPU
+│   │   ├── logger_manager.py       # Gerenciador central de logs, alertas e diagnósticos de debug
 │   │   └── settings_manager.py     # Gerenciamento e persistência das configurações do sistema
 │   ├── vision/
 │   │   ├── pose_detector.py        # Rastreamento de esqueleto 3D via MediaPipe
 │   │   └── shinai_tracker.py       # Estimação do Kensen e zonas anatômicas de alvo
 │   └── pipeline.py                 # Pipeline orquestrador end-to-end de vídeo
 ├── tests/
+│   ├── test_dan_training_governance.py # Testes automatizados da governança por Dan, pacotes e retreinamento
 │   ├── test_feedback_loop.py       # Suíte de testes unitários para a malha de feedback
-│   └── test_hardware_settings.py   # Testes automatizados de hardware e configurações
-├── app.py                          # Dashboard Web Interativo em Streamlit (com Menu de Configurações)
+│   ├── test_hardware_settings.py   # Testes automatizados de hardware e configurações
+│   └── test_logger_manager.py      # Testes automatizados do sistema de logs e diagnóstico
+├── app.py                          # Dashboard Web Interativo em Streamlit (com Edição por Dan e Configurações)
 ├── main.py                         # Interface de Linha de Comando (CLI com flag --device)
 ├── Melhorias_Issues.md             # Registro de pendências e visão de versão final
 ├── README.TXT                      # Manual simplificado de uso rápido
@@ -113,15 +119,23 @@ Para um golpe ser validado como **Yuko-Datotsu** (Ponto Válido / *Ippon*):
 
 ---
 
-### 3.4. Aprendizagem por Reforço e Feedback ([feedback_manager.py](file:///d:/Projetos/Shinpanai/Dev/src/engine/feedback_manager.py))
+### 3.4. Aprendizagem por Reforço, Governança por Dan e Gestão de Treinamento ([feedback_manager.py](file:///d:/Projetos/Shinpanai/Dev/src/engine/feedback_manager.py))
 
-Gerencia o ciclo de vida de feedback do usuário para otimização adaptativa:
+Gerencia o ciclo completo de auditoria, revisão por Dan e otimização adaptativa dos modelos:
 
-- **Persistência**: Grava anotações no dataset JSON ([feedback_dataset.json](file:///d:/Projetos/Shinpanai/Dev/data/feedback_dataset.json)) contendo: `label` (`TP`, `FP`, `FN`), `profile_key`, `sub_scores`, `total_score`, `strike_type` e `timestamp`.
-- **Método `get_stats()`**: Calcula precisão (*Precision*) e revocação (*Recall*) percentuais.
-- **Método `optimize_profile_config()`**: Algoritmo de Aprendizagem por Reforço / Calibração Adaptativa:
-  - **Se houver Falsos Positivos (FP)**: Analisa o Score Total máximo dos FPs e eleva o `min_total_score` de forma segura (até o teto de 90%). Além disso, analisa as médias dos sub-critérios de TPs vs FPs e reforça os `sub_thresholds` das métricas onde os FPs mais falham.
-  - **Se houver Falsos Negativos (FN) sem FPs**: Suaviza a pontuação mínima global (redução de 4%) para capturar golpes válidos perdidos.
+- **Seleção de Dan do Revisor**: Mapeia revisores de **1º Dan (Shodan)** a **8º Dan (Hachidan)**, associando `reviewer_dan`, `reviewer_dan_name` e `review_date` (timestamp ISO) a cada revisão.
+- **Edição e Regra de Auditabilidade (Sem Exclusão)**:
+  - Permite **confirmar** marcações, **editar** técnica/timestamp/resultado e **incluir** golpes perdidos (falsos negativos).
+  - A exclusão de marcações é **desabilitada por norma de auditabilidade**, preservando a integridade do conjunto de dados.
+- **Histórico de Treinamentos (`data/training_history.json`)**: Registra cada sessão de retreinamento executada, incluindo o Dan do aplicador, a contagem de itens revisados e o resumo das alterações de calibração.
+- **Métricas de Governança (`get_training_metrics()`)**:
+  - Contador total de treinamentos realizados.
+  - Nível médio (Dan) dos treinamentos (ex: `4.0º Dan (Yondan)`).
+  - Tabela de distribuição da quantidade de treinamentos e percentual por Dan (1º a 8º Dan).
+- **Pacotes de Treinamento (Exportação e Importação)**:
+  - `export_training_package()`: Exporta um arquivo `.json` contendo todas as marcações com o Dan do revisor e as datas dos treinamentos realizados.
+  - `import_training_package()`: Importa arquivos `.json` previamente baixados, mesclando dados e recalibrando o modelo automaticamente.
+  - `reset_all_training_data()`: Apaga os dados de treinamento e restaura o sistema ao estágio inicial.
 
 ---
 
@@ -134,22 +148,62 @@ Gerencia o ciclo de vida de feedback do usuário para otimização adaptativa:
 
 ## 4. Suíte de Testes Automatizados
 
-O projeto inclui testes automatizados em `unittest` para validar a integridade do ciclo de feedback e aprendizado adaptativo no arquivo [test_feedback_loop.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_feedback_loop.py).
+O projeto inclui testes automatizados em `unittest` para validar o pipeline cinemático, hardware e governança por Dan.
 
 ### Comando para Execução dos Testes
 
 ```bash
-.\.venv\Scripts\python.exe -m unittest tests/test_feedback_loop.py
+.\.venv\Scripts\python.exe -m unittest discover tests
 ```
 
 ### Testes Incluídos
 
-- `test_save_and_load_feedback`: Valida o salvamento, persistência e leitura das anotações no dataset.
-- `test_optimize_profile_on_false_positives`: Garante que o motor de RL ajusta os limiares para eliminar Falsos Positivos detectados.
+- **`test_dan_training_governance.py`**: Valida a salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador, média e tabela por Dan), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
+- **`test_feedback_loop.py`**: Valida o salvamento, persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
+- **`test_hardware_settings.py`**: Valida detecção de GPU NVIDIA, configurações globais e resolução de fallback transparente para CPU.
 
 ---
 
 ## 5. Registro de Mudanças e Histórico de Versões (Changelog)
+
+---
+
+### `[v1.5.0]` — 2026-08-15 *(Versão Atual)*
+
+- **Sistema de Diagnóstico, Alertas e Log de Debug do Sistema**:
+  - Criado o módulo central de logging e diagnóstico ([logger_manager.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/logger_manager.py)) com retenção em arquivo ([`logs/shinpanai_debug.log`](file:///d:/Projetos/Shinpanai/Dev/logs/shinpanai_debug.log)) e buffer em memória.
+  - Registro automático no log de eventos críticos: **reset de treinamento**, **importação de arquivos JSON**, **exportação de pacotes**, **retreinamentos por Dan** e diagnósticos de hardware.
+  - Adicionada a **Seção 4: Diagnóstico, Alertas & Log de Debug** no menu de configurações do Web App ([app.py](file:///d:/Projetos/Shinpanai/Dev/app.py)).
+  - Métricas em tempo real de contagem de logs, alertas/avisos e erros do sistema.
+  - Visualizador de logs com filtro dinâmico por nível (`ERROR`, `WARNING`, `INFO`, `DEBUG`).
+  - Botão de **download do arquivo de log completo (`shinpanai_debug.log`)**.
+  - Ferramenta de **teste de diagnóstico automatizado** para checagem de integridade de hardware, GPU, arquivos e bibliotecas.
+- **Melhorias na Revisão de Golpes (Modo Gravado)**:
+  - Exibição de badges visuais em tempo real: **`✅ CONFIRMADO`** (verde) e **`✏️ EDITADO`** (azul) com atualização instantânea na UI via `st.rerun()`.
+  - Botão de **Reset Geral da Revisão (`🔄 Resetar Revisão`)** para limpar as marcações da sessão e botões de **Reset Individual (`🔄 Resetar este golpe`)** por card.
+- **Suporte Universal a Arquivos de Treinamento JSON**:
+  - O módulo de importação ([feedback_manager.py](file:///d:/Projetos/Shinpanai/Dev/src/engine/feedback_manager.py)) foi aprimorado para aceitar pacotes completos, listas diretas de revisões JSON ou entradas avulsas, com tratamento de buffer (`seek(0)`) e atribuição de IDs.
+- **Estabilidade de Interface**:
+  - Tabela de treinamentos por Dan convertida para Markdown nativo, eliminando erros de pré-carregamento de módulos JS/CSS do navegador (Vite preload helper).
+- **Testes Automatizados**: Suíte de testes em [test_logger_manager.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_logger_manager.py) e testes de importação expandidos em [test_dan_training_governance.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_dan_training_governance.py) (19 testes automatizados com 100% de aprovação).
+
+---
+
+### `[v1.4.0]` — 2026-08-15
+
+- **Modo de Arbitragem Gravada - Edição de Golpes por Dan**:
+  - Adicionado o botão `✏️ Habilitar Edição dos Golpes Detectados`.
+  - Inclusão do **Combo Box de Graduação DAN do Revisor** (Shodan a Hachidan / 1º ao 8º Dan).
+  - Suporte a **confirmar marcação**, **editar marcação** (técnica, timestamp, resultado e observações) e **incluir marcação** de golpes perdidos.
+  - Implementação da **regra de auditabilidade (sem exclusão)**, impedindo a exclusão acidental ou indevida de marcações.
+  - Botão de salvamento final `💾 Salvar Alterações e Retreinar Modelo` para recalibração automática.
+- **Menu de Configurações - Governança de Treinamento**:
+  - Adicionado contador de treinamentos realizados, nível médio (Dan) dos treinamentos e total de marcações.
+  - Tabela formatada de quantidade e percentual de treinamentos agrupados por Dan.
+  - Opção `🗑️ Apagar Treinamento do Sistema` com confirmação de segurança para resetar ao estágio inicial.
+  - Opção `📥 Baixar Treinamento Atual` para exportar pacote `.json` com o Dan do revisor e a data do treinamento feito.
+  - Opção `📤 Carregar Treinamento Baixado` para importar pacotes previamente baixados e recalibrar o modelo.
+- **Testes Automatizados**: Criado [test_dan_training_governance.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_dan_training_governance.py) cobrindo governança, pacotes e retreinamento.
 
 ---
 
@@ -162,7 +216,7 @@ O projeto inclui testes automatizados em `unittest` para validar a integridade d
 
 ---
 
-### `[v1.2.1]` — 2026-08-06 *(Versão Atual)*
+### `[v1.2.1]` — 2026-08-06
 
 > [!NOTE]
 > **Melhorias na Interface Web**
@@ -205,6 +259,7 @@ O projeto inclui testes automatizados em `unittest` para validar a integridade d
 - Motor de Calibração com perfis predefinidos (`rigido`, `normal`, `permissivo`) em JSON.
 - Gerador sintético de vídeos de teste de Kendo ([demo_generator.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/demo_generator.py)).
 - CLI principal para execução do pipeline ([main.py](file:///d:/Projetos/Shinpanai/Dev/main.py)).
+
 
 
 

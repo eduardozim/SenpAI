@@ -1,1 +1,63 @@
-[]
+[
+  {
+    "id": "tmpcu_so81g.mp4_event_17_frame_1788_1",
+    "id_event": "event_17_frame_1788",
+    "video_name": "tmpcu_so81g.mp4",
+    "profile_key": "rigido",
+    "label": "TP",
+    "strike_type": "KOTE",
+    "timestamp": "00:59.600",
+    "total_score": 56.9,
+    "sub_scores": {
+      "target_impact": 48.4,
+      "fumikomi_sync": 0.0,
+      "posture": 100.0,
+      "zanshin": 100.0
+    },
+    "notes": "",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Nidan)",
+    "review_date": "2026-08-15T20:29:40",
+    "is_edited": true,
+    "is_included": false
+  },
+  {
+    "id": "tmpqgogkh5y.mp4_fn_00_20_000_2",
+    "id_event": "fn_00_20_000",
+    "video_name": "tmpqgogkh5y.mp4",
+    "profile_key": "normal",
+    "label": "INCLUDED",
+    "strike_type": "KOTE",
+    "timestamp": "00:20.000",
+    "total_score": 0.0,
+    "sub_scores": {},
+    "notes": "Golpe não detectado pelo modelo",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Nidan)",
+    "review_date": "2026-08-15T20:47:36",
+    "is_edited": false,
+    "is_included": true
+  },
+  {
+    "id": "tmpqgogkh5y.mp4_event_8_frame_1244_3",
+    "id_event": "event_8_frame_1244",
+    "video_name": "tmpqgogkh5y.mp4",
+    "profile_key": "normal",
+    "label": "FP",
+    "strike_type": "KOTE",
+    "timestamp": "00:41.466",
+    "total_score": 72.7,
+    "sub_scores": {
+      "target_impact": 87.2,
+      "fumikomi_sync": 11.2,
+      "posture": 100.0,
+      "zanshin": 100.0
+    },
+    "notes": "",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Nidan)",
+    "review_date": "2026-08-15T20:47:36",
+    "is_edited": true,
+    "is_included": false
+  }
+]

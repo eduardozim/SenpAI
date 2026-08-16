@@ -41,14 +41,23 @@ Para iniciar o dashboard web com reprodutor de vídeo, gráficos e sliders:
    (ou no Windows: .\.venv\Scripts\streamlit.exe run app.py)
 
 Recursos da Interface Web:
-- Menu de Configurações para seleção entre Processamento por CPU Somente ou GPU (quando houver).
-- Upload de vídeos de lutas (.mp4, .avi, .mov) ou geração de vídeo demo sintético.
+- Menu de Configurações com seletor de Hardware (CPU vs GPU NVIDIA) e painel de Governança de Treinamento.
+- Painel de Diagnóstico, Alertas e Log de Debug do Sistema com monitoramento de eventos em tempo real (registra resets, uploads e retreinamentos).
+- Botão para baixar o arquivo completo de log de debug (`shinpanai_debug.log`) e teste de diagnóstico automatizado de integridade.
+- Edição de Golpes por Dan no Modo de Arbitragem Gravada (Shodan 1º Dan a Hachidan 8º Dan).
+- Badges visuais de status em tempo real: CONFIRMADO (verde) e EDITADO (azul) em cada card de golpe.
+- Botão de Reset Geral da Revisão para a sessão e botão de Reset Individual por golpe.
+- Permite confirmar marcações, editar parâmetros do golpe e incluir marcações adicionais (golpes perdidos).
+- Regra de Auditabilidade: Exclusão de marcações estritamente desabilitada para preservação de dados.
+- Botão de salvamento final com retreinamento adaptativo do modelo de detecção.
+- Painel de Governança nas Configurações: contador de treinamentos, nível médio (Dan) dos treinamentos e tabela por Dan.
+- Recursos de gestão nas Configurações: apagar treinamento (reset), baixar treinamento (JSON com Dan e data) e carregar pacotes baixados (suporte a múltiplos formatos JSON).
+- Upload de vídeos de lutas (.mp4, .avi, .mov).
 - Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de golpes com barra de rolagem à direita.
 - Alternador de exibição no player: Vídeo Anotado (Visão AI) vs Vídeo Original.
-- 3 modos de uso: Tempo real, luta gravada e treinamento e aprimoramento
+- 3 modos de uso: Tempo real, Luta gravada e Treinamento & Aprendizado.
 - Seleção e personalização fina de perfis de arbitragem em tempo real.
 - Visualização de vídeos anotados com suporte a esqueleto 3D e zonas de impacto.
-- Painel de anotação e treinamento adaptativo por aprendizagem por reforço.
 
 --- B. LINHA DE COMANDO (CLI) ---
 Para processar vídeos diretamente no terminal:
@@ -67,6 +76,9 @@ Para processar vídeos diretamente no terminal:
 
 - Otimizar perfil com base no dataset de feedback gravado:
    python main.py --profile normal --optimize-profile
+
+- Executar suíte completa de testes automatizados:
+   .\.venv\Scripts\python.exe -m unittest discover tests
 
 -------------------------------------------------------------------------------
 3. OPÇÕES E FLAGS DA LINHA DE COMANDO (CLI)
@@ -98,18 +110,18 @@ Opções disponíveis:
 4. MODOS DE OPERAÇÃO
 -------------------------------------------------------------------------------
 
-1. MODO USUÁRIO (user):
-   Projetado para atletas, alunos e treinadores. Exibe diretamente o status dos
-   golpes (✅ IPPON / ❌ INVÁLIDO), diagnósticos biomecânicos e orientações de
-   correção técnica sem poluição visual.
+1. MODO DE ARBITRAGEM GRAVADA (recorded):
+   Projetado para análise de combates gravados. Permite habilitar o botão de edição
+   dos golpes detectados com seleção do DAN do revisor (Shodan a Hachidan).
+   Permite confirmar, editar ou incluir golpes perdidos (sem permissão de exclusão).
+   Ao final, salva e retreina o modelo de detecção.
 
-2. MODO APRENDIZAGEM (learning):
-   Projetado para árbitros e especialistas. Permite rotular os resultados da IA:
-   - TP (True Positive): Golpe correto / Validação confirmada.
-   - FP (False Positive): Golpe validado indevidamente pela IA.
-   - FN (False Negative): Golpe válido que a IA deixou de identificar.
-   As anotações alimentam o otimizador por reforço para recalibrar
-   automaticamente os limiares e pesos do perfil.
+2. MODO DE TREINAMENTO & APRENDIZADO (training):
+   Projetado para instrutores e atletas. Permite rotular resultados (TP, FP, FN),
+   calibrar a exigência por nível Dan e recalibrar adaptativamente os limiares.
+
+3. MODO DE DETECÇÃO EM TEMPO REAL (realtime):
+   Processamento instantâneo via Webcam ou streams RTSP/RTCP de câmeras IP.
 
 -------------------------------------------------------------------------------
 5. PERFIS DE ARBITRAGEM (SENSIBILIDADE)
@@ -136,5 +148,6 @@ Opções disponíveis:
 
 Para documentação técnica completa, detalhamento dos algoritmos e histórico de
 mudanças, consulte o arquivo manual.md.
+
 
 

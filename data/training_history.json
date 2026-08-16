@@ -1,0 +1,41 @@
+[
+  {
+    "id": "train_20260815T202940_1",
+    "timestamp": "2026-08-15T20:29:40",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Nidan)",
+    "video_name": "tmpcu_so81g.mp4",
+    "profile_key": "rigido",
+    "items_count": 1,
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "rigido",
+      "fps_analyzed": 0,
+      "tps_analyzed": 1,
+      "fns_analyzed": 0,
+      "changes": [
+        "Parâmetros já otimizados para o conjunto de dados atual."
+      ]
+    }
+  },
+  {
+    "id": "train_20260815T204736_2",
+    "timestamp": "2026-08-15T20:47:36",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Nidan)",
+    "video_name": "tmpqgogkh5y.mp4",
+    "profile_key": "normal",
+    "items_count": 2,
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 1,
+      "tps_analyzed": 0,
+      "fns_analyzed": 1,
+      "changes": [
+        "Elevação da Pontuação Mínima Global: 65% ➔ 74%",
+        "Reforço no Limiar de 'fumikomi_sync': 50% ➔ 55%"
+      ]
+    }
+  }
+]

@@ -1,4 +1,21 @@
 {
+  "normal": {
+    "name": "Treino Geral / Keiko (Normal)",
+    "description": "Equilíbrio entre precisão técnica e tolerância para treinos regulares.",
+    "min_total_score": 0.75,
+    "weights": {
+      "target_impact": 0.4,
+      "fumikomi_sync": 0.25,
+      "posture": 0.2,
+      "zanshin": 0.15
+    },
+    "sub_thresholds": {
+      "target_impact": 0.6,
+      "fumikomi_sync": 0.6,
+      "posture": 0.5,
+      "zanshin": 0.45
+    }
+  },
   "rigido": {
     "name": "Campeonato / Dan Audit (Rígido)",
     "description": "Exige execução quase perfeita de Ki-Ken-Tai-Ichi, alvo exato e Zanshin completo.",
@@ -6,31 +23,14 @@
     "weights": {
       "target_impact": 0.35,
       "fumikomi_sync": 0.25,
-      "posture": 0.20,
-      "zanshin": 0.20
+      "posture": 0.2,
+      "zanshin": 0.2
     },
     "sub_thresholds": {
       "target_impact": 0.75,
-      "fumikomi_sync": 0.70,
-      "posture": 0.70,
-      "zanshin": 0.70
-    }
-  },
-  "normal": {
-    "name": "Treino Geral / Keiko (Normal)",
-    "description": "Equilíbrio entre precisão técnica e tolerância para treinos regulares.",
-    "min_total_score": 0.65,
-    "weights": {
-      "target_impact": 0.40,
-      "fumikomi_sync": 0.25,
-      "posture": 0.20,
-      "zanshin": 0.15
-    },
-    "sub_thresholds": {
-      "target_impact": 0.60,
-      "fumikomi_sync": 0.50,
-      "posture": 0.50,
-      "zanshin": 0.45
+      "fumikomi_sync": 0.7,
+      "posture": 0.7,
+      "zanshin": 0.7
     }
   },
   "permissivo": {
@@ -39,15 +39,15 @@
     "min_total_score": 0.45,
     "weights": {
       "target_impact": 0.55,
-      "fumikomi_sync": 0.20,
+      "fumikomi_sync": 0.2,
       "posture": 0.15,
-      "zanshin": 0.10
+      "zanshin": 0.1
     },
     "sub_thresholds": {
-      "target_impact": 0.40,
-      "fumikomi_sync": 0.30,
-      "posture": 0.30,
-      "zanshin": 0.20
+      "target_impact": 0.4,
+      "fumikomi_sync": 0.3,
+      "posture": 0.3,
+      "zanshin": 0.2
     }
   }
 }
