@@ -21,26 +21,26 @@ DAN_NAMES: Dict[int, str] = {
 }
 
 DEFAULT_CALIBRATION_PROFILES: Dict[str, Any] = {
-    "normal": {
-        "name": "Treino Geral (Normal)",
-        "description": "Equilíbrio padrão para treinos do dia a dia e avaliações gerais de Keiko.",
-        "min_total_score": 0.65,
-        "weights": {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15},
-        "sub_thresholds": {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45}
-    },
-    "rigido": {
-        "name": "Campeonato / Audit Dan (Rígido)",
-        "description": "Alta exigência em Ki-Ken-Tai-Ichi e Zanshin. Recomendado para exames de graduação e torneios oficiais.",
-        "min_total_score": 0.78,
-        "weights": {"target_impact": 0.45, "fumikomi_sync": 0.25, "posture": 0.15, "zanshin": 0.15},
-        "sub_thresholds": {"target_impact": 0.70, "fumikomi_sync": 0.60, "posture": 0.60, "zanshin": 0.55}
-    },
     "permissivo": {
         "name": "Iniciantes / Educacional (Permissivo)",
         "description": "Tolerância ampliada para feedback formativo com praticantes de níveis iniciais.",
         "min_total_score": 0.50,
         "weights": {"target_impact": 0.35, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.20},
         "sub_thresholds": {"target_impact": 0.45, "fumikomi_sync": 0.35, "posture": 0.35, "zanshin": 0.30}
+    },
+    "normal": {
+        "name": "Treino Geral / Keiko (Normal)",
+        "description": "Equilíbrio padrão para treinos do dia a dia e avaliações gerais de Keiko.",
+        "min_total_score": 0.65,
+        "weights": {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15},
+        "sub_thresholds": {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45}
+    },
+    "rigido": {
+        "name": "Campeonato / Audit de Dan (Rígido)",
+        "description": "Alta exigência em Ki-Ken-Tai-Ichi e Zanshin. Recomendado para exames de graduação e torneios oficiais.",
+        "min_total_score": 0.78,
+        "weights": {"target_impact": 0.45, "fumikomi_sync": 0.25, "posture": 0.15, "zanshin": 0.15},
+        "sub_thresholds": {"target_impact": 0.70, "fumikomi_sync": 0.60, "posture": 0.60, "zanshin": 0.55}
     }
 }
 
