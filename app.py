@@ -544,20 +544,36 @@ else:
                     
                 if "analysis_result" in st.session_state:
                     res = st.session_state["analysis_result"]
+                    sonkyo_info = res.get("sonkyo_analysis", {})
+                    plane_info = res.get("plane_filtering", {})
+
                     st.markdown('<div class="summary-card">', unsafe_allow_html=True)
-                    st.markdown("##### 📌 Resumo do Combate")
-                    m1, m2 = st.columns(2)
-                    m1.metric("Duração", f"{res['duration_seconds']}s")
-                    m2.metric("Total Frames", res['total_frames'])
+                    st.markdown("##### 📌 Resumo do Combate & Delimitação por Sonkyō")
                     
+                    m1, m2 = st.columns(2)
+                    m1.metric("Duração Total", f"{res['duration_seconds']}s")
+                    eff_sec = res.get('effective_combat_duration_seconds', res['duration_seconds'])
+                    m2.metric("Tempo Líquido (Luta)", f"{eff_sec}s", delta=f"{eff_sec - res['duration_seconds']:.1f}s" if eff_sec < res['duration_seconds'] else None)
+
+                    m_s1, m_s2 = st.columns(2)
+                    start_ts = sonkyo_info.get("match_start_timestamp", "00:00.000")
+                    end_ts = sonkyo_info.get("match_end_timestamp", f"{res['duration_seconds']}s")
+                    m_s1.metric("🥋 Início (Pós-Sonkyō)", start_ts)
+                    m_s2.metric("🥋 Fim (Sonkyō Final)", end_ts)
+
                     m3, m4 = st.columns(2)
-                    m3.metric("Golpes Detectados", res['events_detected_count'])
+                    m3.metric("Golpes Válidos na Janela", res['events_detected_count'])
                     m4.metric("Perfil Aplicado", res['profile_applied'])
                     
                     m5, m6 = st.columns(2)
                     dev_used = res.get('device_used', 'cpu').lower()
                     m5.metric("Processamento", "⚡ GPU NVIDIA" if dev_used == "gpu" else "💻 CPU Somente")
-                    
+                    bg_disc = plane_info.get("discarded_background_count", 0)
+                    fg_disc = plane_info.get("discarded_foreground_count", 0)
+                    m6.metric("Planos Descartados", f"{bg_disc + fg_disc}", help=f"Segundo Plano: {bg_disc} | Frente da Câmera: {fg_disc}")
+
+                    if sonkyo_info.get("status_message"):
+                        st.caption(f"🥋 **Status do Sonkyō:** {sonkyo_info['status_message']}")
                     st.caption(f"ℹ️ {res.get('device_status', '')}")
                     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -611,12 +627,13 @@ else:
 
                     with st.container(height=650):
                         if not res["events"]:
-                            st.warning("Nenhum evento claro de golpe foi identificado neste trecho de vídeo.")
+                            st.warning("Nenhum evento claro de golpe foi identificado na janela regulamentar de combate.")
                         else:
                             for idx, ev_data in enumerate(res["events"]):
                                 ev = ev_data["event_info"]
                                 eval_info = ev_data["evaluation"]
                                 event_id_str = f"event_{idx+1}_frame_{ev['impact_frame']}"
+                                attacker_label = ev.get("attacker_name", "Kenshi Aka")
 
                                 # Estado da revisão desta marcação
                                 current_rev = st.session_state["session_reviews"].get(event_id_str, {
@@ -624,6 +641,7 @@ else:
                                     "label": "TP" if eval_info['is_valid'] else "FP",
                                     "strike_type": ev['type'],
                                     "timestamp": ev['timestamp'],
+                                    "attacker_name": attacker_label,
                                     "total_score": eval_info.get('total_score', 0.0),
                                     "sub_scores": eval_info.get('sub_scores', {}),
                                     "is_edited": False,
@@ -640,10 +658,11 @@ else:
                                 else:
                                     status_badge = "❌ INVÁLIDO"
 
-                                with st.expander(f"Golpe #{idx+1}: {current_rev['strike_type']} @ {current_rev['timestamp']} - {status_badge}", expanded=True):
+                                with st.expander(f"Golpe #{idx+1}: {current_rev['strike_type']} @ {current_rev['timestamp']} ({attacker_label}) - {status_badge}", expanded=True):
                                     c_a, c_b = st.columns([1, 1.5])
                                     with c_a:
                                         st.markdown(f"**Técnica:** `{current_rev['strike_type']}`")
+                                        st.markdown(f"**Atacante:** `{attacker_label}`")
                                         st.markdown(f"**Timestamp:** `{current_rev['timestamp']}` (Frame {ev['impact_frame']})")
                                         st.markdown(f"**Pontuação original:** `{eval_info['total_score']}%` (Exigido: `{eval_info['min_required']}%`)")
 
@@ -655,6 +674,8 @@ else:
                                             st.markdown('<div class="valid-badge">✅ PONTO VÁLIDO</div>', unsafe_allow_html=True)
                                         else:
                                             st.markdown('<div class="invalid-badge">❌ GOLPE INVÁLIDO</div>', unsafe_allow_html=True)
+
+                                        st.caption("🥋 Golpe registrado estritamente dentro da janela regulamentar de Sonkyō.")
 
                                         # Painel de Edição/Confirmação por Dan quando ativado
                                         if enable_editing:

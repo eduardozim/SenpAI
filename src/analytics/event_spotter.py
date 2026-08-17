@@ -5,15 +5,28 @@ impacto e fim de um golpe (Men, Kote, Do, Tsuki).
 """
 
 import numpy as np
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 class StrikeEvent:
-    def __init__(self, strike_type: str, start_frame: int, impact_frame: int, end_frame: int, fps: float):
+    def __init__(
+        self,
+        strike_type: str,
+        start_frame: int,
+        impact_frame: int,
+        end_frame: int,
+        fps: float,
+        attacker_id: str = "KENSHI_AKA",
+        attacker_name: str = "Kenshi Aka",
+        is_within_sonkyo_bounds: bool = True
+    ):
         self.type = strike_type  # "MEN", "KOTE", "DO", "TSUKI"
         self.start_frame = start_frame
         self.impact_frame = impact_frame
         self.end_frame = end_frame
         self.fps = fps
+        self.attacker_id = attacker_id
+        self.attacker_name = attacker_name
+        self.is_within_sonkyo_bounds = is_within_sonkyo_bounds
 
     @property
     def timestamp_impact(self) -> str:
@@ -29,7 +42,10 @@ class StrikeEvent:
             "start_frame": self.start_frame,
             "impact_frame": self.impact_frame,
             "end_frame": self.end_frame,
-            "timestamp": self.timestamp_impact
+            "timestamp": self.timestamp_impact,
+            "attacker_id": self.attacker_id,
+            "attacker_name": self.attacker_name,
+            "is_within_sonkyo_bounds": self.is_within_sonkyo_bounds
         }
 
 class EventSpotter:
@@ -37,12 +53,25 @@ class EventSpotter:
         self.velocity_threshold = velocity_threshold
         self.min_event_gap_frames = min_event_gap_frames
 
-    def detect_strikes(self, pose_history: List[Dict[str, Any]], fps: float = 30.0) -> List[StrikeEvent]:
+    def detect_strikes(
+        self,
+        pose_history: List[Optional[Dict[str, Any]]],
+        fps: float = 30.0,
+        start_bound_frame: int = 0,
+        end_bound_frame: Optional[int] = None,
+        attacker_id: str = "KENSHI_AKA",
+        attacker_name: str = "Kenshi Aka",
+        filter_out_of_bounds: bool = True
+    ) -> List[StrikeEvent]:
         """
         Escaneia a história de poses frame a frame e retorna uma lista de StrikeEvents detectados.
+        Se filter_out_of_bounds for True, descarta os golpes fora da janela delimitada pelo Sonkyō.
         """
         if len(pose_history) < 10:
             return []
+
+        if end_bound_frame is None:
+            end_bound_frame = len(pose_history) - 1
 
         # 1. Calcular a velocidade 2D/3D dos pulsos
         velocities = []
@@ -76,7 +105,9 @@ class EventSpotter:
             
         mean_vel = np.mean(valid_vels)
         std_vel = np.std(valid_vels)
-        dynamic_threshold = max(0.005, mean_vel + 1.2 * std_vel)
+        max_vel = np.max(valid_vels)
+        # Limiar adaptativo robusto
+        dynamic_threshold = min(max(0.005, mean_vel + 0.8 * std_vel), max(0.02, max_vel * 0.60))
 
         i = 5
         while i < n_frames - 10:
@@ -93,14 +124,21 @@ class EventSpotter:
                 # Classificar o tipo de golpe baseado no movimento da mão e na altura do esqueleto
                 strike_type = self._classify_technique(pose_history, start_f, peak_idx)
                 
+                is_within = (start_bound_frame <= peak_idx <= end_bound_frame)
+
                 event = StrikeEvent(
                     strike_type=strike_type,
                     start_frame=start_f,
                     impact_frame=peak_idx,
                     end_frame=end_f,
-                    fps=fps
+                    fps=fps,
+                    attacker_id=attacker_id,
+                    attacker_name=attacker_name,
+                    is_within_sonkyo_bounds=is_within
                 )
-                events.append(event)
+
+                if not filter_out_of_bounds or is_within:
+                    events.append(event)
 
                 # Pular os próximos frames para evitar duplicidade do mesmo golpe
                 i = peak_idx + self.min_event_gap_frames
@@ -109,19 +147,19 @@ class EventSpotter:
 
         return events
 
-    def _classify_technique(self, pose_history: List[Dict[str, Any]], start_f: int, impact_f: int) -> str:
+    def _classify_technique(self, pose_history: List[Optional[Dict[str, Any]]], start_f: int, impact_f: int) -> str:
         """
         Classifica a técnica (MEN, KOTE, DO, TSUKI) analisando a trajetória da mão e ombro no momento do impacto.
         """
-        lm = pose_history[impact_f]
-        if not lm:
+        lm = pose_history[impact_f] if impact_f < len(pose_history) else None
+        if not lm or "RIGHT_WRIST" not in lm or "RIGHT_SHOULDER" not in lm or "RIGHT_HIP" not in lm:
             return "MEN" # Default fallback
 
         hand_y = lm["RIGHT_WRIST"]["y"]
         shoulder_y = lm["RIGHT_SHOULDER"]["y"]
         hip_y = lm["RIGHT_HIP"]["y"]
         hand_x = lm["RIGHT_WRIST"]["x"]
-        elbow_x = lm["RIGHT_ELBOW"]["x"]
+        elbow_x = lm.get("RIGHT_ELBOW", {}).get("x", hand_x)
 
         # Se as mãos estão bem elevadas (acima do ombro ou na linha do topo do Men) -> MEN
         if hand_y < shoulder_y:
@@ -138,3 +176,4 @@ class EventSpotter:
                 return "TSUKI"
         else:
             return "KOTE"
+
