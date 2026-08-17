@@ -115,9 +115,9 @@ A versão final do **Shinpanai** será organizada em **3 Nodos / Modos Principai
   - Perda de conexão e dessincronização em transmissões de múltiplas câmeras via RTSP.
 - **Rastreamento de Atletas & Plano de Fundo**:
   - Falha na persistência ou troca acidental de identidade entre os Kenshi Aka e Shiro durante a luta.
-  - Somente os movimentos dos lutadores em primeiro plano devem ser considerados, excluindo os movimentos praticados e executados em segundo plano (outras lutas).
+  - ~~Somente os movimentos dos lutadores em primeiro plano devem ser considerados, excluindo os movimentos praticados e executados em segundo plano (outras lutas).~~ (Concluído na v1.6.0)
 - **Arbitragem & Validação de Golpes**:
-  - Os golpes válidos somente podem ser considerados entre os movimentos de *sonkyou* de início e fim da luta.
+  - ~~Os golpes válidos somente podem ser considerados entre os movimentos de *sonkyou* de início e fim da luta.~~ (Concluído na v1.6.0)
 - **Interface & Feedback de Usuário**:
   - Interface sem indicação clara de status de processamento, mensagens de erro ou estado de análise incompleta.
 
@@ -149,6 +149,12 @@ Para garantir a estabilidade e a qualidade do Shinpanai, o desenvolvimento deve 
 
 ## ✅ Concluídas
 
+- **Detecção de Sonkyō & Delimitação Temporal da Luta (v1.6.0)**: Identificação e verificação automática da postura ritualística de *Sonkyō* (agachamento profundo sobre os calcanhares, flexão de joelhos e coluna ereta) para marcação do Início Oficial (`match_start_frame`) e Encerramento Oficial (`match_end_frame`) da luta no Modo de Arbitragem Gravada.
+- **Filtragem Estrita de Golpes por Sonkyō (v1.6.0)**: Consideração e avaliação técnica de Yuko-Datotsu (Ippon) realizada **estritamente entre os momentos de Sonkyō de início e término**, descartando movimentações e cortes fora da janela regulamentar de combate.
+- **Rastreamento Focado nos 2 Kenshi Principais (v1.6.0)**: Associação e acompanhamento contínuo dos 2 atletas que executaram o Sonkyō inicial de abertura no Shiaijo (`Kenshi Aka - Vermelho` e `Kenshi Shiro - Branco`).
+- **Filtragem de Planos Diferentes & Descarte de Ruídos Visuais (v1.6.0)**: Calibração automática da escala geométrica do plano principal de combate, descartando elementos de segundo plano (outras lutas ao fundo, árbitros distantes, arquibancadas) e oclusões de primeiro plano (pessoas passando na frente da câmera).
+- **Interface & HUD de Sonkyō e Planos (v1.6.0)**: Exibição no painel de resumo de combate dos timestamps de início e fim da luta por Sonkyō, tempo líquido efetivo de combate, contador de planos descartados, identificação do atacante em cada golpe e renderização no vídeo anotado com HUD superior e bounding boxes diferenciados para Aka e Shiro.
+- **Suíte de Testes Automatizados de Sonkyō e Planos (v1.6.0)**: Criação de `tests/test_sonkyo_and_plane_filtering.py` com cobertura completa para classificação da postura de Sonkyō, cálculo de limites da luta, filtragem de golpes fora da janela regulamentar, classificação de planos (fundo e transeuntes) e integração de ponta a ponta no pipeline.
 - **Arbitragem Assistida em Vídeo**: Processamento e análise biomecânica de vídeos pré-gravados de combates com pontuação ponderada (Ki-Ken-Tai-Ichi), cortes de clipes e relatórios diagnósticos no Modo de Arbitragem Gravada.
 - **Aprendizagem por Reforço & Seleção de Graduação (Dan)**: Otimização contínua de perfis de calibração via feedback do usuário (TP, FP, FN) incorporando a seleção de graduação (Dan) do revisor para ajustar dinamicamente a sensibilidade dos limiares.
 - **Remoção de Vídeo de Demonstração**: Remoção da opção de seleção/geração de vídeo sintético de demonstração da interface, mantendo apenas a análise de vídeos reais via upload ou transmissão ao vivo (v1.3.0).

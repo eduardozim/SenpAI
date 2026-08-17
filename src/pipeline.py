@@ -5,16 +5,21 @@ Orquestra Leitura de Vídeo -> Pose Tracking -> Action Spotting -> Avaliação B
 
 import cv2
 import os
+import time
+import threading
 import numpy as np
 from typing import Dict, Any, List, Callable, Optional
 
 from src.vision.pose_detector import PoseDetector
 from src.vision.shinai_tracker import ShinaiTracker
-from src.analytics.event_spotter import EventSpotter
+from src.vision.combatant_tracker import CombatantTracker
+from src.analytics.event_spotter import EventSpotter, StrikeEvent
+from src.analytics.sonkyo_detector import SonkyoDetector
 from src.analytics.biomechanics import BiomechanicsAnalyzer
 from src.engine.calibrator import CalibrationEngine
 from src.engine.reporter import DiagnosticReporter
 from src.utils.hardware import get_effective_device
+from src.utils.logger_manager import log_event
 
 class ShinpanaiPipeline:
     def __init__(self, calibration_profile: str = "normal", device_preference: str = "cpu"):
@@ -23,6 +28,8 @@ class ShinpanaiPipeline:
         
         self.pose_detector = PoseDetector(device=self.effective_device)
         self.shinai_tracker = ShinaiTracker()
+        self.combatant_tracker = CombatantTracker()
+        self.sonkyo_detector = SonkyoDetector()
         self.event_spotter = EventSpotter()
         self.biomechanics = BiomechanicsAnalyzer()
         self.calibrator = CalibrationEngine(profile_name=calibration_profile)
@@ -31,13 +38,25 @@ class ShinpanaiPipeline:
         self,
         video_path: str,
         output_video_path: Optional[str] = None,
-        progress_callback: Optional[Callable[[float], None]] = None
-    ) -> Dict[str, Any]:
+        progress_callback: Optional[Callable[[float], None]] = None,
+        is_cancelled: Optional[Callable[[], bool]] = None
+    ) -> Optional[Dict[str, Any]]:
         """
-        Executa a análise completa de um arquivo de vídeo de luta de Kendo.
+        Executa a análise completa de um arquivo de vídeo de luta de Kendo no Modo de Arbitragem Gravada:
+        1. Rastreamento e associação exclusiva dos 2 Kenshi (Aka e Shiro) no Plano Principal.
+        2. Descarte automático de elementos de Segundo Plano (Background) e Oclusões na frente da câmera.
+        3. Detecção e verificação dos momentos de Sonkyō (Abertura e Encerramento).
+        4. Delimitação estrita do início (match_start_frame) e fim (match_end_frame) da luta.
+        5. Detecção e avaliação biomecânica exclusiva dos golpes dentro da janela de Sonkyō.
+        6. Renderização de vídeo anotado com HUD de Sonkyō, identificação dos lutadores e planos descartados.
         """
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
+
+        start_time = time.time()
+
+        # Resetar o rastreador para uma nova análise de vídeo
+        self.combatant_tracker = CombatantTracker()
 
         cap = cv2.VideoCapture(video_path)
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -45,85 +64,143 @@ class ShinpanaiPipeline:
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
 
-        # Prepara gravação de vídeo de saída se solicitado
-        writer = None
-        if output_video_path:
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
+        # Coleta de histórico dos combatentes
+        aka_history: List[Optional[Dict[str, Any]]] = []
+        shiro_history: List[Optional[Dict[str, Any]]] = []
+        discarded_per_frame: List[List[Dict[str, Any]]] = []
+        raw_frames: List[np.ndarray] = [] if output_video_path else []
 
-        pose_history: List[Dict[str, Any]] = []
-        annotated_frames: List[np.ndarray] = []
-        
         frame_idx = 0
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+        try:
+            while cap.isOpened():
+                if is_cancelled and is_cancelled():
+                    elapsed_cancel = time.time() - start_time
+                    log_event("WARNING", f"Processamento de vídeo cancelado pelo usuário no frame {frame_idx}/{total_frames} (Tempo decorrido: {elapsed_cancel:.2f}s).", "pipeline")
+                    return None
 
-            # 1. Extração de Pose
-            landmarks, drawn_frame = self.pose_detector.process_frame(frame)
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-            # Fallback sintético para modo demo (se a animação 2D for um desenho esquemático)
-            if (landmarks is None or len(landmarks) == 0) and "demo" in video_path.lower():
-                # Simular elevação rápida e corte brusco de Men entre os frames 30 e 50
-                if frame_idx < 30:
-                    hand_y = 0.50
-                    foot_x = 0.50
-                elif frame_idx < 45: # Furikaburi (elevação)
-                    hand_y = 0.50 - 0.25 * ((frame_idx - 30) / 15.0)
-                    foot_x = 0.50 + 0.02 * ((frame_idx - 30) / 15.0)
-                elif frame_idx < 50: # Corte rápido (impacto no frame 48)
-                    hand_y = 0.25 + 0.35 * ((frame_idx - 45) / 5.0)
-                    foot_x = 0.52 + 0.08 * ((frame_idx - 45) / 5.0) # Fumikomi rápido
-                else: # Zanshin
-                    hand_y = 0.60 - 0.10 * min(1.0, (frame_idx - 50) / 20.0)
-                    foot_x = 0.60
+                if output_video_path:
+                    raw_frames.append(frame)
 
-                landmarks = {
-                    "RIGHT_WRIST": {"x": 0.52, "y": float(hand_y), "z": 0.0, "visibility": 0.9, "px": int(0.52*width), "py": int(hand_y*height)},
-                    "LEFT_WRIST": {"x": 0.48, "y": float(hand_y + 0.02), "z": 0.0, "visibility": 0.9, "px": int(0.48*width), "py": int(hand_y*height)},
-                    "RIGHT_ELBOW": {"x": 0.55, "y": float(hand_y + 0.15), "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int((hand_y+0.15)*height)},
-                    "RIGHT_SHOULDER": {"x": 0.55, "y": 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int(0.40*height)},
-                    "LEFT_SHOULDER": {"x": 0.45, "y": 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.45*width), "py": int(0.40*height)},
-                    "RIGHT_HIP": {"x": 0.53, "y": 0.65, "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(0.65*height)},
-                    "NOSE": {"x": 0.50, "y": 0.25, "z": 0.0, "visibility": 0.9, "px": int(0.50*width), "py": int(0.25*height)},
-                    "RIGHT_EAR": {"x": 0.53, "y": 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(0.24*height)},
-                    "LEFT_EAR": {"x": 0.47, "y": 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.47*width), "py": int(0.24*height)},
-                    "RIGHT_FOOT_INDEX": {"x": float(foot_x), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int(foot_x*width), "py": int(0.90*height)}
-                }
+                # 1. Extração de candidatos a praticantes
+                candidates, _ = self.pose_detector.process_frame_candidates(frame)
 
-            pose_history.append(landmarks)
+                # Fallback sintético para modo demo (se for vídeo esquemático 2D)
+                if (not candidates or len(candidates) == 0) and "demo" in video_path.lower():
+                    # Simular Sonkyō de abertura nos primeiros 25 frames, seguido de corte aos 48 frames
+                    is_sonkyo_frame = (frame_idx < 25)
+                    hand_y = 0.65 if is_sonkyo_frame else (0.50 if frame_idx < 35 else (0.25 if frame_idx < 48 else 0.60))
+                    foot_x = 0.50 if frame_idx < 45 else 0.58
+                    hip_y_val = 0.80 if is_sonkyo_frame else 0.65 # Quadril desce no Sonkyō
 
-            if writer:
-                writer.write(drawn_frame)
-            
-            frame_idx += 1
-            if progress_callback and frame_idx % 10 == 0:
-                progress_callback(frame_idx / total_frames)
+                    synthetic_lm = {
+                        "RIGHT_WRIST": {"x": 0.52, "y": float(hand_y), "z": 0.0, "visibility": 0.9, "px": int(0.52*width), "py": int(hand_y*height)},
+                        "LEFT_WRIST": {"x": 0.48, "y": float(hand_y + 0.02), "z": 0.0, "visibility": 0.9, "px": int(0.48*width), "py": int(hand_y*height)},
+                        "RIGHT_ELBOW": {"x": 0.55, "y": float(hand_y + 0.12), "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int((hand_y+0.12)*height)},
+                        "RIGHT_SHOULDER": {"x": 0.55, "y": 0.45 if is_sonkyo_frame else 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int(0.40*height)},
+                        "LEFT_SHOULDER": {"x": 0.45, "y": 0.45 if is_sonkyo_frame else 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.45*width), "py": int(0.40*height)},
+                        "RIGHT_HIP": {"x": 0.53, "y": float(hip_y_val), "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(hip_y_val*height)},
+                        "LEFT_HIP": {"x": 0.47, "y": float(hip_y_val), "z": 0.0, "visibility": 0.9, "px": int(0.47*width), "py": int(hip_y_val*height)},
+                        "RIGHT_KNEE": {"x": 0.54, "y": float(hip_y_val + 0.08), "z": 0.0, "visibility": 0.9, "px": int(0.54*width), "py": int((hip_y_val+0.08)*height)},
+                        "LEFT_KNEE": {"x": 0.46, "y": float(hip_y_val + 0.08), "z": 0.0, "visibility": 0.9, "px": int(0.46*width), "py": int((hip_y_val+0.08)*height)},
+                        "NOSE": {"x": 0.50, "y": 0.35 if is_sonkyo_frame else 0.25, "z": 0.0, "visibility": 0.9, "px": int(0.50*width), "py": int(0.25*height)},
+                        "RIGHT_EAR": {"x": 0.53, "y": 0.34 if is_sonkyo_frame else 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(0.24*height)},
+                        "LEFT_EAR": {"x": 0.47, "y": 0.34 if is_sonkyo_frame else 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.47*width), "py": int(0.24*height)},
+                        "RIGHT_ANKLE": {"x": float(foot_x), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int(foot_x*width), "py": int(0.90*height)},
+                        "LEFT_ANKLE": {"x": float(foot_x - 0.04), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int((foot_x-0.04)*width), "py": int(0.90*height)},
+                        "RIGHT_FOOT_INDEX": {"x": float(foot_x), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int(foot_x*width), "py": int(0.90*height)}
+                    }
+                    candidates = [synthetic_lm]
 
-        cap.release()
-        if writer:
-            writer.release()
+                # 2. Filtragem de Planos e Associação dos 2 Combatentes
+                aka_lm, shiro_lm, discarded = self.combatant_tracker.associate_and_filter(candidates)
+                aka_history.append(aka_lm)
+                shiro_history.append(shiro_lm)
+                discarded_per_frame.append(discarded)
 
-        # 2. Detecção Temporal de Eventos (Golpes)
-        events = self.event_spotter.detect_strikes(pose_history, fps=fps)
+                frame_idx += 1
+                if progress_callback and frame_idx % 10 == 0:
+                    progress_callback((frame_idx / total_frames) * 0.60) # 60% para extração de poses
+        finally:
+            cap.release()
 
-        # 3. Avaliação Biomecânica e Calibração de cada golpe
+        # Checagem de cancelamento antes de processamento dos eventos
+        if is_cancelled and is_cancelled():
+            elapsed_cancel = time.time() - start_time
+            log_event("WARNING", f"Processamento de vídeo cancelado antes da análise de eventos de golpe (Tempo decorrido: {elapsed_cancel:.2f}s).", "pipeline")
+            return None
+
+        # 3. Detecção dos momentos de Sonkyō e Bounding da Luta
+        # Se Aka tem mais detecções, usa Aka como referência principal; senão Shiro
+        primary_history = aka_history if len([p for p in aka_history if p]) >= len([p for p in shiro_history if p]) else shiro_history
+        secondary_history = shiro_history if primary_history is aka_history else aka_history
+
+        sonkyo_analysis = self.sonkyo_detector.detect_match_boundaries(
+            primary_history,
+            fps=fps,
+            secondary_pose_history=secondary_history
+        )
+
+        match_start_f = sonkyo_analysis["match_start_frame"]
+        match_end_f = sonkyo_analysis["match_end_frame"]
+
+        # 4. Detecção Temporal de Golpes estritamente entre Sonkyōs
+        all_raw_strikes: List[StrikeEvent] = []
+
+        # Golpes do Combatente Aka
+        aka_strikes = self.event_spotter.detect_strikes(
+            aka_history,
+            fps=fps,
+            start_bound_frame=match_start_f,
+            end_bound_frame=match_end_f,
+            attacker_id="KENSHI_AKA",
+            attacker_name="Kenshi Aka (Vermelho)",
+            filter_out_of_bounds=True
+        )
+        all_raw_strikes.extend(aka_strikes)
+
+        # Golpes do Combatente Shiro (se presente)
+        if len([p for p in shiro_history if p]) >= 15:
+            shiro_strikes = self.event_spotter.detect_strikes(
+                shiro_history,
+                fps=fps,
+                start_bound_frame=match_start_f,
+                end_bound_frame=match_end_f,
+                attacker_id="KENSHI_SHIRO",
+                attacker_name="Kenshi Shiro (Branco)",
+                filter_out_of_bounds=True
+            )
+            # Evitar duplicatas muito próximas entre Aka e Shiro
+            for s_ev in shiro_strikes:
+                if not any(abs(s_ev.impact_frame - a_ev.impact_frame) < 12 for a_ev in all_raw_strikes):
+                    all_raw_strikes.append(s_ev)
+
+        # Ordenar eventos cronologicamente
+        all_raw_strikes.sort(key=lambda ev: ev.impact_frame)
+
+        # 5. Avaliação Biomecânica e Calibração dos Golpes Válidos
         analyzed_events = []
-        for ev in events:
+        for ev in all_raw_strikes:
             impact_f = ev.impact_frame
-            landmarks_at_impact = pose_history[impact_f] if impact_f < len(pose_history) else None
+            history_used = aka_history if ev.attacker_id == "KENSHI_AKA" else shiro_history
+            landmarks_at_impact = history_used[impact_f] if impact_f < len(history_used) else None
 
-            # Métricas
+            if not landmarks_at_impact:
+                landmarks_at_impact = primary_history[impact_f] if impact_f < len(primary_history) else None
+
+            # Métricas Ki-Ken-Tai-Ichi
             target_score = self.biomechanics.evaluate_target_impact(ev.type, landmarks_at_impact)
-            fumikomi_score, offset_ms = self.biomechanics.evaluate_fumikomi_sync(pose_history, impact_f)
+            fumikomi_score, offset_ms = self.biomechanics.evaluate_fumikomi_sync(history_used, impact_f)
             posture_score = self.biomechanics.evaluate_posture(landmarks_at_impact)
-            zanshin_score = self.biomechanics.evaluate_zanshin(pose_history, impact_f, ev.end_frame)
+            zanshin_score = self.biomechanics.evaluate_zanshin(history_used, impact_f, ev.end_frame)
 
             # Calibração
             evaluation = self.calibrator.evaluate_strike(target_score, fumikomi_score, posture_score, zanshin_score)
             
-            # Relatório textual
+            # Relatório textual com identificação do atacante
             ev_dict = ev.to_dict()
             report_text = DiagnosticReporter.generate_strike_report(ev_dict, evaluation, offset_ms)
 
@@ -134,13 +211,180 @@ class ShinpanaiPipeline:
                 "diagnostic_report": report_text
             })
 
+        # 6. Gravação do Vídeo Anotado com HUD de Sonkyō e Filtragem de Planos
+        if output_video_path and raw_frames:
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
+
+            try:
+                for f_idx, raw_f in enumerate(raw_frames):
+                    if is_cancelled and is_cancelled():
+                        elapsed_cancel = time.time() - start_time
+                        log_event("WARNING", f"Renderização de vídeo anotado cancelada pelo usuário no frame {f_idx}/{len(raw_frames)} (Tempo decorrido: {elapsed_cancel:.2f}s).", "pipeline")
+                        return None
+
+                    aka_p = aka_history[f_idx] if f_idx < len(aka_history) else None
+                    shiro_p = shiro_history[f_idx] if f_idx < len(shiro_history) else None
+                    disc_p = discarded_per_frame[f_idx] if f_idx < len(discarded_per_frame) else None
+
+                    # Determinar status visual de Sonkyō / Combate
+                    if sonkyo_analysis["has_initial_sonkyo"] and f_idx < match_start_f:
+                        hud_status = "🥋 SONKYŌ (INÍCIO DO COMBATE)"
+                        timer_txt = "Aguardando Início"
+                    elif sonkyo_analysis["has_final_sonkyo"] and f_idx >= match_end_f:
+                        hud_status = "🥋 SONKYŌ (FIM DO COMBATE)"
+                        timer_txt = "Combate Encerrado"
+                    elif f_idx >= match_start_f and f_idx <= match_end_f:
+                        elapsed_combat_sec = max(0.0, (f_idx - match_start_f) / fps)
+                        hud_status = "⚔️ LUTA EM ANDAMENTO (IPPIN / YUKO-DATOTSU)"
+                        timer_txt = f"{int(elapsed_combat_sec // 60):02d}:{int(elapsed_combat_sec % 60):02d}"
+                    else:
+                        hud_status = "FORA DA JANELA OFICIAL"
+                        timer_txt = "--:--"
+
+                    annotated_f = self.pose_detector.draw_combatants_overlay(
+                        raw_f,
+                        aka_landmarks=aka_p,
+                        shiro_landmarks=shiro_p,
+                        discarded_items=disc_p,
+                        sonkyo_status=hud_status,
+                        match_timer_str=timer_txt
+                    )
+                    writer.write(annotated_f)
+
+                    if progress_callback and f_idx % 10 == 0:
+                        progress_callback(0.60 + (f_idx / total_frames) * 0.40)
+            finally:
+                writer.release()
+
+        if progress_callback:
+            progress_callback(1.0)
+
+        total_elapsed_sec = round(time.time() - start_time, 2)
+        processing_fps = round(total_frames / max(0.001, total_elapsed_sec), 1)
+        tracker_summary = self.combatant_tracker.get_summary()
+
+        # Registro do Resumo do Processamento no Log do Sistema
+        init_sonkyo_str = f"Detectado (Início: {sonkyo_analysis.get('match_start_timestamp', '00:00.000')})" if sonkyo_analysis["has_initial_sonkyo"] else "Não detectado"
+        final_sonkyo_str = f"Detectado (Fim: {sonkyo_analysis.get('match_end_timestamp', f'{round(total_frames / fps, 2)}s')})" if sonkyo_analysis["has_final_sonkyo"] else "Não detectado"
+        
+        summary_log = (
+            f"RESUMO DO PROCESSAMENTO DE VÍDEO CONCLUÍDO:\n"
+            f"  • Arquivo de Vídeo: {os.path.basename(video_path)} ({video_path})\n"
+            f"  • Tempo Total de Processamento: {total_elapsed_sec:.2f}s ({total_frames} frames a {processing_fps:.1f} FPS)\n"
+            f"  • Duração do Vídeo: {round(total_frames / fps, 2)}s (Tempo Efetivo de Combate: {sonkyo_analysis['effective_combat_duration_seconds']}s)\n"
+            f"  • Dispositivo / Acelerador: {self.effective_device.upper()} ({self.device_status_message})\n"
+            f"  • Perfil de Arbitragem Aplicado: {self.calibrator.active_config.get('name', 'Custom')}\n"
+            f"  • Sonkyō Inicial: {init_sonkyo_str}\n"
+            f"  • Sonkyō Final: {final_sonkyo_str}\n"
+            f"  • Golpes Regulamentares Detectados: {len(analyzed_events)} evento(s)\n"
+            f"  • Filtragem de Planos Descartados: Fundo={tracker_summary.get('discarded_background_count', 0)}, Frente={tracker_summary.get('discarded_foreground_count', 0)}"
+        )
+        log_event("INFO", summary_log, "pipeline")
+
         return {
             "video_path": video_path,
             "total_frames": total_frames,
             "duration_seconds": round(total_frames / fps, 2),
+            "processing_time_seconds": total_elapsed_sec,
+            "processing_fps": processing_fps,
+            "effective_combat_duration_seconds": sonkyo_analysis["effective_combat_duration_seconds"],
             "events_detected_count": len(analyzed_events),
             "profile_applied": self.calibrator.active_config.get("name", "Custom"),
             "device_used": self.effective_device,
             "device_status": self.device_status_message,
+            "sonkyo_analysis": sonkyo_analysis,
+            "plane_filtering": tracker_summary,
             "events": analyzed_events
         }
+
+
+class AnalysisWorker:
+    """
+    Worker assíncrono para execução de processamento de vídeo em background thread,
+    permitindo monitoramento em tempo real, cronômetro contínuo e cancelamento cooperativo instantâneo.
+    """
+    def __init__(
+        self,
+        pipeline: "ShinpanaiPipeline",
+        video_path: str,
+        output_video_path: Optional[str] = None
+    ):
+        self.pipeline = pipeline
+        self.video_path = video_path
+        self.output_video_path = output_video_path
+        
+        self.progress: float = 0.0
+        self.status_message: str = "Inicializando pipeline de visão e pose tracking..."
+        self.result: Optional[Dict[str, Any]] = None
+        self.error: Optional[str] = None
+        self.is_done: bool = False
+        self.is_cancelled: bool = False
+        
+        self.start_time: float = time.time()
+        self.end_time: Optional[float] = None
+        
+        self._cancel_event = threading.Event()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+
+    @property
+    def elapsed_seconds(self) -> float:
+        if self.end_time is not None:
+            return max(0.0, self.end_time - self.start_time)
+        return max(0.0, time.time() - self.start_time)
+
+    @property
+    def elapsed_formatted(self) -> str:
+        sec = self.elapsed_seconds
+        mins = int(sec // 60)
+        remaining_sec = sec % 60
+        return f"{mins:02d}:{remaining_sec:04.1f}"
+
+    def start(self):
+        """Inicia a thread de processamento em background e reseta o cronômetro."""
+        self.start_time = time.time()
+        self.end_time = None
+        self._thread.start()
+
+    def cancel(self):
+        """Sinaliza interrupção imediata ao pipeline e congela o cronômetro."""
+        self._cancel_event.set()
+        self.is_cancelled = True
+        self.end_time = time.time()
+        self.status_message = "Interrupção solicitada pelo usuário..."
+
+    def _run(self):
+        try:
+            def on_progress(p: float):
+                self.progress = min(1.0, max(0.0, p))
+                self.status_message = f"Processando frames... {int(self.progress * 100)}%"
+
+            def check_cancel() -> bool:
+                return self._cancel_event.is_set()
+
+            res = self.pipeline.process_video(
+                video_path=self.video_path,
+                output_video_path=self.output_video_path,
+                progress_callback=on_progress,
+                is_cancelled=check_cancel
+            )
+
+            self.end_time = time.time()
+
+            if self._cancel_event.is_set() or res is None:
+                self.is_cancelled = True
+                self.result = None
+                self.status_message = "Processamento cancelado."
+            else:
+                self.result = res
+                self.progress = 1.0
+                self.status_message = "Processamento concluído com sucesso!"
+        except Exception as ex:
+            self.end_time = time.time()
+            self.error = str(ex)
+            log_event("ERROR", f"Erro no worker de análise: {ex}", "pipeline")
+        finally:
+            if self.end_time is None:
+                self.end_time = time.time()
+            self.is_done = True
+

@@ -13,6 +13,7 @@ class DiagnosticReporter:
         """
         strike_type = event_info["type"]
         timestamp = event_info["timestamp"]
+        attacker_name = event_info.get("attacker_name", "Kenshi Aka")
         is_valid = evaluation["is_valid"]
         score = evaluation["total_score"]
         min_req = evaluation["min_required"]
@@ -21,7 +22,7 @@ class DiagnosticReporter:
         status_symbol = "✅ GOLPE VÁLIDO (IPPON)" if is_valid else "❌ GOLPE INVÁLIDO"
 
         lines = []
-        lines.append(f"### Golpe: {strike_type} ({timestamp}) - Status: {status_symbol}")
+        lines.append(f"### Golpe: {strike_type} ({timestamp}) - {attacker_name} - Status: {status_symbol}")
         lines.append(f"**Pontuação Geral:** {score}% (Limiar Exigido: {min_req}%)")
         lines.append("")
         lines.append("**Detalhamento dos Critérios de Ki-Ken-Tai-Ichi:**")
