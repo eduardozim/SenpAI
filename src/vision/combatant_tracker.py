@@ -109,7 +109,7 @@ class CombatantTracker:
 
     def calibrate_main_plane(self, candidate_poses: List[Dict[str, Any]]):
         """
-        Calibra as métricas de referência do Plano Principal com base nas poses dos dois lutadores do Sonkyō.
+        Calibra as métricas de referência do Plano Principal com base nas poses dos dois lutadores.
         """
         if not candidate_poses:
             return
@@ -118,7 +118,10 @@ class CombatantTracker:
         if not valid_metrics:
             return
 
-        self.ref_height = float(np.mean([m["height"] for m in valid_metrics]))
+        # Considerar altura de pé típica (mínimo de 0.45 para evitar calibrar com valores agachados)
+        heights = [m["height"] for m in valid_metrics]
+        max_h = max(heights) if heights else 0.60
+        self.ref_height = float(max(0.45, max_h))
         self.ref_bbox_area = float(np.mean([m["area"] for m in valid_metrics]))
         self.ref_ground_y = float(np.mean([m["ground_y"] for m in valid_metrics]))
         self.ref_shoulder_width = float(np.mean([m["shoulder_width"] for m in valid_metrics]))
@@ -149,11 +152,15 @@ class CombatantTracker:
         scale_area = m["area"] / max(0.001, ref_area)
 
         # 1. Verificação de Segundo Plano (BACKGROUND)
-        # Se a escala for menor que o limiar ou a linha dos pés estiver muito acima do solo da luta
-        is_bg_scale = (scale_h < self.min_bg_ratio) or (scale_area < (self.min_bg_ratio ** 2))
-        is_bg_ground = (m["ground_y"] < (ref_ground - self.ground_tolerance)) and (scale_h < 0.85)
+        # Se os pés estiverem fisicamente no solo do Shiaijo (ground_y), manter como MAIN_PLANE mesmo se agachado (Sonkyō)
+        is_on_ground_line = (m["ground_y"] >= (ref_ground - self.ground_tolerance))
+        
+        # Descartar como background apenas se a linha dos pés estiver visivelmente elevada (ao fundo) E a escala for reduzida,
+        # ou se a escala for extremamente minúscula (menos de 35% de ref_h)
+        is_bg_distant = (m["ground_y"] < (ref_ground - self.ground_tolerance)) and (scale_h < 0.80)
+        is_bg_tiny = (scale_h < 0.35) and (scale_area < 0.18)
 
-        if is_bg_scale or is_bg_ground:
+        if (is_bg_distant or is_bg_tiny) and not is_on_ground_line:
             self.discarded_background_count += 1
             reason = f"Elemento de Segundo Plano detectado (Escala: {scale_h:.2f}x, Área: {scale_area:.2f}x ref, Pé Y: {m['ground_y']:.2f})"
             return "BACKGROUND", float(scale_h), reason

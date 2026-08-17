@@ -107,7 +107,7 @@ class TestPipelineCancellation(unittest.TestCase):
         self.assertIsNone(worker.result)
 
     def test_analysis_worker_normal_completion(self):
-        """Verifica que AnalysisWorker conclui a execução em background com sucesso."""
+        """Verifica que AnalysisWorker conclui a execução em background com sucesso e mede o tempo."""
         from src.pipeline import AnalysisWorker
 
         pipeline = ShinpanaiPipeline(calibration_profile="normal", device_preference="cpu")
@@ -125,6 +125,26 @@ class TestPipelineCancellation(unittest.TestCase):
         self.assertFalse(worker.is_cancelled)
         self.assertIsNotNone(worker.result)
         self.assertEqual(worker.progress, 1.0)
+        self.assertGreater(worker.elapsed_seconds, 0.0)
+        self.assertIn(":", worker.elapsed_formatted)
+        self.assertIn("processing_time_seconds", worker.result)
+        self.assertIn("processing_fps", worker.result)
+
+    def test_processing_summary_logged_on_completion(self):
+        """Verifica que o resumo completo do processamento é registrado no log do sistema."""
+        pipeline = ShinpanaiPipeline(calibration_profile="normal", device_preference="cpu")
+        out_vid = os.path.join(self.temp_dir.name, "out_summary_log.mp4")
+
+        result = pipeline.process_video(
+            video_path=self.test_video,
+            output_video_path=out_vid
+        )
+
+        self.assertIsNotNone(result)
+        logs = get_memory_logs(max_entries=50, level_filter="INFO")
+        summary_logs = [l for l in logs if "RESUMO DO PROCESSAMENTO DE VÍDEO CONCLUÍDO" in l.get("message", "")]
+        self.assertTrue(len(summary_logs) > 0, "Deve haver pelo menos uma entrada de log com o resumo estruturado de processamento.")
+        self.assertIn("Tempo Total de Processamento", summary_logs[0]["message"])
 
 
 if __name__ == "__main__":

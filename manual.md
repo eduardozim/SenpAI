@@ -189,6 +189,59 @@ O projeto inclui testes automatizados em `unittest` para validar o pipeline cine
   - Tabela de treinamentos por Dan convertida para Markdown nativo, eliminando erros de pré-carregamento de módulos JS/CSS do navegador (Vite preload helper).
 - **Testes Automatizados**: Suíte de testes em [test_logger_manager.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_logger_manager.py) e testes de importação expandidos em [test_dan_training_governance.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_dan_training_governance.py) (19 testes automatizados com 100% de aprovação).
 
+### `[v1.4.6]` — 2026-08-17
+
+- **Aceleração Nativa com GPU NVIDIA CUDA (YOLOv8-Pose)**:
+  - **Motor de Inferência GPU de Alta Velocidade**: O módulo [pose_detector.py](file:///d:/Projetos/Shinpanai/Dev/src/vision/pose_detector.py) foi atualizado para utilizar o modelo **YOLOv8-Pose em PyTorch CUDA (`cuda:0`)** sobre a placa NVIDIA GeForce RTX 4050.
+  - **Detecção Paralela Multi-Pessoa**: A análise de todos os atletas presentes no enquadramento agora ocorre em um **único passo direto na VRAM da GPU**, eliminando as 3 execuções redundantes por corte que eram feitas na CPU pelo MediaPipe.
+  - **Aumento de Desempenho (FPS)**: A velocidade de processamento atinge taxas de **27 a 100+ FPS** dependendo da resolução do vídeo, reduzindo drasticamente o tempo de análise na Arbitragem Gravada.
+  - **Seletor de Hardware na Sidebar e Painel de Arbitragem**: Adicionado seletor e badges de diagnóstico em tempo real no [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py), permitindo alternar facilmente entre aceleração GPU NVIDIA CUDA e CPU.
+- **Testes Automatizados**: Suíte completa de 34 testes automatizados validada com 100% de aprovação.
+
+---
+
+### `[v1.4.5]` — 2026-08-17
+
+- **Aprimoramento Robusto da Detecção de Sonkyō & Filtragem de Planos**:
+  - **Resiliência a Oclusões por Hakama / Kendogi**: O estimador biomecânico ([sonkyo_detector.py](file:///d:/Projetos/Shinpanai/Dev/src/analytics/sonkyo_detector.py)) agora utiliza múltiplos sinais (rebaixamento de quadril, proporção tronco-altura, compressão vertical relativa e inclinação de coluna), operando com precisão mesmo quando joelhos ou tornozelos estão parcialmente oclusos.
+  - **Análise Temporal de Altura Relativa**: Cálculo do baseline de altura e nível de quadril em pé do atleta ao longo da gravação, identificando o Sonkyō com base na compressão vertical relativa ($H_{sonkyo} \le 0.75 \times H_{standing}$).
+  - **Fechamento Morfológico e Preenchimento de Falhas (Gap Bridging)**: Algoritmo de unificação temporal que preenche quedas momentâneas de rastreamento (dropouts de até 8 frames / ~0.27s), evitando a fragmentação de intervalos contínuos de Sonkyō.
+  - **Correção na Filtragem de Planos ([combatant_tracker.py](file:///d:/Projetos/Shinpanai/Dev/src/vision/combatant_tracker.py))**: O classificador de planos não descarta mais combatentes agachados no solo do Shiaijo como segundo plano.
+- **Testes Automatizados**: Suíte expandida em [test_sonkyo_and_plane_filtering.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_sonkyo_and_plane_filtering.py) com testes de oclusão por Hakama, gap bridging e calibração de plano (34 testes automatizados com 100% de aprovação).
+
+---
+
+### `[v1.4.4]` — 2026-08-17
+
+- **Correção Crítica de Vazamento de Arquivos Temporários (`[Errno 28] No space left on device`)**:
+  - Identificada e corrigida a criação repetitiva de arquivos temporários (`tempfile.NamedTemporaryFile`) a cada ciclo de atualização (`rerun`) do Streamlit no [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py).
+  - Implementado sistema de **cache de uploads no `st.session_state`**: o arquivo enviado só é gravado em disco uma única vez por upload (baseado em `name` e `size`).
+  - Adicionada rotina de **limpeza automática de arquivos temporários órfãos e antigos** na pasta `shinpanai_uploads`.
+  - Liberação de mais de **20 GB** de espaço em disco no diretório temporário do sistema operacional.
+
+---
+
+### `[v1.4.3]` — 2026-08-17
+
+- **Cronômetro em Tempo Real e Persistência do Tempo de Processamento (Arbitragem Gravada)**:
+  - Inclusão do **cronômetro dinâmico em tempo real** exibido durante o processamento do vídeo no [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py) (`MM:SS.s` e segundos decorridos).
+  - Persistência visual do **tempo final de execução e taxa média de processamento (FPS)** no painel de status fixo e no cartão de resumo de métricas do combate (`summary-card`).
+  - Suporte a medição precisa de tempo em [pipeline.py](file:///d:/Projetos/Shinpanai/Dev/src/pipeline.py) via `AnalysisWorker.elapsed_seconds` e retorno de `processing_time_seconds` e `processing_fps`.
+- **Resumo Estruturado de Processamento no Log do Sistema**:
+  - Registro detalhado (`INFO`) no arquivo consolidado de logs (`shinpanai_debug.log`) contendo arquivo analisado, tempo de execução, FPS, dispositivo utilizado, detecções de Sonkyō, golpes e planos descartados.
+- **Testes Automatizados**: Suíte de testes em [test_pipeline_cancellation.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_pipeline_cancellation.py) expandida para verificar cronômetro, persistência e log de resumo (32 testes com 100% de aprovação).
+
+---
+
+### `[v1.4.2]` — 2026-08-17
+
+- **Apresentação de Eventos de Sonkyō na Arbitragem Gravada**:
+  - Inclusão dos eventos de **Sonkyō Inicial** (Abertura / Início do Combate) e **Sonkyō Final** (Encerramento / Fechamento do Combate) diretamente na lista de eventos apresentados no container de resultados (`col_results`) do [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py).
+  - Exibição de cartões expansíveis detalhados com badge `🥋 SONKYŌ DETECTADO`, intervalo ritual (timestamps), contagem de frames de início e fim, duração em segundos, liberação regulamentar de combate e diagnóstico biomecânico da postura de respeito (*Reigi*).
+  - Sequenciamento cronológico completo do combate: **Sonkyō Inicial ➡️ Golpes Identificados na Janela Regulamentar ➡️ Sonkyō Final**.
+
+---
+
 ### `[v1.4.1]` — 2026-08-17
 
 - **Botão de Interromper Processamento na Arbitragem Gravada**:

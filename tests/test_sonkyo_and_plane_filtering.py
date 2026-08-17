@@ -158,6 +158,38 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertEqual(len(disc), 1)
         self.assertEqual(disc[0]["plane_type"], "BACKGROUND")
 
+    def test_sonkyo_with_hakama_occlusions(self):
+        """Testa resiliência da detecção de Sonkyō mesmo quando os joelhos/tornozelos estão oclusos pelo Hakama."""
+        occluded_sonkyo = self._create_synthetic_sonkyo_pose()
+        # Simular oclusão das pernas pelo Hakama
+        del occluded_sonkyo["RIGHT_KNEE"]
+        del occluded_sonkyo["LEFT_KNEE"]
+        
+        is_s, conf, metrics = self.sonkyo_detector.evaluate_sonkyo_pose(occluded_sonkyo)
+        self.assertTrue(is_s, "Sonkyō com pernas oclusas pelo Hakama deve ser detectado corretamente.")
+        self.assertGreaterEqual(conf, 0.48)
+        self.assertGreaterEqual(metrics["torso_ratio"], 0.60)
+
+    def test_sonkyo_temporal_gap_bridging(self):
+        """Testa preenchimento de falhas temporárias (dropouts) no rastreamento durante Sonkyō."""
+        timeline = []
+        for i in range(80):
+            if 10 <= i <= 30:
+                # Simular queda pontual de rastreamento nos frames 18, 19 e 20
+                if i in [18, 19, 20]:
+                    timeline.append(None)
+                else:
+                    timeline.append(self._create_synthetic_sonkyo_pose())
+            else:
+                timeline.append(self._create_synthetic_standing_pose())
+
+        res = self.sonkyo_detector.detect_match_boundaries(timeline, fps=30.0)
+        self.assertTrue(res["has_initial_sonkyo"])
+        # O intervalo deve ter sido unificado através do fechamento morfológico
+        init_s = res["initial_sonkyo"]
+        self.assertLessEqual(init_s["start_frame"], 12)
+        self.assertGreaterEqual(init_s["end_frame"], 28)
+
     def test_pipeline_integration_with_sonkyo(self):
         # Gerar vídeo sintético de teste
         test_vid = "test_sonkyo_pipeline_match.mp4"

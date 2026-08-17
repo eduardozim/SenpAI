@@ -1,9 +1,10 @@
 """
-Detector de Poses com suporte Dual-Backend (CPU & GPU NVIDIA CUDA):
-1. Modo CPU: baseado em MediaPipe Pose (TFLite CPU).
-2. Modo GPU: baseado em PyTorch CUDA Accelerator (NVIDIA GPU cuda:0) + Extrator de Landmarks 3D.
+Detector de Poses com suporte Dual-Backend de Alta Performance:
+1. Modo GPU NVIDIA CUDA: baseado em YOLOv8-Pose (PyTorch CUDA VRAM cuda:0) para inferência multi-person em tempo real (100+ FPS).
+2. Modo CPU: baseado em MediaPipe Pose (TFLite CPU) com extração precisa de landmarks 3D.
 """
 
+import os
 import cv2
 import numpy as np
 import logging
@@ -12,10 +13,32 @@ from typing import Dict, List, Optional, Tuple, Any
 
 logger = logging.getLogger(__name__)
 
+# Mapeamento oficial dos 17 keypoints COCO para o padrão de nomenclatura ShinpanAI / MediaPipe
+COCO_INDEX_TO_LANDMARK = {
+    0: "NOSE",
+    1: "LEFT_EYE",
+    2: "RIGHT_EYE",
+    3: "LEFT_EAR",
+    4: "RIGHT_EAR",
+    5: "LEFT_SHOULDER",
+    6: "RIGHT_SHOULDER",
+    7: "LEFT_ELBOW",
+    8: "RIGHT_ELBOW",
+    9: "LEFT_WRIST",
+    10: "RIGHT_WRIST",
+    11: "LEFT_HIP",
+    12: "RIGHT_HIP",
+    13: "LEFT_KNEE",
+    14: "RIGHT_KNEE",
+    15: "LEFT_ANKLE",
+    16: "RIGHT_ANKLE"
+}
+
 class PoseDetector:
     def __init__(self, min_detection_confidence: float = 0.6, min_tracking_confidence: float = 0.6, device: str = "cpu"):
         self.device = device.lower().strip() if device else "cpu"
         self.use_gpu = False
+        self.yolo_model = None
         self.torch_device = None
 
         self.mp_pose = mp.solutions.pose
@@ -25,63 +48,121 @@ class PoseDetector:
         if self.device == "gpu":
             try:
                 import torch
+                from ultralytics import YOLO
                 if torch.cuda.is_available():
                     self.use_gpu = True
-                    self.torch_device = torch.device("cuda:0")
+                    self.torch_device = "cuda:0"
                     self.torch = torch
-                    logger.info(f"[PoseDetector] Aceleração PyTorch CUDA ativada na GPU: {torch.cuda.get_device_name(0)}")
+                    
+                    # Localizar modelo YOLOv8-pose
+                    model_path = os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n-pose.pt")
+                    if not os.path.exists(model_path):
+                        model_path = "yolov8n-pose.pt"
+                    
+                    self.yolo_model = YOLO(model_path)
+                    self.yolo_model.to("cuda:0")
+                    
+                    # Aquecimento de inferência (warmup)
+                    dummy = np.zeros((480, 640, 3), dtype=np.uint8)
+                    _ = self.yolo_model(dummy, device="cuda:0", verbose=False)
+                    
+                    gpu_name = torch.cuda.get_device_name(0)
+                    logger.info(f"[PoseDetector] 🚀 Aceleração Nativa NVIDIA CUDA ativada com sucesso: {gpu_name} (YOLOv8-Pose)")
                 else:
                     logger.warning("[PoseDetector] GPU solicitada, mas PyTorch CUDA não está disponível. Fallback para CPU.")
             except Exception as e:
-                logger.warning(f"[PoseDetector] Erro ao inicializar PyTorch CUDA: {e}. Fallback para CPU.")
+                logger.warning(f"[PoseDetector] Erro ao inicializar aceleração GPU NVIDIA: {e}. Fallback para CPU MediaPipe.")
 
         if not self.use_gpu:
             logger.info("[PoseDetector] Inicializando detector MediaPipe Pose em modo CPU.")
+            self.pose = self.mp_pose.Pose(
+                static_image_mode=False,
+                model_complexity=1, # Otimizado para CPU
+                enable_segmentation=False,
+                min_detection_confidence=min_detection_confidence,
+                min_tracking_confidence=min_tracking_confidence
+            )
 
-        # Inicializa o modelo de pose para garantir o rastreamento completo dos 33 landmarks
-        self.pose = self.mp_pose.Pose(
-            static_image_mode=False,
-            model_complexity=2, # Alta precisão
-            enable_segmentation=False,
-            min_detection_confidence=min_detection_confidence,
-            min_tracking_confidence=min_tracking_confidence
-        )
+    def _yolo_results_to_landmarks_list(self, yolo_res, w: int, h: int) -> List[Dict[str, Any]]:
+        """Converte as predições de múltiplos esqueletos do YOLOv8-Pose para o formato de landmarks do ShinpanAI."""
+        candidates = []
+        if not yolo_res or len(yolo_res) == 0:
+            return candidates
+
+        res = yolo_res[0]
+        if res.keypoints is None or res.keypoints.data is None:
+            return candidates
+
+        kpts_data = res.keypoints.data.cpu().numpy() # [num_persons, 17, 3] (x_px, y_px, conf)
+
+        for person_idx in range(len(kpts_data)):
+            person_kpts = kpts_data[person_idx]
+            lm_dict = {}
+
+            for coco_idx, (px, py, conf) in enumerate(person_kpts):
+                name = COCO_INDEX_TO_LANDMARK.get(coco_idx)
+                if not name:
+                    continue
+
+                x_norm = float(np.clip(px / max(1, w), 0.0, 1.0))
+                y_norm = float(np.clip(py / max(1, h), 0.0, 1.0))
+
+                lm_dict[name] = {
+                    "x": x_norm,
+                    "y": y_norm,
+                    "z": 0.0,
+                    "visibility": float(conf),
+                    "px": int(px),
+                    "py": int(py)
+                }
+
+            # Sintetizar pés/calcanhares para compatibilidade total com os módulos biomecânicos
+            if "RIGHT_ANKLE" in lm_dict:
+                lm_dict["RIGHT_FOOT_INDEX"] = dict(lm_dict["RIGHT_ANKLE"])
+                lm_dict["RIGHT_HEEL"] = dict(lm_dict["RIGHT_ANKLE"])
+            if "LEFT_ANKLE" in lm_dict:
+                lm_dict["LEFT_FOOT_INDEX"] = dict(lm_dict["LEFT_ANKLE"])
+                lm_dict["LEFT_HEEL"] = dict(lm_dict["LEFT_ANKLE"])
+
+            # Validar se o esqueleto contém pontos suficientes (ombros e quadris)
+            has_shoulders = "RIGHT_SHOULDER" in lm_dict and "LEFT_SHOULDER" in lm_dict
+            has_hips = "RIGHT_HIP" in lm_dict and "LEFT_HIP" in lm_dict
+            if has_shoulders and has_hips:
+                candidates.append(lm_dict)
+
+        return candidates
 
     def process_frame(self, frame: np.ndarray) -> Tuple[Optional[Dict[str, Any]], np.ndarray]:
         """
         Processa um frame BGR e retorna (landmarks_dict, frame_desenhado).
-        Garante que os landmarks chave sejam detectados para análise biomecânica e de eventos.
         """
         h, w, _ = frame.shape
         annotated_frame = frame.copy()
 
-        if self.use_gpu:
-            # --- PROCESSAMENTO ACELERADO NA GPU NVIDIA (PyTorch CUDA VRAM) ---
-            # Carrega e processa a matriz de pixels na memória VRAM da GPU NVIDIA RTX 4050
-            tensor_gpu = self.torch.from_numpy(frame).to(self.torch_device, non_blocking=True)
-            # Pré-processamento e inversão de canais BGR->RGB em VRAM
-            tensor_rgb = self.torch.flip(tensor_gpu, dims=[2]).float() / 255.0
+        if self.use_gpu and self.yolo_model is not None:
+            # --- INFERÊNCIA ACELERADA NA GPU NVIDIA CUDA ---
+            results = self.yolo_model(frame, device="cuda:0", verbose=False, conf=0.25)
+            candidates = self._yolo_results_to_landmarks_list(results, w, h)
             
-            # Transferência rápida do tensor pré-processado para inferência
-            frame_rgb = tensor_rgb.cpu().numpy().astype(np.uint8) * 255
-            results = self.pose.process(frame_rgb)
-        else:
-            # --- PROCESSAMENTO PADRÃO CPU ---
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = self.pose.process(frame_rgb)
+            if candidates:
+                # Escolher o candidato mais central/dominante
+                primary_lm = max(candidates, key=lambda c: (1.0 - abs(c.get("NOSE", {}).get("x", 0.5) - 0.5)))
+                CombatantVisualizer.draw_skeleton(annotated_frame, primary_lm, color=(59, 130, 246), label="KENSHI DETECTADO")
+                return primary_lm, annotated_frame
+            return None, annotated_frame
+
+        # --- PROCESSAMENTO CPU MEDIAPIPE ---
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = self.pose.process(frame_rgb)
 
         landmarks_dict = None
-
         if results.pose_landmarks:
-            # Desenhar skeleton no frame anotado
             self.mp_drawing.draw_landmarks(
                 annotated_frame,
                 results.pose_landmarks,
                 self.mp_pose.POSE_CONNECTIONS,
                 landmark_drawing_spec=self.mp_drawing_styles.get_default_pose_landmarks_style()
             )
-            
-            # Extrair dicionário completo dos 33 landmarks (com coordenadas normalizadas e em pixels)
             landmarks_dict = {}
             for idx, lm in enumerate(results.pose_landmarks.landmark):
                 name = self.mp_pose.PoseLandmark(idx).name
@@ -95,6 +176,47 @@ class PoseDetector:
                 }
 
         return landmarks_dict, annotated_frame
+
+    def process_frame_candidates(self, frame: np.ndarray) -> Tuple[List[Dict[str, Any]], np.ndarray]:
+        """
+        Processa o frame em busca de múltiplos praticantes (Kenshi Aka e Shiro no Shiaijo).
+        Retorna uma lista de dicionários de landmarks de candidatos detectados.
+        """
+        h, w, _ = frame.shape
+
+        if self.use_gpu and self.yolo_model is not None:
+            # --- INFERÊNCIA PARALELA MULTI-PESSOA NA GPU NVIDIA (1 ÚNICO PASSO EM VRAM) ---
+            results = self.yolo_model(frame, device="cuda:0", verbose=False, conf=0.25)
+            candidates = self._yolo_results_to_landmarks_list(results, w, h)
+            return candidates, frame
+
+        # --- MODO CPU: DETECÇÃO GLOBAL + HEMISFÉRIOS ---
+        candidates: List[Dict[str, Any]] = []
+        lm_global, _ = self.process_frame(frame)
+        if lm_global:
+            candidates.append(lm_global)
+
+        if w >= 320 and hasattr(self, "pose"):
+            left_w = int(w * 0.65)
+            left_crop = frame[:, :left_w]
+            frame_rgb_l = cv2.cvtColor(left_crop, cv2.COLOR_BGR2RGB)
+            res_l = self.pose.process(frame_rgb_l)
+            if res_l.pose_landmarks:
+                lm_l = self._extract_landmarks_dict(res_l.pose_landmarks, left_w, h, offset_x=0, offset_y=0, orig_w=w, orig_h=h)
+                if not self._is_duplicate(lm_l, candidates):
+                    candidates.append(lm_l)
+
+            right_offset = int(w * 0.35)
+            right_w = w - right_offset
+            right_crop = frame[:, right_offset:]
+            frame_rgb_r = cv2.cvtColor(right_crop, cv2.COLOR_BGR2RGB)
+            res_r = self.pose.process(frame_rgb_r)
+            if res_r.pose_landmarks:
+                lm_r = self._extract_landmarks_dict(res_r.pose_landmarks, right_w, h, offset_x=right_offset, offset_y=0, orig_w=w, orig_h=h)
+                if not self._is_duplicate(lm_r, candidates):
+                    candidates.append(lm_r)
+
+        return candidates, frame
 
     def _extract_landmarks_dict(self, pose_landmarks, w: int, h: int, offset_x: int = 0, offset_y: int = 0, orig_w: Optional[int] = None, orig_h: Optional[int] = None) -> Dict[str, Any]:
         """Extrai e projeta os landmarks de um crop para o espaço do frame global."""
@@ -120,44 +242,6 @@ class PoseDetector:
                 "py": py_global
             }
         return landmarks_dict
-
-    def process_frame_candidates(self, frame: np.ndarray) -> Tuple[List[Dict[str, Any]], np.ndarray]:
-        """
-        Processa o frame em busca de múltiplos praticantes (Kenshi Aka e Shiro no Shiaijo).
-        Retorna uma lista de dicionários de landmarks de candidatos detectados.
-        """
-        h, w, _ = frame.shape
-        candidates: List[Dict[str, Any]] = []
-
-        # 1. Detecção Global (Centro/Dominante)
-        lm_global, _ = self.process_frame(frame)
-        if lm_global:
-            candidates.append(lm_global)
-
-        # 2. Detecção no Hemisfério Esquerdo (Kenshi Aka) se imagem for ampla
-        if w >= 320:
-            left_w = int(w * 0.65)
-            left_crop = frame[:, :left_w]
-            frame_rgb_l = cv2.cvtColor(left_crop, cv2.COLOR_BGR2RGB)
-            res_l = self.pose.process(frame_rgb_l)
-            if res_l.pose_landmarks:
-                lm_l = self._extract_landmarks_dict(res_l.pose_landmarks, left_w, h, offset_x=0, offset_y=0, orig_w=w, orig_h=h)
-                # Adicionar se não for idêntico ao global
-                if not self._is_duplicate(lm_l, candidates):
-                    candidates.append(lm_l)
-
-            # 3. Detecção no Hemisfério Direito (Kenshi Shiro)
-            right_offset = int(w * 0.35)
-            right_w = w - right_offset
-            right_crop = frame[:, right_offset:]
-            frame_rgb_r = cv2.cvtColor(right_crop, cv2.COLOR_BGR2RGB)
-            res_r = self.pose.process(frame_rgb_r)
-            if res_r.pose_landmarks:
-                lm_r = self._extract_landmarks_dict(res_r.pose_landmarks, right_w, h, offset_x=right_offset, offset_y=0, orig_w=w, orig_h=h)
-                if not self._is_duplicate(lm_r, candidates):
-                    candidates.append(lm_r)
-
-        return candidates, frame
 
     @staticmethod
     def _is_duplicate(candidate: Dict[str, Any], existing_list: List[Dict[str, Any]], threshold_dist: float = 0.08) -> bool:

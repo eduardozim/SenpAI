@@ -5,6 +5,7 @@ Orquestra Leitura de Vídeo -> Pose Tracking -> Action Spotting -> Avaliação B
 
 import cv2
 import os
+import time
 import threading
 import numpy as np
 from typing import Dict, Any, List, Callable, Optional
@@ -52,6 +53,8 @@ class ShinpanaiPipeline:
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
 
+        start_time = time.time()
+
         # Resetar o rastreador para uma nova análise de vídeo
         self.combatant_tracker = CombatantTracker()
 
@@ -71,7 +74,8 @@ class ShinpanaiPipeline:
         try:
             while cap.isOpened():
                 if is_cancelled and is_cancelled():
-                    log_event("WARNING", "pipeline", f"Processamento de vídeo cancelado pelo usuário no frame {frame_idx}/{total_frames}.")
+                    elapsed_cancel = time.time() - start_time
+                    log_event("WARNING", f"Processamento de vídeo cancelado pelo usuário no frame {frame_idx}/{total_frames} (Tempo decorrido: {elapsed_cancel:.2f}s).", "pipeline")
                     return None
 
                 ret, frame = cap.read()
@@ -125,7 +129,8 @@ class ShinpanaiPipeline:
 
         # Checagem de cancelamento antes de processamento dos eventos
         if is_cancelled and is_cancelled():
-            log_event("WARNING", "pipeline", "Processamento de vídeo cancelado antes da análise de eventos de golpe.")
+            elapsed_cancel = time.time() - start_time
+            log_event("WARNING", f"Processamento de vídeo cancelado antes da análise de eventos de golpe (Tempo decorrido: {elapsed_cancel:.2f}s).", "pipeline")
             return None
 
         # 3. Detecção dos momentos de Sonkyō e Bounding da Luta
@@ -214,7 +219,8 @@ class ShinpanaiPipeline:
             try:
                 for f_idx, raw_f in enumerate(raw_frames):
                     if is_cancelled and is_cancelled():
-                        log_event("WARNING", "pipeline", f"Renderização de vídeo anotado cancelada pelo usuário no frame {f_idx}/{len(raw_frames)}.")
+                        elapsed_cancel = time.time() - start_time
+                        log_event("WARNING", f"Renderização de vídeo anotado cancelada pelo usuário no frame {f_idx}/{len(raw_frames)} (Tempo decorrido: {elapsed_cancel:.2f}s).", "pipeline")
                         return None
 
                     aka_p = aka_history[f_idx] if f_idx < len(aka_history) else None
@@ -254,12 +260,34 @@ class ShinpanaiPipeline:
         if progress_callback:
             progress_callback(1.0)
 
+        total_elapsed_sec = round(time.time() - start_time, 2)
+        processing_fps = round(total_frames / max(0.001, total_elapsed_sec), 1)
         tracker_summary = self.combatant_tracker.get_summary()
+
+        # Registro do Resumo do Processamento no Log do Sistema
+        init_sonkyo_str = f"Detectado (Início: {sonkyo_analysis.get('match_start_timestamp', '00:00.000')})" if sonkyo_analysis["has_initial_sonkyo"] else "Não detectado"
+        final_sonkyo_str = f"Detectado (Fim: {sonkyo_analysis.get('match_end_timestamp', f'{round(total_frames / fps, 2)}s')})" if sonkyo_analysis["has_final_sonkyo"] else "Não detectado"
+        
+        summary_log = (
+            f"RESUMO DO PROCESSAMENTO DE VÍDEO CONCLUÍDO:\n"
+            f"  • Arquivo de Vídeo: {os.path.basename(video_path)} ({video_path})\n"
+            f"  • Tempo Total de Processamento: {total_elapsed_sec:.2f}s ({total_frames} frames a {processing_fps:.1f} FPS)\n"
+            f"  • Duração do Vídeo: {round(total_frames / fps, 2)}s (Tempo Efetivo de Combate: {sonkyo_analysis['effective_combat_duration_seconds']}s)\n"
+            f"  • Dispositivo / Acelerador: {self.effective_device.upper()} ({self.device_status_message})\n"
+            f"  • Perfil de Arbitragem Aplicado: {self.calibrator.active_config.get('name', 'Custom')}\n"
+            f"  • Sonkyō Inicial: {init_sonkyo_str}\n"
+            f"  • Sonkyō Final: {final_sonkyo_str}\n"
+            f"  • Golpes Regulamentares Detectados: {len(analyzed_events)} evento(s)\n"
+            f"  • Filtragem de Planos Descartados: Fundo={tracker_summary.get('discarded_background_count', 0)}, Frente={tracker_summary.get('discarded_foreground_count', 0)}"
+        )
+        log_event("INFO", summary_log, "pipeline")
 
         return {
             "video_path": video_path,
             "total_frames": total_frames,
             "duration_seconds": round(total_frames / fps, 2),
+            "processing_time_seconds": total_elapsed_sec,
+            "processing_fps": processing_fps,
             "effective_combat_duration_seconds": sonkyo_analysis["effective_combat_duration_seconds"],
             "events_detected_count": len(analyzed_events),
             "profile_applied": self.calibrator.active_config.get("name", "Custom"),
@@ -274,7 +302,7 @@ class ShinpanaiPipeline:
 class AnalysisWorker:
     """
     Worker assíncrono para execução de processamento de vídeo em background thread,
-    permitindo monitoramento em tempo real e cancelamento cooperativo instantâneo.
+    permitindo monitoramento em tempo real, cronômetro contínuo e cancelamento cooperativo instantâneo.
     """
     def __init__(
         self,
@@ -293,17 +321,36 @@ class AnalysisWorker:
         self.is_done: bool = False
         self.is_cancelled: bool = False
         
+        self.start_time: float = time.time()
+        self.end_time: Optional[float] = None
+        
         self._cancel_event = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
 
+    @property
+    def elapsed_seconds(self) -> float:
+        if self.end_time is not None:
+            return max(0.0, self.end_time - self.start_time)
+        return max(0.0, time.time() - self.start_time)
+
+    @property
+    def elapsed_formatted(self) -> str:
+        sec = self.elapsed_seconds
+        mins = int(sec // 60)
+        remaining_sec = sec % 60
+        return f"{mins:02d}:{remaining_sec:04.1f}"
+
     def start(self):
-        """Inicia a thread de processamento em background."""
+        """Inicia a thread de processamento em background e reseta o cronômetro."""
+        self.start_time = time.time()
+        self.end_time = None
         self._thread.start()
 
     def cancel(self):
-        """Sinaliza interrupção imediata ao pipeline."""
+        """Sinaliza interrupção imediata ao pipeline e congela o cronômetro."""
         self._cancel_event.set()
         self.is_cancelled = True
+        self.end_time = time.time()
         self.status_message = "Interrupção solicitada pelo usuário..."
 
     def _run(self):
@@ -322,6 +369,8 @@ class AnalysisWorker:
                 is_cancelled=check_cancel
             )
 
+            self.end_time = time.time()
+
             if self._cancel_event.is_set() or res is None:
                 self.is_cancelled = True
                 self.result = None
@@ -331,8 +380,11 @@ class AnalysisWorker:
                 self.progress = 1.0
                 self.status_message = "Processamento concluído com sucesso!"
         except Exception as ex:
+            self.end_time = time.time()
             self.error = str(ex)
-            log_event("ERROR", "pipeline", f"Erro no worker de análise: {ex}")
+            log_event("ERROR", f"Erro no worker de análise: {ex}", "pipeline")
         finally:
+            if self.end_time is None:
+                self.end_time = time.time()
             self.is_done = True
 
