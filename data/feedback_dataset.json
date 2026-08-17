@@ -59,5 +59,66 @@
     "review_date": "2026-08-15T20:47:36",
     "is_edited": true,
     "is_included": false
+  },
+  {
+    "id": "tmpttpqiage.mp4_fn_00_20_000_4",
+    "id_event": "fn_00_20_000",
+    "video_name": "tmpttpqiage.mp4",
+    "profile_key": "rigido",
+    "label": "INCLUDED",
+    "strike_type": "MEN",
+    "timestamp": "00:20.000",
+    "total_score": 0.0,
+    "sub_scores": {},
+    "notes": "Golpe não detectado pelo modelo",
+    "reviewer_dan": 4,
+    "reviewer_dan_name": "4º Dan (Yondan)",
+    "review_date": "2026-08-16T13:55:01",
+    "is_edited": false,
+    "is_included": true
+  },
+  {
+    "id": "tmpttpqiage.mp4_event_1_frame_17_5",
+    "id_event": "event_1_frame_17",
+    "video_name": "tmpttpqiage.mp4",
+    "profile_key": "rigido",
+    "label": "FP",
+    "strike_type": "KOTE",
+    "timestamp": "00:00.566",
+    "total_score": 87.7,
+    "sub_scores": {
+      "target_impact": 80.8,
+      "fumikomi_sync": 77.8,
+      "posture": 100.0,
+      "zanshin": 100.0
+    },
+    "notes": "",
+    "reviewer_dan": 4,
+    "reviewer_dan_name": "4º Dan (Yondan)",
+    "review_date": "2026-08-16T13:55:01",
+    "is_edited": true,
+    "is_included": false
+  },
+  {
+    "id": "tmpttpqiage.mp4_event_4_frame_723_6",
+    "id_event": "event_4_frame_723",
+    "video_name": "tmpttpqiage.mp4",
+    "profile_key": "rigido",
+    "label": "FP",
+    "strike_type": "KOTE",
+    "timestamp": "00:24.099",
+    "total_score": 69.1,
+    "sub_scores": {
+      "target_impact": 75.1,
+      "fumikomi_sync": 11.2,
+      "posture": 100.0,
+      "zanshin": 100.0
+    },
+    "notes": "",
+    "reviewer_dan": 4,
+    "reviewer_dan_name": "4º Dan (Yondan)",
+    "review_date": "2026-08-16T13:55:01",
+    "is_edited": false,
+    "is_included": false
   }
 ]

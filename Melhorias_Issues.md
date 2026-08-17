@@ -39,9 +39,11 @@ A versão final do **Shinpanai** será organizada em **3 Nodos / Modos Principai
 - **Detecção de Infrações**: Evoluir o sistema para identificar possíveis *Hansoku*, empurrões irregulares, quedas e outras ocorrências.
 - **Controle do Estado da Luta**: Manter placar, tempo decorrido, prorrogação (*Encho*), penalidades e linha do tempo de eventos em ordem cronológica.
 - **Análise Contextual**: Diferenciar um golpe isoladamente correto de uma ação ocorrida após interrupção, fora da área ou em condição inválida.
+- **Delimitação da Luta por Sonkyou**: Garantir que golpes válidos sejam considerados estritamente entre o *sonkyou* inicial e final da luta.
 
 ### 4. Identificação e Rastreamento dos Kenshi (Aka / Shiro)
 - **Calibração Inicial Aka/Shiro**: Confirmar visualmente a identificação dos competidores antes de iniciar a análise.
+- **Isolamento e Rastreamento em Primeiro Plano**: Considerar exclusivamente os movimentos dos lutadores principais em primeiro plano, desconsiderando outras lutas ou praticantes ao fundo.
 - **Correção Manual de Identidade**: Permitir reajustar a atribuição Aka/Shiro em um trecho específico da gravação.
 - **Cadastro Opcional de Perfil Técnico**: Manter histórico, graduação, lateralidade e evolução do Kenshi (mediante consentimento).
 
@@ -109,9 +111,13 @@ A versão final do **Shinpanai** será organizada em **3 Nodos / Modos Principai
   - Dessincronização entre o vídeo original, as marcações e os clipes gerados.
   - Divergência entre os timestamps no frontend e os números de frames analisados no backend.
   - Tratamento insuficiente de vídeos com FPS variável, rotações de orientação ou codecs diversos.
+  - Erros na captura e aquisição de imagens em tempo real via webcam e transmissões RTSP.
   - Perda de conexão e dessincronização em transmissões de múltiplas câmeras via RTSP.
-- **Rastreamento de Atletas**:
+- **Rastreamento de Atletas & Plano de Fundo**:
   - Falha na persistência ou troca acidental de identidade entre os Kenshi Aka e Shiro durante a luta.
+  - Somente os movimentos dos lutadores em primeiro plano devem ser considerados, excluindo os movimentos praticados e executados em segundo plano (outras lutas).
+- **Arbitragem & Validação de Golpes**:
+  - Os golpes válidos somente podem ser considerados entre os movimentos de *sonkyou* de início e fim da luta.
 - **Interface & Feedback de Usuário**:
   - Interface sem indicação clara de status de processamento, mensagens de erro ou estado de análise incompleta.
 

@@ -37,5 +37,24 @@
         "Reforço no Limiar de 'fumikomi_sync': 50% ➔ 55%"
       ]
     }
+  },
+  {
+    "id": "train_20260816T135501_3",
+    "timestamp": "2026-08-16T13:55:01",
+    "reviewer_dan": 4,
+    "reviewer_dan_name": "4º Dan (Yondan)",
+    "video_name": "tmpttpqiage.mp4",
+    "profile_key": "rigido",
+    "items_count": 3,
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "rigido",
+      "fps_analyzed": 2,
+      "tps_analyzed": 1,
+      "fns_analyzed": 1,
+      "changes": [
+        "Elevação da Pontuação Mínima Global: 82% ➔ 89%"
+      ]
+    }
   }
 ]

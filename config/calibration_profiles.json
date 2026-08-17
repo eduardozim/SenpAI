@@ -19,7 +19,7 @@
   "rigido": {
     "name": "Campeonato / Dan Audit (Rígido)",
     "description": "Exige execução quase perfeita de Ki-Ken-Tai-Ichi, alvo exato e Zanshin completo.",
-    "min_total_score": 0.82,
+    "min_total_score": 0.9,
     "weights": {
       "target_impact": 0.35,
       "fumikomi_sync": 0.25,
