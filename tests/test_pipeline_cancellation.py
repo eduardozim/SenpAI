@@ -84,6 +84,48 @@ class TestPipelineCancellation(unittest.TestCase):
         self.assertIn("events_detected_count", result)
         self.assertIn("sonkyo_analysis", result)
 
+    def test_analysis_worker_cancellation(self):
+        """Verifica que AnalysisWorker pode ser iniciado em background e cancelado imediatamente."""
+        import time
+        from src.pipeline import AnalysisWorker
+
+        pipeline = ShinpanaiPipeline(calibration_profile="normal", device_preference="cpu")
+        out_vid = os.path.join(self.temp_dir.name, "out_worker_cancel.mp4")
+
+        worker = AnalysisWorker(
+            pipeline=pipeline,
+            video_path=self.test_video,
+            output_video_path=out_vid
+        )
+        worker.start()
+        time.sleep(0.05)
+        worker.cancel()
+        worker._thread.join(timeout=3.0)
+
+        self.assertTrue(worker.is_done)
+        self.assertTrue(worker.is_cancelled)
+        self.assertIsNone(worker.result)
+
+    def test_analysis_worker_normal_completion(self):
+        """Verifica que AnalysisWorker conclui a execução em background com sucesso."""
+        from src.pipeline import AnalysisWorker
+
+        pipeline = ShinpanaiPipeline(calibration_profile="normal", device_preference="cpu")
+        out_vid = os.path.join(self.temp_dir.name, "out_worker_success.mp4")
+
+        worker = AnalysisWorker(
+            pipeline=pipeline,
+            video_path=self.test_video,
+            output_video_path=out_vid
+        )
+        worker.start()
+        worker._thread.join(timeout=10.0)
+
+        self.assertTrue(worker.is_done)
+        self.assertFalse(worker.is_cancelled)
+        self.assertIsNotNone(worker.result)
+        self.assertEqual(worker.progress, 1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

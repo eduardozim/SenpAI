@@ -5,6 +5,7 @@ Orquestra Leitura de Vídeo -> Pose Tracking -> Action Spotting -> Avaliação B
 
 import cv2
 import os
+import threading
 import numpy as np
 from typing import Dict, Any, List, Callable, Optional
 
@@ -268,4 +269,70 @@ class ShinpanaiPipeline:
             "plane_filtering": tracker_summary,
             "events": analyzed_events
         }
+
+
+class AnalysisWorker:
+    """
+    Worker assíncrono para execução de processamento de vídeo em background thread,
+    permitindo monitoramento em tempo real e cancelamento cooperativo instantâneo.
+    """
+    def __init__(
+        self,
+        pipeline: "ShinpanaiPipeline",
+        video_path: str,
+        output_video_path: Optional[str] = None
+    ):
+        self.pipeline = pipeline
+        self.video_path = video_path
+        self.output_video_path = output_video_path
+        
+        self.progress: float = 0.0
+        self.status_message: str = "Inicializando pipeline de visão e pose tracking..."
+        self.result: Optional[Dict[str, Any]] = None
+        self.error: Optional[str] = None
+        self.is_done: bool = False
+        self.is_cancelled: bool = False
+        
+        self._cancel_event = threading.Event()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+
+    def start(self):
+        """Inicia a thread de processamento em background."""
+        self._thread.start()
+
+    def cancel(self):
+        """Sinaliza interrupção imediata ao pipeline."""
+        self._cancel_event.set()
+        self.is_cancelled = True
+        self.status_message = "Interrupção solicitada pelo usuário..."
+
+    def _run(self):
+        try:
+            def on_progress(p: float):
+                self.progress = min(1.0, max(0.0, p))
+                self.status_message = f"Processando frames... {int(self.progress * 100)}%"
+
+            def check_cancel() -> bool:
+                return self._cancel_event.is_set()
+
+            res = self.pipeline.process_video(
+                video_path=self.video_path,
+                output_video_path=self.output_video_path,
+                progress_callback=on_progress,
+                is_cancelled=check_cancel
+            )
+
+            if self._cancel_event.is_set() or res is None:
+                self.is_cancelled = True
+                self.result = None
+                self.status_message = "Processamento cancelado."
+            else:
+                self.result = res
+                self.progress = 1.0
+                self.status_message = "Processamento concluído com sucesso!"
+        except Exception as ex:
+            self.error = str(ex)
+            log_event("ERROR", "pipeline", f"Erro no worker de análise: {ex}")
+        finally:
+            self.is_done = True
 
