@@ -481,8 +481,44 @@ else:
 
             with col_in2:
                 st.subheader("Executar Arbitragem")
-                st.markdown("Clique abaixo para iniciar o rastreamento de pose, detecção de impactos e avaliação de Yuko-Datotsu.")
-                if video_file_path and st.button("⚡ Executar Arbitragem com Shinpanai", type="primary", width="stretch"):
+                st.markdown("Inicie o rastreamento de pose, detecção de impactos e avaliação de Yuko-Datotsu:")
+
+                # Alerta visual caso o processamento anterior tenha sido interrompido
+                if st.session_state.get("processing_cancelled", False):
+                    st.warning("⚠️ O processamento de arbitragem foi interrompido pelo usuário.")
+                    st.session_state["processing_cancelled"] = False
+
+                col_btn1, col_btn2 = st.columns([1, 1])
+                with col_btn1:
+                    start_btn = st.button(
+                        "⚡ Executar Arbitragem com Shinpanai",
+                        type="primary",
+                        width="stretch",
+                        disabled=(video_file_path is None or st.session_state.get("is_processing", False)),
+                        key="btn_start_recorded_arbitration"
+                    )
+                with col_btn2:
+                    stop_btn = st.button(
+                        "⏹️ Interromper Processamento",
+                        type="secondary",
+                        width="stretch",
+                        disabled=not st.session_state.get("is_processing", False),
+                        key="btn_stop_recorded_arbitration"
+                    )
+
+                if stop_btn:
+                    st.session_state["cancel_requested"] = True
+                    st.session_state["is_processing"] = False
+                    st.session_state["processing_cancelled"] = True
+                    log_event("WARNING", "app", "Botão de interrupção de processamento acionado pelo usuário.")
+                    st.warning("⚠️ Interrupção de processamento solicitada.")
+                    st.rerun()
+
+                if start_btn and video_file_path:
+                    st.session_state["is_processing"] = True
+                    st.session_state["cancel_requested"] = False
+                    st.session_state["processing_cancelled"] = False
+
                     progress_bar = st.progress(0)
                     status_text = st.empty()
                     status_text.text("Inicializando pipeline de visão e pose tracking...")
@@ -490,6 +526,9 @@ else:
                     def update_p(p):
                         progress_bar.progress(min(1.0, max(0.0, p)))
                         status_text.text(f"Processando frames... {int(p*100)}%")
+
+                    def check_cancelled():
+                        return st.session_state.get("cancel_requested", False)
 
                     dev_pref = st.session_state.get("device_preference", get_processing_device())
                     pipeline = ShinpanaiPipeline(
@@ -507,17 +546,35 @@ else:
                         )
 
                     annotated_output = "annotated_match.mp4"
-                    analysis_result = pipeline.process_video(
-                        video_path=video_file_path,
-                        output_video_path=annotated_output,
-                        progress_callback=update_p
-                    )
+                    try:
+                        analysis_result = pipeline.process_video(
+                            video_path=video_file_path,
+                            output_video_path=annotated_output,
+                            progress_callback=update_p,
+                            is_cancelled=check_cancelled
+                        )
+                    except Exception as ex:
+                        log_event("ERROR", "app", f"Exceção durante processamento de vídeo: {ex}")
+                        analysis_result = None
 
-                    st.session_state["analysis_result"] = analysis_result
-                    st.session_state["annotated_output"] = annotated_output
-                    status_text.text("Análise concluída!")
-                    progress_bar.progress(1.0)
-                    st.rerun()
+                    st.session_state["is_processing"] = False
+
+                    if analysis_result is None or st.session_state.get("cancel_requested", False):
+                        st.session_state["processing_cancelled"] = True
+                        st.session_state["cancel_requested"] = False
+                        if os.path.exists(annotated_output):
+                            try:
+                                os.remove(annotated_output)
+                            except Exception:
+                                pass
+                        status_text.warning("⚠️ Processamento de arbitragem interrompido pelo usuário.")
+                        st.rerun()
+                    else:
+                        st.session_state["analysis_result"] = analysis_result
+                        st.session_state["annotated_output"] = annotated_output
+                        status_text.text("Análise concluída!")
+                        progress_bar.progress(1.0)
+                        st.rerun()
 
         video_file_path = st.session_state.get("video_file_path", None)
 

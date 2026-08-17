@@ -17,6 +17,7 @@ from src.analytics.biomechanics import BiomechanicsAnalyzer
 from src.engine.calibrator import CalibrationEngine
 from src.engine.reporter import DiagnosticReporter
 from src.utils.hardware import get_effective_device
+from src.utils.logger_manager import log_event
 
 class ShinpanaiPipeline:
     def __init__(self, calibration_profile: str = "normal", device_preference: str = "cpu"):
@@ -35,8 +36,9 @@ class ShinpanaiPipeline:
         self,
         video_path: str,
         output_video_path: Optional[str] = None,
-        progress_callback: Optional[Callable[[float], None]] = None
-    ) -> Dict[str, Any]:
+        progress_callback: Optional[Callable[[float], None]] = None,
+        is_cancelled: Optional[Callable[[], bool]] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Executa a análise completa de um arquivo de vídeo de luta de Kendo no Modo de Arbitragem Gravada:
         1. Rastreamento e associação exclusiva dos 2 Kenshi (Aka e Shiro) no Plano Principal.
@@ -65,55 +67,65 @@ class ShinpanaiPipeline:
         raw_frames: List[np.ndarray] = [] if output_video_path else []
 
         frame_idx = 0
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+        try:
+            while cap.isOpened():
+                if is_cancelled and is_cancelled():
+                    log_event("WARNING", "pipeline", f"Processamento de vídeo cancelado pelo usuário no frame {frame_idx}/{total_frames}.")
+                    return None
 
-            if output_video_path:
-                raw_frames.append(frame)
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-            # 1. Extração de candidatos a praticantes
-            candidates, _ = self.pose_detector.process_frame_candidates(frame)
+                if output_video_path:
+                    raw_frames.append(frame)
 
-            # Fallback sintético para modo demo (se for vídeo esquemático 2D)
-            if (not candidates or len(candidates) == 0) and "demo" in video_path.lower():
-                # Simular Sonkyō de abertura nos primeiros 25 frames, seguido de corte aos 48 frames
-                is_sonkyo_frame = (frame_idx < 25)
-                hand_y = 0.65 if is_sonkyo_frame else (0.50 if frame_idx < 35 else (0.25 if frame_idx < 48 else 0.60))
-                foot_x = 0.50 if frame_idx < 45 else 0.58
-                hip_y_val = 0.80 if is_sonkyo_frame else 0.65 # Quadril desce no Sonkyō
+                # 1. Extração de candidatos a praticantes
+                candidates, _ = self.pose_detector.process_frame_candidates(frame)
 
-                synthetic_lm = {
-                    "RIGHT_WRIST": {"x": 0.52, "y": float(hand_y), "z": 0.0, "visibility": 0.9, "px": int(0.52*width), "py": int(hand_y*height)},
-                    "LEFT_WRIST": {"x": 0.48, "y": float(hand_y + 0.02), "z": 0.0, "visibility": 0.9, "px": int(0.48*width), "py": int(hand_y*height)},
-                    "RIGHT_ELBOW": {"x": 0.55, "y": float(hand_y + 0.12), "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int((hand_y+0.12)*height)},
-                    "RIGHT_SHOULDER": {"x": 0.55, "y": 0.45 if is_sonkyo_frame else 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int(0.40*height)},
-                    "LEFT_SHOULDER": {"x": 0.45, "y": 0.45 if is_sonkyo_frame else 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.45*width), "py": int(0.40*height)},
-                    "RIGHT_HIP": {"x": 0.53, "y": float(hip_y_val), "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(hip_y_val*height)},
-                    "LEFT_HIP": {"x": 0.47, "y": float(hip_y_val), "z": 0.0, "visibility": 0.9, "px": int(0.47*width), "py": int(hip_y_val*height)},
-                    "RIGHT_KNEE": {"x": 0.54, "y": float(hip_y_val + 0.08), "z": 0.0, "visibility": 0.9, "px": int(0.54*width), "py": int((hip_y_val+0.08)*height)},
-                    "LEFT_KNEE": {"x": 0.46, "y": float(hip_y_val + 0.08), "z": 0.0, "visibility": 0.9, "px": int(0.46*width), "py": int((hip_y_val+0.08)*height)},
-                    "NOSE": {"x": 0.50, "y": 0.35 if is_sonkyo_frame else 0.25, "z": 0.0, "visibility": 0.9, "px": int(0.50*width), "py": int(0.25*height)},
-                    "RIGHT_EAR": {"x": 0.53, "y": 0.34 if is_sonkyo_frame else 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(0.24*height)},
-                    "LEFT_EAR": {"x": 0.47, "y": 0.34 if is_sonkyo_frame else 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.47*width), "py": int(0.24*height)},
-                    "RIGHT_ANKLE": {"x": float(foot_x), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int(foot_x*width), "py": int(0.90*height)},
-                    "LEFT_ANKLE": {"x": float(foot_x - 0.04), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int((foot_x-0.04)*width), "py": int(0.90*height)},
-                    "RIGHT_FOOT_INDEX": {"x": float(foot_x), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int(foot_x*width), "py": int(0.90*height)}
-                }
-                candidates = [synthetic_lm]
+                # Fallback sintético para modo demo (se for vídeo esquemático 2D)
+                if (not candidates or len(candidates) == 0) and "demo" in video_path.lower():
+                    # Simular Sonkyō de abertura nos primeiros 25 frames, seguido de corte aos 48 frames
+                    is_sonkyo_frame = (frame_idx < 25)
+                    hand_y = 0.65 if is_sonkyo_frame else (0.50 if frame_idx < 35 else (0.25 if frame_idx < 48 else 0.60))
+                    foot_x = 0.50 if frame_idx < 45 else 0.58
+                    hip_y_val = 0.80 if is_sonkyo_frame else 0.65 # Quadril desce no Sonkyō
 
-            # 2. Filtragem de Planos e Associação dos 2 Combatentes
-            aka_lm, shiro_lm, discarded = self.combatant_tracker.associate_and_filter(candidates)
-            aka_history.append(aka_lm)
-            shiro_history.append(shiro_lm)
-            discarded_per_frame.append(discarded)
+                    synthetic_lm = {
+                        "RIGHT_WRIST": {"x": 0.52, "y": float(hand_y), "z": 0.0, "visibility": 0.9, "px": int(0.52*width), "py": int(hand_y*height)},
+                        "LEFT_WRIST": {"x": 0.48, "y": float(hand_y + 0.02), "z": 0.0, "visibility": 0.9, "px": int(0.48*width), "py": int(hand_y*height)},
+                        "RIGHT_ELBOW": {"x": 0.55, "y": float(hand_y + 0.12), "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int((hand_y+0.12)*height)},
+                        "RIGHT_SHOULDER": {"x": 0.55, "y": 0.45 if is_sonkyo_frame else 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int(0.40*height)},
+                        "LEFT_SHOULDER": {"x": 0.45, "y": 0.45 if is_sonkyo_frame else 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.45*width), "py": int(0.40*height)},
+                        "RIGHT_HIP": {"x": 0.53, "y": float(hip_y_val), "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(hip_y_val*height)},
+                        "LEFT_HIP": {"x": 0.47, "y": float(hip_y_val), "z": 0.0, "visibility": 0.9, "px": int(0.47*width), "py": int(hip_y_val*height)},
+                        "RIGHT_KNEE": {"x": 0.54, "y": float(hip_y_val + 0.08), "z": 0.0, "visibility": 0.9, "px": int(0.54*width), "py": int((hip_y_val+0.08)*height)},
+                        "LEFT_KNEE": {"x": 0.46, "y": float(hip_y_val + 0.08), "z": 0.0, "visibility": 0.9, "px": int(0.46*width), "py": int((hip_y_val+0.08)*height)},
+                        "NOSE": {"x": 0.50, "y": 0.35 if is_sonkyo_frame else 0.25, "z": 0.0, "visibility": 0.9, "px": int(0.50*width), "py": int(0.25*height)},
+                        "RIGHT_EAR": {"x": 0.53, "y": 0.34 if is_sonkyo_frame else 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(0.24*height)},
+                        "LEFT_EAR": {"x": 0.47, "y": 0.34 if is_sonkyo_frame else 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.47*width), "py": int(0.24*height)},
+                        "RIGHT_ANKLE": {"x": float(foot_x), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int(foot_x*width), "py": int(0.90*height)},
+                        "LEFT_ANKLE": {"x": float(foot_x - 0.04), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int((foot_x-0.04)*width), "py": int(0.90*height)},
+                        "RIGHT_FOOT_INDEX": {"x": float(foot_x), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int(foot_x*width), "py": int(0.90*height)}
+                    }
+                    candidates = [synthetic_lm]
 
-            frame_idx += 1
-            if progress_callback and frame_idx % 10 == 0:
-                progress_callback((frame_idx / total_frames) * 0.60) # 60% para extração de poses
+                # 2. Filtragem de Planos e Associação dos 2 Combatentes
+                aka_lm, shiro_lm, discarded = self.combatant_tracker.associate_and_filter(candidates)
+                aka_history.append(aka_lm)
+                shiro_history.append(shiro_lm)
+                discarded_per_frame.append(discarded)
 
-        cap.release()
+                frame_idx += 1
+                if progress_callback and frame_idx % 10 == 0:
+                    progress_callback((frame_idx / total_frames) * 0.60) # 60% para extração de poses
+        finally:
+            cap.release()
+
+        # Checagem de cancelamento antes de processamento dos eventos
+        if is_cancelled and is_cancelled():
+            log_event("WARNING", "pipeline", "Processamento de vídeo cancelado antes da análise de eventos de golpe.")
+            return None
 
         # 3. Detecção dos momentos de Sonkyō e Bounding da Luta
         # Se Aka tem mais detecções, usa Aka como referência principal; senão Shiro
@@ -198,40 +210,45 @@ class ShinpanaiPipeline:
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
-            for f_idx, raw_f in enumerate(raw_frames):
-                aka_p = aka_history[f_idx] if f_idx < len(aka_history) else None
-                shiro_p = shiro_history[f_idx] if f_idx < len(shiro_history) else None
-                disc_p = discarded_per_frame[f_idx] if f_idx < len(discarded_per_frame) else None
+            try:
+                for f_idx, raw_f in enumerate(raw_frames):
+                    if is_cancelled and is_cancelled():
+                        log_event("WARNING", "pipeline", f"Renderização de vídeo anotado cancelada pelo usuário no frame {f_idx}/{len(raw_frames)}.")
+                        return None
 
-                # Determinar status visual de Sonkyō / Combate
-                if sonkyo_analysis["has_initial_sonkyo"] and f_idx < match_start_f:
-                    hud_status = "🥋 SONKYŌ (INÍCIO DO COMBATE)"
-                    timer_txt = "Aguardando Início"
-                elif sonkyo_analysis["has_final_sonkyo"] and f_idx >= match_end_f:
-                    hud_status = "🥋 SONKYŌ (FIM DO COMBATE)"
-                    timer_txt = "Combate Encerrado"
-                elif f_idx >= match_start_f and f_idx <= match_end_f:
-                    elapsed_combat_sec = max(0.0, (f_idx - match_start_f) / fps)
-                    hud_status = "⚔️ LUTA EM ANDAMENTO (IPPIN / YUKO-DATOTSU)"
-                    timer_txt = f"{int(elapsed_combat_sec // 60):02d}:{int(elapsed_combat_sec % 60):02d}"
-                else:
-                    hud_status = "FORA DA JANELA OFICIAL"
-                    timer_txt = "--:--"
+                    aka_p = aka_history[f_idx] if f_idx < len(aka_history) else None
+                    shiro_p = shiro_history[f_idx] if f_idx < len(shiro_history) else None
+                    disc_p = discarded_per_frame[f_idx] if f_idx < len(discarded_per_frame) else None
 
-                annotated_f = self.pose_detector.draw_combatants_overlay(
-                    raw_f,
-                    aka_landmarks=aka_p,
-                    shiro_landmarks=shiro_p,
-                    discarded_items=disc_p,
-                    sonkyo_status=hud_status,
-                    match_timer_str=timer_txt
-                )
-                writer.write(annotated_f)
+                    # Determinar status visual de Sonkyō / Combate
+                    if sonkyo_analysis["has_initial_sonkyo"] and f_idx < match_start_f:
+                        hud_status = "🥋 SONKYŌ (INÍCIO DO COMBATE)"
+                        timer_txt = "Aguardando Início"
+                    elif sonkyo_analysis["has_final_sonkyo"] and f_idx >= match_end_f:
+                        hud_status = "🥋 SONKYŌ (FIM DO COMBATE)"
+                        timer_txt = "Combate Encerrado"
+                    elif f_idx >= match_start_f and f_idx <= match_end_f:
+                        elapsed_combat_sec = max(0.0, (f_idx - match_start_f) / fps)
+                        hud_status = "⚔️ LUTA EM ANDAMENTO (IPPIN / YUKO-DATOTSU)"
+                        timer_txt = f"{int(elapsed_combat_sec // 60):02d}:{int(elapsed_combat_sec % 60):02d}"
+                    else:
+                        hud_status = "FORA DA JANELA OFICIAL"
+                        timer_txt = "--:--"
 
-                if progress_callback and f_idx % 10 == 0:
-                    progress_callback(0.60 + (f_idx / total_frames) * 0.40)
+                    annotated_f = self.pose_detector.draw_combatants_overlay(
+                        raw_f,
+                        aka_landmarks=aka_p,
+                        shiro_landmarks=shiro_p,
+                        discarded_items=disc_p,
+                        sonkyo_status=hud_status,
+                        match_timer_str=timer_txt
+                    )
+                    writer.write(annotated_f)
 
-            writer.release()
+                    if progress_callback and f_idx % 10 == 0:
+                        progress_callback(0.60 + (f_idx / total_frames) * 0.40)
+            finally:
+                writer.release()
 
         if progress_callback:
             progress_callback(1.0)

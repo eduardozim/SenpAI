@@ -53,7 +53,9 @@ Dev/
 │   ├── test_dan_training_governance.py # Testes automatizados da governança por Dan, pacotes e retreinamento
 │   ├── test_feedback_loop.py       # Suíte de testes unitários para a malha de feedback
 │   ├── test_hardware_settings.py   # Testes automatizados de hardware e configurações
-│   └── test_logger_manager.py      # Testes automatizados do sistema de logs e diagnóstico
+│   ├── test_logger_manager.py      # Testes automatizados do sistema de logs e diagnóstico
+│   ├── test_pipeline_cancellation.py # Testes automatizados de cancelamento e interrupção do pipeline
+│   └── test_sonkyo_and_plane_filtering.py # Testes de sonkyo e filtragem de planos
 ├── app.py                          # Dashboard Web Interativo em Streamlit (com Edição por Dan e Configurações)
 ├── main.py                         # Interface de Linha de Comando (CLI com flag --device)
 ├── Melhorias_Issues.md             # Registro de pendências e visão de versão final
@@ -186,6 +188,16 @@ O projeto inclui testes automatizados em `unittest` para validar o pipeline cine
 - **Estabilidade de Interface**:
   - Tabela de treinamentos por Dan convertida para Markdown nativo, eliminando erros de pré-carregamento de módulos JS/CSS do navegador (Vite preload helper).
 - **Testes Automatizados**: Suíte de testes em [test_logger_manager.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_logger_manager.py) e testes de importação expandidos em [test_dan_training_governance.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_dan_training_governance.py) (19 testes automatizados com 100% de aprovação).
+
+### `[v1.4.1]` — 2026-08-17
+
+- **Botão de Interromper Processamento na Arbitragem Gravada**:
+  - Inclusão do botão `⏹️ Interromper Processamento` no painel de execução de vídeo no [app.py](file:///d:/Projetos/Shinpanai/Dev/app.py).
+  - Suporte a cancelamento cooperativo no método `process_video` do [pipeline.py](file:///d:/Projetos/Shinpanai/Dev/src/pipeline.py) através do parâmetro `is_cancelled`.
+  - Liberação segura de recursos e fechamento de streams (`VideoCapture` e `VideoWriter`) através de blocos `try...finally`.
+  - Notificação visual de cancelamento no dashboard (`st.warning`) e limpeza de arquivos parciais gerados.
+  - Registro de eventos de interrupção e alertas no sistema de logs (`log_event`).
+- **Testes Automatizados**: Criado [test_pipeline_cancellation.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_pipeline_cancellation.py) cobrindo cancelamento imediato, cancelamento durante leitura de frames, validação de logs de aviso e execução normal sem interrupção.
 
 ---
 
