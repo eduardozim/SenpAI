@@ -342,11 +342,11 @@ else:
     st.sidebar.header("🎛️ Calibração de Sensibilidade")
     profile_choice = st.sidebar.selectbox(
         "Perfil de Arbitragem Predefinido",
-        options=["normal", "rigido", "permissivo", "custom"],
+        options=["permissivo", "normal", "rigido", "custom"],
         format_func=lambda x: {
-            "normal": "Treino Geral / Keiko (Normal)",
-            "rigido": "Campeonato / Dan Audit (Rígido)",
             "permissivo": "Iniciantes / Educacional (Permissivo)",
+            "normal": "Treino Geral / Keiko (Normal)",
+            "rigido": "Campeonato / Audit de Dan (Rígido)",
             "custom": "⚙️ Personalizado (Sliders Manual)"
         }[x]
     )

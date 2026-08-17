@@ -27,8 +27,8 @@ def main():
     parser = argparse.ArgumentParser(description="Shinpanai - AI Kendo Match Analysis System")
     parser.add_argument("--video", type=str, help="Caminho para o arquivo de vídeo de luta (.mp4, .avi)")
     parser.add_argument("--output", type=str, default="output_annotated.mp4", help="Caminho para salvar o vídeo anotado")
-    parser.add_argument("--profile", type=str, default="normal", choices=["rigido", "normal", "permissivo"],
-                        help="Perfil de calibração de arbitragem (rigido, normal, permissivo)")
+    parser.add_argument("--profile", type=str, default="normal", choices=["permissivo", "normal", "rigido"],
+                        help="Perfil de calibração de arbitragem (permissivo, normal, rigido)")
     parser.add_argument("--mode", type=str, default="recorded", choices=["recorded", "training", "realtime", "user", "learning"],
                         help="Modo de operação: 'recorded' (Arbitragem Gravada), 'training' (Treinamento & Aprendizado) ou 'realtime' (Detecção em Tempo Real)")
     parser.add_argument("--device", type=str, default=default_device, choices=["cpu", "gpu"],

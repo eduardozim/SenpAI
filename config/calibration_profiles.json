@@ -1,4 +1,21 @@
 {
+  "permissivo": {
+    "name": "Iniciantes / Educacional (Permissivo)",
+    "description": "Prioriza se o golpe atingiu o alvo correto, sendo mais tolerante com Zanshin e postura.",
+    "min_total_score": 0.45,
+    "weights": {
+      "target_impact": 0.55,
+      "fumikomi_sync": 0.2,
+      "posture": 0.15,
+      "zanshin": 0.1
+    },
+    "sub_thresholds": {
+      "target_impact": 0.4,
+      "fumikomi_sync": 0.3,
+      "posture": 0.3,
+      "zanshin": 0.2
+    }
+  },
   "normal": {
     "name": "Treino Geral / Keiko (Normal)",
     "description": "Equilíbrio entre precisão técnica e tolerância para treinos regulares.",
@@ -17,7 +34,7 @@
     }
   },
   "rigido": {
-    "name": "Campeonato / Dan Audit (Rígido)",
+    "name": "Campeonato / Audit de Dan (Rígido)",
     "description": "Exige execução quase perfeita de Ki-Ken-Tai-Ichi, alvo exato e Zanshin completo.",
     "min_total_score": 0.9,
     "weights": {
@@ -31,23 +48,6 @@
       "fumikomi_sync": 0.7,
       "posture": 0.7,
       "zanshin": 0.7
-    }
-  },
-  "permissivo": {
-    "name": "Iniciantes / Educacional (Permissivo)",
-    "description": "Prioriza se o golpe atingiu o alvo correto, sendo mais tolerante com Zanshin e postura.",
-    "min_total_score": 0.45,
-    "weights": {
-      "target_impact": 0.55,
-      "fumikomi_sync": 0.2,
-      "posture": 0.15,
-      "zanshin": 0.1
-    },
-    "sub_thresholds": {
-      "target_impact": 0.4,
-      "fumikomi_sync": 0.3,
-      "posture": 0.3,
-      "zanshin": 0.2
     }
   }
 }
