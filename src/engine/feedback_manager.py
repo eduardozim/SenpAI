@@ -98,10 +98,11 @@ class FeedbackManager:
         notes: str = "",
         reviewer_dan: int = 1,
         is_edited: bool = False,
-        is_included: bool = False
+        is_included: bool = False,
+        decision_category: str = ""
     ) -> Dict[str, Any]:
         """
-        Adiciona ou atualiza uma anotação de feedback no dataset com registro de Dan.
+        Adiciona ou atualiza uma anotação de feedback no dataset com registro de Dan e categoria de decisão.
         """
         data = self.load_feedback()
         dan_val = max(1, min(8, int(reviewer_dan)))
@@ -114,6 +115,7 @@ class FeedbackManager:
             "video_name": video_name,
             "profile_key": profile_key,
             "label": label,
+            "decision_category": decision_category,
             "strike_type": strike_type,
             "timestamp": timestamp,
             "total_score": total_score,
@@ -172,7 +174,8 @@ class FeedbackManager:
                 notes=item.get("notes", ""),
                 reviewer_dan=dan_val,
                 is_edited=item.get("is_edited", False),
-                is_included=item.get("is_included", False)
+                is_included=item.get("is_included", False),
+                decision_category=item.get("decision_category", item.get("category", ""))
             )
             saved_entries.append(entry)
 
