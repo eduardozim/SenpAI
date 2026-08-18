@@ -16,6 +16,7 @@ import time
 from src.pipeline import ShinpanaiPipeline, AnalysisWorker
 from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager
+from src.analytics.sonkyo_detector import SonkyoDetector
 from src.utils.hardware import detect_nvidia_gpu, get_effective_device, check_cuda_framework_support, validate_and_setup_gpu_requirements
 from src.utils.settings_manager import load_settings, save_settings, get_processing_device, set_processing_device
 from src.utils.logger_manager import (
@@ -35,30 +36,59 @@ st.set_page_config(
 
 feedback_mgr = FeedbackManager()
 
-# Estilização CSS Moderna para a Interface
+def parse_ts_to_seconds(ts_str: str) -> float:
+    """Converte timestamps (ex: '00:02.500', '02.500', '2.5s') em segundos (float)."""
+    if not ts_str:
+        return 0.0
+    try:
+        ts = str(ts_str).strip().lower().replace("s", "")
+        if ":" in ts:
+            parts = ts.split(":")
+            return float(parts[0]) * 60.0 + float(parts[1])
+        return float(ts)
+    except Exception:
+        return 0.0
+
+# Estilização CSS Moderna para a Interface com redução global de 20%
 st.markdown("""
 <style>
+    /* 1. Redução Global da Interface em 20% (Zoom 80%) */
+    .stApp {
+        zoom: 0.8;
+        -moz-transform: scale(0.8);
+        -moz-transform-origin: 0 0;
+    }
+
+    /* 2. Otimização do espaçamento superior/inferior para melhor aproveitamento de tela */
+    .main .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 1.5rem !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+        max-width: 96% !important;
+    }
+
     .main-title {
-        font-size: 2.4rem;
+        font-size: 2.2rem;
         font-weight: 800;
         color: #E2E8F0;
         margin-bottom: 0.2rem;
     }
     .sub-title {
-        font-size: 1.1rem;
+        font-size: 1.0rem;
         color: #94A3B8;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.2rem;
     }
     .metric-card {
         background-color: #1E293B;
-        padding: 1.2rem;
+        padding: 1rem;
         border-radius: 0.75rem;
         border: 1px solid #334155;
     }
     .valid-badge {
         background-color: #166534;
         color: #4ADE80;
-        padding: 0.3rem 0.8rem;
+        padding: 0.25rem 0.7rem;
         border-radius: 9999px;
         font-weight: bold;
         display: inline-block;
@@ -66,7 +96,7 @@ st.markdown("""
     .invalid-badge {
         background-color: #991B1B;
         color: #FCA5A5;
-        padding: 0.3rem 0.8rem;
+        padding: 0.25rem 0.7rem;
         border-radius: 9999px;
         font-weight: bold;
         display: inline-block;
@@ -74,23 +104,23 @@ st.markdown("""
     .mode-banner-recorded {
         background-color: #0F172A;
         border-left: 4px solid #3B82F6;
-        padding: 0.8rem;
+        padding: 0.7rem;
         border-radius: 0.5rem;
-        margin-bottom: 1rem;
+        margin-bottom: 0.8rem;
     }
     .mode-banner-training {
         background-color: #1E1B4B;
         border-left: 4px solid #8B5CF6;
-        padding: 0.8rem;
+        padding: 0.7rem;
         border-radius: 0.5rem;
-        margin-bottom: 1rem;
+        margin-bottom: 0.8rem;
     }
     .mode-banner-realtime {
         background-color: #311313;
         border-left: 4px solid #EF4444;
-        padding: 0.8rem;
+        padding: 0.7rem;
         border-radius: 0.5rem;
-        margin-bottom: 1rem;
+        margin-bottom: 0.8rem;
     }
     /* Estilização da Coluna Fixa (Sticky) do Vídeo */
     div[data-testid="stColumn"]:has(div.sticky-video-marker) {
@@ -105,8 +135,8 @@ st.markdown("""
         background-color: #1E293B;
         border-radius: 0.75rem;
         border: 1px solid #334155;
-        padding: 1rem;
-        margin-top: 1rem;
+        padding: 0.85rem;
+        margin-top: 0.8rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -744,7 +774,31 @@ else:
                     selected_video = video_file_path
                     
                 if selected_video and os.path.exists(selected_video):
-                    st.video(selected_video)
+                    # Banner indicativo se o vídeo foi posicionado em um evento específico
+                    if "video_seek_label" in st.session_state:
+                        seek_lbl = st.session_state["video_seek_label"]
+                        seek_time_val = st.session_state.get("video_start_time", 0.0)
+                        col_sk1, col_sk2 = st.columns([3.5, 1.5])
+                        with col_sk1:
+                            st.markdown(
+                                f'<div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3B82F6; border-radius: 6px; padding: 6px 10px; font-size: 0.82rem; color: #93C5FD; margin-bottom: 6px;">'
+                                f'🎯 <b>Posicionado em {seek_time_val:.1f}s</b> (1s antes do evento)<br>'
+                                f'<span style="color: #E2E8F0; font-size: 0.78rem;">{seek_lbl}</span>'
+                                f'</div>',
+                                unsafe_allow_html=True
+                            )
+                        with col_sk2:
+                            if st.button("✖️ Início", key="btn_reset_seek_video", width="stretch", help="Voltar a reprodução para o início"):
+                                st.session_state.pop("video_start_time", None)
+                                st.session_state.pop("video_seek_label", None)
+                                st.rerun()
+
+                    active_start_time = int(round(st.session_state.get("video_start_time", 0.0)))
+                    st.video(
+                        selected_video,
+                        start_time=active_start_time,
+                        autoplay=("video_start_time" in st.session_state and st.session_state["video_start_time"] > 0)
+                    )
                 else:
                     st.info("Nenhum vídeo disponível para reprodução.")
                     
@@ -795,6 +849,7 @@ else:
                     st.info("👈 Clique em **⚡ Executar Arbitragem** para visualizar a linha do tempo de eventos e análise detalhada.")
                 else:
                     res = st.session_state["analysis_result"]
+                    video_name_simple = os.path.basename(video_file_path) if video_file_path else "recorded_match.mp4"
                     # 0. PLACAR OFICIAL DE ARBITRAGEM (SANBON-SHOBU) & CONTROLE DE PONTUAÇÃO
                     is_inverted = st.session_state.get("invert_aka_shiro", False)
                     raw_scoreboard = res.get("scoreboard", {})
@@ -986,6 +1041,53 @@ else:
                                 st.toast("Edições de Sonkyō descartadas!", icon="🔄")
                                 st.rerun()
 
+                    # Seletor Rápido de Navegação por Eventos
+                    jump_options = ["-- 🎯 Selecionar evento para saltar no vídeo (-1s antes) --"]
+                    jump_map = {}
+
+                    has_init_jump = sonkyo_info.get("has_initial_sonkyo", False) and sonkyo_info.get("initial_sonkyo")
+                    init_edit_jump = sonkyo_edits.get("initial")
+                    if has_init_jump or init_edit_jump:
+                        ts_i = init_edit_jump.get("start_timestamp") if init_edit_jump else sonkyo_info.get("initial_sonkyo", {}).get("start_timestamp", "00:00.000")
+                        label_i = f"🥋 Sonkyō Inicial (Abertura) @ {ts_i}"
+                        jump_options.append(label_i)
+                        jump_map[label_i] = (max(0.0, parse_ts_to_seconds(ts_i) - 1.0), label_i)
+
+                    for idx_j, ev_data_j in enumerate(res.get("events", [])):
+                        ev_ij = ev_data_j["event_info"]
+                        ev_eval_j = ev_data_j["evaluation"]
+                        status_sym_j = "✅ Ippon" if ev_eval_j.get("is_valid", False) else "❌ Inválido"
+                        att_j = ev_ij.get("attacker_name", "Kenshi Aka (Vermelho)")
+                        if is_inverted:
+                            att_j = "Kenshi Shiro (Branco)" if "AKA" in ev_ij.get("attacker_id", "KENSHI_AKA") else "Kenshi Aka (Vermelho)"
+                        label_sj = f"🥊 Golpe #{idx_j+1}: {ev_ij.get('type')} @ {ev_ij.get('timestamp')} ({status_sym_j} - {att_j})"
+                        jump_options.append(label_sj)
+                        jump_map[label_sj] = (max(0.0, parse_ts_to_seconds(ev_ij.get("timestamp")) - 1.0), label_sj)
+
+                    has_final_jump = sonkyo_info.get("has_final_sonkyo", False) and sonkyo_info.get("final_sonkyo")
+                    final_edit_jump = sonkyo_edits.get("final")
+                    if has_final_jump or final_edit_jump:
+                        ts_fj = final_edit_jump.get("start_timestamp") if final_edit_jump else sonkyo_info.get("final_sonkyo", {}).get("start_timestamp", "00:00.000")
+                        label_fj = f"🥋 Sonkyō Final (Encerramento) @ {ts_fj}"
+                        jump_options.append(label_fj)
+                        jump_map[label_fj] = (max(0.0, parse_ts_to_seconds(ts_fj) - 1.0), label_fj)
+
+                    if len(jump_options) > 1:
+                        selected_jump = st.selectbox(
+                            "🎯 Navegação Rápida de Eventos no Vídeo (1s antes):",
+                            options=jump_options,
+                            index=0,
+                            key="event_quick_jump_select",
+                            help="Selecione um evento para saltar o vídeo automaticamente para 1 segundo antes do ocorrido para facilitar a revisão."
+                        )
+                        if selected_jump in jump_map:
+                            target_sec, target_lbl = jump_map[selected_jump]
+                            if st.session_state.get("video_start_time") != target_sec or st.session_state.get("video_seek_label") != target_lbl:
+                                st.session_state["video_start_time"] = target_sec
+                                st.session_state["video_seek_label"] = target_lbl
+                                st.toast(f"🎥 Vídeo posicionado em {target_sec:.1f}s (1s antes)!", icon="🎬")
+                                st.rerun()
+
                     with st.container(height=650):
                         has_initial = sonkyo_info.get("has_initial_sonkyo", False) and sonkyo_info.get("initial_sonkyo")
                         has_final = sonkyo_info.get("has_final_sonkyo", False) and sonkyo_info.get("final_sonkyo")
@@ -1013,6 +1115,12 @@ else:
                                     c_info1, c_info2 = st.columns([3, 1])
                                     with c_info1:
                                         st.markdown(f"**Intervalo Ritual:** `{curr_start_ts}` a `{curr_end_ts}` &nbsp;|&nbsp; **Início da Luta:** `{curr_end_ts}` (`Frame #{sonkyo_info.get('match_start_frame', 0)}`)")
+                                        seek_init_s = max(0.0, parse_ts_to_seconds(curr_start_ts) - 1.0)
+                                        if st.button("🎬 Assistir no Vídeo (1s antes)", key="btn_seek_sonkyo_init", help="Reproduzir o vídeo 1 segundo antes do início do Sonkyō Inicial"):
+                                            st.session_state["video_start_time"] = seek_init_s
+                                            st.session_state["video_seek_label"] = f"Sonkyō Inicial ({curr_start_ts})"
+                                            st.toast(f"🎥 Vídeo posicionado em {seek_init_s:.1f}s (1s antes)", icon="🎬")
+                                            st.rerun()
                                     with c_info2:
                                         if initial_edit:
                                             st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6; margin:0;">✏️ EDITADO</div>', unsafe_allow_html=True)
@@ -1084,6 +1192,13 @@ else:
                                     with st.expander(f"🥊 Golpe #{idx+1}: {current_rev['strike_type']} @ {current_rev['timestamp']} ({attacker_label}) - {status_badge}", expanded=True):
                                         c_a, c_b = st.columns([1, 1.5])
                                         with c_a:
+                                            seek_strike_s = max(0.0, parse_ts_to_seconds(current_rev['timestamp']) - 1.0)
+                                            if st.button(f"🎬 Assistir Golpe no Vídeo (1s antes: {seek_strike_s:.1f}s)", key=f"btn_seek_strike_{idx}", width="stretch", help=f"Salta a reprodução para 1 segundo antes do impacto deste golpe ({seek_strike_s:.1f}s)"):
+                                                st.session_state["video_start_time"] = seek_strike_s
+                                                st.session_state["video_seek_label"] = f"Golpe #{idx+1} {current_rev['strike_type']} @ {current_rev['timestamp']}"
+                                                st.toast(f"🎥 Vídeo posicionado em {seek_strike_s:.1f}s (1s antes do impacto)!", icon="🎬")
+                                                st.rerun()
+
                                             st.markdown(f"**Técnica:** `{current_rev['strike_type']}`")
                                             st.markdown(f"**Atacante:** `{attacker_label}`")
                                             st.markdown(f"**Timestamp:** `{current_rev['timestamp']}` (Frame {ev['impact_frame']})")
@@ -1098,7 +1213,6 @@ else:
                                             else:
                                                 st.markdown('<div class="invalid-badge">❌ GOLPE INVÁLIDO</div>', unsafe_allow_html=True)
 
-                                            st.caption("🥋 Golpe registrado estritamente dentro da janela regulamentar de Sonkyō.")
 
                                             # Painel de Edição/Confirmação por Dan quando ativado
                                             if enable_editing:
@@ -1182,6 +1296,12 @@ else:
                                     c_finfo1, c_finfo2 = st.columns([3, 1])
                                     with c_finfo1:
                                         st.markdown(f"**Intervalo Ritual:** `{curr_start_ts_fin}` a `{curr_end_ts_fin}` &nbsp;|&nbsp; **Término da Luta:** `{curr_start_ts_fin}` (`Frame #{sonkyo_info.get('match_end_frame', 0)}`)")
+                                        seek_fin_s = max(0.0, parse_ts_to_seconds(curr_start_ts_fin) - 1.0)
+                                        if st.button("🎬 Assistir no Vídeo (1s antes)", key="btn_seek_sonkyo_fin", help="Reproduzir o vídeo 1 segundo antes do início do Sonkyō Final"):
+                                            st.session_state["video_start_time"] = seek_fin_s
+                                            st.session_state["video_seek_label"] = f"Sonkyō Final ({curr_start_ts_fin})"
+                                            st.toast(f"🎥 Vídeo posicionado em {seek_fin_s:.1f}s (1s antes)", icon="🎬")
+                                            st.rerun()
                                     with c_finfo2:
                                         if final_edit:
                                             st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6; margin:0;">✏️ EDITADO</div>', unsafe_allow_html=True)
