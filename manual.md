@@ -26,7 +26,8 @@ A estrutura de arquivos do projeto está organizada de forma modular:
 Dev/
 ├── config/
 │   ├── calibration_profiles.json   # Configurações e pesos dos perfis de arbitragem
-│   └── settings.json               # Configurações globais do sistema (CPU/GPU)
+│   ├── settings.json               # Configurações globais do sistema (CPU/GPU)
+│   └── sonkyo_learned_profile.json # Perfil adaptativo aprendido de postura de Sonkyō
 ├── data/
 │   ├── feedback_dataset.json       # Base de dados de anotações (TP/FP/FN/Dan) para RL
 │   └── training_history.json       # Histórico de sessões de treinamento e revisões por Dan
@@ -35,7 +36,8 @@ Dev/
 ├── src/
 │   ├── analytics/
 │   │   ├── biomechanics.py         # Cálculo numérico dos critérios de Yuko-Datotsu
-│   │   └── event_spotter.py        # Detecção temporal de picos cinemáticos e golpes
+│   │   ├── event_spotter.py        # Detecção temporal de picos cinemáticos e golpes
+│   │   └── sonkyo_detector.py      # Identificação de Sonkyō, delimitação da luta e aprendizado
 │   ├── engine/
 │   │   ├── calibrator.py           # Motor de pontuação e validação de limiares
 │   │   ├── feedback_manager.py     # Motor de Aprendizagem por Reforço, Governança por Dan e Otimização
@@ -46,19 +48,21 @@ Dev/
 │   │   ├── logger_manager.py       # Gerenciador central de logs, alertas e diagnósticos de debug
 │   │   └── settings_manager.py     # Gerenciamento e persistência das configurações do sistema
 │   ├── vision/
-│   │   ├── pose_detector.py        # Rastreamento de esqueleto 3D via MediaPipe
+│   │   ├── combatant_tracker.py    # Rastreamento dos 2 Kenshi (Aka/Shiro), flag dorsal e planos
+│   │   ├── pose_detector.py        # Rastreamento de esqueleto 3D via YOLOv8-Pose / MediaPipe
 │   │   └── shinai_tracker.py       # Estimação do Kensen e zonas anatômicas de alvo
-│   └── pipeline.py                 # Pipeline orquestrador end-to-end de vídeo
+│   └── pipeline.py                 # Pipeline orquestrador end-to-end de vídeo e renderização
 ├── tests/
-│   ├── test_dan_training_governance.py # Testes automatizados da governança por Dan, pacotes e retreinamento
-│   ├── test_feedback_loop.py       # Suíte de testes unitários para a malha de feedback
+│   ├── test_dan_training_governance.py # Testes da governança por Dan, pacotes e retreinamento
+│   ├── test_feedback_loop.py       # Testes unitários para a malha de feedback e RL
 │   ├── test_hardware_settings.py   # Testes automatizados de hardware e configurações
 │   ├── test_logger_manager.py      # Testes automatizados do sistema de logs e diagnóstico
 │   ├── test_pipeline_cancellation.py # Testes automatizados de cancelamento e interrupção do pipeline
-│   └── test_sonkyo_and_plane_filtering.py # Testes de sonkyo e filtragem de planos
-├── app.py                          # Dashboard Web Interativo em Streamlit (com Edição por Dan e Configurações)
-├── main.py                         # Interface de Linha de Comando (CLI com flag --device)
-├── Melhorias_Issues.md             # Registro de pendências e visão de versão final
+│   ├── test_scoreboard_and_flag_detection.py # Testes do placar oficial e detecção de flag dorsal
+│   └── test_sonkyo_and_plane_filtering.py # Testes de Sonkyō, limites da luta e filtragem de planos
+├── app.py                          # Dashboard Web Interativo em Streamlit (com HUD, Placar e Configurações)
+├── main.py                         # Interface de Linha de Comando (CLI com flags completas)
+├── Melhorias_Issues.md             # Registro de pendências, issues e histórico de versões
 ├── README.TXT                      # Manual simplificado de uso rápido
 └── manual.md                       # Manual técnico completo e log de mudanças (este arquivo)
 ```
@@ -80,9 +84,14 @@ A espada (*Shinai*) é estimada como uma extensão vetorial a partir do eixo for
 - **DO**: Flancos abdominais (com base na linha entre ombro e quadril).
 - **TSUKI**: Região da garganta/esterno superior.
 
+#### `CombatantTracker` ([combatant_tracker.py](file:///d:/Projetos/Shinpanai/Dev/src/vision/combatant_tracker.py))
+Responsável pela persistência e identificação contínua dos dois lutadores principais no Shiaijo:
+- **Detecção Cromática de Flag Dorsal (Tasukuki)**: Segmentação em espaço de cor HSV (`detect_red_flag_score`) no dorso dos atletas para identificação inequívoca de **Kenshi Aka (Vermelho)** e **Kenshi Shiro (Branco)**, mesmo com keikogi azul escuro, branco ou preto.
+- **Filtragem Geométrica de Plano de Combate**: Calibra a escala espacial média dos kenshi e descarta automaticamente pessoas e movimentações em segundo plano (outras lutas, arquibancadas) ou oclusões em primeiro plano (transeuntes passando em frente à câmera).
+
 ---
 
-### 3.2. Análise e Biomecânica (`src/analytics/`)
+### 3.2. Análise, Biomecânica e Rituais (`src/analytics/`)
 
 #### `EventSpotter` ([event_spotter.py](file:///d:/Projetos/Shinpanai/Dev/src/analytics/event_spotter.py))
 Classificador temporal (*Action Spotter*) que analisa as séries temporais de velocidade e aceleração das mãos e da espada. Identifica:
@@ -97,6 +106,13 @@ Calcula quantitativamente os 4 pilares do **Ki-Ken-Tai-Ichi**:
 2. **Fumikomi Sync (Tai)**: Mede a diferença de tempo (offset em ms) entre a batida do pé direito no solo e o ponto de máxima desaceleração do golpe. Quanto menor o offset em relação à janela ideal ($0\text{ ms}$ a $40\text{ ms}$), maior a pontuação.
 3. **Posture (Tai)**: Calcula o alinhamento do vetor da coluna (ombro-quadril) em relação à vertical perfeita. Penaliza inclinações excessivas para a frente/lados e perda de estabilidade da cabeça.
 4. **Zanshin (Ki)**: Avalia a janela pós-golpe (15 frames após o impacto). Mede a manutenção da postura firme, estabilidade visual e ausência de desaceleração desordenada ou desequilíbrio.
+
+#### `SonkyoDetector` ([sonkyo_detector.py](file:///d:/Projetos/Shinpanai/Dev/src/analytics/sonkyo_detector.py))
+Módulo biomecânico que monitora e reconhece o ritual sagrado de **Sonkyō** (agachamento sobre os calcanhares com coluna vertical):
+- **Classificação Postural Multifatorial**: Avalia rebaixamento de quadril ($\Delta Y$), proporção tronco-altura, compressão vertical relativa ($H_{sonkyo} \le 0.75 \times H_{standing}$) e verticalidade da coluna.
+- **Delimitação Regulamentar da Luta**: Marca o início oficial do combate (`match_start_frame`) no término do Sonkyō Inicial e o encerramento oficial (`match_end_frame`) no início do Sonkyō Final.
+- **Filtragem Estrita de Golpes**: Qualquer golpe fora desse intervalo ritual é sumariamente descartado da arbitragem oficial.
+- **Aprendizado Biomecânico Adaptativo**: Permite edição interativa de intervalos na UI e recalibra os limiares de Sonkyō, persistindo o aprendizado em `config/sonkyo_learned_profile.json`.
 
 ---
 
@@ -148,21 +164,42 @@ Gerencia o ciclo completo de auditoria, revisão por Dan e otimização adaptati
 
 ---
 
-## 4. Suíte de Testes Automatizados
+## 4. Suíte de Testes Automatizados e Relatório de Execução
 
-O projeto inclui testes automatizados em `unittest` para validar o pipeline cinemático, hardware e governança por Dan.
+O projeto inclui suíte completa de testes automatizados em `unittest` com runner customizado ([test_runner.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/test_runner.py)) e script de execução dedicado ([run_tests.py](file:///d:/Projetos/Shinpanai/Dev/run_tests.py)).
 
-### Comando para Execução dos Testes
+### Execução dos Testes via CLI e Interface
 
 ```bash
+# Execução completa com exibição detalhada e geração de log descritivo:
+.\.venv\Scripts\python.exe run_tests.py
+
+# Ou via unittest padrão:
 .\.venv\Scripts\python.exe -m unittest discover tests
 ```
 
-### Testes Incluídos
+Também é possível disparar os testes diretamente no **Web Dashboard** acessando a aba **⚙️ Configurações > Seção 5 (Diagnóstico e Logs)** através do botão **`🔬 Rodar Testes (44)`** e baixar o relatório completo em **`📥 Baixar Log Testes (.log)`**.
 
-- **`test_dan_training_governance.py`**: Valida a salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador, média e tabela por Dan), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
-- **`test_feedback_loop.py`**: Valida o salvamento, persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
+### Relatório Descritivo e Política de Retenção de Logs
+
+- **Relatório Detalhado ([`logs/shinpanai_test_report.log`](file:///d:/Projetos/Shinpanai/Dev/logs/shinpanai_test_report.log))**:
+  - Cada teste executado é documentado com: **Módulo**, **Classe**, **Método**, **Descrição Detalhada do Teste / Docstring**, **Status (PASS/FAIL/ERROR)**, **Duração em Segundos** e eventuais rastros de erro/falha.
+  - Cabeçalho com data/hora, versão do sistema, plataforma operacional e hardware.
+  - Resumo estatístico final (total, aprovados, falhas, erros, taxa de sucesso % e tempo total).
+- **Política de Retenção Única**:
+  - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
+
+### Módulos de Testes Incluídos (44 Testes)
+
+- **`test_dan_training_governance.py`**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador, média e tabela por Dan), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
+- **`test_feedback_loop.py`**: Valida salvamento, persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
 - **`test_hardware_settings.py`**: Valida detecção de GPU NVIDIA, configurações globais e resolução de fallback transparente para CPU.
+- **`test_logger_manager.py`**: Valida sistema de logs, métricas em tempo real e diagnósticos automatizados.
+- **`test_pipeline_cancellation.py`**: Valida cancelamento cooperativo, liberação de recursos de streaming e cronômetro em tempo real.
+- **`test_scoreboard_and_flag_detection.py`**: Valida o placar eletrônico Sanbon-shobu, detecção cromática de flag dorsal (Tasukuki) e inversão Aka ⇄ Shiro.
+- **`test_sonkyo_and_plane_filtering.py`**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes) e persistência de aprendizado de Sonkyō.
+
+Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -170,7 +207,40 @@ O projeto inclui testes automatizados em `unittest` para validar o pipeline cine
 
 ---
 
-### `[v1.5.0]` — 2026-08-15 *(Versão Atual)*
+### `[v1.6.0]` — 2026-08-18 *(Versão Atual)*
+
+- **Relatório Descritivo de Testes Automatizados & Retenção Única de Log**:
+  - Criado o runner customizado ([test_runner.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/test_runner.py)) e script de execução na raiz ([run_tests.py](file:///d:/Projetos/Shinpanai/Dev/run_tests.py)).
+  - Geração automática de relatório descritivo por teste com módulo, classe, método, descrição em Português, status individual, duração em segundos e sumário executivo.
+  - Salvo na pasta `logs/` ([`logs/shinpanai_test_report.log`](file:///d:/Projetos/Shinpanai/Dev/logs/shinpanai_test_report.log)) com política estrita de retenção: **apenas o último log de testes é mantido na pasta**.
+  - Botões de execução rápida (`🔬 Rodar Testes (44)`) e download do relatório (`📥 Baixar Log Testes (.log)`) integrados na **Seção 5 de Diagnóstico e Logs** do Web App.
+- **Detecção e Scoring Consolidado (Modo de Arbitragem Gravada)**:
+  - Validação completa de *Yuko-Datotsu* com score ponderado (*Ki-Ken-Tai-Ichi*: impacto no alvo, sincronismo de *Fumikomi*, postura e *Zanshin*), corte automático de clipes de eventos e relatórios diagnósticos de combate.
+- **Navegação Interativa no Vídeo com Salto Temporal Calibrado (-1.0s)**:
+  - Salto temporal instantâneo no player de vídeo ao clicar nos botões individuais de evento (Sonkyō Inicial, Golpes Detectados ou Sonkyō Final) ou ao selecionar eventos no menu dropdown.
+  - Calibração de **1 segundo de pré-roll (`-1.0s`)** antes do início do evento para permitir que o árbitro assista à preparação, execução e finalização da ação com clareza.
+  - Banner dinâmico com indicação da posição ativa (`🎯 Posicionado em X.Xs`) e botão de reset rápido (`✖️ Início`).
+- **Otimização da Escala Visual da Interface (Zoom 80%)**:
+  - Aplicação de redução global de 20% na escala de fontes e elementos (`zoom: 0.8`) com compactação ergonômica de paddings e containers (`max-width: 96%`), eliminando necessidade de rolagem excessiva.
+- **Detecção de Sonkyō & Delimitação Temporal da Luta**:
+  - Identificação e verificação automática da postura ritualística de *Sonkyō* (agachamento profundo sobre os calcanhares, flexão de joelhos e coluna ereta) para marcação do Início Oficial (`match_start_frame`) e Encerramento Oficial (`match_end_frame`) da luta no Modo de Arbitragem Gravada.
+  - Filtragem estrita de golpes por Sonkyō: consideração e pontuação de *Yuko-Datotsu* realizada **estritamente entre os momentos de Sonkyō de início e término**, descartando movimentações e cortes fora da janela regulamentar de combate.
+  - Edição interativa de Sonkyō com aprendizado biomecânico adaptativo contínuo persistido em `config/sonkyo_learned_profile.json`.
+- **Rastreamento dos 2 Kenshi Principais e Filtragem de Planos**:
+  - Rastreamento contínuo dos dois atletas principais que iniciaram o combate no Shiaijo (`Kenshi Aka - Vermelho` e `Kenshi Shiro - Branco`).
+  - Calibração geométrica automática de plano principal, descartando elementos de segundo plano (outras lutas ao fundo, árbitros distantes, arquibancadas) e oclusões de primeiro plano (pessoas passando na frente da câmera).
+- **Placar Oficial de Arbitragem (Sanbon-shobu Scoreboard) e Inversão Manual Aka ⇄ Shiro**:
+  - Placar eletrônico no topo dos resultados com contagem de Ippon para Aka e Shiro, técnicas pontuadas e declaração automática de resultado (*Sanbon-shobu*).
+  - Detecção cromática HSV de flag dorsal (Tasukuki) e botão de ação rápida `🔄 Inverter Lutadores (Aka ⇄ Shiro)` para reatribuição imediata de pontuação, eventos e relatórios em gravações com câmera no lado oposto do Shiaijo.
+- **Aceleração GPU NVIDIA CUDA com Tensor Cores FP16 & Streaming de Renderização**:
+  - Suporte a GPU NVIDIA CUDA via YOLOv8-Pose em FP16 meia precisão (`half=True`) com fallback automático para CPU.
+  - Streaming direto de renderização em 2ª passada no pipeline de gravação de vídeo anotado, reduzindo o consumo de memória RAM de 15+ GB para menos de 100 MB.
+- **Suíte de Testes Automatizados**:
+  - 44 testes automatizados em `unittest` com 100% de aprovação cobrindo todo o pipeline cinemático, Sonkyō, planos, placar, flag dorsal, hardware, governança por Dan e logs.
+
+---
+
+### `[v1.5.0]` — 2026-08-15
 
 - **Sistema de Diagnóstico, Alertas e Log de Debug do Sistema**:
   - Criado o módulo central de logging e diagnóstico ([logger_manager.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/logger_manager.py)) com retenção em arquivo ([`logs/shinpanai_debug.log`](file:///d:/Projetos/Shinpanai/Dev/logs/shinpanai_debug.log)) e buffer em memória.

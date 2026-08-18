@@ -20,6 +20,7 @@ class TestFeedbackLoop(unittest.TestCase):
             os.remove(self.test_dataset_path)
 
     def test_save_and_load_feedback(self):
+        """Valida o registro de feedback (True Positive), persistência em JSON e cálculo de precisão."""
         entry = self.feedback_mgr.save_feedback(
             video_name="match1.mp4",
             profile_key="normal",
@@ -38,6 +39,7 @@ class TestFeedbackLoop(unittest.TestCase):
         self.assertEqual(stats["false_positives"], 0)
 
     def test_optimize_profile_on_false_positives(self):
+        """Verifica a otimização adaptativa por aprendizagem por reforço sobre Falsos Positivos (ajuste de min_total_score)."""
         # Simular gravação de um Falso Positivo (FP) onde o total_score obtido foi 68% no perfil normal (limiar min 65%)
         self.feedback_mgr.save_feedback(
             video_name="match1.mp4",
