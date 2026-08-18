@@ -52,33 +52,110 @@ def parse_ts_to_seconds(ts_str: str) -> float:
     except Exception:
         return 0.0
 
-# Estilização CSS Moderna para a Interface com redução global de 20%
+# Estilização CSS Moderna, Equilibrada (Escala 90%) e sem Cortes na Interface
 st.markdown("""
 <style>
-    /* 1. Redução Global da Interface em 20% (Zoom 80%) */
+    /* 1. Escala Global Ajustada para 90% via Container Principal para não interferir em Popovers/Comboboxes */
     .stApp {
-        zoom: 0.8;
-        -moz-transform: scale(0.8);
+        zoom: 0.90;
+        -moz-transform: scale(0.90);
         -moz-transform-origin: 0 0;
+        height: auto !important;
+        min-height: 100vh !important;
     }
 
-    /* 2. Otimização do espaçamento superior/inferior para melhor aproveitamento de tela */
+    [data-testid="stAppViewContainer"], [data-testid="stMain"], section.main {
+        height: auto !important;
+        min-height: 100vh !important;
+        overflow-y: visible !important;
+    }
+
+    /* 2. Expansão do Container Principal e Amplo Espaço Inferior (Sem Cortes) */
     .main .block-container {
-        padding-top: 1.5rem !important;
-        padding-bottom: 1.5rem !important;
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
-        max-width: 96% !important;
+        padding-top: 0.8rem !important;
+        padding-bottom: 12.0rem !important;
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+        max-width: 98% !important;
+        width: 100% !important;
+    }
+
+    /* 3. Expansão e Fundo Contínuo da Barra Lateral (Cobrindo 100% dos Sliders e Conteúdo) */
+    [data-testid="stSidebar"],
+    [data-testid="stSidebar"] > div,
+    [data-testid="stSidebarContent"],
+    [data-testid="stSidebarUserContent"],
+    [data-testid="stSidebar"] .block-container {
+        background-color: #0F172A !important;
+        min-height: 100% !important;
+        height: auto !important;
+    }
+
+    [data-testid="stSidebar"] {
+        min-width: 360px !important;
+        width: 360px !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        scrollbar-width: thin !important;
+        scrollbar-color: #475569 #0F172A !important;
+    }
+
+    [data-testid="stSidebarUserContent"], [data-testid="stSidebar"] .block-container {
+        padding-top: 1.0rem !important;
+        padding-bottom: 7.0rem !important;
+        padding-left: 1.2rem !important;
+        padding-right: 1.2rem !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    [data-testid="stSidebar"] hr {
+        margin: 0.5rem 0 !important;
+    }
+
+    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.3rem !important;
+        font-size: 1.15rem !important;
+    }
+
+    [data-testid="stSidebar"] .stRadio {
+        margin-bottom: 0.2rem !important;
+    }
+
+    [data-testid="stSidebar"] .stSelectbox {
+        margin-bottom: 0.3rem !important;
+    }
+
+    [data-testid="stSidebar"] .stSlider {
+        margin-top: 0.1rem !important;
+        margin-bottom: 0.2rem !important;
+    }
+
+    [data-testid="stSidebar"] .stAlert {
+        padding: 0.5rem 0.75rem !important;
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.5rem !important;
+        font-size: 0.90rem !important;
+    }
+
+    /* 4. Estabilidade e Visibilidade dos Menus Suspensos / Comboboxes */
+    div[data-baseweb="popover"],
+    div[data-baseweb="menu"],
+    ul[role="listbox"],
+    li[role="option"] {
+        z-index: 9999999 !important;
+        pointer-events: auto !important;
     }
 
     .main-title {
-        font-size: 2.2rem;
+        font-size: 2.3rem;
         font-weight: 800;
         color: #E2E8F0;
         margin-bottom: 0.2rem;
     }
     .sub-title {
-        font-size: 1.0rem;
+        font-size: 1.05rem;
         color: #94A3B8;
         margin-bottom: 1.2rem;
     }
@@ -140,6 +217,29 @@ st.markdown("""
         border: 1px solid #334155;
         padding: 0.85rem;
         margin-top: 0.8rem;
+    }
+
+    /* Estilização moderna da barra de rolagem da Lista de Golpes & Eventos */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 0.75rem;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"] > div {
+        scrollbar-width: thin !important;
+        scrollbar-color: #475569 #1E293B !important;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"] > div::-webkit-scrollbar {
+        width: 6px !important;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"] > div::-webkit-scrollbar-track {
+        background: #1E293B !important;
+        border-radius: 4px !important;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"] > div::-webkit-scrollbar-thumb {
+        background: #475569 !important;
+        border-radius: 4px !important;
+    }
+    div[data-testid="stVerticalBlockBorderWrapper"] > div::-webkit-scrollbar-thumb:hover {
+        background: #64748B !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -219,8 +319,8 @@ if nav_page == "settings":
 
     st.markdown("---")
 
-    # --- SEÇÃO 3: GOVERNANÇA DE TREINAMENTO & APRENDIZADO POR DAN ---
-    st.subheader("🎓 3. Governança de Treinamento & Painel de Revisão por Dan")
+    # --- SEÇÃO 2: GOVERNANÇA DE TREINAMENTO & APRENDIZADO POR DAN ---
+    st.subheader("🎓 2. Governança de Treinamento & Painel de Revisão por Dan")
     st.markdown("Acompanhe as métricas globais de retreinamento do modelo, distribuição por graduação Dan e gerenciamento de arquivos de revisão.")
 
     training_metrics = feedback_mgr.get_training_metrics()
@@ -281,31 +381,8 @@ if nav_page == "settings":
 
     st.markdown("---")
 
-    # --- SEÇÃO 4: APRENDIZADO CONTÍNUO DO SONKYŌ & CALIBRAÇÃO DE LIMITES ---
-    st.subheader("🥋 4. Aprendizado Contínuo de Sonkyō & Calibração de Limites")
-    st.markdown("Acompanhe os parâmetros biométricos adaptados e calibrados a partir das edições de Sonkyō realizadas pelos árbitros.")
-
-    sonkyo_detector_stats = SonkyoDetector()
-    s_stats = sonkyo_detector_stats.get_learned_stats()
-
-    s_col1, s_col2, s_col3, s_col4 = st.columns(4)
-    s_col1.metric("Rituais de Sonkyō Aprendidos", f"{s_stats['samples_count']} amostras")
-    s_col2.metric("Compressão de Altura Adaptada", f"{s_stats['learned_rel_height_threshold']:.2f}")
-    s_col3.metric("Rebaixamento de Quadril (ΔY)", f"{s_stats['learned_hip_drop_threshold']:.2f}")
-    s_col4.metric("Ângulo Máx. Joelho Calibrado", f"{s_stats['learned_knee_angle_threshold']:.1f}°")
-
-    st.caption(f"ℹ️ **Última Atualização do Modelo de Sonkyō:** `{s_stats['last_updated_at']}` | Exemplares em memória: `{s_stats['exemplars_count']}`")
-
-    if s_stats['samples_count'] > 0:
-        if st.button("🔄 Resetar Perfil Aprendido de Sonkyō para os Padrões de Fábrica", key="btn_reset_learned_sonkyo"):
-            sonkyo_detector_stats.reset_learned_profile()
-            st.success("✅ Perfil de aprendizado de Sonkyō resetado para os padrões de fábrica!")
-            st.rerun()
-
-    st.markdown("---")
-
-    # --- SEÇÃO 5: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA ---
-    st.subheader("🐛 5. Diagnóstico, Alertas & Log de Debug do Sistema")
+    # --- SEÇÃO 3: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA ---
+    st.subheader("🐛 3. Diagnóstico, Alertas & Log de Debug do Sistema")
     st.markdown("Rastreie alertas e erros do sistema em tempo real, execute testes de integridade e baixe o arquivo de log completo.")
 
     log_summary = get_log_summary()
@@ -406,7 +483,7 @@ if nav_page == "settings":
 # ==============================================================================
 else:
     # --- SIDEBAR DA ANÁLISE: SELEÇÃO DOS 3 MODOS DE OPERAÇÃO ---
-    st.sidebar.header("🕹️ Modo de Operação")
+    st.sidebar.markdown("### 🕹️ Modo de Operação")
     app_mode = st.sidebar.radio(
         "Selecione o Modo de Operação",
         options=["realtime", "recorded", "training"],
@@ -418,7 +495,7 @@ else:
     )
 
     st.sidebar.markdown("---")
-    st.sidebar.header("⚡ Aceleração de Hardware")
+    st.sidebar.markdown("### ⚡ Aceleração de Hardware")
     saved_hw_device = get_processing_device()
     dev_pref_current = st.session_state.get("device_preference", saved_hw_device)
     effective_dev, dev_msg, dev_gpu = get_effective_device(dev_pref_current)
@@ -426,10 +503,10 @@ else:
     if effective_dev == "gpu":
         st.sidebar.markdown(
             f"""
-            <div style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;">
-                <div style="font-weight: 700; color: #4ade80; font-size: 0.92rem; margin-bottom: 4px;">🚀 Aceleração Ativada</div>
-                <div style="font-size: 0.82rem; color: #e2e8f0; font-weight: 600;">{dev_gpu.get('gpu_name', 'NVIDIA GPU')}</div>
-                <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 2px;">⚡ YOLOv8-Pose (PyTorch CUDA)</div>
+            <div style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 6px; padding: 6px 10px; margin-bottom: 4px;">
+                <div style="font-weight: 700; color: #4ade80; font-size: 0.86rem;">🚀 Aceleração Ativada</div>
+                <div style="font-size: 0.78rem; color: #e2e8f0; font-weight: 600;">{dev_gpu.get('gpu_name', 'NVIDIA GPU')}</div>
+                <div style="font-size: 0.72rem; color: #94a3b8;">⚡ YOLOv8-Pose (CUDA)</div>
             </div>
             """,
             unsafe_allow_html=True
@@ -437,21 +514,22 @@ else:
     else:
         st.sidebar.markdown(
             """
-            <div style="background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;">
-                <div style="font-weight: 700; color: #cbd5e1; font-size: 0.92rem; margin-bottom: 4px;">💻 Aceleração Desativada</div>
-                <div style="font-size: 0.82rem; color: #94a3b8;">Processamento por CPU</div>
-                <div style="font-size: 0.74rem; color: #64748b; margin-top: 2px;">MediaPipe Pose (TFLite CPU)</div>
+            <div style="background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; padding: 6px 10px; margin-bottom: 4px;">
+                <div style="font-weight: 700; color: #cbd5e1; font-size: 0.86rem;">💻 Aceleração Desativada</div>
+                <div style="font-size: 0.78rem; color: #94a3b8;">Processamento por CPU (MediaPipe)</div>
             </div>
             """,
             unsafe_allow_html=True
         )
-    st.sidebar.caption("⚙️ *Para alterar o acelerador, acesse Configurações Globais no Modo de Treinamento.*")
+    st.sidebar.caption("⚙️ *Para alterar acelerador, acesse Menu de Configurações.*")
 
     st.sidebar.markdown("---")
-    st.sidebar.header("🎛️ Calibração de Sensibilidade")
+    st.sidebar.markdown("### 🎛️ Calibração de Sensibilidade")
     profile_choice = st.sidebar.selectbox(
         "Perfil de Arbitragem Predefinido",
         options=["permissivo", "normal", "rigido", "custom"],
+        index=1,
+        key="sidebar_profile_selector",
         format_func=lambda x: {
             "permissivo": "Iniciantes / Educacional (Permissivo)",
             "normal": "Treino Geral / Keiko (Normal)",
@@ -466,21 +544,64 @@ else:
     current_p = profiles_data.get(profile_choice, profiles_data["normal"])
 
     if profile_choice == "custom":
-        st.sidebar.subheader("Ajuste Fino de Limiares")
-        min_score_pct = st.sidebar.slider("Pontuação Mínima Global para Ponto Válido (%)", 30, 95, 65)
+        st.sidebar.markdown("#### ⚙️ Ajuste Fino de Limiares")
+        min_score_pct = st.sidebar.slider("Pontuação Mínima Global para Ponto Válido (%)", 30, 95, 65, key="custom_min_score")
         st.sidebar.markdown("**Pesos dos Critérios de Ki-Ken-Tai-Ichi:**")
-        w_target = st.sidebar.slider("Peso do Impacto no Alvo", 0.0, 1.0, 0.40)
-        w_fumikomi = st.sidebar.slider("Peso do Fumikomi (Sincronia Mão-Pé)", 0.0, 1.0, 0.25)
-        w_posture = st.sidebar.slider("Peso da Postura Corporal", 0.0, 1.0, 0.20)
-        w_zanshin = st.sidebar.slider("Peso do Zanshin", 0.0, 1.0, 0.15)
+        w_target = st.sidebar.slider("Peso do Impacto no Alvo", 0.0, 1.0, 0.40, key="custom_w_target")
+        w_fumikomi = st.sidebar.slider("Peso do Fumikomi (Sincronia Mão-Pé)", 0.0, 1.0, 0.25, key="custom_w_fumikomi")
+        w_posture = st.sidebar.slider("Peso da Postura Corporal", 0.0, 1.0, 0.20, key="custom_w_posture")
+        w_zanshin = st.sidebar.slider("Peso do Zanshin", 0.0, 1.0, 0.15, key="custom_w_zanshin")
     else:
         st.sidebar.info(f"**Descrição do Perfil:**\n{current_p.get('description', '')}")
-        min_score_pct = int(current_p.get("min_total_score", 0.65) * 100)
+        min_score_pct = int(round(current_p.get("min_total_score", 0.65) * 100))
         weights = current_p.get("weights", {})
-        w_target = weights.get("target_impact", 0.40)
-        w_fumikomi = weights.get("fumikomi_sync", 0.25)
-        w_posture = weights.get("posture", 0.20)
-        w_zanshin = weights.get("zanshin", 0.15)
+        w_target = float(weights.get("target_impact", 0.40))
+        w_fumikomi = float(weights.get("fumikomi_sync", 0.25))
+        w_posture = float(weights.get("posture", 0.20))
+        w_zanshin = float(weights.get("zanshin", 0.15))
+
+        st.sidebar.markdown("#### 🔒 Limiares do Perfil (Fixos)")
+        st.sidebar.slider(
+            "Pontuação Mínima Global para Ponto Válido (%)",
+            min_value=30,
+            max_value=95,
+            value=min_score_pct,
+            disabled=True,
+            key=f"disabled_min_score_{profile_choice}"
+        )
+        st.sidebar.markdown("**Pesos dos Critérios de Ki-Ken-Tai-Ichi:**")
+        st.sidebar.slider(
+            "Peso do Impacto no Alvo",
+            min_value=0.0,
+            max_value=1.0,
+            value=w_target,
+            disabled=True,
+            key=f"disabled_w_target_{profile_choice}"
+        )
+        st.sidebar.slider(
+            "Peso do Fumikomi (Sincronia Mão-Pé)",
+            min_value=0.0,
+            max_value=1.0,
+            value=w_fumikomi,
+            disabled=True,
+            key=f"disabled_w_fumikomi_{profile_choice}"
+        )
+        st.sidebar.slider(
+            "Peso da Postura Corporal",
+            min_value=0.0,
+            max_value=1.0,
+            value=w_posture,
+            disabled=True,
+            key=f"disabled_w_posture_{profile_choice}"
+        )
+        st.sidebar.slider(
+            "Peso do Zanshin",
+            min_value=0.0,
+            max_value=1.0,
+            value=w_zanshin,
+            disabled=True,
+            key=f"disabled_w_zanshin_{profile_choice}"
+        )
 
     # BANNER DO MODO ATIVO
     if app_mode == "recorded":
@@ -581,7 +702,7 @@ else:
             with col_in1:
                 st.subheader("📹 Fazer Upload de Vídeo")
                 st.markdown("Selecione o arquivo de vídeo da luta de Kendo a ser analisado:")
-                uploaded_file = st.file_uploader("Vídeo da Luta (.mp4, .avi, .mov)", type=["mp4", "avi", "mov"])
+                uploaded_file = st.file_uploader("Vídeo da Luta (.mp4, .avi, .mov)", type=["mp4", "avi", "mov"], help="Suporta arquivos de vídeo de qualquer tamanho (HD/4K, sem limite de 200MB).")
                 if uploaded_file is not None:
                     cached_file_name = st.session_state.get("uploaded_file_name")
                     cached_file_size = st.session_state.get("uploaded_file_size")
@@ -616,7 +737,11 @@ else:
 
                         uploaded_file.seek(0)
                         with open(target_file_path, "wb") as f_out:
-                            f_out.write(uploaded_file.read())
+                            while True:
+                                chunk = uploaded_file.read(8 * 1024 * 1024)
+                                if not chunk:
+                                    break
+                                f_out.write(chunk)
 
                         video_file_path = target_file_path
                         st.session_state["video_file_path"] = video_file_path
@@ -808,7 +933,7 @@ else:
                         with col_sk1:
                             st.markdown(
                                 f'<div style="background: rgba(59, 130, 246, 0.15); border: 1px solid #3B82F6; border-radius: 6px; padding: 6px 10px; font-size: 0.82rem; color: #93C5FD; margin-bottom: 6px;">'
-                                f'🎯 <b>Posicionado em {seek_time_val:.1f}s</b> (1s antes do evento)<br>'
+                                f'🎯 <b>Posicionado no Vídeo ({seek_time_val:.1f}s)</b><br>'
                                 f'<span style="color: #E2E8F0; font-size: 0.78rem;">{seek_lbl}</span>'
                                 f'</div>',
                                 unsafe_allow_html=True
@@ -1068,7 +1193,7 @@ else:
                                 st.rerun()
 
                     # Seletor Rápido de Navegação por Eventos
-                    jump_options = ["-- 🎯 Selecionar evento para saltar no vídeo (-1s antes) --"]
+                    jump_options = ["-- 🎯 Selecionar evento para assistir no vídeo --"]
                     jump_map = {}
 
                     has_init_jump = sonkyo_info.get("has_initial_sonkyo", False) and sonkyo_info.get("initial_sonkyo")
@@ -1100,11 +1225,11 @@ else:
 
                     if len(jump_options) > 1:
                         selected_jump = st.selectbox(
-                            "🎯 Navegação Rápida de Eventos no Vídeo (1s antes):",
+                            "🎯 Navegação Rápida de Eventos no Vídeo:",
                             options=jump_options,
                             index=0,
                             key="event_quick_jump_select",
-                            help="Selecione um evento para saltar o vídeo automaticamente para 1 segundo antes do ocorrido para facilitar a revisão."
+                            help="Selecione um evento para posicionar a reprodução do vídeo e facilitar a revisão."
                         )
                         if selected_jump in jump_map:
                             target_sec, target_lbl = jump_map[selected_jump]
@@ -1142,10 +1267,10 @@ else:
                                     with c_info1:
                                         st.markdown(f"**Intervalo Ritual:** `{curr_start_ts}` a `{curr_end_ts}` &nbsp;|&nbsp; **Início da Luta:** `{curr_end_ts}` (`Frame #{sonkyo_info.get('match_start_frame', 0)}`)")
                                         seek_init_s = max(0.0, parse_ts_to_seconds(curr_start_ts) - 1.0)
-                                        if st.button("🎬 Assistir no Vídeo (1s antes)", key="btn_seek_sonkyo_init", help="Reproduzir o vídeo 1 segundo antes do início do Sonkyō Inicial"):
+                                        if st.button("🎬 Assistir no Vídeo", key="btn_seek_sonkyo_init", help="Reproduzir o vídeo no momento do Sonkyō Inicial"):
                                             st.session_state["video_start_time"] = seek_init_s
                                             st.session_state["video_seek_label"] = f"Sonkyō Inicial ({curr_start_ts})"
-                                            st.toast(f"🎥 Vídeo posicionado em {seek_init_s:.1f}s (1s antes)", icon="🎬")
+                                            st.toast(f"🎥 Vídeo posicionado em {seek_init_s:.1f}s", icon="🎬")
                                             st.rerun()
                                     with c_info2:
                                         if initial_edit:
@@ -1219,10 +1344,10 @@ else:
                                         c_a, c_b = st.columns([1, 1.5])
                                         with c_a:
                                             seek_strike_s = max(0.0, parse_ts_to_seconds(current_rev['timestamp']) - 1.0)
-                                            if st.button(f"🎬 Assistir Golpe no Vídeo (1s antes: {seek_strike_s:.1f}s)", key=f"btn_seek_strike_{idx}", width="stretch", help=f"Salta a reprodução para 1 segundo antes do impacto deste golpe ({seek_strike_s:.1f}s)"):
+                                            if st.button("🎬 Assistir no Vídeo", key=f"btn_seek_strike_{idx}", width="stretch", help=f"Reproduzir o vídeo no momento deste golpe ({seek_strike_s:.1f}s)"):
                                                 st.session_state["video_start_time"] = seek_strike_s
                                                 st.session_state["video_seek_label"] = f"Golpe #{idx+1} {current_rev['strike_type']} @ {current_rev['timestamp']}"
-                                                st.toast(f"🎥 Vídeo posicionado em {seek_strike_s:.1f}s (1s antes do impacto)!", icon="🎬")
+                                                st.toast(f"🎥 Vídeo posicionado em {seek_strike_s:.1f}s!", icon="🎬")
                                                 st.rerun()
 
                                             st.markdown(f"**Técnica:** `{current_rev['strike_type']}`")
@@ -1323,10 +1448,10 @@ else:
                                     with c_finfo1:
                                         st.markdown(f"**Intervalo Ritual:** `{curr_start_ts_fin}` a `{curr_end_ts_fin}` &nbsp;|&nbsp; **Término da Luta:** `{curr_start_ts_fin}` (`Frame #{sonkyo_info.get('match_end_frame', 0)}`)")
                                         seek_fin_s = max(0.0, parse_ts_to_seconds(curr_start_ts_fin) - 1.0)
-                                        if st.button("🎬 Assistir no Vídeo (1s antes)", key="btn_seek_sonkyo_fin", help="Reproduzir o vídeo 1 segundo antes do início do Sonkyō Final"):
+                                        if st.button("🎬 Assistir no Vídeo", key="btn_seek_sonkyo_fin", help="Reproduzir o vídeo no momento do Sonkyō Final"):
                                             st.session_state["video_start_time"] = seek_fin_s
                                             st.session_state["video_seek_label"] = f"Sonkyō Final ({curr_start_ts_fin})"
-                                            st.toast(f"🎥 Vídeo posicionado em {seek_fin_s:.1f}s (1s antes)", icon="🎬")
+                                            st.toast(f"🎥 Vídeo posicionado em {seek_fin_s:.1f}s", icon="🎬")
                                             st.rerun()
                                     with c_finfo2:
                                         if final_edit:
