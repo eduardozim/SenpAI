@@ -189,6 +189,17 @@ O projeto inclui testes automatizados em `unittest` para validar o pipeline cine
   - Tabela de treinamentos por Dan convertida para Markdown nativo, eliminando erros de pré-carregamento de módulos JS/CSS do navegador (Vite preload helper).
 - **Testes Automatizados**: Suíte de testes em [test_logger_manager.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_logger_manager.py) e testes de importação expandidos em [test_dan_training_governance.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_dan_training_governance.py) (19 testes automatizados com 100% de aprovação).
 
+### `[v1.4.12]` — 2026-08-17
+
+- **Otimização de Espaço e Remoção de Texto de Diagnóstico do Sonkyō**:
+  - **Layout Compacto de Sonkyō ([app.py](file:///d:/Projetos/Shinpanai/Dev/app.py))**:
+    - Removidos os blocos de texto verbosos e diagnósticos descritivos laterais de Sonkyō Inicial e Final.
+    - Estruturação compacta e colapsável dos cards de Sonkyō (`expanded=False` por padrão, exceto durante edição ativa).
+    - Exibição direta das informações operacionais essenciais (intervalo ritualístico, início/término oficial do combate e badge de status), economizando espaço vertical para os eventos de combate e golpes de Yuko-Datotsu.
+- **Testes Automatizados**: Suíte de 44 testes executada com 100% de sucesso.
+
+---
+
 ### `[v1.4.11]` — 2026-08-17
 
 - **Placar Oficial de Arbitragem, Detecção de Flag Dorsal e Inversão Aka/Shiro**:

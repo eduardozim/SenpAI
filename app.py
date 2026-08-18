@@ -1007,58 +1007,39 @@ else:
                                 elif is_init_detected:
                                     title_status = "🥋 INÍCIO OFICIAL"
                                 else:
-                                    title_status = "📌 INÍCIO DO VÍDEO (PADRÃO)"
+                                    title_status = "📌 INÍCIO DO VÍDEO"
 
-                                with st.expander(f"🥋 Evento: Sonkyō Inicial (Abertura do Combate) @ {curr_start_ts} - {curr_end_ts} - {title_status}", expanded=True):
-                                    c_s1, c_s2 = st.columns([1, 1.5])
-                                    with c_s1:
-                                        st.markdown("**Tipo de Evento:** `🥋 Sonkyō (Abertura / Início)`")
-                                        st.markdown(f"**Intervalo Ritual:** `{curr_start_ts}` até `{curr_end_ts}`")
-                                        if not initial_edit:
-                                            st.markdown(f"**Quadros no Vídeo:** `Frame #{init_s.get('start_frame', 0)}` ao `Frame #{init_s.get('end_frame', 0)}`")
-                                            st.markdown(f"**Duração:** `{init_s.get('duration_seconds', 0.0)}s`")
-                                            st.markdown(f"**Início Oficial do Combate:** `Frame #{sonkyo_info.get('match_start_frame', 0)}` (`{sonkyo_info.get('match_start_timestamp', '00:00.000')}`)")
-                                            if is_init_detected:
-                                                st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1;">🥋 SONKYŌ DETECTADO</div>', unsafe_allow_html=True)
-                                            else:
-                                                st.markdown('<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF;">📌 SONKYŌ INICIAL (Início do Vídeo / Ajustável)</div>', unsafe_allow_html=True)
+                                with st.expander(f"🥋 Sonkyō Inicial (Abertura) @ {curr_start_ts} – {curr_end_ts} • {title_status}", expanded=bool(initial_edit)):
+                                    c_info1, c_info2 = st.columns([3, 1])
+                                    with c_info1:
+                                        st.markdown(f"**Intervalo Ritual:** `{curr_start_ts}` a `{curr_end_ts}` &nbsp;|&nbsp; **Início da Luta:** `{curr_end_ts}` (`Frame #{sonkyo_info.get('match_start_frame', 0)}`)")
+                                    with c_info2:
+                                        if initial_edit:
+                                            st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6; margin:0;">✏️ EDITADO</div>', unsafe_allow_html=True)
+                                        elif is_init_detected:
+                                            st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1; margin:0;">🥋 DETECTADO</div>', unsafe_allow_html=True)
                                         else:
-                                            st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6;">✏️ SONKYŌ INICIAL EDITADO (Pendente de Reprocessamento)</div>', unsafe_allow_html=True)
+                                            st.markdown('<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF; margin:0;">📌 PADRÃO</div>', unsafe_allow_html=True)
 
-                                        if enable_editing:
-                                            st.markdown("---")
-                                            st.markdown(f"**✏️ Editar Intervalo do Sonkyō Inicial ({dan_options.get(selected_dan, 'Dan')}):**")
-                                            ed_col1, ed_col2 = st.columns(2)
-                                            new_init_start = ed_col1.text_input("Início do Ritual", value=curr_start_ts, key="edit_init_start_input")
-                                            new_init_end = ed_col2.text_input("Fim do Ritual (Início da Luta)", value=curr_end_ts, key="edit_init_end_input")
-                                            
-                                            btn_save_init_col1, btn_save_init_col2 = st.columns([1.5, 1])
-                                            if btn_save_init_col1.button("💾 Aplicar Edição do Sonkyō Inicial", key="btn_apply_sonkyo_init_edit"):
-                                                if "sonkyo_edits" not in st.session_state:
-                                                    st.session_state["sonkyo_edits"] = {}
-                                                st.session_state["sonkyo_edits"]["initial"] = {
-                                                    "start_timestamp": new_init_start,
-                                                    "end_timestamp": new_init_end
-                                                }
-                                                st.toast("✏️ Tempo do Sonkyō Inicial salvo! Clique no botão de Reprocessar no topo.", icon="✏️")
-                                                st.rerun()
-                                            
-                                            if initial_edit and btn_save_init_col2.button("🔄 Restaurar", key="btn_restore_sonkyo_init"):
-                                                st.session_state["sonkyo_edits"].pop("initial", None)
-                                                st.toast("Sonkyō Inicial restaurado.", icon="🔄")
-                                                st.rerun()
-
-                                    with c_s2:
-                                        st.markdown("##### 🥋 Diagnóstico do Sonkyō Inicial")
-                                        if is_init_detected:
-                                            posture_text = "- **Postura Biomecânica:** Agachamento ritualístico sobre a ponta dos pés com flexão de joelhos e coluna ereta identificados com sucesso.\n"
-                                        else:
-                                            posture_text = "- **Postura Biomecânica:** Ritual não identificado nos primeiros segundos; posicionado por padrão no início do vídeo para delimitação da arbitragem.\n"
-                                        st.markdown(
-                                            posture_text +
-                                            f"- **Delimitação Regulamentar:** A contagem e avaliação oficial de golpes é liberada a partir de **{curr_end_ts}**.\n"
-                                            f"- **Status do Reconhecimento:** {sonkyo_info.get('status_message', 'Sonkyō inicial validado com sucesso.')}"
-                                        )
+                                    if enable_editing:
+                                        st.markdown("---")
+                                        st.markdown(f"**✏️ Editar Intervalo ({dan_options.get(selected_dan, 'Dan')}):**")
+                                        ed_col1, ed_col2, ed_btn1, ed_btn2 = st.columns([1.2, 1.2, 1.2, 0.8])
+                                        new_init_start = ed_col1.text_input("Início", value=curr_start_ts, key="edit_init_start_input", label_visibility="collapsed")
+                                        new_init_end = ed_col2.text_input("Fim", value=curr_end_ts, key="edit_init_end_input", label_visibility="collapsed")
+                                        if ed_btn1.button("💾 Salvar", key="btn_apply_sonkyo_init_edit", width="stretch"):
+                                            if "sonkyo_edits" not in st.session_state:
+                                                st.session_state["sonkyo_edits"] = {}
+                                            st.session_state["sonkyo_edits"]["initial"] = {
+                                                "start_timestamp": new_init_start,
+                                                "end_timestamp": new_init_end
+                                            }
+                                            st.toast("✏️ Tempo do Sonkyō Inicial salvo!", icon="✏️")
+                                            st.rerun()
+                                        if initial_edit and ed_btn2.button("🔄", key="btn_restore_sonkyo_init", help="Restaurar", width="stretch"):
+                                            st.session_state["sonkyo_edits"].pop("initial", None)
+                                            st.toast("Sonkyō Inicial restaurado.", icon="🔄")
+                                            st.rerun()
 
                             # 2. GOLPES DETECTADOS NA JANELA REGULAMENTAR DE COMBATE
                             if not has_strikes:
@@ -1195,58 +1176,39 @@ else:
                                 elif is_fin_detected:
                                     title_status_fin = "🥋 ENCERRAMENTO OFICIAL"
                                 else:
-                                    title_status_fin = "📌 FIM DO VÍDEO (PADRÃO)"
+                                    title_status_fin = "📌 FIM DO VÍDEO"
 
-                                with st.expander(f"🥋 Evento: Sonkyō Final (Encerramento do Combate) @ {curr_start_ts_fin} - {curr_end_ts_fin} - {title_status_fin}", expanded=True):
-                                    c_sf1, c_sf2 = st.columns([1, 1.5])
-                                    with c_sf1:
-                                        st.markdown("**Tipo de Evento:** `🥋 Sonkyō (Encerramento / Fim)`")
-                                        st.markdown(f"**Intervalo Ritual:** `{curr_start_ts_fin}` até `{curr_end_ts_fin}`")
-                                        if not final_edit:
-                                            st.markdown(f"**Quadros no Vídeo:** `Frame #{fin_s.get('start_frame', 0)}` ao `Frame #{fin_s.get('end_frame', 0)}`")
-                                            st.markdown(f"**Duração:** `{fin_s.get('duration_seconds', 0.0)}s`")
-                                            st.markdown(f"**Término Oficial do Combate:** `Frame #{sonkyo_info.get('match_end_frame', 0)}` (`{sonkyo_info.get('match_end_timestamp', '00:00.000')}`)")
-                                            if is_fin_detected:
-                                                st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1;">🥋 SONKYŌ DETECTADO</div>', unsafe_allow_html=True)
-                                            else:
-                                                st.markdown('<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF;">📌 SONKYŌ FINAL (Fim do Vídeo / Ajustável)</div>', unsafe_allow_html=True)
+                                with st.expander(f"🥋 Sonkyō Final (Encerramento) @ {curr_start_ts_fin} – {curr_end_ts_fin} • {title_status_fin}", expanded=bool(final_edit)):
+                                    c_finfo1, c_finfo2 = st.columns([3, 1])
+                                    with c_finfo1:
+                                        st.markdown(f"**Intervalo Ritual:** `{curr_start_ts_fin}` a `{curr_end_ts_fin}` &nbsp;|&nbsp; **Término da Luta:** `{curr_start_ts_fin}` (`Frame #{sonkyo_info.get('match_end_frame', 0)}`)")
+                                    with c_finfo2:
+                                        if final_edit:
+                                            st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6; margin:0;">✏️ EDITADO</div>', unsafe_allow_html=True)
+                                        elif is_fin_detected:
+                                            st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1; margin:0;">🥋 DETECTADO</div>', unsafe_allow_html=True)
                                         else:
-                                            st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6;">✏️ SONKYŌ FINAL EDITADO (Pendente de Reprocessamento)</div>', unsafe_allow_html=True)
+                                            st.markdown('<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF; margin:0;">📌 PADRÃO</div>', unsafe_allow_html=True)
 
-                                        if enable_editing:
-                                            st.markdown("---")
-                                            st.markdown(f"**✏️ Editar Intervalo do Sonkyō Final ({dan_options.get(selected_dan, 'Dan')}):**")
-                                            ed_fcol1, ed_fcol2 = st.columns(2)
-                                            new_fin_start = ed_fcol1.text_input("Início do Sonkyō Final (Fim da Luta)", value=curr_start_ts_fin, key="edit_fin_start_input")
-                                            new_fin_end = ed_fcol2.text_input("Término do Ritual", value=curr_end_ts_fin, key="edit_fin_end_input")
-                                            
-                                            btn_save_fin_col1, btn_save_fin_col2 = st.columns([1.5, 1])
-                                            if btn_save_fin_col1.button("💾 Aplicar Edição do Sonkyō Final", key="btn_apply_sonkyo_fin_edit"):
-                                                if "sonkyo_edits" not in st.session_state:
-                                                    st.session_state["sonkyo_edits"] = {}
-                                                st.session_state["sonkyo_edits"]["final"] = {
-                                                    "start_timestamp": new_fin_start,
-                                                    "end_timestamp": new_fin_end
-                                                }
-                                                st.toast("✏️ Tempo do Sonkyō Final salvo! Clique no botão de Reprocessar no topo.", icon="✏️")
-                                                st.rerun()
-                                            
-                                            if final_edit and btn_save_fin_col2.button("🔄 Restaurar", key="btn_restore_sonkyo_fin"):
-                                                st.session_state["sonkyo_edits"].pop("final", None)
-                                                st.toast("Sonkyō Final restaurado.", icon="🔄")
-                                                st.rerun()
-
-                                    with c_sf2:
-                                        st.markdown("##### 🥋 Diagnóstico do Sonkyō Final")
-                                        if is_fin_detected:
-                                            posture_text_fin = "- **Postura Biomecânica:** Agachamento de saudação e respeito mútuo pós-combate (*Reigi*) detectado com sucesso.\n"
-                                        else:
-                                            posture_text_fin = "- **Postura Biomecânica:** Ritual não identificado nos últimos segundos; posicionado por padrão no término do vídeo para encerramento da arbitragem.\n"
-                                        st.markdown(
-                                            posture_text_fin +
-                                            f"- **Fechamento do Combate:** A janela regulamentar de pontuação encerra no início deste ritual (**{curr_start_ts_fin}**).\n"
-                                            f"- **Tempo Efetivo de Luta:** `{sonkyo_info.get('effective_combat_duration_seconds', res['duration_seconds'])}s` (excluindo pausas e rituais)."
-                                        )
+                                    if enable_editing:
+                                        st.markdown("---")
+                                        st.markdown(f"**✏️ Editar Intervalo ({dan_options.get(selected_dan, 'Dan')}):**")
+                                        ed_fcol1, ed_fcol2, ed_fbtn1, ed_fbtn2 = st.columns([1.2, 1.2, 1.2, 0.8])
+                                        new_fin_start = ed_fcol1.text_input("Início", value=curr_start_ts_fin, key="edit_fin_start_input", label_visibility="collapsed")
+                                        new_fin_end = ed_fcol2.text_input("Fim", value=curr_end_ts_fin, key="edit_fin_end_input", label_visibility="collapsed")
+                                        if ed_fbtn1.button("💾 Salvar", key="btn_apply_sonkyo_fin_edit", width="stretch"):
+                                            if "sonkyo_edits" not in st.session_state:
+                                                st.session_state["sonkyo_edits"] = {}
+                                            st.session_state["sonkyo_edits"]["final"] = {
+                                                "start_timestamp": new_fin_start,
+                                                "end_timestamp": new_fin_end
+                                            }
+                                            st.toast("✏️ Tempo do Sonkyō Final salvo!", icon="✏️")
+                                            st.rerun()
+                                        if final_edit and ed_fbtn2.button("🔄", key="btn_restore_sonkyo_fin", help="Restaurar", width="stretch"):
+                                            st.session_state["sonkyo_edits"].pop("final", None)
+                                            st.toast("Sonkyō Final restaurado.", icon="🔄")
+                                            st.rerun()
 
                         # Seção de Inclusão de Novo Golpe Perdido (FN / Adicional)
                         if enable_editing or app_mode == "training":
