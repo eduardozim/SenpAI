@@ -18,6 +18,7 @@ Requisitos de Sistema:
 
 Dependências principais:
 - opencv-python
+- ultralytics (YOLOv8-Pose com aceleração GPU CUDA FP16)
 - mediapipe
 - numpy / scipy
 - fastdtw
@@ -41,23 +42,19 @@ Para iniciar o dashboard web com reprodutor de vídeo, gráficos e sliders:
    (ou no Windows: .\.venv\Scripts\streamlit.exe run app.py)
 
 Recursos da Interface Web:
-- Menu de Configurações com seletor de Hardware (CPU vs GPU NVIDIA) e painel de Governança de Treinamento.
-- Painel de Diagnóstico, Alertas e Log de Debug do Sistema com monitoramento de eventos em tempo real (registra resets, uploads e retreinamentos).
-- Botão para baixar o arquivo completo de log de debug (`shinpanai_debug.log`) e teste de diagnóstico automatizado de integridade.
-- Edição de Golpes por Dan no Modo de Arbitragem Gravada (Shodan 1º Dan a Hachidan 8º Dan).
-- Badges visuais de status em tempo real: CONFIRMADO (verde) e EDITADO (azul) em cada card de golpe.
-- Botão de Reset Geral da Revisão para a sessão e botão de Reset Individual por golpe.
-- Permite confirmar marcações, editar parâmetros do golpe e incluir marcações adicionais (golpes perdidos).
-- Regra de Auditabilidade: Exclusão de marcações estritamente desabilitada para preservação de dados.
-- Botão de salvamento final com retreinamento adaptativo do modelo de detecção.
-- Painel de Governança nas Configurações: contador de treinamentos, nível médio (Dan) dos treinamentos e tabela por Dan.
-- Recursos de gestão nas Configurações: apagar treinamento (reset), baixar treinamento (JSON com Dan e data) e carregar pacotes baixados (suporte a múltiplos formatos JSON).
-- Upload de vídeos de lutas (.mp4, .avi, .mov).
-- Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de golpes com barra de rolagem à direita.
-- Alternador de exibição no player: Vídeo Anotado (Visão AI) vs Vídeo Original.
-- 3 modos de uso: Tempo real, Luta gravada e Treinamento & Aprendizado.
-- Seleção e personalização fina de perfis de arbitragem em tempo real.
-- Visualização de vídeos anotados com suporte a esqueleto 3D e zonas de impacto.
+- Interface otimizada e dimensionada (escala visual 80%) para visualização integrada e ergonômica.
+- Placar Oficial de Arbitragem Eletrônico (Sanbon-shobu) com contagem de Ippon para Aka (Vermelho) e Shiro (Branco) e declaração regulamentar de resultado.
+- Detecção da Flag Dorsal (Tasukuki) e botão de ação rápida de inversão de identidade (Aka ⇄ Shiro).
+- Navegação Interativa no Vídeo com Salto Temporal Calibrado: clique no evento (Sonkyō Inicial, Golpe ou Sonkyō Final) ou selecione no dropdown para posicionar o player 1 segundo antes (-1.0s) do início do evento para revisão detalhada.
+- Delimitação Temporal da Luta por Sonkyō: identificação automática da postura ritualística de Sonkyō de início e término do combate, com filtragem estrita de golpes na janela regulamentar.
+- Rastreamento dos 2 Kenshi Principais e Filtragem de Planos: descarte inteligente de elementos de fundo (outras lutas, arquibancadas) e oclusões de primeiro plano.
+- Menu de Configurações com seletor de Hardware (CPU vs GPU NVIDIA CUDA com Tensor Cores FP16) e painel de Governança de Treinamento.
+- Painel de Diagnóstico, Alertas e Log de Debug do Sistema com monitoramento de eventos em tempo real (`shinpanai_debug.log`).
+- Edição de Golpes por Dan no Modo de Arbitragem Gravada (Shodan 1º Dan a Hachidan 8º Dan) com badges CONFIRMADO e EDITADO.
+- Botão de Reset Geral e Individual de revisão, regra de auditabilidade (sem exclusão de dados) e retreinamento contínuo.
+- Gestão de Pacotes de Treinamento: exportação e importação de arquivos JSON com registro por Dan e data.
+- Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de eventos com barra de rolagem à direita.
+- Alternador de exibição no player: Vídeo Anotado (Visão AI com HUD superior) vs Vídeo Original.
 
 --- B. LINHA DE COMANDO (CLI) ---
 Para processar vídeos diretamente no terminal:
@@ -65,8 +62,8 @@ Para processar vídeos diretamente no terminal:
 - Executar análise com vídeo próprio (perfil normal padrão):
    python main.py --video "caminho/do/seu_video.mp4"
 
-- Executar teste rápido de demonstração com GPU NVIDIA (se disponível):
-   python main.py --demo --device gpu
+- Executar teste rápido com GPU NVIDIA (se disponível):
+   python main.py --video "caminho/do/seu_video.mp4" --device gpu
 
 - Especificar perfil de arbitragem:
    python main.py --video "video.mp4" --profile rigido
@@ -77,7 +74,7 @@ Para processar vídeos diretamente no terminal:
 - Otimizar perfil com base no dataset de feedback gravado:
    python main.py --profile normal --optimize-profile
 
-- Executar suíte completa de testes automatizados:
+- Executar suíte completa de testes automatizados (44 testes):
    .\.venv\Scripts\python.exe -m unittest discover tests
 
 -------------------------------------------------------------------------------
@@ -87,7 +84,7 @@ Para processar vídeos diretamente no terminal:
 Sintaxe: python main.py [OPÇÕES]
 
 Opções disponíveis:
-  --video CAMINHO         Caminho para o vídeo de entrada (.mp4, .avi).
+  --video CAMINHO         Caminho para o vídeo de entrada (.mp4, .avi, .mov).
   --output CAMINHO        Caminho para salvar o vídeo anotado.
                           (Padrão: output_annotated.mp4)
   --profile PERFIL        Perfil de arbitragem a aplicar:
@@ -96,25 +93,24 @@ Opções disponíveis:
                           - permissivo : Iniciantes / Educacional
   --device DISPOSITIVO    Dispositivo de processamento:
                           - cpu        : Somente CPU (Padrão)
-                          - gpu        : GPU NVIDIA (quando houver, com fallback para CPU)
+                          - gpu        : GPU NVIDIA CUDA (quando houver, com fallback para CPU)
   --mode MODO             Modo de operação:
                           - user       : Análise padrão (Padrão)
                           - learning   : Ativa recursos para registro de feedback
   --optimize-profile      Executa o motor de aprendizagem por reforço para
                           recalibrar o perfil selecionado com base nas
                           anotações gravadas em data/feedback_dataset.json.
-  --demo                  Gera um vídeo sintético de demonstração e executa a
-                          arbitragem sem necessidade de vídeo externo.
 
 -------------------------------------------------------------------------------
 4. MODOS DE OPERAÇÃO
 -------------------------------------------------------------------------------
 
 1. MODO DE ARBITRAGEM GRAVADA (recorded):
-   Projetado para análise de combates gravados. Permite habilitar o botão de edição
-   dos golpes detectados com seleção do DAN do revisor (Shodan a Hachidan).
-   Permite confirmar, editar ou incluir golpes perdidos (sem permissão de exclusão).
-   Ao final, salva e retreina o modelo de detecção.
+   Análise biomecânica completa de combates gravados. Inclui detecção e delimitação
+   temporal da luta por Sonkyō, pontuação ponderada de Yuko-Datotsu (Ki-Ken-Tai-Ichi),
+   placar eletrônico oficial (Aka vs Shiro), navegação interativa com salto calibrado
+   de 1 segundo antes do evento, edição de golpes por Dan (Shodan a Hachidan), corte
+   automático de clipes e relatórios diagnósticos de combate.
 
 2. MODO DE TREINAMENTO & APRENDIZADO (training):
    Projetado para instrutores e atletas. Permite rotular resultados (TP, FP, FN),
@@ -132,7 +128,7 @@ Opções disponíveis:
 - Campeonato / Audit de Dan (Rígido):
   Limiar mínimo: 82%. Exige execução perfeita de Ki-Ken-Tai-Ichi e Zanshin.
 - Iniciantes / Educacional (Permissivo):
-  Limiar mínimo: 45%. Foco na atração ao alvo correto, tolerando pequenas falhas
+  Limiar mínimo: 45%. Foco na precisão ao alvo, tolerando pequenas falhas
   de postura e sincronismo.
 - Personalizado (Custom):
   Disponível na interface Web para ajuste manual de pesos e limiares via sliders.
@@ -148,6 +144,3 @@ Opções disponíveis:
 
 Para documentação técnica completa, detalhamento dos algoritmos e histórico de
 mudanças, consulte o arquivo manual.md.
-
-
-
