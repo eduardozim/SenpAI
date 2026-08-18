@@ -140,8 +140,8 @@ class PoseDetector:
         annotated_frame = frame.copy()
 
         if self.use_gpu and self.yolo_model is not None:
-            # --- INFERÊNCIA ACELERADA NA GPU NVIDIA CUDA ---
-            results = self.yolo_model(frame, device="cuda:0", verbose=False, conf=0.25)
+            # --- INFERÊNCIA ACELERADA NA GPU NVIDIA CUDA (VRAM cuda:0) ---
+            results = self.yolo_model(frame, device="cuda:0", verbose=False, conf=0.25, imgsz=640)
             candidates = self._yolo_results_to_landmarks_list(results, w, h)
             
             if candidates:
@@ -186,7 +186,7 @@ class PoseDetector:
 
         if self.use_gpu and self.yolo_model is not None:
             # --- INFERÊNCIA PARALELA MULTI-PESSOA NA GPU NVIDIA (1 ÚNICO PASSO EM VRAM) ---
-            results = self.yolo_model(frame, device="cuda:0", verbose=False, conf=0.25)
+            results = self.yolo_model(frame, device="cuda:0", verbose=False, conf=0.25, imgsz=640)
             candidates = self._yolo_results_to_landmarks_list(results, w, h)
             return candidates, frame
 

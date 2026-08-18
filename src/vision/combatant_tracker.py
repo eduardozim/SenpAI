@@ -4,6 +4,7 @@ Identifica e rastreia os 2 Kenshi (Aka & Shiro) que realizaram o Sonkyō inicial
 descartando elementos de segundo plano (outras lutas/fundo) e transeuntes de primeiro plano (frente da câmera).
 """
 
+import cv2
 import numpy as np
 from typing import Dict, Any, List, Tuple, Optional
 
@@ -31,20 +32,31 @@ class CombatantTracker:
         self,
         min_background_scale_ratio: float = 0.68,
         max_foreground_scale_ratio: float = 1.38,
-        ground_line_tolerance: float = 0.14
+        ground_line_tolerance: float = 0.14,
+        invert_assignment: bool = False
     ):
         """
         - min_background_scale_ratio: Limiar abaixo do qual o elemento é classificado como Segundo Plano (Fundo).
         - max_foreground_scale_ratio: Limiar acima do qual o elemento é classificado como Oclusão de Primeiro Plano (Frente da Câmera).
         - ground_line_tolerance: Tolerância de deslocamento vertical dos pés em relação ao solo do Shiaijo.
+        - invert_assignment: Se True, inverte manualmente as identidades de Aka e Shiro.
         """
         self.min_bg_ratio = min_background_scale_ratio
         self.max_fg_ratio = max_foreground_scale_ratio
         self.ground_tolerance = ground_line_tolerance
+        self.invert_assignment = invert_assignment
 
         # Perfis dos 2 lutadores
         self.aka = CombatantProfile("KENSHI_AKA", "Kenshi Aka (Vermelho)", (40, 40, 230)) # Vermelho BGR
         self.shiro = CombatantProfile("KENSHI_SHIRO", "Kenshi Shiro (Branco)", (240, 240, 240)) # Branco BGR
+
+        # Rastreamento de Evidência da Flag Vermelha (Tasukuki nas costas)
+        self.candidate_left_red_score = 0.0
+        self.candidate_right_red_score = 0.0
+        self.red_evidence_frames_left = 0
+        self.red_evidence_frames_right = 0
+        self.flag_decision = "POSITION_DEFAULT"
+        self.flag_confidence = 0.50
 
         # Referência do Plano Principal de Combate (calibrado a partir do Sonkyō ou dos primeiros frames)
         self.is_calibrated = False
@@ -57,6 +69,67 @@ class CombatantTracker:
         self.discarded_background_count = 0
         self.discarded_foreground_count = 0
         self.total_detections_processed = 0
+
+    @staticmethod
+    def detect_red_flag_score(frame: Optional[np.ndarray], landmarks: Optional[Dict[str, Any]]) -> float:
+        """
+        Analisa a presença da fita vermelha (Aka Tasukuki / Mejirushi) nas costas/tronco do praticante.
+        O Keikogi pode ser de qualquer cor (azul escuro, branco, preto), mas a fita vermelha tem
+        alta saturação e matiz vermelho característico no dorso (região entre ombros e quadril).
+        Retorna uma pontuação de 0.0 a 1.0 (densidade/intensidade de vermelho na ROI dorsal).
+        """
+        if frame is None or not landmarks:
+            return 0.0
+
+        h, w = frame.shape[:2]
+        
+        # Obter bounding box da região dorsal / tronco
+        shoulder_pts = [landmarks[k] for k in ["LEFT_SHOULDER", "RIGHT_SHOULDER"] if k in landmarks and isinstance(landmarks[k], dict)]
+        hip_pts = [landmarks[k] for k in ["LEFT_HIP", "RIGHT_HIP"] if k in landmarks and isinstance(landmarks[k], dict)]
+
+        if not shoulder_pts and not hip_pts:
+            _, _, (xmin, ymin, xmax, ymax) = CombatantTracker.extract_bbox_and_center(landmarks)
+            top_y = ymin + (ymax - ymin) * 0.20
+            bottom_y = ymin + (ymax - ymin) * 0.65
+            left_x = xmin
+            right_x = xmax
+        else:
+            top_y = min([p["y"] for p in shoulder_pts]) if shoulder_pts else (min([p["y"] for p in hip_pts]) - 0.25)
+            bottom_y = max([p["y"] for p in hip_pts]) if hip_pts else (max([p["y"] for p in shoulder_pts]) + 0.35)
+            all_xs = [p["x"] for p in (shoulder_pts + hip_pts)]
+            left_x = min(all_xs) - 0.03
+            right_x = max(all_xs) + 0.03
+
+        px_min = max(0, int(left_x * w))
+        px_max = min(w, int(right_x * w))
+        py_min = max(0, int(top_y * h))
+        py_max = min(h, int(bottom_y * h))
+
+        if px_max - px_min < 5 or py_max - py_min < 5:
+            return 0.0
+
+        roi = frame[py_min:py_max, px_min:px_max]
+        if roi.size == 0:
+            return 0.0
+
+        # Converter ROI para HSV
+        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+        
+        # Máscaras para a cor vermelha da fita (Tasukuki)
+        # Faixa 1: H [0, 14], S >= 70, V >= 50
+        mask1 = cv2.inRange(hsv, np.array([0, 70, 50], dtype=np.uint8), np.array([14, 255, 255], dtype=np.uint8))
+        # Faixa 2: H [166, 180], S >= 70, V >= 50
+        mask2 = cv2.inRange(hsv, np.array([166, 70, 50], dtype=np.uint8), np.array([180, 255, 255], dtype=np.uint8))
+        red_mask = cv2.bitwise_or(mask1, mask2)
+
+        red_pixels = int(cv2.countNonZero(red_mask))
+        total_pixels = int(roi.shape[0] * roi.shape[1])
+        if total_pixels == 0:
+            return 0.0
+
+        red_ratio = red_pixels / float(total_pixels)
+        score = float(np.clip(red_ratio / 0.05, 0.0, 1.0))
+        return score
 
     @staticmethod
     def extract_bbox_and_center(landmarks: Dict[str, Any]) -> Tuple[float, float, Tuple[float, float, float, float]]:
@@ -180,11 +253,12 @@ class CombatantTracker:
 
     def associate_and_filter(
         self,
-        frame_landmarks_list: List[Dict[str, Any]]
+        frame_landmarks_list: List[Dict[str, Any]],
+        frame: Optional[np.ndarray] = None
     ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], List[Dict[str, Any]]]:
         """
-        Recebe a lista de esqueletos/poses detectados no frame, filtra ruídos de planos diferentes
-        e associa aos 2 combatentes (Aka e Shiro).
+        Recebe a lista de esqueletos/poses detectados no frame, filtra ruídos de planos diferentes,
+        analisa a presença da fita vermelha nas costas (Aka Tasukuki) e associa aos 2 combatentes (Aka e Shiro).
         Retorna:
             - aka_landmarks: Optional[Dict]
             - shiro_landmarks: Optional[Dict]
@@ -227,15 +301,61 @@ class CombatantTracker:
                     return None, cand, discarded_items
             else:
                 # Default: Se x < 0.5 é Aka (lado esquerdo), senão Shiro
-                if cx <= 0.50:
-                    return cand, None, discarded_items
+                if not self.invert_assignment:
+                    if cx <= 0.50:
+                        return cand, None, discarded_items
+                    else:
+                        return None, cand, discarded_items
                 else:
-                    return None, cand, discarded_items
+                    if cx <= 0.50:
+                        return None, cand, discarded_items
+                    else:
+                        return cand, None, discarded_items
 
-        # Se tiver 2 ou mais candidatos no plano principal: ordenar por X (Aka à esquerda, Shiro à direita)
+        # Se tiver 2 ou mais candidatos no plano principal:
+        # Ordenar geometricamente no Shiaijo (candidato à esquerda e candidato à direita)
         main_plane_candidates.sort(key=lambda lm: self.extract_bbox_and_center(lm)[0])
-        aka_lm = main_plane_candidates[0]
-        shiro_lm = main_plane_candidates[1]
+        cand_left = main_plane_candidates[0]
+        cand_right = main_plane_candidates[1]
+
+        # Amostragem da Cor da Flag (Tasukuki Vermelho) nas costas de cada combatente
+        if frame is not None:
+            score_left = self.detect_red_flag_score(frame, cand_left)
+            score_right = self.detect_red_flag_score(frame, cand_right)
+
+            if score_left >= 0.10:
+                self.candidate_left_red_score += score_left
+                self.red_evidence_frames_left += 1
+
+            if score_right >= 0.10:
+                self.candidate_right_red_score += score_right
+                self.red_evidence_frames_right += 1
+
+        # Decisão de Atribuição de Identidade baseada na evidência da Flag Vermelha
+        diff = self.candidate_right_red_score - self.candidate_left_red_score
+        
+        if diff >= 0.40:
+            # O lutador da DIREITA possui a flag vermelha (Aka) -> Câmera invertida ou posição invertida
+            aka_lm = cand_right
+            shiro_lm = cand_left
+            self.flag_decision = "FLAG_DETECTED_RIGHT_IS_AKA"
+            self.flag_confidence = float(np.clip(diff / 2.0, 0.60, 0.98))
+        elif diff <= -0.40:
+            # O lutador da ESQUERDA possui a flag vermelha (Aka)
+            aka_lm = cand_left
+            shiro_lm = cand_right
+            self.flag_decision = "FLAG_DETECTED_LEFT_IS_AKA"
+            self.flag_confidence = float(np.clip(abs(diff) / 2.0, 0.60, 0.98))
+        else:
+            # Evidência insuficiente / inicial: usar padrão posicional do Shiaijo (Aka à esquerda)
+            aka_lm = cand_left
+            shiro_lm = cand_right
+            self.flag_decision = "POSITION_DEFAULT"
+            self.flag_confidence = 0.50
+
+        # Se o usuário solicitou inversão manual de Aka e Shiro
+        if self.invert_assignment:
+            aka_lm, shiro_lm = shiro_lm, aka_lm
 
         # Se houver excedentes além dos 2 principais no mesmo frame, descartar os mais distantes
         if len(main_plane_candidates) > 2:
@@ -258,7 +378,7 @@ class CombatantTracker:
         return aka_lm, shiro_lm, discarded_items
 
     def get_summary(self) -> Dict[str, Any]:
-        """Retorna resumo das estatísticas de rastreamento e filtragem de planos."""
+        """Retorna resumo das estatísticas de rastreamento, filtragem de planos e detecção de flag."""
         return {
             "is_calibrated": self.is_calibrated,
             "ref_height": round(self.ref_height, 3),
@@ -267,6 +387,11 @@ class CombatantTracker:
             "discarded_background_count": self.discarded_background_count,
             "discarded_foreground_count": self.discarded_foreground_count,
             "total_detections_processed": self.total_detections_processed,
+            "flag_decision": self.flag_decision,
+            "flag_confidence": round(self.flag_confidence, 2),
+            "invert_assignment": self.invert_assignment,
+            "candidate_left_red_score": round(self.candidate_left_red_score, 2),
+            "candidate_right_red_score": round(self.candidate_right_red_score, 2),
             "tracked_combatants": [
                 {"id": self.aka.id, "name": self.aka.name, "frames_tracked": len([p for p in self.aka.history if p])},
                 {"id": self.shiro.id, "name": self.shiro.name, "frames_tracked": len([p for p in self.shiro.history if p])}

@@ -221,5 +221,134 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
             if os.path.exists(out_vid):
                 os.remove(out_vid)
 
+    def test_timestamp_to_frame_conversions(self):
+        from src.analytics.sonkyo_detector import SonkyoInterval
+        self.assertEqual(SonkyoInterval.timestamp_to_frame("00:01.000", fps=30.0), 30)
+        self.assertEqual(SonkyoInterval.timestamp_to_frame("00:02.500", fps=30.0), 75)
+        self.assertEqual(SonkyoInterval.timestamp_to_frame("01:00.000", fps=30.0), 1800)
+        self.assertEqual(SonkyoInterval.timestamp_to_frame("5.0s", fps=30.0), 150)
+        self.assertEqual(SonkyoInterval.timestamp_to_frame("", fps=30.0), 0)
+
+    def test_sonkyo_learning_and_profile_persistence(self):
+        test_profile_path = "config/test_sonkyo_learned_profile.json"
+        if os.path.exists(test_profile_path):
+            os.remove(test_profile_path)
+
+        try:
+            detector = SonkyoDetector(learned_profile_path=test_profile_path)
+            self.assertEqual(detector.learned_profile["samples_count"], 0)
+
+            # Criar histórico de poses (10 frames de Sonkyō e 20 em pé)
+            timeline = [self._create_synthetic_sonkyo_pose() for _ in range(10)] + [self._create_synthetic_standing_pose() for _ in range(20)]
+            
+            # Aprender a partir do intervalo [0, 9]
+            learn_res = detector.learn_from_annotation(timeline, start_frame=0, end_frame=9, fps=30.0, interval_type="INITIAL")
+            self.assertEqual(learn_res["status"], "success")
+            self.assertEqual(detector.learned_profile["samples_count"], 1)
+            self.assertTrue(os.path.exists(test_profile_path))
+
+            # Recarregar detector com o perfil salvo
+            reloaded_detector = SonkyoDetector(learned_profile_path=test_profile_path)
+            stats = reloaded_detector.get_learned_stats()
+            self.assertEqual(stats["samples_count"], 1)
+            self.assertGreater(stats["exemplars_count"], 0)
+
+            # Resetar perfil
+            reloaded_detector.reset_learned_profile()
+            self.assertEqual(reloaded_detector.learned_profile["samples_count"], 0)
+        finally:
+            if os.path.exists(test_profile_path):
+                os.remove(test_profile_path)
+
+    def test_detect_match_boundaries_with_overrides(self):
+        test_profile_path = "config/test_sonkyo_override_profile.json"
+        if os.path.exists(test_profile_path):
+            os.remove(test_profile_path)
+
+        try:
+            detector = SonkyoDetector(learned_profile_path=test_profile_path)
+            timeline = [self._create_synthetic_standing_pose() for _ in range(100)]
+            
+            # Forçar overrides manuais do árbitro
+            init_override = {"start_timestamp": "00:00.200", "end_timestamp": "00:00.800"}
+            final_override = {"start_timestamp": "00:02.500", "end_timestamp": "00:03.000"}
+
+            res = detector.detect_match_boundaries(
+                timeline,
+                fps=30.0,
+                initial_sonkyo_override=init_override,
+                final_sonkyo_override=final_override
+            )
+
+            self.assertTrue(res["has_initial_sonkyo"])
+            self.assertTrue(res["has_final_sonkyo"])
+            self.assertEqual(res["match_start_frame"], 26) # end_frame=24 + 2
+            self.assertEqual(res["match_end_frame"], 73)   # start_frame=75 - 2
+            self.assertIn("Limites de Sonkyō atualizados e aprendidos", res["status_message"])
+            self.assertGreaterEqual(res["learned_samples_total"], 2)
+        finally:
+            if os.path.exists(test_profile_path):
+                os.remove(test_profile_path)
+
+    def test_pipeline_reprocess_with_sonkyo_overrides(self):
+        test_vid = "test_reprocess_sonkyo_match.mp4"
+        out_vid = "test_reprocess_sonkyo_annotated.mp4"
+        generate_demo_kendo_video(test_vid, duration_sec=4, fps=30)
+
+        try:
+            pipeline = ShinpanaiPipeline(calibration_profile="normal", device_preference="cpu")
+            
+            init_ov = {"start_timestamp": "00:00.000", "end_timestamp": "00:01.000"}
+            fin_ov = {"start_timestamp": "00:03.000", "end_timestamp": "00:03.900"}
+
+            result = pipeline.process_video(
+                video_path=test_vid,
+                output_video_path=out_vid,
+                initial_sonkyo_override=init_ov,
+                final_sonkyo_override=fin_ov
+            )
+
+            self.assertIsNotNone(result)
+            sonkyo = result["sonkyo_analysis"]
+            self.assertTrue(sonkyo["has_initial_sonkyo"])
+            self.assertTrue(sonkyo["has_final_sonkyo"])
+            self.assertEqual(sonkyo["match_start_frame"], 32)
+            self.assertEqual(sonkyo["match_end_frame"], 88)
+        finally:
+            if os.path.exists(test_vid):
+                os.remove(test_vid)
+            if os.path.exists(out_vid):
+                os.remove(out_vid)
+
+    def test_default_fallback_sonkyo_when_not_detected(self):
+        """Testa se momentos padrão no início e término do vídeo são incluídos quando o Sonkyō não é detectado."""
+        detector = SonkyoDetector()
+        # Linha do tempo com 90 frames sem nenhum Sonkyō (apenas pessoas em pé)
+        timeline = [self._create_synthetic_standing_pose() for _ in range(90)]
+        
+        res = detector.detect_match_boundaries(timeline, fps=30.0)
+        self.assertTrue(res["is_bounded"])
+        self.assertTrue(res["has_initial_sonkyo"])
+        self.assertTrue(res["has_final_sonkyo"])
+        
+        # Verificar Sonkyō Inicial no início do vídeo
+        init_s = res["initial_sonkyo"]
+        self.assertIsNotNone(init_s)
+        self.assertEqual(init_s["start_frame"], 0)
+        self.assertFalse(init_s["is_detected"])
+        self.assertEqual(init_s["start_timestamp"], "00:00.000")
+        
+        # Verificar Sonkyō Final no final do vídeo
+        fin_s = res["final_sonkyo"]
+        self.assertIsNotNone(fin_s)
+        self.assertEqual(fin_s["end_frame"], 89)
+        self.assertFalse(fin_s["is_detected"])
+        self.assertEqual(fin_s["end_timestamp"], "00:02.966")
+        
+        self.assertIn("início e término", res["status_message"].lower())
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
