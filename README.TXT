@@ -3,7 +3,7 @@
         Sistema de Arbitragem e Análise Biomecânica de Kendo com IA
 ===============================================================================
 
-O Shinpanai é um sistema de visão computacional e análise biomecânica projetado
+O ShinpanAI é um sistema de visão computacional e análise biomecânica projetado
 para avaliar golpes em lutas de Kendo de acordo com o conceito de Yuko-Datotsu
 e o princípio do Ki-Ken-Tai-Ichi (Espírito, Espada e Corpo em um só).
 

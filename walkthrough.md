@@ -1,21 +1,21 @@
-# Walkthrough de Implementação - Shinpanai (AI Kendo Referee & Analytical System)
+# Walkthrough de Implementação - ShinpanAI (AI Kendo Referee & Analytical System)
 
-Implementamos a estrutura completa do sistema **Shinpanai** para detecção de golpes em vídeos de lutas de Kendo, avaliação biomecânica dos critérios de *Yuko-datotsu*, crítica textual explicativa e motor de calibração de sensibilidade ajustável.
+Implementamos a estrutura completa do sistema **ShinpanAI** para detecção de golpes em vídeos de lutas de Kendo, avaliação biomecânica dos critérios de *Yuko-datotsu*, crítica textual explicativa e motor de calibração de sensibilidade ajustável.
 
 ---
 
 ## 🚀 Arquivos Criados e Estrutura do Projeto
 
-* [`config/calibration_profiles.json`](file:///d:/Projetos/Shinpanai/Dev/config/calibration_profiles.json): Definição dos perfis de arbitragem (Rígido, Normal, Permissivo) e pesos de Ki-Ken-Tai-Ichi.
-* [`src/vision/pose_detector.py`](file:///d:/Projetos/Shinpanai/Dev/src/vision/pose_detector.py): Rastreamento de keypoints 3D (33 landmarks) via MediaPipe Pose.
-* [`src/vision/shinai_tracker.py`](file:///d:/Projetos/Shinpanai/Dev/src/vision/shinai_tracker.py): Projeção vetorial do Kensen (ponta da espada) e zonas de impacto (*Men*, *Kote*, *Do*, *Tsuki*).
-* [`src/analytics/event_spotter.py`](file:///d:/Projetos/Shinpanai/Dev/src/analytics/event_spotter.py): Algoritmo adaptativo de detecção de eventos e classificação temporal de golpes na luta.
-* [`src/analytics/biomechanics.py`](file:///d:/Projetos/Shinpanai/Dev/src/analytics/biomechanics.py): Cálculo numérico de precisão do alvo, sincronismo pé-mão (*Fumikomi*), alinhamento da coluna (*Postura*) e *Zanshin*.
-* [`src/engine/calibrator.py`](file:///d:/Projetos/Shinpanai/Dev/src/engine/calibrator.py): Motor de calibração de sensibilidade com suporte a limiares dinâmicos e customização manual.
-* [`src/engine/reporter.py`](file:///d:/Projetos/Shinpanai/Dev/src/engine/reporter.py): Gerador de diagnósticos em português detalhando o status e correções necessárias.
-* [`src/pipeline.py`](file:///d:/Projetos/Shinpanai/Dev/src/pipeline.py): Pipeline orquestrador end-to-end de vídeo.
-* [`main.py`](file:///d:/Projetos/Shinpanai/Dev/main.py): CLI interativa para execução do sistema.
-* [`app.py`](file:///d:/Projetos/Shinpanai/Dev/app.py): Interface Web Interativa em Streamlit com painel de calibração e visualização de vídeos.
+* [`config/calibration_profiles.json`](file:///d:/Projetos/ShinpanAI/Dev/config/calibration_profiles.json): Definição dos perfis de arbitragem (Rígido, Normal, Permissivo) e pesos de Ki-Ken-Tai-Ichi.
+* [`src/vision/pose_detector.py`](file:///d:/Projetos/ShinpanAI/Dev/src/vision/pose_detector.py): Rastreamento de keypoints 3D (33 landmarks) via MediaPipe Pose.
+* [`src/vision/shinai_tracker.py`](file:///d:/Projetos/ShinpanAI/Dev/src/vision/shinai_tracker.py): Projeção vetorial do Kensen (ponta da espada) e zonas de impacto (*Men*, *Kote*, *Do*, *Tsuki*).
+* [`src/analytics/event_spotter.py`](file:///d:/Projetos/ShinpanAI/Dev/src/analytics/event_spotter.py): Algoritmo adaptativo de detecção de eventos e classificação temporal de golpes na luta.
+* [`src/analytics/biomechanics.py`](file:///d:/Projetos/ShinpanAI/Dev/src/analytics/biomechanics.py): Cálculo numérico de precisão do alvo, sincronismo pé-mão (*Fumikomi*), alinhamento da coluna (*Postura*) e *Zanshin*.
+* [`src/engine/calibrator.py`](file:///d:/Projetos/ShinpanAI/Dev/src/engine/calibrator.py): Motor de calibração de sensibilidade com suporte a limiares dinâmicos e customização manual.
+* [`src/engine/reporter.py`](file:///d:/Projetos/ShinpanAI/Dev/src/engine/reporter.py): Gerador de diagnósticos em português detalhando o status e correções necessárias.
+* [`src/pipeline.py`](file:///d:/Projetos/ShinpanAI/Dev/src/pipeline.py): Pipeline orquestrador end-to-end de vídeo.
+* [`main.py`](file:///d:/Projetos/ShinpanAI/Dev/main.py): CLI interativa para execução do sistema.
+* [`app.py`](file:///d:/Projetos/ShinpanAI/Dev/app.py): Interface Web Interativa em Streamlit com painel de calibração e visualização de vídeos.
 
 ---
 

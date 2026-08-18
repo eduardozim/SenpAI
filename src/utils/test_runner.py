@@ -63,7 +63,7 @@ def get_test_description(test: unittest.TestCase) -> str:
     clean_name = method_name.replace("test_", "").replace("_", " ").strip()
     return f"Valida {clean_name}"
 
-class ShinpanaiTestResult(unittest.TestResult):
+class ShinpanAITestResult(unittest.TestResult):
     """
     Coletor de resultados customizado que grava métricas e descrições
     individuais de cada teste executado.
@@ -131,7 +131,7 @@ class ShinpanaiTestResult(unittest.TestResult):
         exctype, value, tb = err
         return "".join(traceback.format_exception(exctype, value, tb))
 
-class ShinpanaiTestRunner:
+class ShinpanAITestRunner:
     """
     TestRunner customizado que orquestra a execução da suíte,
     gera o log detalhado e mantém o histórico na pasta logs/.
@@ -157,7 +157,7 @@ class ShinpanaiTestRunner:
             print(f"  Inicio: {start_time_real.strftime('%Y-%m-%d %H:%M:%S')}")
             print("=" * 80)
 
-        result = ShinpanaiTestResult(stream=self.stream, verbosity=self.verbosity)
+        result = ShinpanAITestResult(stream=self.stream, verbosity=self.verbosity)
         test_suite.run(result)
 
         total_duration = time.perf_counter() - start_clock
@@ -286,7 +286,7 @@ def run_automated_tests(test_dir: str = "tests", log_file: str = TEST_LOG_PATH, 
     """
     loader = unittest.TestLoader()
     suite = loader.discover(start_dir=test_dir, pattern="test_*.py")
-    runner = ShinpanaiTestRunner(verbosity=verbosity, log_file=log_file)
+    runner = ShinpanAITestRunner(verbosity=verbosity, log_file=log_file)
     return runner.run(suite)
 
 def get_latest_test_report_content(log_file: str = TEST_LOG_PATH) -> str:
@@ -300,3 +300,7 @@ def get_latest_test_report_content(log_file: str = TEST_LOG_PATH) -> str:
         except Exception as ex:
             return f"Erro ao ler log de testes: {ex}"
     return "Nenhum relatório de testes automatizados encontrado. Execute a suíte de testes para gerar o log."
+
+# Aliases de compatibilidade retroativa
+ShinpanaiTestResult = ShinpanAITestResult
+ShinpanaiTestRunner = ShinpanAITestRunner

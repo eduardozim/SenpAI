@@ -66,7 +66,7 @@ def generate_demo_kendo_video(output_path: str = "demo_kendo_match.mp4", duratio
         cv2.line(frame, hip_pos, l_foot, (180, 180, 180), 4)
 
         # Texto informativo no vídeo
-        cv2.putText(frame, f"Shinpanai Demo - Frame {i}/{total_frames}", (20, 30),
+        cv2.putText(frame, f"ShinpanAI Demo - Frame {i}/{total_frames}", (20, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
         out.write(frame)

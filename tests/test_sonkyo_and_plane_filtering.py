@@ -9,7 +9,7 @@ import numpy as np
 from src.analytics.sonkyo_detector import SonkyoDetector, SonkyoInterval
 from src.vision.combatant_tracker import CombatantTracker, CombatantProfile
 from src.analytics.event_spotter import EventSpotter, StrikeEvent
-from src.pipeline import ShinpanaiPipeline
+from src.pipeline import ShinpanAIPipeline
 from src.utils.demo_generator import generate_demo_kendo_video
 
 class TestSonkyoAndPlaneFiltering(unittest.TestCase):
@@ -203,7 +203,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         generate_demo_kendo_video(test_vid, duration_sec=3, fps=30)
 
         try:
-            pipeline = ShinpanaiPipeline(calibration_profile="normal", device_preference="cpu")
+            pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
             result = pipeline.process_video(video_path=test_vid, output_video_path=out_vid)
 
             self.assertIn("sonkyo_analysis", result)
@@ -306,7 +306,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         generate_demo_kendo_video(test_vid, duration_sec=4, fps=30)
 
         try:
-            pipeline = ShinpanaiPipeline(calibration_profile="normal", device_preference="cpu")
+            pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
             
             init_ov = {"start_timestamp": "00:00.000", "end_timestamp": "00:01.000"}
             fin_ov = {"start_timestamp": "00:03.000", "end_timestamp": "00:03.900"}

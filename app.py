@@ -1,5 +1,5 @@
 """
-Shinpanai - Web Dashboard Interativo de Arbitragem e Análise de Kendo (Streamlit App)
+ShinpanAI - Web Dashboard Interativo de Arbitragem e Análise de Kendo (Streamlit App)
 Suporta 3 Modos Principais de Operação:
 1. 📹 Modo de Arbitragem Gravada
 2. 🎓 Modo de Treinamento & Aprendizado
@@ -916,13 +916,245 @@ else:
 
         video_file_path = st.session_state.get("video_file_path", None)
 
-        # PAINEL PRINCIPAL DE RESULTADOS (2 COLUNAS)
+        # PAINEL PRINCIPAL DE RESULTADOS
         if video_file_path or "analysis_result" in st.session_state:
             st.markdown("---")
+
+            # 0. SE EXISTIR RESULTADO: PLACAR OFICIAL (SANBON-SHOBU) NO TOPO DO PAINEL
+            enable_editing = st.session_state.get("editing_enabled", False)
+            selected_dan = 3
+            dan_options = {
+                1: "1º Dan (Shodan)",
+                2: "2º Dan (Nidan)",
+                3: "3º Dan (Sandan)",
+                4: "4º Dan (Yondan)",
+                5: "5º Dan (Godan)",
+                6: "6º Dan (Rokudan)",
+                7: "7º Dan (Nanadan)",
+                8: "8º Dan (Hachidan)"
+            }
+            if "session_reviews" not in st.session_state:
+                st.session_state["session_reviews"] = {}
+            if "sonkyo_edits" not in st.session_state:
+                st.session_state["sonkyo_edits"] = {}
+
+            session_revs = st.session_state.get("session_reviews", {})
+            sonkyo_edits = st.session_state.get("sonkyo_edits", {})
+            is_inverted = st.session_state.get("invert_aka_shiro", False)
+            video_name_simple = os.path.basename(video_file_path) if video_file_path else "recorded_match.mp4"
+
+            if "analysis_result" in st.session_state:
+                res = st.session_state["analysis_result"]
+                raw_scoreboard = res.get("scoreboard", {})
+
+                # Extração dos golpes válidos (Ippon) considerando revisões ativas da sessão
+                raw_aka_strikes = []
+                raw_shiro_strikes = []
+
+                # 1. Golpes detectados automaticamente pelo modelo
+                for ev_i, ev_d in enumerate(res.get("events", [])):
+                    ev_info_d = ev_d["event_info"]
+                    ev_id_d = f"event_{ev_i+1}_frame_{ev_info_d['impact_frame']}"
+                    rev_d = session_revs.get(ev_id_d)
+
+                    if rev_d:
+                        if rev_d.get("is_edited"):
+                            is_valid_d = (rev_d.get("category") == "VALID_IPPON")
+                        elif rev_d.get("is_confirmed"):
+                            is_valid_d = ev_d["evaluation"].get("is_valid", False)
+                        else:
+                            is_valid_d = (rev_d.get("label") == "TP" and rev_d.get("category") not in ["INVALID_HIT", "NO_STRIKE"])
+                    else:
+                        is_valid_d = ev_d["evaluation"].get("is_valid", False)
+
+                    if is_valid_d:
+                        if ev_info_d.get("attacker_id") == "KENSHI_AKA":
+                            raw_aka_strikes.append(ev_d)
+                        else:
+                            raw_shiro_strikes.append(ev_d)
+
+                # 2. Golpes adicionais incluídos manualmente pelo árbitro
+                for fn_k, fn_v in session_revs.items():
+                    if fn_v.get("is_included"):
+                        is_fn_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
+                        if is_fn_ippon:
+                            fake_ev = {
+                                "event_info": {
+                                    "attacker_id": fn_v.get("attacker_id", "KENSHI_AKA"),
+                                    "attacker_name": fn_v.get("attacker_name", "Kenshi Aka (Vermelho)"),
+                                    "type": fn_v.get("strike_type", "MEN"),
+                                    "timestamp": fn_v.get("timestamp", "00:00.000"),
+                                    "impact_frame": 0
+                                },
+                                "evaluation": {"is_valid": True, "total_score": 100.0}
+                            }
+                            if fn_v.get("attacker_id") == "KENSHI_AKA":
+                                raw_aka_strikes.append(fake_ev)
+                            else:
+                                raw_shiro_strikes.append(fake_ev)
+
+                if not is_inverted:
+                    aka_val_strikes = raw_aka_strikes
+                    shiro_val_strikes = raw_shiro_strikes
+                else:
+                    aka_val_strikes = raw_shiro_strikes
+                    shiro_val_strikes = raw_aka_strikes
+
+                aka_score_val = len(aka_val_strikes)
+                shiro_score_val = len(shiro_val_strikes)
+
+                if aka_score_val > shiro_score_val:
+                    winner_txt = f"🏆 Vitória de Kenshi Aka (Vermelho) [{aka_score_val} - {shiro_score_val}]"
+                    winner_bg = "rgba(239, 68, 68, 0.18)"
+                    winner_border = "#EF4444"
+                    winner_color = "#FCA5A5"
+                elif shiro_score_val > aka_score_val:
+                    winner_txt = f"🏆 Vitória de Kenshi Shiro (Branco) [{shiro_score_val} - {aka_score_val}]"
+                    winner_bg = "rgba(243, 244, 246, 0.15)"
+                    winner_border = "#E5E7EB"
+                    winner_color = "#F3F4F6"
+                else:
+                    winner_txt = f"🤝 Empate (Hikiwake) [{aka_score_val} - {shiro_score_val}]"
+                    winner_bg = "rgba(148, 163, 184, 0.15)"
+                    winner_border = "#64748B"
+                    winner_color = "#CBD5E1"
+
+                flag_info = raw_scoreboard.get("flag_detection", {})
+                flag_dec = flag_info.get("flag_decision", "POSITION_DEFAULT")
+                flag_conf = int(flag_info.get("confidence", 0.5) * 100)
+
+                if "RIGHT" in flag_dec:
+                    flag_badge = f"🚩 Flag Vermelha (Tasukuki) detectada nas costas do lutador à direita ({flag_conf}%)"
+                elif "LEFT" in flag_dec:
+                    flag_badge = f"🚩 Flag Vermelha (Tasukuki) detectada nas costas do lutador à esquerda ({flag_conf}%)"
+                else:
+                    flag_badge = "🚩 Identificação por posição inicial no Shiaijo"
+
+                if is_inverted:
+                    flag_badge += " • 🔄 Lados Invertidos Manualmente"
+
+                # HTML de Ippons do Aka
+                if aka_val_strikes:
+                    aka_items = "".join([f'<span style="display:inline-block; background: #991B1B; color: #FEE2E2; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">🔴 {s["event_info"]["type"]} ({s["event_info"]["timestamp"]})</span>' for s in aka_val_strikes])
+                else:
+                    aka_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
+
+                # HTML de Ippons do Shiro
+                if shiro_val_strikes:
+                    shiro_items = "".join([f'<span style="display:inline-block; background: #475569; color: #F8FAFC; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">⚪ {s["event_info"]["type"]} ({s["event_info"]["timestamp"]})</span>' for s in shiro_val_strikes])
+                else:
+                    shiro_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
+
+                # RENDERIZAÇÃO DO PLACAR OFICIAL NO TOPO (LARGURA TOTAL)
+                st.markdown(
+                    f"""
+                    <div style="background: #090D16; border: 2px solid #374151; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1F2937; padding-bottom: 8px; margin-bottom: 12px;">
+                            <span style="color: #D1D5DB; font-size: 13px; font-weight: 800; letter-spacing: 0.8px;">🥋 PLACAR OFICIAL DE ARBITRAGEM (SANBON-SHOBU)</span>
+                            <span style="color: #93C5FD; font-size: 12px; font-weight: 500;">{flag_badge}</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                            <div style="background: linear-gradient(180deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.22) 100%); border: 1.5px solid #EF4444; border-radius: 8px; padding: 12px; text-align: center;">
+                                <div style="color: #FCA5A5; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">🔴 KENSHI AKA (VERMELHO)</div>
+                                <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{aka_score_val} <span style="font-size: 14px; font-weight: 700; color: #FCA5A5;">IPPON</span></div>
+                                <div style="margin-top: 6px;">{aka_items}</div>
+                            </div>
+                            <div style="background: linear-gradient(180deg, rgba(243, 244, 246, 0.10) 0%, rgba(100, 116, 139, 0.18) 100%); border: 1.5px solid #E5E7EB; border-radius: 8px; padding: 12px; text-align: center;">
+                                <div style="color: #F3F4F6; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">⚪ KENSHI SHIRO (BRANCO)</div>
+                                <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{shiro_score_val} <span style="font-size: 14px; font-weight: 700; color: #E5E7EB;">IPPON</span></div>
+                                <div style="margin-top: 6px;">{shiro_items}</div>
+                            </div>
+                        </div>
+                        <div style="background: {winner_bg}; border: 1px solid {winner_border}; border-radius: 6px; padding: 8px; margin-top: 10px; text-align: center;">
+                            <span style="color: {winner_color}; font-size: 15px; font-weight: 800;">{winner_txt}</span>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+                # BARRA DE CONTROLES: INVERSÃO DE LUTADORES, HABILITAR EDIÇÃO & PAINEL DAN
+                col_ctrl1, col_ctrl2 = st.columns([1.6, 2.4])
+                with col_ctrl1:
+                    if st.button("🔄 Inverter Lutadores (Aka ⇄ Shiro)", width="stretch", key="btn_toggle_invert_aka_shiro", help="Inverte os lados de Aka e Shiro na pontuação, nos relatórios e nos eventos caso a câmera esteja invertida"):
+                        st.session_state["invert_aka_shiro"] = not is_inverted
+                        st.toast(f"🔄 Identidades invertidas: Aka ⇄ Shiro {'(Ativado)' if not is_inverted else '(Restaurado)'}!", icon="🔄")
+                        st.rerun()
+                with col_ctrl2:
+                    enable_editing = st.toggle("✏️ Habilitar Edição e Revisão dos Golpes Detectados", value=st.session_state.get("editing_enabled", False), key="toggle_enable_editing")
+                    st.session_state["editing_enabled"] = enable_editing
+
+                if enable_editing:
+                    rev_header_col1, rev_header_col2 = st.columns([3, 1])
+                    with rev_header_col1:
+                        selected_dan = st.selectbox(
+                            "🥋 Graduação DAN do Árbitro Revisor:",
+                            options=list(dan_options.keys()),
+                            format_func=lambda x: dan_options[x],
+                            index=2,
+                            key="reviewer_dan_select"
+                        )
+                    with rev_header_col2:
+                        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                        if st.button("🔄 Resetar Revisão", width="stretch", help="Reseta todas as alterações de marcação e edições feitas nesta sessão"):
+                            st.session_state["session_reviews"] = {}
+                            st.toast("🔄 Marcações da sessão resetadas ao estado original!", icon="🔄")
+                            st.rerun()
+
+                # Banner de Reprocessamento de Sonkyō
+                if sonkyo_edits:
+                    st.markdown(
+                        """
+                        <div style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border: 2px solid #818CF8; border-radius: 10px; padding: 12px 16px; margin: 10px 0;">
+                            <h4 style="color: #E0E7FF; margin: 0 0 4px 0;">⚡ Momentos de Sonkyō Alterados pelo Árbitro</h4>
+                            <p style="color: #C7D2FE; font-size: 0.88rem; margin: 0 0 8px 0;">
+                                Os limites regulamentares de Sonkyō foram modificados. O ShinpanAI irá <b>aprender a movimentação corporal</b> deste combate para reprocessar a arbitragem.
+                            </p>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    col_rep1, col_rep2 = st.columns([3, 1])
+                    with col_rep1:
+                        if st.button("🔄 Reprocessar Arbitragem com Aprendizado de Sonkyō", type="primary", width="stretch", key="btn_reprocess_sonkyo_learning"):
+                            dev_pref = st.session_state.get("device_preference", get_processing_device())
+                            pipeline = ShinpanaiPipeline(
+                                calibration_profile=profile_choice if profile_choice != "custom" else "normal",
+                                device_preference=dev_pref
+                            )
+                            if profile_choice == "custom":
+                                pipeline.calibrator.update_custom_settings(
+                                    min_total_score=min_score_pct / 100.0,
+                                    weight_target=w_target,
+                                    weight_fumikomi=w_fumikomi,
+                                    weight_posture=w_posture,
+                                    weight_zanshin=w_zanshin
+                                )
+                            annotated_output = "annotated_match.mp4"
+                            worker = AnalysisWorker(
+                                pipeline=pipeline,
+                                video_path=video_file_path,
+                                output_video_path=annotated_output,
+                                initial_sonkyo_override=sonkyo_edits.get("initial"),
+                                final_sonkyo_override=sonkyo_edits.get("final"),
+                                invert_combatants=st.session_state.get("invert_aka_shiro", False)
+                            )
+                            worker.start()
+                            st.session_state["analysis_worker"] = worker
+                            st.session_state["sonkyo_edits"] = {}
+                            st.session_state["processing_cancelled"] = False
+                            st.toast("⚡ Reprocessamento iniciado com aprendizado contínuo de Sonkyō!", icon="🔄")
+                            st.rerun()
+                    with col_rep2:
+                        if st.button("❌ Descartar Edições", width="stretch", key="btn_clear_sonkyo_edits"):
+                            st.session_state["sonkyo_edits"] = {}
+                            st.toast("Edições de Sonkyō descartadas!", icon="🔄")
+                            st.rerun()
+
+            # DUAS COLUNAS PERFEITAMENTE ALINHADAS LADO A LADO: VÍDEO (ESQUERDA) & LINHA DO TEMPO / GOLPES (DIREITA)
             col_video, col_results = st.columns([5, 7])
             
             with col_video:
-                st.markdown('<div class="sticky-video-marker"></div>', unsafe_allow_html=True)
                 st.subheader("🎥 Vídeo da Luta")
                 
                 has_annotated = "annotated_output" in st.session_state and os.path.exists(st.session_state.get("annotated_output", ""))
@@ -1003,245 +1235,12 @@ else:
                     st.markdown('</div>', unsafe_allow_html=True)
 
             with col_results:
-                st.subheader("🥋 Eventos Identificados & Diagnóstico de Combate")
+                st.subheader("🥋 Linha do Tempo & Revisão de Golpes")
                 if "analysis_result" not in st.session_state:
                     st.info("👈 Clique em **⚡ Executar Arbitragem** para visualizar a linha do tempo de eventos e análise detalhada.")
                 else:
                     res = st.session_state["analysis_result"]
-                    video_name_simple = os.path.basename(video_file_path) if video_file_path else "recorded_match.mp4"
-                    # 0. PLACAR OFICIAL DE ARBITRAGEM (SANBON-SHOBU) & CONTROLE DE PONTUAÇÃO
-                    is_inverted = st.session_state.get("invert_aka_shiro", False)
-                    raw_scoreboard = res.get("scoreboard", {})
-                    
-                    # Extração dos golpes válidos (Ippon) considerando revisões ativas da sessão
-                    session_revs = st.session_state.get("session_reviews", {})
-                    raw_aka_strikes = []
-                    raw_shiro_strikes = []
-
-                    # 1. Golpes detectados automaticamente pelo modelo
-                    for ev_i, ev_d in enumerate(res.get("events", [])):
-                        ev_info_d = ev_d["event_info"]
-                        ev_id_d = f"event_{ev_i+1}_frame_{ev_info_d['impact_frame']}"
-                        rev_d = session_revs.get(ev_id_d)
-
-                        if rev_d:
-                            if rev_d.get("is_edited"):
-                                is_valid_d = (rev_d.get("category") == "VALID_IPPON")
-                            elif rev_d.get("is_confirmed"):
-                                is_valid_d = ev_d["evaluation"].get("is_valid", False)
-                            else:
-                                is_valid_d = (rev_d.get("label") == "TP" and rev_d.get("category") not in ["INVALID_HIT", "NO_STRIKE"])
-                        else:
-                            is_valid_d = ev_d["evaluation"].get("is_valid", False)
-
-                        if is_valid_d:
-                            if ev_info_d.get("attacker_id") == "KENSHI_AKA":
-                                raw_aka_strikes.append(ev_d)
-                            else:
-                                raw_shiro_strikes.append(ev_d)
-
-                    # 2. Golpes adicionais incluídos manualmente pelo árbitro
-                    for fn_k, fn_v in session_revs.items():
-                        if fn_v.get("is_included"):
-                            is_fn_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
-                            if is_fn_ippon:
-                                fake_ev = {
-                                    "event_info": {
-                                        "attacker_id": fn_v.get("attacker_id", "KENSHI_AKA"),
-                                        "attacker_name": fn_v.get("attacker_name", "Kenshi Aka (Vermelho)"),
-                                        "type": fn_v.get("strike_type", "MEN"),
-                                        "timestamp": fn_v.get("timestamp", "00:00.000"),
-                                        "impact_frame": 0
-                                    },
-                                    "evaluation": {"is_valid": True, "total_score": 100.0}
-                                }
-                                if fn_v.get("attacker_id") == "KENSHI_AKA":
-                                    raw_aka_strikes.append(fake_ev)
-                                else:
-                                    raw_shiro_strikes.append(fake_ev)
-
-                    if not is_inverted:
-                        aka_val_strikes = raw_aka_strikes
-                        shiro_val_strikes = raw_shiro_strikes
-                    else:
-                        aka_val_strikes = raw_shiro_strikes
-                        shiro_val_strikes = raw_aka_strikes
-
-                    aka_score_val = len(aka_val_strikes)
-                    shiro_score_val = len(shiro_val_strikes)
-
-                    if aka_score_val > shiro_score_val:
-                        winner_txt = f"🏆 Vitória de Kenshi Aka (Vermelho) [{aka_score_val} - {shiro_score_val}]"
-                        winner_bg = "rgba(239, 68, 68, 0.18)"
-                        winner_border = "#EF4444"
-                        winner_color = "#FCA5A5"
-                    elif shiro_score_val > aka_score_val:
-                        winner_txt = f"🏆 Vitória de Kenshi Shiro (Branco) [{shiro_score_val} - {aka_score_val}]"
-                        winner_bg = "rgba(243, 244, 246, 0.15)"
-                        winner_border = "#E5E7EB"
-                        winner_color = "#F3F4F6"
-                    else:
-                        winner_txt = f"🤝 Empate (Hikiwake) [{aka_score_val} - {shiro_score_val}]"
-                        winner_bg = "rgba(148, 163, 184, 0.15)"
-                        winner_border = "#64748B"
-                        winner_color = "#CBD5E1"
-
-                    flag_info = raw_scoreboard.get("flag_detection", {})
-                    flag_dec = flag_info.get("flag_decision", "POSITION_DEFAULT")
-                    flag_conf = int(flag_info.get("confidence", 0.5) * 100)
-
-                    if "RIGHT" in flag_dec:
-                        flag_badge = f"🚩 Flag Vermelha (Tasukuki) detectada nas costas do lutador à direita ({flag_conf}%)"
-                    elif "LEFT" in flag_dec:
-                        flag_badge = f"🚩 Flag Vermelha (Tasukuki) detectada nas costas do lutador à esquerda ({flag_conf}%)"
-                    else:
-                        flag_badge = "🚩 Identificação por posição inicial no Shiaijo"
-
-                    if is_inverted:
-                        flag_badge += " • 🔄 Lados Invertidos Manualmente"
-
-                    # HTML de Ippons do Aka
-                    if aka_val_strikes:
-                        aka_items = "".join([f'<span style="display:inline-block; background: #991B1B; color: #FEE2E2; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">🔴 {s["event_info"]["type"]} ({s["event_info"]["timestamp"]})</span>' for s in aka_val_strikes])
-                    else:
-                        aka_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
-
-                    # HTML de Ippons do Shiro
-                    if shiro_val_strikes:
-                        shiro_items = "".join([f'<span style="display:inline-block; background: #475569; color: #F8FAFC; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">⚪ {s["event_info"]["type"]} ({s["event_info"]["timestamp"]})</span>' for s in shiro_val_strikes])
-                    else:
-                        shiro_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
-
-                    st.markdown(
-                        f"""
-                        <div style="background: #090D16; border: 2px solid #374151; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1F2937; padding-bottom: 8px; margin-bottom: 12px;">
-                                <span style="color: #D1D5DB; font-size: 13px; font-weight: 800; letter-spacing: 0.8px;">🥋 PLACAR OFICIAL DE ARBITRAGEM</span>
-                                <span style="color: #93C5FD; font-size: 12px; font-weight: 500;">{flag_badge}</span>
-                            </div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                                <div style="background: linear-gradient(180deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.22) 100%); border: 1.5px solid #EF4444; border-radius: 8px; padding: 12px; text-align: center;">
-                                    <div style="color: #FCA5A5; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">🔴 KENSHI AKA (VERMELHO)</div>
-                                    <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{aka_score_val} <span style="font-size: 14px; font-weight: 700; color: #FCA5A5;">IPPON</span></div>
-                                    <div style="margin-top: 6px;">{aka_items}</div>
-                                </div>
-                                <div style="background: linear-gradient(180deg, rgba(243, 244, 246, 0.10) 0%, rgba(100, 116, 139, 0.18) 100%); border: 1.5px solid #E5E7EB; border-radius: 8px; padding: 12px; text-align: center;">
-                                    <div style="color: #F3F4F6; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">⚪ KENSHI SHIRO (BRANCO)</div>
-                                    <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{shiro_score_val} <span style="font-size: 14px; font-weight: 700; color: #E5E7EB;">IPPON</span></div>
-                                    <div style="margin-top: 6px;">{shiro_items}</div>
-                                </div>
-                            </div>
-                            <div style="background: {winner_bg}; border: 1px solid {winner_border}; border-radius: 6px; padding: 8px; margin-top: 10px; text-align: center;">
-                                <span style="color: {winner_color}; font-size: 15px; font-weight: 800;">{winner_txt}</span>
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-
-                    # Botão de Ação Rápida de Inversão de Cores/Lutadores
-                    col_inv1, col_inv2 = st.columns([1.6, 2.4])
-                    with col_inv1:
-                        if st.button("🔄 Inverter Lutadores (Aka ⇄ Shiro)", width="stretch", key="btn_toggle_invert_aka_shiro", help="Inverte os lados de Aka e Shiro na pontuação, nos relatórios e nos eventos caso a câmera esteja invertida"):
-                            st.session_state["invert_aka_shiro"] = not is_inverted
-                            st.toast(f"🔄 Identidades invertidas: Aka ⇄ Shiro {'(Ativado)' if not is_inverted else '(Restaurado)'}!", icon="🔄")
-                            st.rerun()
-                    with col_inv2:
-                        st.caption("ℹ️ Caso a câmera esteja gravando pelo lado oposto do Shiaijo ou a cor da flag tenha sido afetada, utilize o botão ao lado para inverter a pontuação.")
-
-                    # Botão para Habilitar Edição dos Golpes Detectados (Modo Gravado / Treinamento)
-                    enable_editing = st.toggle("✏️ Habilitar Edição dos Golpes Detectados", value=st.session_state.get("editing_enabled", False), key="toggle_enable_editing")
-                    st.session_state["editing_enabled"] = enable_editing
-
-                    selected_dan = 3
-                    if enable_editing:
-                        st.markdown("#### 🥋 Painel de Revisão Técnica por Árbitro Dan")
-                        dan_options = {
-                            1: "1º Dan (Shodan)",
-                            2: "2º Dan (Nidan)",
-                            3: "3º Dan (Sandan)",
-                            4: "4º Dan (Yondan)",
-                            5: "5º Dan (Godan)",
-                            6: "6º Dan (Rokudan)",
-                            7: "7º Dan (Nanadan)",
-                            8: "8º Dan (Hachidan)"
-                        }
-
-                        rev_header_col1, rev_header_col2 = st.columns([3, 1])
-                        with rev_header_col1:
-                            selected_dan = st.selectbox(
-                                "Selecione a Graduação DAN do Revisor:",
-                                options=list(dan_options.keys()),
-                                format_func=lambda x: dan_options[x],
-                                index=2,
-                                key="reviewer_dan_select"
-                            )
-                        with rev_header_col2:
-                            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                            if st.button("🔄 Resetar Revisão", width="stretch", help="Reseta todas as alterações de marcação e edições feitas nesta sessão"):
-                                st.session_state["session_reviews"] = {}
-                                st.toast("🔄 Marcações da sessão resetadas ao estado original!", icon="🔄")
-                                st.rerun()
-
-                        st.info("🔒 **Regra de Auditoria e Governança:** A exclusão de marcações detectadas é **desabilitada**. É permitido confirmar, editar os parâmetros da detecção ou incluir novos golpes perdidos.")
-
-                    # Lista de itens revisados para salvamento ao final
-                    if "session_reviews" not in st.session_state:
-                        st.session_state["session_reviews"] = {}
-                    if "sonkyo_edits" not in st.session_state:
-                        st.session_state["sonkyo_edits"] = {}
-
-                    sonkyo_edits = st.session_state.get("sonkyo_edits", {})
-
-                    # Banner de Ação de Reprocessamento com Aprendizado quando o Sonkyō for editado
-                    if sonkyo_edits:
-                        st.markdown(
-                            """
-                            <div style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border: 2px solid #818CF8; border-radius: 10px; padding: 14px 18px; margin-bottom: 15px;">
-                                <h4 style="color: #E0E7FF; margin: 0 0 6px 0;">⚡ Momentos de Sonkyō Alterados pelo Árbitro</h4>
-                                <p style="color: #C7D2FE; font-size: 0.90rem; margin: 0 0 10px 0;">
-                                    Os limites regulamentares de Sonkyō foram modificados. O ShinpanAI irá <b>aprender a movimentação corporal</b> deste combate para reprocessar a arbitragem e aplicar o aprendizado em todas as próximas análises.
-                                </p>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                        col_rep1, col_rep2 = st.columns([3, 1])
-                        with col_rep1:
-                            if st.button("🔄 Reprocessar Arbitragem com Aprendizado de Sonkyō", type="primary", width="stretch", key="btn_reprocess_sonkyo_learning"):
-                                dev_pref = st.session_state.get("device_preference", get_processing_device())
-                                pipeline = ShinpanaiPipeline(
-                                    calibration_profile=profile_choice if profile_choice != "custom" else "normal",
-                                    device_preference=dev_pref
-                                )
-                                if profile_choice == "custom":
-                                    pipeline.calibrator.update_custom_settings(
-                                        min_total_score=min_score_pct / 100.0,
-                                        weight_target=w_target,
-                                        weight_fumikomi=w_fumikomi,
-                                        weight_posture=w_posture,
-                                        weight_zanshin=w_zanshin
-                                    )
-                                annotated_output = "annotated_match.mp4"
-                                worker = AnalysisWorker(
-                                    pipeline=pipeline,
-                                    video_path=video_file_path,
-                                    output_video_path=annotated_output,
-                                    initial_sonkyo_override=sonkyo_edits.get("initial"),
-                                    final_sonkyo_override=sonkyo_edits.get("final"),
-                                    invert_combatants=st.session_state.get("invert_aka_shiro", False)
-                                )
-                                worker.start()
-                                st.session_state["analysis_worker"] = worker
-                                st.session_state["sonkyo_edits"] = {}
-                                st.session_state["processing_cancelled"] = False
-                                st.toast("⚡ Reprocessamento iniciado com aprendizado contínuo de Sonkyō!", icon="🔄")
-                                st.rerun()
-                        with col_rep2:
-                            if st.button("❌ Descartar Edições", width="stretch", key="btn_clear_sonkyo_edits"):
-                                st.session_state["sonkyo_edits"] = {}
-                                st.toast("Edições de Sonkyō descartadas!", icon="🔄")
-                                st.rerun()
+                    sonkyo_info = res.get("sonkyo_analysis", {})
 
                     # Montagem da lista unificada e cronológica de todos os golpes (detectados + incluídos)
                     combined_strikes = []
