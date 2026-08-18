@@ -31,7 +31,7 @@ from src.utils.test_runner import (
 setup_system_logger()
 
 st.set_page_config(
-    page_title="Shinpanai - AI Kendo Referee & Analysis System",
+    page_title="ShinpanAI - AI Kendo Referee & Analysis System",
     page_icon="⚔️",
     layout="wide",
     initial_sidebar_state="expanded"
