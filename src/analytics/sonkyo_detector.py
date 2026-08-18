@@ -4,16 +4,35 @@ Identifica a postura ritualística de Sonkyō (agachamento sobre a ponta dos pé
 para determinar com precisão o Início Oficial e o Término Oficial da Luta.
 """
 
+import os
+import json
+import time
 import numpy as np
 from typing import Dict, Any, List, Tuple, Optional
+from src.utils.logger_manager import log_event
+
+DEFAULT_SONKYO_LEARNED_PATH = "config/sonkyo_learned_profile.json"
+
+DEFAULT_SONKYO_LEARNED_PROFILE: Dict[str, Any] = {
+    "samples_count": 0,
+    "learned_rel_height_threshold": 0.82,
+    "learned_hip_drop_threshold": 0.08,
+    "learned_hip_ratio_threshold": 0.48,
+    "learned_knee_angle_threshold": 120.0,
+    "learned_torso_ratio": 0.60,
+    "learned_min_duration_frames": 6,
+    "exemplars": [],
+    "last_updated_at": None
+}
 
 class SonkyoInterval:
-    def __init__(self, start_frame: int, end_frame: int, fps: float, interval_type: str = "INITIAL", confidence: float = 0.85):
+    def __init__(self, start_frame: int, end_frame: int, fps: float, interval_type: str = "INITIAL", confidence: float = 0.85, is_detected: bool = True):
         self.start_frame = start_frame
         self.end_frame = end_frame
         self.fps = fps
         self.interval_type = interval_type  # "INITIAL", "FINAL" ou "INTERMEDIATE"
         self.confidence = confidence
+        self.is_detected = is_detected
 
     @property
     def duration_seconds(self) -> float:
@@ -26,6 +45,7 @@ class SonkyoInterval:
             "end_frame": self.end_frame,
             "duration_seconds": round(self.duration_seconds, 2),
             "confidence": round(self.confidence, 3),
+            "is_detected": self.is_detected,
             "start_timestamp": self.frame_to_timestamp(self.start_frame, self.fps),
             "end_timestamp": self.frame_to_timestamp(self.end_frame, self.fps)
         }
@@ -38,6 +58,24 @@ class SonkyoInterval:
         millis = int((seconds - int(seconds)) * 1000)
         return f"{mins:02d}:{secs:02d}.{millis:03d}"
 
+    @staticmethod
+    def timestamp_to_frame(timestamp_str: str, fps: float) -> int:
+        """Converte uma string de timestamp ('MM:SS.mmm', 'SS.mmm' ou 'SS') em número de quadro."""
+        if not timestamp_str:
+            return 0
+        try:
+            ts = str(timestamp_str).strip().lower().replace("s", "")
+            if ":" in ts:
+                parts = ts.split(":")
+                mins = float(parts[0])
+                secs = float(parts[1])
+                total_sec = mins * 60.0 + secs
+            else:
+                total_sec = float(ts)
+            return max(0, int(round(total_sec * fps)))
+        except Exception:
+            return 0
+
 
 class SonkyoDetector:
     def __init__(
@@ -45,19 +83,207 @@ class SonkyoDetector:
         min_sonkyo_duration_frames: int = 6,
         hip_drop_ratio_threshold: float = 0.48,
         knee_angle_max_threshold: float = 120.0,
-        spine_tilt_max_threshold: float = 40.0
+        spine_tilt_max_threshold: float = 40.0,
+        learned_profile_path: str = DEFAULT_SONKYO_LEARNED_PATH
     ):
         """
         Parâmetros de detecção da postura biomecânica de Sonkyō:
-        - min_sonkyo_duration_frames: Duração mínima (em frames) para consolidar um intervalo de Sonkyō (default 6 quadros ~ 0.2s).
+        - min_sonkyo_duration_frames: Duração mínima (em frames) para consolidar um intervalo de Sonkyō.
         - hip_drop_ratio_threshold: Razão máxima (ankle_y - hip_y) / (ankle_y - nose_y). No Sonkyō fica <= 0.48.
-        - knee_angle_max_threshold: Ângulo máximo do joelho para agachamento (no Sonkyō é agudo/flexionado <= 120°).
-        - spine_tilt_max_threshold: Inclinação máxima do tronco em relação à vertical (coluna ereta <= 40°).
+        - knee_angle_max_threshold: Ângulo máximo do joelho para agachamento (<= 120°).
+        - spine_tilt_max_threshold: Inclinação máxima do tronco em relação à vertical (<= 40°).
+        - learned_profile_path: Caminho para persistência do perfil adaptativo de aprendizado do Sonkyō.
         """
         self.min_sonkyo_duration_frames = min_sonkyo_duration_frames
         self.hip_drop_ratio_threshold = hip_drop_ratio_threshold
         self.knee_angle_max_threshold = knee_angle_max_threshold
         self.spine_tilt_max_threshold = spine_tilt_max_threshold
+        self.learned_profile_path = learned_profile_path
+        
+        self.learned_profile: Dict[str, Any] = self._load_learned_profile()
+        self._apply_learned_profile()
+
+    def _load_learned_profile(self) -> Dict[str, Any]:
+        """Carrega o perfil de aprendizado contínuo do Sonkyō."""
+        if os.path.exists(self.learned_profile_path):
+            try:
+                with open(self.learned_profile_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    base = DEFAULT_SONKYO_LEARNED_PROFILE.copy()
+                    base.update(data)
+                    return base
+            except Exception as e:
+                log_event("WARNING", f"Erro ao ler perfil de aprendizado de Sonkyō ({e}). Usando padrões.", "sonkyo_detector")
+        return DEFAULT_SONKYO_LEARNED_PROFILE.copy()
+
+    def _save_learned_profile(self) -> None:
+        """Persiste o perfil de aprendizado contínuo do Sonkyō."""
+        try:
+            os.makedirs(os.path.dirname(self.learned_profile_path), exist_ok=True)
+            with open(self.learned_profile_path, "w", encoding="utf-8") as f:
+                json.dump(self.learned_profile, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            log_event("ERROR", f"Falha ao salvar perfil de aprendizado do Sonkyō em '{self.learned_profile_path}': {e}", "sonkyo_detector")
+
+    def _apply_learned_profile(self) -> None:
+        """Aplica os hiperparâmetros adaptados pelo histórico de aprendizado."""
+        if self.learned_profile.get("samples_count", 0) > 0:
+            self.hip_drop_ratio_threshold = self.learned_profile.get("learned_hip_ratio_threshold", self.hip_drop_ratio_threshold)
+            self.knee_angle_max_threshold = self.learned_profile.get("learned_knee_angle_threshold", self.knee_angle_max_threshold)
+            self.min_sonkyo_duration_frames = self.learned_profile.get("learned_min_duration_frames", self.min_sonkyo_duration_frames)
+
+    def get_learned_stats(self) -> Dict[str, Any]:
+        """Retorna resumo das métricas e amostras aprendidas pelo modelo."""
+        return {
+            "samples_count": self.learned_profile.get("samples_count", 0),
+            "learned_rel_height_threshold": self.learned_profile.get("learned_rel_height_threshold", 0.82),
+            "learned_hip_drop_threshold": self.learned_profile.get("learned_hip_drop_threshold", 0.08),
+            "learned_hip_ratio_threshold": self.learned_profile.get("learned_hip_ratio_threshold", 0.48),
+            "learned_knee_angle_threshold": self.learned_profile.get("learned_knee_angle_threshold", 120.0),
+            "exemplars_count": len(self.learned_profile.get("exemplars", [])),
+            "last_updated_at": self.learned_profile.get("last_updated_at", "Nenhum aprendizado registrado")
+        }
+
+    def reset_learned_profile(self) -> None:
+        """Restaura o perfil de aprendizado do Sonkyō aos padrões de fábrica."""
+        self.learned_profile = DEFAULT_SONKYO_LEARNED_PROFILE.copy()
+        self._save_learned_profile()
+        self.hip_drop_ratio_threshold = 0.48
+        self.knee_angle_max_threshold = 120.0
+        self.min_sonkyo_duration_frames = 6
+        log_event("INFO", "Perfil de aprendizado do Sonkyō resetado aos padrões de fábrica.", "sonkyo_detector")
+
+    def learn_from_annotation(
+        self,
+        pose_history: List[Optional[Dict[str, Any]]],
+        start_frame: int,
+        end_frame: int,
+        fps: float = 30.0,
+        interval_type: str = "INITIAL",
+        save_to_disk: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Extrai as características biomecânicas da pose no intervalo informado pelo usuário
+        e atualiza o perfil de aprendizado contínuo persistido para este e todos os futuros vídeos.
+        """
+        if not pose_history:
+            return {"status": "warning", "message": "Histórico de poses vazio para aprendizado."}
+
+        start_f = max(0, min(len(pose_history) - 1, start_frame))
+        end_f = max(start_f, min(len(pose_history) - 1, end_frame))
+        
+        annotated_poses = [pose_history[i] for i in range(start_f, end_f + 1) if i < len(pose_history) and pose_history[i]]
+        if not annotated_poses:
+            return {
+                "status": "warning",
+                "message": "Nenhuma pose válida encontrada no intervalo fornecido para aprendizado.",
+                "samples_count": self.learned_profile.get("samples_count", 0)
+            }
+        
+        # 1. Baseline de altura do atleta em pé ao longo do vídeo
+        valid_heights = []
+        valid_hip_ys = []
+        for p in pose_history:
+            if p:
+                all_ys = [pt["y"] for pt in p.values() if isinstance(pt, dict) and "y" in pt]
+                if all_ys:
+                    valid_heights.append(max(all_ys) - min(all_ys))
+                if "RIGHT_HIP" in p or "LEFT_HIP" in p:
+                    hy = [p[k]["y"] for k in ["RIGHT_HIP", "LEFT_HIP"] if k in p]
+                    valid_hip_ys.append(float(np.mean(hy)))
+
+        standing_height = float(np.percentile(valid_heights, 85)) if len(valid_heights) >= 5 else 0.60
+        standing_hip_y = float(np.percentile(valid_hip_ys, 15)) if len(valid_hip_ys) >= 5 else 0.58
+
+        # 2. Extrair métricas médias da janela anotada
+        observed_hip_ratios = []
+        observed_torso_ratios = []
+        observed_knee_angles = []
+        observed_spine_tilts = []
+        observed_rel_heights = []
+        observed_hip_drops = []
+
+        for p in annotated_poses:
+            _, _, m = self.evaluate_sonkyo_pose(p)
+            observed_hip_ratios.append(m["hip_ratio"])
+            observed_torso_ratios.append(m["torso_ratio"])
+            observed_knee_angles.append(m["knee_angle"])
+            observed_spine_tilts.append(m["spine_tilt"])
+
+            all_ys = [pt["y"] for pt in p.values() if isinstance(pt, dict) and "y" in pt]
+            if all_ys and standing_height > 0.05:
+                observed_rel_heights.append((max(all_ys) - min(all_ys)) / standing_height)
+
+            hip_ys = [p[k]["y"] for k in ["RIGHT_HIP", "LEFT_HIP"] if k in p]
+            if hip_ys and standing_hip_y > 0.05:
+                observed_hip_drops.append(float(np.mean(hip_ys)) - standing_hip_y)
+
+        mean_hip_ratio = float(np.mean(observed_hip_ratios)) if observed_hip_ratios else self.hip_drop_ratio_threshold
+        mean_torso_ratio = float(np.mean(observed_torso_ratios)) if observed_torso_ratios else 0.60
+        mean_knee_angle = float(np.mean(observed_knee_angles)) if observed_knee_angles else self.knee_angle_max_threshold
+        mean_spine_tilt = float(np.mean(observed_spine_tilts)) if observed_spine_tilts else self.spine_tilt_max_threshold
+        mean_rel_height = float(np.mean(observed_rel_heights)) if observed_rel_heights else 0.70
+        mean_hip_drop = float(np.mean(observed_hip_drops)) if observed_hip_drops else 0.12
+
+        duration_frames = end_f - start_f + 1
+
+        # 3. Atualizar o Perfil com Média Ponderada
+        samples = self.learned_profile.get("samples_count", 0)
+        alpha = 0.35 if samples > 0 else 0.80  # Taxa de aprendizado adaptativa
+
+        curr_rel_h = self.learned_profile.get("learned_rel_height_threshold", 0.82)
+        curr_hip_drop = self.learned_profile.get("learned_hip_drop_threshold", 0.08)
+        curr_hip_r = self.learned_profile.get("learned_hip_ratio_threshold", self.hip_drop_ratio_threshold)
+        curr_knee = self.learned_profile.get("learned_knee_angle_threshold", self.knee_angle_max_threshold)
+
+        new_rel_h = float((1 - alpha) * curr_rel_h + alpha * (mean_rel_height + 0.06))
+        new_hip_drop = float((1 - alpha) * curr_hip_drop + alpha * max(0.04, mean_hip_drop - 0.02))
+        new_hip_r = float((1 - alpha) * curr_hip_r + alpha * (mean_hip_ratio + 0.04))
+        new_knee = float((1 - alpha) * curr_knee + alpha * min(150.0, mean_knee_angle + 10.0))
+
+        self.learned_profile["learned_rel_height_threshold"] = round(new_rel_h, 3)
+        self.learned_profile["learned_hip_drop_threshold"] = round(new_hip_drop, 3)
+        self.learned_profile["learned_hip_ratio_threshold"] = round(new_hip_r, 3)
+        self.learned_profile["learned_knee_angle_threshold"] = round(new_knee, 1)
+        self.learned_profile["learned_torso_ratio"] = round(float(mean_torso_ratio), 3)
+        self.learned_profile["samples_count"] = samples + 1
+        self.learned_profile["last_updated_at"] = time.strftime("%Y-%m-%d %H:%M:%S")
+
+        # Armazenar exemplar de referência
+        exemplars = self.learned_profile.get("exemplars", [])
+        exemplar_entry = {
+            "interval_type": interval_type,
+            "duration_frames": duration_frames,
+            "mean_hip_ratio": round(mean_hip_ratio, 3),
+            "mean_rel_height": round(mean_rel_height, 3),
+            "mean_knee_angle": round(mean_knee_angle, 1),
+            "mean_spine_tilt": round(mean_spine_tilt, 1)
+        }
+        exemplars.append(exemplar_entry)
+        if len(exemplars) > 50:
+            exemplars = exemplars[-50:]
+        self.learned_profile["exemplars"] = exemplars
+
+        self._apply_learned_profile()
+
+        if save_to_disk:
+            self._save_learned_profile()
+
+        log_event(
+            "INFO",
+            f"SonkyoDetector aprendeu novo padrão de Sonkyō ({interval_type} #{samples+1}): "
+            f"RelHeight={new_rel_h:.2f}, HipRatio={new_hip_r:.2f}, HipDrop={new_hip_drop:.2f}, KneeAngle={new_knee:.1f}°.",
+            "sonkyo_detector"
+        )
+
+        return {
+            "status": "success",
+            "message": f"Padrão de Sonkyō aprendido com sucesso (Amostra #{samples+1}).",
+            "samples_count": self.learned_profile["samples_count"],
+            "learned_rel_height": new_rel_h,
+            "learned_hip_ratio": new_hip_r,
+            "learned_hip_drop": new_hip_drop
+        }
 
     @staticmethod
     def calculate_angle_2d(p1: np.ndarray, p2: np.ndarray, p3: np.ndarray) -> float:
@@ -180,32 +406,42 @@ class SonkyoDetector:
         self,
         pose_history: List[Optional[Dict[str, Any]]],
         fps: float = 30.0,
-        secondary_pose_history: Optional[List[Optional[Dict[str, Any]]]] = None
+        secondary_pose_history: Optional[List[Optional[Dict[str, Any]]]] = None,
+        initial_sonkyo_override: Optional[Dict[str, Any]] = None,
+        final_sonkyo_override: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
         Escaneia o histórico de poses dos combatentes com análise multi-sinal adaptativa e temporal
-        para determinar os limites exatos da luta:
-        - match_start_frame: Momento em que os atletas se levantam do Sonkyō inicial (ou início do vídeo).
-        - match_end_frame: Momento em que os atletas agacham no Sonkyō final (ou fim do vídeo).
+        para determinar os limites exatos da luta.
+        Permite receber correções manuais de Sonkyō do usuário (overrides), aprendendo imediatamente
+        as posturas e persistindo o aprendizado para este e todos os futuros vídeos.
         """
         total_frames = len(pose_history)
         if total_frames < self.min_sonkyo_duration_frames:
+            half = max(1, total_frames // 2)
+            init_s = SonkyoInterval(0, half, fps, interval_type="INITIAL", confidence=0.50, is_detected=False)
+            fin_s = SonkyoInterval(half, max(half, total_frames - 1), fps, interval_type="FINAL", confidence=0.50, is_detected=False)
             return {
-                "is_bounded": False,
-                "has_initial_sonkyo": False,
-                "has_final_sonkyo": False,
-                "match_start_frame": 0,
-                "match_end_frame": max(0, total_frames - 1),
-                "match_start_timestamp": "00:00.000",
+                "is_bounded": True,
+                "has_initial_sonkyo": True,
+                "has_final_sonkyo": True,
+                "match_start_frame": half,
+                "match_end_frame": max(half, total_frames - 1),
+                "match_start_timestamp": SonkyoInterval.frame_to_timestamp(half, fps),
                 "match_end_timestamp": SonkyoInterval.frame_to_timestamp(max(0, total_frames - 1), fps),
                 "effective_combat_duration_seconds": round(total_frames / fps, 2),
-                "initial_sonkyo": None,
-                "final_sonkyo": None,
-                "sonkyo_intervals": [],
-                "status_message": "Vídeo muito curto para análise de Sonkyō."
+                "initial_sonkyo": init_s.to_dict(),
+                "final_sonkyo": fin_s.to_dict(),
+                "sonkyo_intervals": [init_s.to_dict(), fin_s.to_dict()],
+                "status_message": "Vídeo curto: rituais de Sonkyō definidos no início e término do vídeo (ajustáveis na edição).",
+                "learning_logs": [],
+                "learned_samples_total": self.learned_profile.get("samples_count", 0)
             }
 
         # 1. Obter curvas de probabilidade por frame para cada combatente
+        learned_rel_h = self.learned_profile.get("learned_rel_height_threshold", 0.82)
+        learned_hip_drop = self.learned_profile.get("learned_hip_drop_threshold", 0.08)
+
         def compute_combatant_sonkyo_probs(history: List[Optional[Dict[str, Any]]]) -> np.ndarray:
             probs = np.zeros(total_frames, dtype=np.float32)
             valid_heights = []
@@ -232,12 +468,12 @@ class SonkyoDetector:
 
                 is_s, conf_pose, _ = self.evaluate_sonkyo_pose(p)
 
-                # Avaliação da compressão de altura relativa ao atleta em pé
+                # Avaliação da compressão de altura relativa ao atleta em pé (com threshold adaptado)
                 all_ys = [pt["y"] for pt in p.values() if isinstance(pt, dict) and "y" in pt]
                 if all_ys and standing_height > 0.05:
                     h_curr = max(all_ys) - min(all_ys)
                     rel_height_ratio = h_curr / standing_height
-                    rel_height_score = float(np.clip((0.82 - rel_height_ratio) / 0.22, 0.0, 1.0))
+                    rel_height_score = float(np.clip((learned_rel_h - rel_height_ratio) / 0.22, 0.0, 1.0))
                 else:
                     rel_height_score = 0.0
 
@@ -246,7 +482,7 @@ class SonkyoDetector:
                 if hip_ys and standing_hip_y > 0.05:
                     h_y_curr = float(np.mean(hip_ys))
                     hip_drop_delta = h_y_curr - standing_hip_y
-                    hip_drop_score = float(np.clip(hip_drop_delta / 0.12, 0.0, 1.0))
+                    hip_drop_score = float(np.clip(hip_drop_delta / max(0.04, learned_hip_drop * 1.5), 0.0, 1.0))
                 else:
                     hip_drop_score = 0.0
 
@@ -269,7 +505,7 @@ class SonkyoDetector:
         else:
             combined_probs = p_prob1
 
-        # 2. Suavização Temporal e Fechamento Morfológico (Preenchimento de falhas de até 8 frames)
+        # 2. Suavização Temporal e Fechamento Morfológico
         smoothed = np.copy(combined_probs)
         if len(smoothed) >= 3:
             smoothed = np.convolve(smoothed, np.ones(3)/3.0, mode='same')
@@ -320,7 +556,6 @@ class SonkyoDetector:
             else:
                 last_it = merged_intervals[-1]
                 if s_f - last_it.end_frame <= 15:
-                    # Mesclar
                     last_it.end_frame = e_f
                     last_it.confidence = (last_it.confidence + c) / 2.0
                 else:
@@ -334,47 +569,102 @@ class SonkyoDetector:
 
         half_frames = int(total_frames * 0.50)
 
-        # Sonkyō Inicial: Procurar nos primeiros 50% do vídeo
+        # Sonkyō Inicial: Automático ou Fallback no Início do Vídeo
         early_candidates = [it for it in merged_intervals if it.start_frame <= half_frames]
         if early_candidates:
-            # Selecionar o candidato mais próximo do início
             initial_sonkyo = early_candidates[0]
             initial_sonkyo.interval_type = "INITIAL"
+            initial_sonkyo.is_detected = True
             has_initial = True
             match_start_frame = min(total_frames - 1, initial_sonkyo.end_frame + 2)
         else:
-            match_start_frame = 0
+            # Caso não detectado automaticamente: Incluir movimento de Sonkyō no início do vídeo
+            def_init_len = min(int(fps * 1.5), max(self.min_sonkyo_duration_frames, int(total_frames * 0.15)))
+            initial_sonkyo = SonkyoInterval(0, max(1, def_init_len), fps, interval_type="INITIAL", confidence=0.50, is_detected=False)
+            has_initial = True
+            match_start_frame = min(total_frames - 1, initial_sonkyo.end_frame + 2)
 
-        # Sonkyō Final: Procurar na segunda metade do vídeo (após o início da luta)
+        # Sonkyō Final: Automático ou Fallback no Final do Vídeo
         min_final_start = (initial_sonkyo.end_frame + 15) if initial_sonkyo else int(total_frames * 0.40)
         late_candidates = [it for it in merged_intervals if it.end_frame >= half_frames and it.start_frame >= min_final_start]
         
         if late_candidates:
-            # Selecionar o candidato mais próximo do término
             final_sonkyo = late_candidates[-1]
             final_sonkyo.interval_type = "FINAL"
+            final_sonkyo.is_detected = True
             has_final = True
             match_end_frame = max(match_start_frame, final_sonkyo.start_frame - 2)
         else:
-            match_end_frame = max(0, total_frames - 1)
+            # Caso não detectado automaticamente: Incluir movimento de Sonkyō no final do vídeo
+            def_fin_len = min(int(fps * 1.5), max(self.min_sonkyo_duration_frames, int(total_frames * 0.15)))
+            fin_start_f = max(match_start_frame + 5, total_frames - def_fin_len)
+            final_sonkyo = SonkyoInterval(fin_start_f, max(fin_start_f + 1, total_frames - 1), fps, interval_type="FINAL", confidence=0.50, is_detected=False)
+            has_final = True
+            match_end_frame = max(match_start_frame, final_sonkyo.start_frame - 2)
+
+        # 5. Aplicação de Overrides do Usuário e Aprendizado Contínuo
+        learning_logs = []
+        if initial_sonkyo_override:
+            s_f = initial_sonkyo_override.get("start_frame")
+            if s_f is None:
+                s_f = SonkyoInterval.timestamp_to_frame(initial_sonkyo_override.get("start_timestamp", "00:00.000"), fps)
+            e_f = initial_sonkyo_override.get("end_frame")
+            if e_f is None:
+                e_f = SonkyoInterval.timestamp_to_frame(initial_sonkyo_override.get("end_timestamp", "00:00.000"), fps)
+            
+            s_f = max(0, min(total_frames - 1, int(s_f)))
+            e_f = max(s_f, min(total_frames - 1, int(e_f)))
+            
+            initial_sonkyo = SonkyoInterval(s_f, e_f, fps, interval_type="INITIAL", confidence=1.0, is_detected=True)
+            has_initial = True
+            match_start_frame = min(total_frames - 1, initial_sonkyo.end_frame + 2)
+            
+            # Executar aprendizado sobre a movimentação do Sonkyō Inicial
+            learn_res = self.learn_from_annotation(pose_history, s_f, e_f, fps, interval_type="INITIAL")
+            learning_logs.append(f"Sonkyō Inicial aprendido: {learn_res.get('message', '')}")
+
+        if final_sonkyo_override:
+            s_f = final_sonkyo_override.get("start_frame")
+            if s_f is None:
+                s_f = SonkyoInterval.timestamp_to_frame(final_sonkyo_override.get("start_timestamp", "00:00.000"), fps)
+            e_f = final_sonkyo_override.get("end_frame")
+            if e_f is None:
+                e_f = SonkyoInterval.timestamp_to_frame(final_sonkyo_override.get("end_timestamp", "00:00.000"), fps)
+            
+            s_f = max(0, min(total_frames - 1, int(s_f)))
+            e_f = max(s_f, min(total_frames - 1, int(e_f)))
+            
+            final_sonkyo = SonkyoInterval(s_f, e_f, fps, interval_type="FINAL", confidence=1.0, is_detected=True)
+            has_final = True
+            match_end_frame = max(match_start_frame, final_sonkyo.start_frame - 2)
+            
+            # Executar aprendizado sobre a movimentação do Sonkyō Final
+            learn_res = self.learn_from_annotation(pose_history, s_f, e_f, fps, interval_type="FINAL")
+            learning_logs.append(f"Sonkyō Final aprendido: {learn_res.get('message', '')}")
 
         # Garantir consistência lógica
         if match_end_frame <= match_start_frame:
             match_start_frame = 0
             match_end_frame = max(0, total_frames - 1)
-            is_bounded = False
+            is_bounded = True
         else:
-            is_bounded = has_initial or has_final
+            is_bounded = True
 
         effective_duration = max(0.0, (match_end_frame - match_start_frame) / fps)
 
-        status_msg = "Combate delimitado por Sonkyō (Início e Fim detectados com sucesso)."
-        if has_initial and not has_final:
-            status_msg = "Sonkyō de Início detectado com sucesso. Fim considerado até o término da gravação."
-        elif not has_initial and has_final:
-            status_msg = "Sonkyō de Fechamento detectado com sucesso. Início considerado desde o primeiro quadro."
-        elif not is_bounded:
-            status_msg = "Nenhum ritual de Sonkyō detectado. Todo o vídeo foi considerado para análise."
+        init_detected = initial_sonkyo.is_detected
+        fin_detected = final_sonkyo.is_detected
+
+        if initial_sonkyo_override or final_sonkyo_override:
+            status_msg = f"Limites de Sonkyō atualizados e aprendidos pelo usuário ({len(learning_logs)} ritual(is) calibrado(s))."
+        elif init_detected and fin_detected:
+            status_msg = "Combate delimitado por Sonkyō (Início e Fim detectados com sucesso)."
+        elif init_detected and not fin_detected:
+            status_msg = "Sonkyō Inicial detectado com sucesso. Sonkyō Final posicionado no encerramento do vídeo."
+        elif not init_detected and fin_detected:
+            status_msg = "Sonkyō Inicial posicionado no início do vídeo. Sonkyō Final detectado com sucesso."
+        else:
+            status_msg = "Movimentos de Sonkyō definidos no início e término do vídeo (ajustáveis na edição)."
 
         return {
             "is_bounded": is_bounded,
@@ -388,5 +678,7 @@ class SonkyoDetector:
             "initial_sonkyo": initial_sonkyo.to_dict() if initial_sonkyo else None,
             "final_sonkyo": final_sonkyo.to_dict() if final_sonkyo else None,
             "sonkyo_intervals": [it.to_dict() for it in merged_intervals],
-            "status_message": status_msg
+            "status_message": status_msg,
+            "learning_logs": learning_logs,
+            "learned_samples_total": self.learned_profile.get("samples_count", 0)
         }

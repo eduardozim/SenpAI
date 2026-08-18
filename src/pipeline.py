@@ -39,24 +39,27 @@ class ShinpanaiPipeline:
         video_path: str,
         output_video_path: Optional[str] = None,
         progress_callback: Optional[Callable[[float], None]] = None,
-        is_cancelled: Optional[Callable[[], bool]] = None
+        is_cancelled: Optional[Callable[[], bool]] = None,
+        initial_sonkyo_override: Optional[Dict[str, Any]] = None,
+        final_sonkyo_override: Optional[Dict[str, Any]] = None,
+        invert_combatants: bool = False
     ) -> Optional[Dict[str, Any]]:
         """
         Executa a análise completa de um arquivo de vídeo de luta de Kendo no Modo de Arbitragem Gravada:
-        1. Rastreamento e associação exclusiva dos 2 Kenshi (Aka e Shiro) no Plano Principal.
+        1. Rastreamento e associação exclusiva dos 2 Kenshi (Aka e Shiro) no Plano Principal com detecção da cor da flag dorsal (Tasukuki).
         2. Descarte automático de elementos de Segundo Plano (Background) e Oclusões na frente da câmera.
-        3. Detecção e verificação dos momentos de Sonkyō (Abertura e Encerramento).
+        3. Detecção e verificação dos momentos de Sonkyō (Abertura e Encerramento) ou aplicação de ajustes manuais com aprendizado contínuo.
         4. Delimitação estrita do início (match_start_frame) e fim (match_end_frame) da luta.
         5. Detecção e avaliação biomecânica exclusiva dos golpes dentro da janela de Sonkyō.
-        6. Renderização de vídeo anotado com HUD de Sonkyō, identificação dos lutadores e planos descartados.
+        6. Controle de pontuação (Placar Oficial de Ippon) e renderização de vídeo anotado.
         """
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
 
         start_time = time.time()
 
-        # Resetar o rastreador para uma nova análise de vídeo
-        self.combatant_tracker = CombatantTracker()
+        # Resetar o rastreador para uma nova análise de vídeo com configuração de inversão
+        self.combatant_tracker = CombatantTracker(invert_assignment=invert_combatants)
 
         cap = cv2.VideoCapture(video_path)
         fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
@@ -68,7 +71,6 @@ class ShinpanaiPipeline:
         aka_history: List[Optional[Dict[str, Any]]] = []
         shiro_history: List[Optional[Dict[str, Any]]] = []
         discarded_per_frame: List[List[Dict[str, Any]]] = []
-        raw_frames: List[np.ndarray] = [] if output_video_path else []
 
         frame_idx = 0
         try:
@@ -79,13 +81,10 @@ class ShinpanaiPipeline:
                     return None
 
                 ret, frame = cap.read()
-                if not ret:
+                if not ret or frame is None:
                     break
 
-                if output_video_path:
-                    raw_frames.append(frame)
-
-                # 1. Extração de candidatos a praticantes
+                # 1. Extração de candidatos a praticantes (Inferência de Alta Velocidade)
                 candidates, _ = self.pose_detector.process_frame_candidates(frame)
 
                 # Fallback sintético para modo demo (se for vídeo esquemático 2D)
@@ -115,8 +114,8 @@ class ShinpanaiPipeline:
                     }
                     candidates = [synthetic_lm]
 
-                # 2. Filtragem de Planos e Associação dos 2 Combatentes
-                aka_lm, shiro_lm, discarded = self.combatant_tracker.associate_and_filter(candidates)
+                # 2. Filtragem de Planos, Detecção de Flag (Tasukuki) e Associação dos 2 Combatentes
+                aka_lm, shiro_lm, discarded = self.combatant_tracker.associate_and_filter(candidates, frame=frame)
                 aka_history.append(aka_lm)
                 shiro_history.append(shiro_lm)
                 discarded_per_frame.append(discarded)
@@ -141,7 +140,9 @@ class ShinpanaiPipeline:
         sonkyo_analysis = self.sonkyo_detector.detect_match_boundaries(
             primary_history,
             fps=fps,
-            secondary_pose_history=secondary_history
+            secondary_pose_history=secondary_history,
+            initial_sonkyo_override=initial_sonkyo_override,
+            final_sonkyo_override=final_sonkyo_override
         )
 
         match_start_f = sonkyo_analysis["match_start_frame"]
@@ -211,17 +212,23 @@ class ShinpanaiPipeline:
                 "diagnostic_report": report_text
             })
 
-        # 6. Gravação do Vídeo Anotado com HUD de Sonkyō e Filtragem de Planos
-        if output_video_path and raw_frames:
+        # 6. Gravação do Vídeo Anotado com HUD de Sonkyō e Filtragem de Planos (Streaming em 2ª Passada sem consumo de RAM)
+        if output_video_path and total_frames > 0:
+            cap_render = cv2.VideoCapture(video_path)
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
             try:
-                for f_idx, raw_f in enumerate(raw_frames):
+                f_idx = 0
+                while cap_render.isOpened():
                     if is_cancelled and is_cancelled():
                         elapsed_cancel = time.time() - start_time
-                        log_event("WARNING", f"Renderização de vídeo anotado cancelada pelo usuário no frame {f_idx}/{len(raw_frames)} (Tempo decorrido: {elapsed_cancel:.2f}s).", "pipeline")
+                        log_event("WARNING", f"Renderização de vídeo anotado cancelada pelo usuário no frame {f_idx}/{total_frames} (Tempo decorrido: {elapsed_cancel:.2f}s).", "pipeline")
                         return None
+
+                    ret, raw_f = cap_render.read()
+                    if not ret or raw_f is None:
+                        break
 
                     aka_p = aka_history[f_idx] if f_idx < len(aka_history) else None
                     shiro_p = shiro_history[f_idx] if f_idx < len(shiro_history) else None
@@ -251,10 +258,12 @@ class ShinpanaiPipeline:
                         match_timer_str=timer_txt
                     )
                     writer.write(annotated_f)
+                    f_idx += 1
 
                     if progress_callback and f_idx % 10 == 0:
                         progress_callback(0.60 + (f_idx / total_frames) * 0.40)
             finally:
+                cap_render.release()
                 writer.release()
 
         if progress_callback:
@@ -263,6 +272,43 @@ class ShinpanaiPipeline:
         total_elapsed_sec = round(time.time() - start_time, 2)
         processing_fps = round(total_frames / max(0.001, total_elapsed_sec), 1)
         tracker_summary = self.combatant_tracker.get_summary()
+
+        # 7. Controle de Pontuação Oficial dos Combatentes (Placar de Ippon)
+        aka_valid_strikes = [ev for ev in analyzed_events if ev["event_info"]["attacker_id"] == "KENSHI_AKA" and ev["evaluation"].get("is_valid", False)]
+        shiro_valid_strikes = [ev for ev in analyzed_events if ev["event_info"]["attacker_id"] == "KENSHI_SHIRO" and ev["evaluation"].get("is_valid", False)]
+        
+        aka_score = len(aka_valid_strikes)
+        shiro_score = len(shiro_valid_strikes)
+
+        if aka_score > shiro_score:
+            winner = "AKA"
+            winner_name = "Kenshi Aka (Vermelho)"
+            result_description = f"Vitória de Aka ({aka_score} - {shiro_score})"
+        elif shiro_score > aka_score:
+            winner = "SHIRO"
+            winner_name = "Kenshi Shiro (Branco)"
+            result_description = f"Vitória de Shiro ({shiro_score} - {aka_score})"
+        else:
+            winner = "DRAW"
+            winner_name = "Empate (Hikiwake)"
+            result_description = f"Empate ({aka_score} - {shiro_score})"
+
+        scoreboard = {
+            "aka_score": aka_score,
+            "shiro_score": shiro_score,
+            "winner": winner,
+            "winner_name": winner_name,
+            "result_description": result_description,
+            "aka_valid_strikes": [s["event_info"] for s in aka_valid_strikes],
+            "shiro_valid_strikes": [s["event_info"] for s in shiro_valid_strikes],
+            "flag_detection": {
+                "flag_decision": tracker_summary.get("flag_decision", "POSITION_DEFAULT"),
+                "confidence": tracker_summary.get("flag_confidence", 0.50),
+                "candidate_left_red_score": tracker_summary.get("candidate_left_red_score", 0.0),
+                "candidate_right_red_score": tracker_summary.get("candidate_right_red_score", 0.0),
+                "invert_assignment": tracker_summary.get("invert_assignment", False)
+            }
+        }
 
         # Registro do Resumo do Processamento no Log do Sistema
         init_sonkyo_str = f"Detectado (Início: {sonkyo_analysis.get('match_start_timestamp', '00:00.000')})" if sonkyo_analysis["has_initial_sonkyo"] else "Não detectado"
@@ -275,6 +321,8 @@ class ShinpanaiPipeline:
             f"  • Duração do Vídeo: {round(total_frames / fps, 2)}s (Tempo Efetivo de Combate: {sonkyo_analysis['effective_combat_duration_seconds']}s)\n"
             f"  • Dispositivo / Acelerador: {self.effective_device.upper()} ({self.device_status_message})\n"
             f"  • Perfil de Arbitragem Aplicado: {self.calibrator.active_config.get('name', 'Custom')}\n"
+            f"  • Placar Oficial: Aka {aka_score} x {shiro_score} Shiro — {result_description}\n"
+            f"  • Identificação de Flag (Tasukuki): {tracker_summary.get('flag_decision', 'N/A')} (Confiança: {int(tracker_summary.get('flag_confidence', 0.5)*100)}%)\n"
             f"  • Sonkyō Inicial: {init_sonkyo_str}\n"
             f"  • Sonkyō Final: {final_sonkyo_str}\n"
             f"  • Golpes Regulamentares Detectados: {len(analyzed_events)} evento(s)\n"
@@ -295,6 +343,7 @@ class ShinpanaiPipeline:
             "device_status": self.device_status_message,
             "sonkyo_analysis": sonkyo_analysis,
             "plane_filtering": tracker_summary,
+            "scoreboard": scoreboard,
             "events": analyzed_events
         }
 
@@ -308,11 +357,17 @@ class AnalysisWorker:
         self,
         pipeline: "ShinpanaiPipeline",
         video_path: str,
-        output_video_path: Optional[str] = None
+        output_video_path: Optional[str] = None,
+        initial_sonkyo_override: Optional[Dict[str, Any]] = None,
+        final_sonkyo_override: Optional[Dict[str, Any]] = None,
+        invert_combatants: bool = False
     ):
         self.pipeline = pipeline
         self.video_path = video_path
         self.output_video_path = output_video_path
+        self.initial_sonkyo_override = initial_sonkyo_override
+        self.final_sonkyo_override = final_sonkyo_override
+        self.invert_combatants = invert_combatants
         
         self.progress: float = 0.0
         self.status_message: str = "Inicializando pipeline de visão e pose tracking..."
@@ -366,7 +421,10 @@ class AnalysisWorker:
                 video_path=self.video_path,
                 output_video_path=self.output_video_path,
                 progress_callback=on_progress,
-                is_cancelled=check_cancel
+                is_cancelled=check_cancel,
+                initial_sonkyo_override=self.initial_sonkyo_override,
+                final_sonkyo_override=self.final_sonkyo_override,
+                invert_combatants=self.invert_combatants
             )
 
             self.end_time = time.time()

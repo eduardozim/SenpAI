@@ -248,8 +248,31 @@ if nav_page == "settings":
 
     st.markdown("---")
 
-    # --- SEÇÃO 4: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA ---
-    st.subheader("🐛 4. Diagnóstico, Alertas & Log de Debug do Sistema")
+    # --- SEÇÃO 4: APRENDIZADO CONTÍNUO DO SONKYŌ & CALIBRAÇÃO DE LIMITES ---
+    st.subheader("🥋 4. Aprendizado Contínuo de Sonkyō & Calibração de Limites")
+    st.markdown("Acompanhe os parâmetros biométricos adaptados e calibrados a partir das edições de Sonkyō realizadas pelos árbitros.")
+
+    sonkyo_detector_stats = SonkyoDetector()
+    s_stats = sonkyo_detector_stats.get_learned_stats()
+
+    s_col1, s_col2, s_col3, s_col4 = st.columns(4)
+    s_col1.metric("Rituais de Sonkyō Aprendidos", f"{s_stats['samples_count']} amostras")
+    s_col2.metric("Compressão de Altura Adaptada", f"{s_stats['learned_rel_height_threshold']:.2f}")
+    s_col3.metric("Rebaixamento de Quadril (ΔY)", f"{s_stats['learned_hip_drop_threshold']:.2f}")
+    s_col4.metric("Ângulo Máx. Joelho Calibrado", f"{s_stats['learned_knee_angle_threshold']:.1f}°")
+
+    st.caption(f"ℹ️ **Última Atualização do Modelo de Sonkyō:** `{s_stats['last_updated_at']}` | Exemplares em memória: `{s_stats['exemplars_count']}`")
+
+    if s_stats['samples_count'] > 0:
+        if st.button("🔄 Resetar Perfil Aprendido de Sonkyō para os Padrões de Fábrica", key="btn_reset_learned_sonkyo"):
+            sonkyo_detector_stats.reset_learned_profile()
+            st.success("✅ Perfil de aprendizado de Sonkyō resetado para os padrões de fábrica!")
+            st.rerun()
+
+    st.markdown("---")
+
+    # --- SEÇÃO 5: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA ---
+    st.subheader("🐛 5. Diagnóstico, Alertas & Log de Debug do Sistema")
     st.markdown("Rastreie alertas e erros do sistema em tempo real, execute testes de integridade e baixe o arquivo de log completo.")
 
     log_summary = get_log_summary()
@@ -339,30 +362,34 @@ else:
     )
 
     st.sidebar.markdown("---")
-    st.sidebar.header("⚡ Acelerador de Hardware")
+    st.sidebar.header("⚡ Aceleração de Hardware")
     saved_hw_device = get_processing_device()
     dev_pref_current = st.session_state.get("device_preference", saved_hw_device)
+    effective_dev, dev_msg, dev_gpu = get_effective_device(dev_pref_current)
 
-    selected_hw_device = st.sidebar.radio(
-        "Dispositivo de Execução:",
-        options=["gpu", "cpu"],
-        index=0 if dev_pref_current == "gpu" else 1,
-        format_func=lambda x: {
-            "gpu": "🚀 GPU NVIDIA CUDA (Acelerada)",
-            "cpu": "💻 Processador CPU (Padrão)"
-        }[x],
-        key="sidebar_hw_device_choice"
-    )
-    if selected_hw_device != dev_pref_current:
-        st.session_state["device_preference"] = selected_hw_device
-        set_processing_device(selected_hw_device)
-        st.rerun()
-
-    gpu_hw_status = detect_nvidia_gpu()
-    if gpu_hw_status["has_nvidia_gpu"] and selected_hw_device == "gpu":
-        st.sidebar.success(f"🟢 **GPU Ativa:** {gpu_hw_status['gpu_name']}")
-    elif selected_hw_device == "cpu":
-        st.sidebar.info("💻 **Modo CPU Ativo:** MediaPipe Pose (TFLite CPU)")
+    if effective_dev == "gpu":
+        st.sidebar.markdown(
+            f"""
+            <div style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;">
+                <div style="font-weight: 700; color: #4ade80; font-size: 0.92rem; margin-bottom: 4px;">🚀 Aceleração Ativada</div>
+                <div style="font-size: 0.82rem; color: #e2e8f0; font-weight: 600;">{dev_gpu.get('gpu_name', 'NVIDIA GPU')}</div>
+                <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 2px;">⚡ YOLOv8-Pose (PyTorch CUDA)</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.sidebar.markdown(
+            """
+            <div style="background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; padding: 10px 12px; margin-bottom: 6px;">
+                <div style="font-weight: 700; color: #cbd5e1; font-size: 0.92rem; margin-bottom: 4px;">💻 Aceleração Desativada</div>
+                <div style="font-size: 0.82rem; color: #94a3b8;">Processamento por CPU</div>
+                <div style="font-size: 0.74rem; color: #64748b; margin-top: 2px;">MediaPipe Pose (TFLite CPU)</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    st.sidebar.caption("⚙️ *Para alterar o acelerador, acesse Configurações Globais no Modo de Treinamento.*")
 
     st.sidebar.markdown("---")
     st.sidebar.header("🎛️ Calibração de Sensibilidade")
@@ -625,7 +652,8 @@ else:
                     worker = AnalysisWorker(
                         pipeline=pipeline,
                         video_path=video_file_path,
-                        output_video_path=annotated_output
+                        output_video_path=annotated_output,
+                        invert_combatants=st.session_state.get("invert_aka_shiro", False)
                     )
                     worker.start()
                     st.session_state["analysis_worker"] = worker
@@ -767,8 +795,102 @@ else:
                     st.info("👈 Clique em **⚡ Executar Arbitragem** para visualizar a linha do tempo de eventos e análise detalhada.")
                 else:
                     res = st.session_state["analysis_result"]
-                    video_name_simple = os.path.basename(res.get("video_path", "video.mp4"))
-                    sonkyo_info = res.get("sonkyo_analysis", {})
+                    # 0. PLACAR OFICIAL DE ARBITRAGEM (SANBON-SHOBU) & CONTROLE DE PONTUAÇÃO
+                    is_inverted = st.session_state.get("invert_aka_shiro", False)
+                    raw_scoreboard = res.get("scoreboard", {})
+                    
+                    # Extração dos golpes válidos (Ippon)
+                    raw_aka_strikes = [ev for ev in res.get("events", []) if ev["event_info"].get("attacker_id") == "KENSHI_AKA" and ev["evaluation"].get("is_valid", False)]
+                    raw_shiro_strikes = [ev for ev in res.get("events", []) if ev["event_info"].get("attacker_id") == "KENSHI_SHIRO" and ev["evaluation"].get("is_valid", False)]
+
+                    if not is_inverted:
+                        aka_val_strikes = raw_aka_strikes
+                        shiro_val_strikes = raw_shiro_strikes
+                    else:
+                        aka_val_strikes = raw_shiro_strikes
+                        shiro_val_strikes = raw_aka_strikes
+
+                    aka_score_val = len(aka_val_strikes)
+                    shiro_score_val = len(shiro_val_strikes)
+
+                    if aka_score_val > shiro_score_val:
+                        winner_txt = f"🏆 Vitória de Kenshi Aka (Vermelho) [{aka_score_val} - {shiro_score_val}]"
+                        winner_bg = "rgba(239, 68, 68, 0.18)"
+                        winner_border = "#EF4444"
+                        winner_color = "#FCA5A5"
+                    elif shiro_score_val > aka_score_val:
+                        winner_txt = f"🏆 Vitória de Kenshi Shiro (Branco) [{shiro_score_val} - {aka_score_val}]"
+                        winner_bg = "rgba(243, 244, 246, 0.15)"
+                        winner_border = "#E5E7EB"
+                        winner_color = "#F3F4F6"
+                    else:
+                        winner_txt = f"🤝 Empate (Hikiwake) [{aka_score_val} - {shiro_score_val}]"
+                        winner_bg = "rgba(148, 163, 184, 0.15)"
+                        winner_border = "#64748B"
+                        winner_color = "#CBD5E1"
+
+                    flag_info = raw_scoreboard.get("flag_detection", {})
+                    flag_dec = flag_info.get("flag_decision", "POSITION_DEFAULT")
+                    flag_conf = int(flag_info.get("confidence", 0.5) * 100)
+
+                    if "RIGHT" in flag_dec:
+                        flag_badge = f"🚩 Flag Vermelha (Tasukuki) detectada nas costas do lutador à direita ({flag_conf}%)"
+                    elif "LEFT" in flag_dec:
+                        flag_badge = f"🚩 Flag Vermelha (Tasukuki) detectada nas costas do lutador à esquerda ({flag_conf}%)"
+                    else:
+                        flag_badge = "🚩 Identificação por posição inicial no Shiaijo"
+
+                    if is_inverted:
+                        flag_badge += " • 🔄 Lados Invertidos Manualmente"
+
+                    # HTML de Ippons do Aka
+                    if aka_val_strikes:
+                        aka_items = "".join([f'<span style="display:inline-block; background: #991B1B; color: #FEE2E2; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">🔴 {s["event_info"]["type"]} ({s["event_info"]["timestamp"]})</span>' for s in aka_val_strikes])
+                    else:
+                        aka_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
+
+                    # HTML de Ippons do Shiro
+                    if shiro_val_strikes:
+                        shiro_items = "".join([f'<span style="display:inline-block; background: #475569; color: #F8FAFC; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">⚪ {s["event_info"]["type"]} ({s["event_info"]["timestamp"]})</span>' for s in shiro_val_strikes])
+                    else:
+                        shiro_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
+
+                    st.markdown(
+                        f"""
+                        <div style="background: #090D16; border: 2px solid #374151; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1F2937; padding-bottom: 8px; margin-bottom: 12px;">
+                                <span style="color: #D1D5DB; font-size: 13px; font-weight: 800; letter-spacing: 0.8px;">🥋 PLACAR OFICIAL DE ARBITRAGEM</span>
+                                <span style="color: #93C5FD; font-size: 12px; font-weight: 500;">{flag_badge}</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                <div style="background: linear-gradient(180deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.22) 100%); border: 1.5px solid #EF4444; border-radius: 8px; padding: 12px; text-align: center;">
+                                    <div style="color: #FCA5A5; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">🔴 KENSHI AKA (VERMELHO)</div>
+                                    <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{aka_score_val} <span style="font-size: 14px; font-weight: 700; color: #FCA5A5;">IPPON</span></div>
+                                    <div style="margin-top: 6px;">{aka_items}</div>
+                                </div>
+                                <div style="background: linear-gradient(180deg, rgba(243, 244, 246, 0.10) 0%, rgba(100, 116, 139, 0.18) 100%); border: 1.5px solid #E5E7EB; border-radius: 8px; padding: 12px; text-align: center;">
+                                    <div style="color: #F3F4F6; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">⚪ KENSHI SHIRO (BRANCO)</div>
+                                    <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{shiro_score_val} <span style="font-size: 14px; font-weight: 700; color: #E5E7EB;">IPPON</span></div>
+                                    <div style="margin-top: 6px;">{shiro_items}</div>
+                                </div>
+                            </div>
+                            <div style="background: {winner_bg}; border: 1px solid {winner_border}; border-radius: 6px; padding: 8px; margin-top: 10px; text-align: center;">
+                                <span style="color: {winner_color}; font-size: 15px; font-weight: 800;">{winner_txt}</span>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+                    # Botão de Ação Rápida de Inversão de Cores/Lutadores
+                    col_inv1, col_inv2 = st.columns([1.6, 2.4])
+                    with col_inv1:
+                        if st.button("🔄 Inverter Lutadores (Aka ⇄ Shiro)", width="stretch", key="btn_toggle_invert_aka_shiro", help="Inverte os lados de Aka e Shiro na pontuação, nos relatórios e nos eventos caso a câmera esteja invertida"):
+                            st.session_state["invert_aka_shiro"] = not is_inverted
+                            st.toast(f"🔄 Identidades invertidas: Aka ⇄ Shiro {'(Ativado)' if not is_inverted else '(Restaurado)'}!", icon="🔄")
+                            st.rerun()
+                    with col_inv2:
+                        st.caption("ℹ️ Caso a câmera esteja gravando pelo lado oposto do Shiaijo ou a cor da flag tenha sido afetada, utilize o botão ao lado para inverter a pontuação.")
 
                     # Botão para Habilitar Edição dos Golpes Detectados (Modo Gravado / Treinamento)
                     enable_editing = st.toggle("✏️ Habilitar Edição dos Golpes Detectados", value=st.session_state.get("editing_enabled", False), key="toggle_enable_editing")
@@ -809,32 +931,132 @@ else:
                     # Lista de itens revisados para salvamento ao final
                     if "session_reviews" not in st.session_state:
                         st.session_state["session_reviews"] = {}
+                    if "sonkyo_edits" not in st.session_state:
+                        st.session_state["sonkyo_edits"] = {}
+
+                    sonkyo_edits = st.session_state.get("sonkyo_edits", {})
+
+                    # Banner de Ação de Reprocessamento com Aprendizado quando o Sonkyō for editado
+                    if sonkyo_edits:
+                        st.markdown(
+                            """
+                            <div style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border: 2px solid #818CF8; border-radius: 10px; padding: 14px 18px; margin-bottom: 15px;">
+                                <h4 style="color: #E0E7FF; margin: 0 0 6px 0;">⚡ Momentos de Sonkyō Alterados pelo Árbitro</h4>
+                                <p style="color: #C7D2FE; font-size: 0.90rem; margin: 0 0 10px 0;">
+                                    Os limites regulamentares de Sonkyō foram modificados. O ShinpanAI irá <b>aprender a movimentação corporal</b> deste combate para reprocessar a arbitragem e aplicar o aprendizado em todas as próximas análises.
+                                </p>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        col_rep1, col_rep2 = st.columns([3, 1])
+                        with col_rep1:
+                            if st.button("🔄 Reprocessar Arbitragem com Aprendizado de Sonkyō", type="primary", width="stretch", key="btn_reprocess_sonkyo_learning"):
+                                dev_pref = st.session_state.get("device_preference", get_processing_device())
+                                pipeline = ShinpanaiPipeline(
+                                    calibration_profile=profile_choice if profile_choice != "custom" else "normal",
+                                    device_preference=dev_pref
+                                )
+                                if profile_choice == "custom":
+                                    pipeline.calibrator.update_custom_settings(
+                                        min_total_score=min_score_pct / 100.0,
+                                        weight_target=w_target,
+                                        weight_fumikomi=w_fumikomi,
+                                        weight_posture=w_posture,
+                                        weight_zanshin=w_zanshin
+                                    )
+                                annotated_output = "annotated_match.mp4"
+                                worker = AnalysisWorker(
+                                    pipeline=pipeline,
+                                    video_path=video_file_path,
+                                    output_video_path=annotated_output,
+                                    initial_sonkyo_override=sonkyo_edits.get("initial"),
+                                    final_sonkyo_override=sonkyo_edits.get("final"),
+                                    invert_combatants=st.session_state.get("invert_aka_shiro", False)
+                                )
+                                worker.start()
+                                st.session_state["analysis_worker"] = worker
+                                st.session_state["sonkyo_edits"] = {}
+                                st.session_state["processing_cancelled"] = False
+                                st.toast("⚡ Reprocessamento iniciado com aprendizado contínuo de Sonkyō!", icon="🔄")
+                                st.rerun()
+                        with col_rep2:
+                            if st.button("❌ Descartar Edições", width="stretch", key="btn_clear_sonkyo_edits"):
+                                st.session_state["sonkyo_edits"] = {}
+                                st.toast("Edições de Sonkyō descartadas!", icon="🔄")
+                                st.rerun()
 
                     with st.container(height=650):
                         has_initial = sonkyo_info.get("has_initial_sonkyo", False) and sonkyo_info.get("initial_sonkyo")
                         has_final = sonkyo_info.get("has_final_sonkyo", False) and sonkyo_info.get("final_sonkyo")
                         has_strikes = bool(res.get("events"))
 
-                        if not has_initial and not has_final and not has_strikes:
+                        if not has_initial and not has_final and not has_strikes and not sonkyo_edits:
                             st.warning("Nenhum evento (Sonkyō ou Golpes) foi identificado no vídeo.")
                         else:
                             # 1. EVENTO DE SONKYŌ INICIAL (Abertura do Combate)
-                            if has_initial:
-                                init_s = sonkyo_info["initial_sonkyo"]
-                                with st.expander(f"🥋 Evento: Sonkyō Inicial (Abertura do Combate) @ {init_s['start_timestamp']} - {init_s['end_timestamp']} - 🥋 INÍCIO OFICIAL", expanded=True):
+                            initial_edit = sonkyo_edits.get("initial")
+                            if has_initial or initial_edit:
+                                init_s = sonkyo_info.get("initial_sonkyo") or {}
+                                is_init_detected = init_s.get("is_detected", True)
+                                curr_start_ts = initial_edit.get("start_timestamp") if initial_edit else init_s.get("start_timestamp", "00:00.000")
+                                curr_end_ts = initial_edit.get("end_timestamp") if initial_edit else init_s.get("end_timestamp", "00:01.500")
+                                
+                                if initial_edit:
+                                    title_status = "✏️ EDITADO"
+                                elif is_init_detected:
+                                    title_status = "🥋 INÍCIO OFICIAL"
+                                else:
+                                    title_status = "📌 INÍCIO DO VÍDEO (PADRÃO)"
+
+                                with st.expander(f"🥋 Evento: Sonkyō Inicial (Abertura do Combate) @ {curr_start_ts} - {curr_end_ts} - {title_status}", expanded=True):
                                     c_s1, c_s2 = st.columns([1, 1.5])
                                     with c_s1:
                                         st.markdown("**Tipo de Evento:** `🥋 Sonkyō (Abertura / Início)`")
-                                        st.markdown(f"**Intervalo Ritual:** `{init_s['start_timestamp']}` até `{init_s['end_timestamp']}`")
-                                        st.markdown(f"**Quadros no Vídeo:** `Frame #{init_s['start_frame']}` ao `Frame #{init_s['end_frame']}`")
-                                        st.markdown(f"**Duração:** `{init_s['duration_seconds']}s`")
-                                        st.markdown(f"**Início Oficial do Combate:** `Frame #{sonkyo_info['match_start_frame']}` (`{sonkyo_info['match_start_timestamp']}`)")
-                                        st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1;">🥋 SONKYŌ DETECTADO</div>', unsafe_allow_html=True)
+                                        st.markdown(f"**Intervalo Ritual:** `{curr_start_ts}` até `{curr_end_ts}`")
+                                        if not initial_edit:
+                                            st.markdown(f"**Quadros no Vídeo:** `Frame #{init_s.get('start_frame', 0)}` ao `Frame #{init_s.get('end_frame', 0)}`")
+                                            st.markdown(f"**Duração:** `{init_s.get('duration_seconds', 0.0)}s`")
+                                            st.markdown(f"**Início Oficial do Combate:** `Frame #{sonkyo_info.get('match_start_frame', 0)}` (`{sonkyo_info.get('match_start_timestamp', '00:00.000')}`)")
+                                            if is_init_detected:
+                                                st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1;">🥋 SONKYŌ DETECTADO</div>', unsafe_allow_html=True)
+                                            else:
+                                                st.markdown('<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF;">📌 SONKYŌ INICIAL (Início do Vídeo / Ajustável)</div>', unsafe_allow_html=True)
+                                        else:
+                                            st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6;">✏️ SONKYŌ INICIAL EDITADO (Pendente de Reprocessamento)</div>', unsafe_allow_html=True)
+
+                                        if enable_editing:
+                                            st.markdown("---")
+                                            st.markdown(f"**✏️ Editar Intervalo do Sonkyō Inicial ({dan_options.get(selected_dan, 'Dan')}):**")
+                                            ed_col1, ed_col2 = st.columns(2)
+                                            new_init_start = ed_col1.text_input("Início do Ritual", value=curr_start_ts, key="edit_init_start_input")
+                                            new_init_end = ed_col2.text_input("Fim do Ritual (Início da Luta)", value=curr_end_ts, key="edit_init_end_input")
+                                            
+                                            btn_save_init_col1, btn_save_init_col2 = st.columns([1.5, 1])
+                                            if btn_save_init_col1.button("💾 Aplicar Edição do Sonkyō Inicial", key="btn_apply_sonkyo_init_edit"):
+                                                if "sonkyo_edits" not in st.session_state:
+                                                    st.session_state["sonkyo_edits"] = {}
+                                                st.session_state["sonkyo_edits"]["initial"] = {
+                                                    "start_timestamp": new_init_start,
+                                                    "end_timestamp": new_init_end
+                                                }
+                                                st.toast("✏️ Tempo do Sonkyō Inicial salvo! Clique no botão de Reprocessar no topo.", icon="✏️")
+                                                st.rerun()
+                                            
+                                            if initial_edit and btn_save_init_col2.button("🔄 Restaurar", key="btn_restore_sonkyo_init"):
+                                                st.session_state["sonkyo_edits"].pop("initial", None)
+                                                st.toast("Sonkyō Inicial restaurado.", icon="🔄")
+                                                st.rerun()
+
                                     with c_s2:
                                         st.markdown("##### 🥋 Diagnóstico do Sonkyō Inicial")
+                                        if is_init_detected:
+                                            posture_text = "- **Postura Biomecânica:** Agachamento ritualístico sobre a ponta dos pés com flexão de joelhos e coluna ereta identificados com sucesso.\n"
+                                        else:
+                                            posture_text = "- **Postura Biomecânica:** Ritual não identificado nos primeiros segundos; posicionado por padrão no início do vídeo para delimitação da arbitragem.\n"
                                         st.markdown(
-                                            "- **Postura Biomecânica:** Agachamento ritualístico sobre a ponta dos pés com flexão de joelhos e coluna ereta identificados com sucesso.\n"
-                                            f"- **Delimitação Regulamentar:** A contagem e avaliação oficial de golpes é liberada a partir de **{sonkyo_info['match_start_timestamp']}**.\n"
+                                            posture_text +
+                                            f"- **Delimitação Regulamentar:** A contagem e avaliação oficial de golpes é liberada a partir de **{curr_end_ts}**.\n"
                                             f"- **Status do Reconhecimento:** {sonkyo_info.get('status_message', 'Sonkyō inicial validado com sucesso.')}"
                                         )
 
@@ -846,7 +1068,13 @@ else:
                                     ev = ev_data["event_info"]
                                     eval_info = ev_data["evaluation"]
                                     event_id_str = f"event_{idx+1}_frame_{ev['impact_frame']}"
-                                    attacker_label = ev.get("attacker_name", "Kenshi Aka")
+                                    
+                                    orig_att_name = ev.get("attacker_name", "Kenshi Aka (Vermelho)")
+                                    orig_att_id = ev.get("attacker_id", "KENSHI_AKA")
+                                    if is_inverted:
+                                        attacker_label = "Kenshi Shiro (Branco)" if "AKA" in orig_att_id else "Kenshi Aka (Vermelho)"
+                                    else:
+                                        attacker_label = orig_att_name
 
                                     # Estado da revisão desta marcação
                                     current_rev = st.session_state["session_reviews"].get(event_id_str, {
@@ -861,6 +1089,7 @@ else:
                                         "is_confirmed": False,
                                         "notes": ""
                                     })
+                                    current_rev["attacker_name"] = attacker_label
 
                                     if current_rev.get("is_edited"):
                                         status_badge = "✏️ EDITADO"
@@ -954,22 +1183,68 @@ else:
                                             st.markdown(ev_data["diagnostic_report"])
 
                             # 3. EVENTO DE SONKYŌ FINAL (Encerramento do Combate)
-                            if has_final:
-                                fin_s = sonkyo_info["final_sonkyo"]
-                                with st.expander(f"🥋 Evento: Sonkyō Final (Encerramento do Combate) @ {fin_s['start_timestamp']} - {fin_s['end_timestamp']} - 🥋 ENCERRAMENTO OFICIAL", expanded=True):
+                            final_edit = sonkyo_edits.get("final")
+                            if has_final or final_edit:
+                                fin_s = sonkyo_info.get("final_sonkyo") or {}
+                                is_fin_detected = fin_s.get("is_detected", True)
+                                curr_start_ts_fin = final_edit.get("start_timestamp") if final_edit else fin_s.get("start_timestamp", "00:04.000")
+                                curr_end_ts_fin = final_edit.get("end_timestamp") if final_edit else fin_s.get("end_timestamp", f"{res['duration_seconds']}s")
+                                
+                                if final_edit:
+                                    title_status_fin = "✏️ EDITADO"
+                                elif is_fin_detected:
+                                    title_status_fin = "🥋 ENCERRAMENTO OFICIAL"
+                                else:
+                                    title_status_fin = "📌 FIM DO VÍDEO (PADRÃO)"
+
+                                with st.expander(f"🥋 Evento: Sonkyō Final (Encerramento do Combate) @ {curr_start_ts_fin} - {curr_end_ts_fin} - {title_status_fin}", expanded=True):
                                     c_sf1, c_sf2 = st.columns([1, 1.5])
                                     with c_sf1:
                                         st.markdown("**Tipo de Evento:** `🥋 Sonkyō (Encerramento / Fim)`")
-                                        st.markdown(f"**Intervalo Ritual:** `{fin_s['start_timestamp']}` até `{fin_s['end_timestamp']}`")
-                                        st.markdown(f"**Quadros no Vídeo:** `Frame #{fin_s['start_frame']}` ao `Frame #{fin_s['end_frame']}`")
-                                        st.markdown(f"**Duração:** `{fin_s['duration_seconds']}s`")
-                                        st.markdown(f"**Término Oficial do Combate:** `Frame #{sonkyo_info['match_end_frame']}` (`{sonkyo_info['match_end_timestamp']}`)")
-                                        st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1;">🥋 SONKYŌ DETECTADO</div>', unsafe_allow_html=True)
+                                        st.markdown(f"**Intervalo Ritual:** `{curr_start_ts_fin}` até `{curr_end_ts_fin}`")
+                                        if not final_edit:
+                                            st.markdown(f"**Quadros no Vídeo:** `Frame #{fin_s.get('start_frame', 0)}` ao `Frame #{fin_s.get('end_frame', 0)}`")
+                                            st.markdown(f"**Duração:** `{fin_s.get('duration_seconds', 0.0)}s`")
+                                            st.markdown(f"**Término Oficial do Combate:** `Frame #{sonkyo_info.get('match_end_frame', 0)}` (`{sonkyo_info.get('match_end_timestamp', '00:00.000')}`)")
+                                            if is_fin_detected:
+                                                st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1;">🥋 SONKYŌ DETECTADO</div>', unsafe_allow_html=True)
+                                            else:
+                                                st.markdown('<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF;">📌 SONKYŌ FINAL (Fim do Vídeo / Ajustável)</div>', unsafe_allow_html=True)
+                                        else:
+                                            st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6;">✏️ SONKYŌ FINAL EDITADO (Pendente de Reprocessamento)</div>', unsafe_allow_html=True)
+
+                                        if enable_editing:
+                                            st.markdown("---")
+                                            st.markdown(f"**✏️ Editar Intervalo do Sonkyō Final ({dan_options.get(selected_dan, 'Dan')}):**")
+                                            ed_fcol1, ed_fcol2 = st.columns(2)
+                                            new_fin_start = ed_fcol1.text_input("Início do Sonkyō Final (Fim da Luta)", value=curr_start_ts_fin, key="edit_fin_start_input")
+                                            new_fin_end = ed_fcol2.text_input("Término do Ritual", value=curr_end_ts_fin, key="edit_fin_end_input")
+                                            
+                                            btn_save_fin_col1, btn_save_fin_col2 = st.columns([1.5, 1])
+                                            if btn_save_fin_col1.button("💾 Aplicar Edição do Sonkyō Final", key="btn_apply_sonkyo_fin_edit"):
+                                                if "sonkyo_edits" not in st.session_state:
+                                                    st.session_state["sonkyo_edits"] = {}
+                                                st.session_state["sonkyo_edits"]["final"] = {
+                                                    "start_timestamp": new_fin_start,
+                                                    "end_timestamp": new_fin_end
+                                                }
+                                                st.toast("✏️ Tempo do Sonkyō Final salvo! Clique no botão de Reprocessar no topo.", icon="✏️")
+                                                st.rerun()
+                                            
+                                            if final_edit and btn_save_fin_col2.button("🔄 Restaurar", key="btn_restore_sonkyo_fin"):
+                                                st.session_state["sonkyo_edits"].pop("final", None)
+                                                st.toast("Sonkyō Final restaurado.", icon="🔄")
+                                                st.rerun()
+
                                     with c_sf2:
                                         st.markdown("##### 🥋 Diagnóstico do Sonkyō Final")
+                                        if is_fin_detected:
+                                            posture_text_fin = "- **Postura Biomecânica:** Agachamento de saudação e respeito mútuo pós-combate (*Reigi*) detectado com sucesso.\n"
+                                        else:
+                                            posture_text_fin = "- **Postura Biomecânica:** Ritual não identificado nos últimos segundos; posicionado por padrão no término do vídeo para encerramento da arbitragem.\n"
                                         st.markdown(
-                                            "- **Postura Biomecânica:** Agachamento de saudação e respeito mútuo pós-combate (*Reigi*) detectado com sucesso.\n"
-                                            f"- **Fechamento do Combate:** A janela regulamentar de pontuação encerra no frame `{sonkyo_info['match_end_frame']}` (`{sonkyo_info['match_end_timestamp']}`).\n"
+                                            posture_text_fin +
+                                            f"- **Fechamento do Combate:** A janela regulamentar de pontuação encerra no início deste ritual (**{curr_start_ts_fin}**).\n"
                                             f"- **Tempo Efetivo de Luta:** `{sonkyo_info.get('effective_combat_duration_seconds', res['duration_seconds'])}s` (excluindo pausas e rituais)."
                                         )
 

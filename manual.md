@@ -189,6 +189,65 @@ O projeto inclui testes automatizados em `unittest` para validar o pipeline cine
   - Tabela de treinamentos por Dan convertida para Markdown nativo, eliminando erros de pré-carregamento de módulos JS/CSS do navegador (Vite preload helper).
 - **Testes Automatizados**: Suíte de testes em [test_logger_manager.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_logger_manager.py) e testes de importação expandidos em [test_dan_training_governance.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_dan_training_governance.py) (19 testes automatizados com 100% de aprovação).
 
+### `[v1.4.11]` — 2026-08-17
+
+- **Placar Oficial de Arbitragem, Detecção de Flag Dorsal e Inversão Aka/Shiro**:
+  - **Placar Oficial de Arbitragem (Sanbon-shobu Scoreboard) ([app.py](file:///d:/Projetos/Shinpanai/Dev/app.py) e [pipeline.py](file:///d:/Projetos/Shinpanai/Dev/src/pipeline.py))**:
+    - Exibição de painel visual eletrônico no topo dos resultados com contagem de **Ippon** válidos para Aka (Vermelho) e Shiro (Branco), badges com as técnicas pontuadas e declaração automática do resultado regulamentar (*Vitória de Aka*, *Vitória de Shiro* ou *Empate / Hikiwake*).
+  - **Detecção da Cor da Flag (Tasukuki / Faixa Vermelha nas Costas) ([combatant_tracker.py](file:///d:/Projetos/Shinpanai/Dev/src/vision/combatant_tracker.py))**:
+    - Implementada a segmentação cromática HSV no dorso/tronco (`detect_red_flag_score`) para identificar a fita vermelha dorsal do Kenshi Aka, independente da cor do Keikogi (azul escuro, branco, preto).
+    - Permite a correta identificação dos lados mesmo quando a câmera de gravação estiver posicionada do lado oposto do Shiaijo (câmera invertida).
+  - **Inversão Interativa Aka ⇄ Shiro**:
+    - Adicionado botão de ação rápida `🔄 Inverter Lutadores (Aka ⇄ Shiro)` para troca instantânea de pontuação, eventos e diagnósticos em caso de ângulo de filmagem desfavorável.
+- **Testes Automatizados**: Suíte de testes em [test_scoreboard_and_flag_detection.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_scoreboard_and_flag_detection.py) (44 testes automatizados com 100% de aprovação).
+
+---
+
+### `[v1.4.10]` — 2026-08-17
+
+- **Correção de AttributeError & Otimização de Performance e Memória**:
+  - **Correção de `AttributeError` em Edição de Sonkyō ([app.py](file:///d:/Projetos/Shinpanai/Dev/app.py))**: Corrigida a verificação condicional em `initial_edit` e `final_edit` quando são `None`, garantindo que os timestamps padrão sejam lidos sem exceções de runtime.
+  - **Eliminação de Sobrecarga de Memória RAM ([pipeline.py](file:///d:/Projetos/Shinpanai/Dev/src/pipeline.py))**:
+    - Removido o armazenamento em buffer de todos os quadros descompactados (`raw_frames`) na memória RAM durante a passagem 1.
+    - A renderização do vídeo anotado agora utiliza streaming direto em 2ª passada (`cap_render`), reduzindo o consumo de RAM de 15+ GB para menos de 100 MB em vídeos longos/alta resolução.
+  - **Aceleração GPU com Tensor Cores FP16 ([pose_detector.py](file:///d:/Projetos/Shinpanai/Dev/src/vision/pose_detector.py))**:
+    - Ativada a inferência em meia precisão (`half=True`) com dimensão padrão `imgsz=640` no YOLOv8-Pose em CUDA, aumentando substancialmente o throughput de frames por segundo (FPS).
+- **Testes Automatizados**: Suíte de 39 testes executada com 100% de sucesso.
+
+---
+
+### `[v1.4.9]` — 2026-08-17
+
+- **Inclusão Automática de Sonkyō no Início e Fim da Gravação**:
+  - **Garantia de Delimitação Ritual**: Quando a análise de visão computacional não detecta com alta confiança os rituais de Sonkyō nos primeiros ou últimos segundos da gravação, o sistema ([sonkyo_detector.py](file:///d:/Projetos/Shinpanai/Dev/src/analytics/sonkyo_detector.py)) **atribui automaticamente os movimentos de Sonkyō no início (00:00.000) e no encerramento do vídeo**.
+  - **Identificação Visual Transparente**: No painel de Arbitragem Gravada ([app.py](file:///d:/Projetos/Shinpanai/Dev/app.py)), os cards exibem a badge correspondente (`🥋 SONKYŌ DETECTADO` para detecção automática por pose ou `📌 SONKYŌ (Início/Fim do Vídeo / Ajustável)` para fallback padrão).
+  - **Edição e Reprocessamento Imediatos**: O árbitro tem a garantia de que ambos os rituais estarão sempre visíveis e expansíveis, podendo editar os intervalos com exatidão e reprocessar o combate com aprendizado contínuo.
+- **Testes Automatizados**: Suíte de testes expandida em [test_sonkyo_and_plane_filtering.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_sonkyo_and_plane_filtering.py) com validação de inclusão de rituais padrão (39 testes automatizados com 100% de aprovação).
+
+---
+
+### `[v1.4.8]` — 2026-08-17
+
+- **Edição Interativa de Sonkyō, Reprocessamento e Aprendizado Contínuo**:
+  - **Edição de Momentos de Sonkyō**: No Modo de Arbitragem Gravada ([app.py](file:///d:/Projetos/Shinpanai/Dev/app.py)), o árbitro agora pode editar com precisão os tempos de início e fim tanto do Sonkyō Inicial quanto do Sonkyō Final (ou definir intervalos manuais caso não tenham sido detectados automaticamente).
+  - **Botão de Reprocessamento com Aprendizado**: Ao alterar um dos momentos de Sonkyō, a interface habilita o botão de ação rápida `🔄 Reprocessar Arbitragem com Aprendizado de Sonkyō`.
+  - **Aprendizado Biomecânico Contínuo ([sonkyo_detector.py](file:///d:/Projetos/Shinpanai/Dev/src/analytics/sonkyo_detector.py))**:
+    - As posturas e proporções corporais no intervalo editado são extraídas dinamicamente para calibrar a sensibilidade do detector de Sonkyō.
+    - O perfil adaptado é persistido em `config/sonkyo_learned_profile.json`, sendo aplicado imediatamente neste reprocessamento e em **todas as futuras análises de vídeo**.
+  - **Painel de Estatísticas de Sonkyō no Modo Treinamento**: Exibição da quantidade de amostras aprendidas, compressão de altura adaptada, rebaixamento de quadril ($\Delta Y$) e botão para restauração aos padrões de fábrica.
+- **Testes Automatizados**: Suíte de testes expandida em [test_sonkyo_and_plane_filtering.py](file:///d:/Projetos/Shinpanai/Dev/tests/test_sonkyo_and_plane_filtering.py) cobrindo conversão de timestamps, persistência de aprendizado e reprocessamento com overrides (38 testes automatizados com 100% de aprovação).
+
+---
+
+### `[v1.4.7]` — 2026-08-17
+
+- **Refinamento do Indicador de Aceleração de Hardware**:
+  - **Sidebar Exclusiva para Status Visual**: A barra lateral ([app.py](file:///d:/Projetos/Shinpanai/Dev/app.py)) agora exibe apenas o **card de indicação em tempo real** do estado do acelerador (`🚀 Aceleração Ativada` com nome da GPU NVIDIA e framework CUDA ou `💻 Aceleração Desativada` em CPU), mantendo o layout limpo e intuitivo.
+  - **Centralização da Seleção de Dispositivo**: A alteração e o salvamento do dispositivo (CPU / GPU) ficam centralizados na seção de **Configurações Globais** do Modo de Treinamento.
+- **Testes Automatizados**: Suíte de 34 testes validada com 100% de sucesso.
+
+---
+
 ### `[v1.4.6]` — 2026-08-17
 
 - **Aceleração Nativa com GPU NVIDIA CUDA (YOLOv8-Pose)**:
