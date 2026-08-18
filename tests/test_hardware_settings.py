@@ -25,6 +25,7 @@ class TestHardwareAndSettings(unittest.TestCase):
             os.remove(self.test_settings_path)
 
     def test_settings_manager_load_and_save(self):
+        """Valida o carregamento padrão, salvamento e persistência das configurações de hardware (CPU/GPU)."""
         # 1. Carregar padrão quando arquivo não existe
         settings = load_settings(self.test_settings_path)
         self.assertEqual(settings["processing_device"], "cpu")
@@ -40,6 +41,7 @@ class TestHardwareAndSettings(unittest.TestCase):
         self.assertEqual(dev, "cpu")
 
     def test_detect_nvidia_gpu_structure(self):
+        """Verifica a estrutura do dicionário retornado pela detecção dinâmica de GPU NVIDIA."""
         gpu_info = detect_nvidia_gpu()
         self.assertIn("has_nvidia_gpu", gpu_info)
         self.assertIn("gpu_name", gpu_info)
@@ -47,12 +49,14 @@ class TestHardwareAndSettings(unittest.TestCase):
         self.assertIsInstance(gpu_info["has_nvidia_gpu"], bool)
 
     def test_get_effective_device_cpu_preference(self):
+        """Valida a resolução de dispositivo quando a preferência do usuário é explicitamente CPU."""
         effective, msg, info = get_effective_device("cpu")
         self.assertEqual(effective, "cpu")
         self.assertIn("Modo CPU", msg)
 
     @patch("src.utils.hardware.detect_nvidia_gpu")
     def test_get_effective_device_gpu_fallback_when_no_gpu(self, mock_detect):
+        """Valida o fallback automático e transparente para CPU quando o usuário escolhe GPU mas não há hardware compatível."""
         mock_detect.return_value = {
             "has_nvidia_gpu": False,
             "gpu_name": "Nenhum",
@@ -68,6 +72,7 @@ class TestHardwareAndSettings(unittest.TestCase):
 
     @patch("src.utils.hardware.detect_nvidia_gpu")
     def test_get_effective_device_gpu_success_when_gpu_present(self, mock_detect):
+        """Verifica a ativação do acelerador GPU NVIDIA CUDA quando a placa aceleradora está presente no sistema."""
         mock_detect.return_value = {
             "has_nvidia_gpu": True,
             "gpu_name": "NVIDIA GeForce RTX 4090",
@@ -84,6 +89,7 @@ class TestHardwareAndSettings(unittest.TestCase):
 
     @patch("src.utils.hardware.detect_nvidia_gpu")
     def test_validate_and_setup_gpu_requirements_no_gpu(self, mock_detect):
+        """Testa o validador de dependências CUDA quando nenhuma GPU NVIDIA está presente no computador."""
         from src.utils.hardware import validate_and_setup_gpu_requirements
         mock_detect.return_value = {
             "has_nvidia_gpu": False,
@@ -99,6 +105,7 @@ class TestHardwareAndSettings(unittest.TestCase):
         self.assertIn("Nenhuma GPU NVIDIA encontrada", res["message"])
 
     def test_pipeline_device_integration(self):
+        """Verifica a inicialização e integração correta do dispositivo de processamento no ShinpanaiPipeline."""
         pipeline = ShinpanaiPipeline(calibration_profile="normal", device_preference="cpu")
         self.assertEqual(pipeline.effective_device, "cpu")
         self.assertIn("device_status_message", dir(pipeline))

@@ -23,6 +23,9 @@ from src.utils.logger_manager import (
     setup_system_logger, get_log_summary, get_memory_logs,
     get_debug_log_file_content, clear_debug_logs, run_system_diagnostic_check, log_event
 )
+from src.utils.test_runner import (
+    run_automated_tests, get_latest_test_report_content, TEST_LOG_PATH
+)
 
 # Inicializa o logger central do sistema
 setup_system_logger()
@@ -314,14 +317,14 @@ if nav_page == "settings":
     l_col4.metric("Informações de Execução", log_summary["info_count"])
 
     st.markdown("##### 🛠️ Ferramentas de Diagnóstico e Rastreamento:")
-    dbg_col1, dbg_col2, dbg_col3 = st.columns(3)
+    dbg_col1, dbg_col2, dbg_col3, dbg_col4 = st.columns(4)
 
     with dbg_col1:
-        st.markdown("**📥 Baixar Log de Debug**")
-        st.caption("Baixa o arquivo completo de logs do sistema (`shinpanai_debug.log`).")
+        st.markdown("**📥 Log de Debug**")
+        st.caption("Baixa o arquivo completo de eventos do sistema (`shinpanai_debug.log`).")
         debug_log_text = get_debug_log_file_content()
         st.download_button(
-            label="📥 Baixar Log de Debug (.log)",
+            label="📥 Baixar Log (.log)",
             data=debug_log_text,
             file_name=f"shinpanai_debug_{int(time.time())}.log",
             mime="text/plain",
@@ -329,18 +332,41 @@ if nav_page == "settings":
         )
 
     with dbg_col2:
-        st.markdown("**🧪 Teste de Diagnóstico**")
-        st.caption("Executa verificação completa de hardware, CUDA, bibliotecas e arquivos.")
-        if st.button("🧪 Executar Diagnóstico", type="primary", width="stretch"):
+        st.markdown("**🧪 Diagnóstico Rápido**")
+        st.caption("Verifica hardware, CUDA, integridade de arquivos e dependências.")
+        if st.button("🧪 Executar Diagnóstico", type="secondary", width="stretch"):
             with st.spinner("Executando checagem de diagnóstico do sistema..."):
                 diag_res = run_system_diagnostic_check()
                 st.success("✅ Teste de diagnóstico concluído! Alertas gravados no log.")
                 st.rerun()
 
     with dbg_col3:
-        st.markdown("**🧹 Limpar Log de Debug**")
-        st.caption("Reseta o arquivo de log no disco e limpa o buffer de memória.")
-        if st.button("🧹 Limpar Logs", type="secondary", width="stretch"):
+        st.markdown("**🔬 Testes Automatizados**")
+        st.caption("Executa toda a suíte de 44 testes e salva o log detalhado em `logs/`.")
+        if st.button("🔬 Rodar Testes (44)", type="primary", width="stretch"):
+            with st.spinner("Executando suíte de 44 testes automatizados..."):
+                t_res = run_automated_tests(test_dir="tests", log_file=TEST_LOG_PATH, verbosity=1)
+                if t_res["success"]:
+                    st.success(f"✅ Todos os {t_res['total_tests']} testes aprovados com sucesso ({t_res['duration_seconds']:.2f}s)!")
+                else:
+                    st.error(f"❌ {t_res['failed']} falha(s) e {t_res['errors']} erro(s) detectados nos testes.")
+                st.rerun()
+
+    with dbg_col4:
+        st.markdown("**📥 Log dos Testes**")
+        st.caption("Baixa o relatório descritivo do último teste (`shinpanai_test_report.log`).")
+        test_log_content = get_latest_test_report_content(TEST_LOG_PATH)
+        st.download_button(
+            label="📥 Baixar Log Testes (.log)",
+            data=test_log_content,
+            file_name="shinpanai_test_report.log",
+            mime="text/plain",
+            width="stretch"
+        )
+
+    col_clean, _ = st.columns([1, 3])
+    with col_clean:
+        if st.button("🧹 Limpar Logs de Debug", type="secondary", width="stretch"):
             clear_debug_logs()
             st.success("✅ Histórico de logs de debug zerado com sucesso!")
             st.rerun()

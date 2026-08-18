@@ -11,6 +11,7 @@ class TestLoggerManager(unittest.TestCase):
         clear_debug_logs()
 
     def test_logger_initialization_and_logging(self):
+        """Valida a inicialização do logger central, registro de níveis INFO/WARNING/ERROR e retenção em buffer de memória."""
         logger = setup_system_logger()
         self.assertIsNotNone(logger)
 
@@ -27,6 +28,7 @@ class TestLoggerManager(unittest.TestCase):
         self.assertIn("ERROR", levels)
 
     def test_log_summary_counts(self):
+        """Verifica a contagem e agregação de métricas de log em tempo real (erros, avisos e total)."""
         log_event("ERROR", "Erro 1", "test")
         log_event("ERROR", "Erro 2", "test")
         log_event("WARNING", "Aviso 1", "test")
@@ -37,17 +39,20 @@ class TestLoggerManager(unittest.TestCase):
         self.assertGreaterEqual(summary["total_logs"], 3)
 
     def test_get_debug_log_file_content(self):
+        """Valida a extração e leitura do conteúdo integral do arquivo de log em disco."""
         log_event("INFO", "Conteúdo para arquivo de log", "test")
         content = get_debug_log_file_content()
         self.assertIn("Conteúdo para arquivo de log", content)
 
     def test_run_system_diagnostic_check(self):
+        """Testa o diagnóstico automatizado do sistema (sistema de arquivos, bibliotecas e hardware)."""
         report = run_system_diagnostic_check()
         self.assertIn("python_version", report)
         self.assertIn("checks", report)
         self.assertEqual(report["checks"]["filesystem"]["status"], "OK")
 
     def test_clear_debug_logs(self):
+        """Verifica a limpeza do arquivo de log em disco e reset do buffer de memória."""
         log_event("INFO", "Mensagem antes de limpar", "test")
         clear_debug_logs()
         summary = get_log_summary()

@@ -74,7 +74,13 @@ Para processar vídeos diretamente no terminal:
 - Otimizar perfil com base no dataset de feedback gravado:
    python main.py --profile normal --optimize-profile
 
-- Executar suíte completa de testes automatizados (44 testes):
+- Executar suíte completa de testes automatizados com relatório descritivo salvo em logs/:
+   python run_tests.py
+   (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
+   * Gera o arquivo descritivo logs/shinpanai_test_report.log com detalhes de cada teste
+   * Mantém estritamente apenas o último log de testes executado na pasta logs/
+
+- Ou executar via runner padrão unittest:
    .\.venv\Scripts\python.exe -m unittest discover tests
 
 -------------------------------------------------------------------------------

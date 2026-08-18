@@ -29,6 +29,7 @@ class TestDanTrainingGovernance(unittest.TestCase):
                 os.remove(p)
 
     def test_save_review_session_with_dan(self):
+        """Valida o salvamento de sessão de revisão com Dan, calculando métricas e histórico de auditoria."""
         items = [
             {
                 "event_id": "ev_1",
@@ -77,6 +78,7 @@ class TestDanTrainingGovernance(unittest.TestCase):
         self.assertIn("review_date", data[0])
 
     def test_get_training_metrics_dan_distribution(self):
+        """Verifica o cálculo de métricas de governança: total de sessões, nível médio Dan e distribuição 1º ao 8º Dan."""
         current_config = {
             "name": "Normal",
             "min_total_score": 0.65,
@@ -105,6 +107,7 @@ class TestDanTrainingGovernance(unittest.TestCase):
         self.assertEqual(dan5_entry["Quantidade Treinamentos"], 1)
 
     def test_export_and_import_training_package(self):
+        """Testa a exportação e importação de pacotes de treinamento JSON com preservação de datas e graduação Dan."""
         current_config = {
             "name": "Normal",
             "min_total_score": 0.65,
@@ -133,6 +136,7 @@ class TestDanTrainingGovernance(unittest.TestCase):
         self.assertEqual(metrics_post["average_dan_level"], 6.0)
 
     def test_reset_all_training_data(self):
+        """Valida o reset completo do histórico de treinamento e dataset restaurando o sistema ao estágio inicial."""
         self.mgr.save_feedback("v.mp4", "normal", "ev1", "TP", strike_type="MEN", reviewer_dan=2)
         self.mgr.reset_all_training_data()
 
@@ -140,6 +144,7 @@ class TestDanTrainingGovernance(unittest.TestCase):
         self.assertEqual(len(self.mgr.load_history()), 0)
 
     def test_import_raw_list_json(self):
+        """Valida a importação de listas JSON brutas de feedbacks e recalibração automática do Dan médio."""
         raw_list = [
             {
                 "id": "item_1",

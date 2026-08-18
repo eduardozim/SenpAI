@@ -51,6 +51,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         }
 
     def test_sonkyo_pose_evaluation(self):
+        """Valida a classificação da postura de Sonkyō verificando compressão vertical, rebaixamento de quadril e coluna."""
         standing = self._create_synthetic_standing_pose()
         is_s_stand, conf_stand, metrics_stand = self.sonkyo_detector.evaluate_sonkyo_pose(standing)
         self.assertFalse(is_s_stand, "Pose em pé não deve ser classificada como Sonkyō.")
@@ -63,6 +64,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertGreaterEqual(conf_sonkyo, 0.55)
 
     def test_match_boundaries_detection(self):
+        """Testa a identificação e delimitação temporal automática da luta entre o Sonkyō inicial e final."""
         # 100 frames: 0..20 Sonkyō Inicial, 25..80 Combate em pé, 85..100 Sonkyō Final
         timeline = []
         for i in range(100):
@@ -82,6 +84,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertGreater(res["effective_combat_duration_seconds"], 1.5)
 
     def test_filter_strikes_outside_sonkyo(self):
+        """Verifica a filtragem e descarte de golpes ocorridos fora da janela regulamentar de combate delimitada por Sonkyō."""
         # Criar histórico de poses com movimento contínuo e 3 picos nítidos (frames 10, 50 e 95)
         pose_history = []
         for f in range(110):
@@ -124,6 +127,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertTrue(bounded_strikes[0].is_within_sonkyo_bounds)
 
     def test_plane_classification_background_and_foreground(self):
+        """Valida a classificação geométrica de planos descartando segundo plano (fundo) e oclusão em primeiro plano."""
         # Calibrar plano principal com Kenshi normal
         main_kenshi = self._create_synthetic_standing_pose(center_x=0.40)
         self.tracker.calibrate_main_plane([main_kenshi])
@@ -148,6 +152,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertIn("câmera", reason_fg)
 
     def test_two_combatants_association(self):
+        """Testa o rastreamento e associação contínua dos dois Kenshi principais (Aka e Shiro), descartando oponentes secundários."""
         aka_pose = self._create_synthetic_standing_pose(center_x=0.35)
         shiro_pose = self._create_synthetic_standing_pose(center_x=0.65)
         bg_pose = {k: {"x": v["x"] * 0.3 + 0.3, "y": v["y"] * 0.3 + 0.2, "z": 0.0, "visibility": 0.8, "px": int((v["x"]*0.3+0.3)*640), "py": int((v["y"]*0.3+0.2)*480)} for k, v in aka_pose.items()}
@@ -191,6 +196,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertGreaterEqual(init_s["end_frame"], 28)
 
     def test_pipeline_integration_with_sonkyo(self):
+        """Valida a integração end-to-end do pipeline de arbitragem com detecção de Sonkyō, filtragem de planos e vídeo anotado."""
         # Gerar vídeo sintético de teste
         test_vid = "test_sonkyo_pipeline_match.mp4"
         out_vid = "test_sonkyo_pipeline_annotated.mp4"
@@ -222,6 +228,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
                 os.remove(out_vid)
 
     def test_timestamp_to_frame_conversions(self):
+        """Testa a conversão precisa de múltiplos formatos de timestamp (MM:SS.mmm, segundos) para número de frame."""
         from src.analytics.sonkyo_detector import SonkyoInterval
         self.assertEqual(SonkyoInterval.timestamp_to_frame("00:01.000", fps=30.0), 30)
         self.assertEqual(SonkyoInterval.timestamp_to_frame("00:02.500", fps=30.0), 75)
@@ -230,6 +237,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertEqual(SonkyoInterval.timestamp_to_frame("", fps=30.0), 0)
 
     def test_sonkyo_learning_and_profile_persistence(self):
+        """Verifica a extração e persistência do aprendizado contínuo de Sonkyō a partir de anotações do árbitro."""
         test_profile_path = "config/test_sonkyo_learned_profile.json"
         if os.path.exists(test_profile_path):
             os.remove(test_profile_path)
@@ -261,6 +269,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
                 os.remove(test_profile_path)
 
     def test_detect_match_boundaries_with_overrides(self):
+        """Valida a aplicação de overrides manuais de limites de Sonkyō e recálculo dinâmico dos limites de luta."""
         test_profile_path = "config/test_sonkyo_override_profile.json"
         if os.path.exists(test_profile_path):
             os.remove(test_profile_path)
@@ -291,6 +300,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
                 os.remove(test_profile_path)
 
     def test_pipeline_reprocess_with_sonkyo_overrides(self):
+        """Testa o reprocessamento de combate pelo pipeline aplicando overrides manuais de Sonkyō e aprendizado adaptativo."""
         test_vid = "test_reprocess_sonkyo_match.mp4"
         out_vid = "test_reprocess_sonkyo_annotated.mp4"
         generate_demo_kendo_video(test_vid, duration_sec=4, fps=30)

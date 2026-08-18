@@ -164,20 +164,35 @@ Gerencia o ciclo completo de auditoria, revisão por Dan e otimização adaptati
 
 ---
 
-## 4. Suíte de Testes Automatizados
+## 4. Suíte de Testes Automatizados e Relatório de Execução
 
-O projeto inclui testes automatizados em `unittest` para validar o pipeline cinemático, hardware e governança por Dan.
+O projeto inclui suíte completa de testes automatizados em `unittest` com runner customizado ([test_runner.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/test_runner.py)) e script de execução dedicado ([run_tests.py](file:///d:/Projetos/Shinpanai/Dev/run_tests.py)).
 
-### Comando para Execução dos Testes
+### Execução dos Testes via CLI e Interface
 
 ```bash
+# Execução completa com exibição detalhada e geração de log descritivo:
+.\.venv\Scripts\python.exe run_tests.py
+
+# Ou via unittest padrão:
 .\.venv\Scripts\python.exe -m unittest discover tests
 ```
 
-### Testes Incluídos
+Também é possível disparar os testes diretamente no **Web Dashboard** acessando a aba **⚙️ Configurações > Seção 5 (Diagnóstico e Logs)** através do botão **`🔬 Rodar Testes (44)`** e baixar o relatório completo em **`📥 Baixar Log Testes (.log)`**.
 
-- **`test_dan_training_governance.py`**: Valida a salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador, média e tabela por Dan), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
-- **`test_feedback_loop.py`**: Valida o salvamento, persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
+### Relatório Descritivo e Política de Retenção de Logs
+
+- **Relatório Detalhado ([`logs/shinpanai_test_report.log`](file:///d:/Projetos/Shinpanai/Dev/logs/shinpanai_test_report.log))**:
+  - Cada teste executado é documentado com: **Módulo**, **Classe**, **Método**, **Descrição Detalhada do Teste / Docstring**, **Status (PASS/FAIL/ERROR)**, **Duração em Segundos** e eventuais rastros de erro/falha.
+  - Cabeçalho com data/hora, versão do sistema, plataforma operacional e hardware.
+  - Resumo estatístico final (total, aprovados, falhas, erros, taxa de sucesso % e tempo total).
+- **Política de Retenção Única**:
+  - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
+
+### Módulos de Testes Incluídos (44 Testes)
+
+- **`test_dan_training_governance.py`**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador, média e tabela por Dan), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
+- **`test_feedback_loop.py`**: Valida salvamento, persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
 - **`test_hardware_settings.py`**: Valida detecção de GPU NVIDIA, configurações globais e resolução de fallback transparente para CPU.
 - **`test_logger_manager.py`**: Valida sistema de logs, métricas em tempo real e diagnósticos automatizados.
 - **`test_pipeline_cancellation.py`**: Valida cancelamento cooperativo, liberação de recursos de streaming e cronômetro em tempo real.
@@ -194,6 +209,11 @@ Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ### `[v1.6.0]` — 2026-08-18 *(Versão Atual)*
 
+- **Relatório Descritivo de Testes Automatizados & Retenção Única de Log**:
+  - Criado o runner customizado ([test_runner.py](file:///d:/Projetos/Shinpanai/Dev/src/utils/test_runner.py)) e script de execução na raiz ([run_tests.py](file:///d:/Projetos/Shinpanai/Dev/run_tests.py)).
+  - Geração automática de relatório descritivo por teste com módulo, classe, método, descrição em Português, status individual, duração em segundos e sumário executivo.
+  - Salvo na pasta `logs/` ([`logs/shinpanai_test_report.log`](file:///d:/Projetos/Shinpanai/Dev/logs/shinpanai_test_report.log)) com política estrita de retenção: **apenas o último log de testes é mantido na pasta**.
+  - Botões de execução rápida (`🔬 Rodar Testes (44)`) e download do relatório (`📥 Baixar Log Testes (.log)`) integrados na **Seção 5 de Diagnóstico e Logs** do Web App.
 - **Detecção e Scoring Consolidado (Modo de Arbitragem Gravada)**:
   - Validação completa de *Yuko-Datotsu* com score ponderado (*Ki-Ken-Tai-Ichi*: impacto no alvo, sincronismo de *Fumikomi*, postura e *Zanshin*), corte automático de clipes de eventos e relatórios diagnósticos de combate.
 - **Navegação Interativa no Vídeo com Salto Temporal Calibrado (-1.0s)**:
