@@ -11,7 +11,7 @@ from src.utils.hardware import detect_nvidia_gpu, get_effective_device
 from src.utils.settings_manager import (
     load_settings, save_settings, get_processing_device, set_processing_device
 )
-from src.pipeline import ShinpanaiPipeline
+from src.pipeline import ShinpanAIPipeline
 
 
 class TestHardwareAndSettings(unittest.TestCase):
@@ -105,8 +105,8 @@ class TestHardwareAndSettings(unittest.TestCase):
         self.assertIn("Nenhuma GPU NVIDIA encontrada", res["message"])
 
     def test_pipeline_device_integration(self):
-        """Verifica a inicialização e integração correta do dispositivo de processamento no ShinpanaiPipeline."""
-        pipeline = ShinpanaiPipeline(calibration_profile="normal", device_preference="cpu")
+        """Verifica a inicialização e integração correta do dispositivo de processamento no ShinpanAIPipeline."""
+        pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
         self.assertEqual(pipeline.effective_device, "cpu")
         self.assertIn("device_status_message", dir(pipeline))
 

@@ -1,1 +1,1 @@
-# Shinpanai package initialization
+# ShinpanAI package initialization

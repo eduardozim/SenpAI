@@ -1,5 +1,5 @@
 """
-Pipeline Principal de Processamento do Shinpanai.
+Pipeline Principal de Processamento do ShinpanAI.
 Orquestra Leitura de Vídeo -> Pose Tracking -> Action Spotting -> Avaliação Biomecânica -> Calibração -> Relatório.
 """
 
@@ -21,7 +21,7 @@ from src.engine.reporter import DiagnosticReporter
 from src.utils.hardware import get_effective_device
 from src.utils.logger_manager import log_event
 
-class ShinpanaiPipeline:
+class ShinpanAIPipeline:
     def __init__(self, calibration_profile: str = "normal", device_preference: str = "cpu"):
         self.device_preference = device_preference
         self.effective_device, self.device_status_message, self.gpu_info = get_effective_device(device_preference)
@@ -355,7 +355,7 @@ class AnalysisWorker:
     """
     def __init__(
         self,
-        pipeline: "ShinpanaiPipeline",
+        pipeline: "ShinpanAIPipeline",
         video_path: str,
         output_video_path: Optional[str] = None,
         initial_sonkyo_override: Optional[Dict[str, Any]] = None,
@@ -446,3 +446,6 @@ class AnalysisWorker:
                 self.end_time = time.time()
             self.is_done = True
 
+
+# Alias de compatibilidade retroativa
+ShinpanaiPipeline = ShinpanAIPipeline

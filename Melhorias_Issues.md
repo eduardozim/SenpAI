@@ -2,7 +2,7 @@
 
 ## 🎯 Visão da Versão Final: 3 Modos de Operação (Nodos)
 
-A versão final do **Shinpanai** será organizada em **3 Nodos / Modos Principais de Operação**:
+A versão final do **ShinpanAI** será organizada em **3 Nodos / Modos Principais de Operação**:
 
 1. **Modo de Detecção em Tempo Real**
    - **Processamento Ao Vivo**: Processamento e detecção instantânea de golpes via transmissão ao vivo (Webcam / Câmeras de transmissão).

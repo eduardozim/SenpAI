@@ -1,25 +1,25 @@
 {
   "permissivo": {
     "name": "Iniciantes / Educacional (Permissivo)",
-    "description": "Prioriza se o golpe atingiu o alvo correto, sendo mais tolerante com Zanshin e postura.",
-    "min_total_score": 0.45,
+    "description": "Tolerância ampliada para feedback formativo com praticantes de níveis iniciais.",
+    "min_total_score": 0.5,
     "weights": {
-      "target_impact": 0.55,
-      "fumikomi_sync": 0.2,
-      "posture": 0.15,
-      "zanshin": 0.1
+      "target_impact": 0.35,
+      "fumikomi_sync": 0.25,
+      "posture": 0.2,
+      "zanshin": 0.2
     },
     "sub_thresholds": {
-      "target_impact": 0.4,
-      "fumikomi_sync": 0.3,
-      "posture": 0.3,
-      "zanshin": 0.2
+      "target_impact": 0.45,
+      "fumikomi_sync": 0.35,
+      "posture": 0.35,
+      "zanshin": 0.3
     }
   },
   "normal": {
     "name": "Treino Geral / Keiko (Normal)",
-    "description": "Equilíbrio entre precisão técnica e tolerância para treinos regulares.",
-    "min_total_score": 0.75,
+    "description": "Equilíbrio padrão para treinos do dia a dia e avaliações gerais de Keiko.",
+    "min_total_score": 0.65,
     "weights": {
       "target_impact": 0.4,
       "fumikomi_sync": 0.25,
@@ -28,26 +28,26 @@
     },
     "sub_thresholds": {
       "target_impact": 0.6,
-      "fumikomi_sync": 0.65,
+      "fumikomi_sync": 0.5,
       "posture": 0.5,
       "zanshin": 0.45
     }
   },
   "rigido": {
     "name": "Campeonato / Audit de Dan (Rígido)",
-    "description": "Exige execução quase perfeita de Ki-Ken-Tai-Ichi, alvo exato e Zanshin completo.",
-    "min_total_score": 0.9,
+    "description": "Alta exigência em Ki-Ken-Tai-Ichi e Zanshin. Recomendado para exames de graduação e torneios oficiais.",
+    "min_total_score": 0.78,
     "weights": {
-      "target_impact": 0.35,
+      "target_impact": 0.45,
       "fumikomi_sync": 0.25,
-      "posture": 0.2,
-      "zanshin": 0.2
+      "posture": 0.15,
+      "zanshin": 0.15
     },
     "sub_thresholds": {
-      "target_impact": 0.75,
-      "fumikomi_sync": 0.7,
-      "posture": 0.7,
-      "zanshin": 0.7
+      "target_impact": 0.7,
+      "fumikomi_sync": 0.6,
+      "posture": 0.6,
+      "zanshin": 0.55
     }
   }
 }
