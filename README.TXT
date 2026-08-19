@@ -1,9 +1,9 @@
 ===============================================================================
-                       SHINPANAI (審判 AI) - GUIA RÁPIDO
-        Sistema de Arbitragem e Análise Biomecânica de Kendo com IA
+                        SENPAI (先輩 AI) - GUIA RÁPIDO
+         Sistema de Arbitragem e Análise Biomecânica de Kendo com IA
 ===============================================================================
 
-O ShinpanAI é um sistema de visão computacional e análise biomecânica projetado
+O SenpAI é um sistema de visão computacional e análise biomecânica projetado
 para avaliar golpes em lutas de Kendo de acordo com o conceito de Yuko-Datotsu
 e o princípio do Ki-Ken-Tai-Ichi (Espírito, Espada e Corpo em um só).
 
@@ -49,7 +49,7 @@ Recursos da Interface Web:
 - Delimitação Temporal da Luta por Sonkyō: identificação automática da postura ritualística de Sonkyō de início e término do combate, com filtragem estrita de golpes na janela regulamentar.
 - Rastreamento dos 2 Kenshi Principais e Filtragem de Planos: descarte inteligente de elementos de fundo (outras lutas, arquibancadas) e oclusões de primeiro plano.
 - Menu de Configurações com seletor de Hardware (CPU vs GPU NVIDIA CUDA com Tensor Cores FP16) e painel de Governança de Treinamento.
-- Painel de Diagnóstico, Alertas e Log de Debug do Sistema com monitoramento de eventos em tempo real (`shinpanai_debug.log`).
+- Painel de Diagnóstico, Alertas e Log de Debug do Sistema com monitoramento de eventos em tempo real (`senpai_debug.log`).
 - Edição de Golpes por Dan no Modo de Arbitragem Gravada (Shodan 1º Dan a Hachidan 8º Dan) com badges CONFIRMADO e EDITADO.
 - Botão de Reset Geral e Individual de revisão, regra de auditabilidade (sem exclusão de dados) e retreinamento contínuo.
 - Gestão de Pacotes de Treinamento: exportação e importação de arquivos JSON com registro por Dan e data.
@@ -77,7 +77,7 @@ Para processar vídeos diretamente no terminal:
 - Executar suíte completa de testes automatizados com relatório descritivo salvo em logs/:
    python run_tests.py
    (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
-   * Gera o arquivo descritivo logs/shinpanai_test_report.log com detalhes de cada teste
+   * Gera o arquivo descritivo logs/senpai_test_report.log com detalhes de cada teste
    * Mantém estritamente apenas o último log de testes executado na pasta logs/
 
 - Ou executar via runner padrão unittest:

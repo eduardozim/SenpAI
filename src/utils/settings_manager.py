@@ -1,5 +1,5 @@
 """
-Gerenciador de Configurações Globais do ShinpanAI.
+Gerenciador de Configurações Globais do SenpAI.
 Persiste e lê opções de sistema (dispositivo de processamento CPU/GPU, etc.).
 """
 

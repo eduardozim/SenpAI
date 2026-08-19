@@ -1,5 +1,5 @@
 """
-Testes Automatizados para Gerenciamento de Feedback e Aprendizagem por Reforço no ShinpanAI.
+Testes Automatizados para Gerenciamento de Feedback e Aprendizagem por Reforço no SenpAI.
 """
 
 import os

@@ -1,5 +1,5 @@
 """
-Módulo de Execução e Relatório Detalhado de Testes Automatizados do ShinpanAI.
+Módulo de Execução e Relatório Detalhado de Testes Automatizados do SenpAI.
 Executa a suíte de testes unitários/integração, registra a descrição detalhada de cada
 teste executado e mantém estritamente o último log de testes na pasta de logs.
 """
@@ -16,9 +16,9 @@ from typing import Dict, Any, List, Optional
 
 from src.utils.logger_manager import log_event
 
-TEST_LOG_PATH = "logs/shinpanai_test_report.log"
+TEST_LOG_PATH = "logs/senpai_test_report.log"
 
-def cleanup_old_test_logs(logs_dir: str = "logs", current_log_name: str = "shinpanai_test_report.log") -> None:
+def cleanup_old_test_logs(logs_dir: str = "logs", current_log_name: str = "senpai_test_report.log") -> None:
     """
     Remove logs de testes antigos da pasta de logs, garantindo que apenas
     o último log de testes seja mantido na pasta.
@@ -30,6 +30,7 @@ def cleanup_old_test_logs(logs_dir: str = "logs", current_log_name: str = "shinp
     # Buscar padrões de logs de testes existentes
     patterns = [
         os.path.join(logs_dir, "test_*.log"),
+        os.path.join(logs_dir, "senpai_test_*.log"),
         os.path.join(logs_dir, "shinpanai_test_*.log"),
         os.path.join(logs_dir, "*test_report*.log"),
     ]
@@ -63,7 +64,7 @@ def get_test_description(test: unittest.TestCase) -> str:
     clean_name = method_name.replace("test_", "").replace("_", " ").strip()
     return f"Valida {clean_name}"
 
-class ShinpanAITestResult(unittest.TestResult):
+class SenpAITestResult(unittest.TestResult):
     """
     Coletor de resultados customizado que grava métricas e descrições
     individuais de cada teste executado.
@@ -131,7 +132,7 @@ class ShinpanAITestResult(unittest.TestResult):
         exctype, value, tb = err
         return "".join(traceback.format_exception(exctype, value, tb))
 
-class ShinpanAITestRunner:
+class SenpAITestRunner:
     """
     TestRunner customizado que orquestra a execução da suíte,
     gera o log detalhado e mantém o histórico na pasta logs/.
@@ -153,11 +154,11 @@ class ShinpanAITestRunner:
 
         if self.verbosity >= 1:
             print("=" * 80)
-            print(f"  SHINPANAI - SUITE DE TESTES AUTOMATIZADOS")
+            print(f"  SENPAI - SUITE DE TESTES AUTOMATIZADOS")
             print(f"  Inicio: {start_time_real.strftime('%Y-%m-%d %H:%M:%S')}")
             print("=" * 80)
 
-        result = ShinpanAITestResult(stream=self.stream, verbosity=self.verbosity)
+        result = SenpAITestResult(stream=self.stream, verbosity=self.verbosity)
         test_suite.run(result)
 
         total_duration = time.perf_counter() - start_clock
@@ -230,7 +231,7 @@ class ShinpanAITestRunner:
     ) -> str:
         lines = []
         lines.append("=" * 80)
-        lines.append("             SHINPANAI (審判 AI) - RELATÓRIO DE TESTES AUTOMATIZADOS")
+        lines.append("             SENPAI (先輩 AI) - RELATÓRIO DE TESTES AUTOMATIZADOS")
         lines.append("=" * 80)
         lines.append(f"Data e Hora de Início : {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
         lines.append(f"Data e Hora de Término: {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -286,7 +287,7 @@ def run_automated_tests(test_dir: str = "tests", log_file: str = TEST_LOG_PATH, 
     """
     loader = unittest.TestLoader()
     suite = loader.discover(start_dir=test_dir, pattern="test_*.py")
-    runner = ShinpanAITestRunner(verbosity=verbosity, log_file=log_file)
+    runner = SenpAITestRunner(verbosity=verbosity, log_file=log_file)
     return runner.run(suite)
 
 def get_latest_test_report_content(log_file: str = TEST_LOG_PATH) -> str:
@@ -302,5 +303,9 @@ def get_latest_test_report_content(log_file: str = TEST_LOG_PATH) -> str:
     return "Nenhum relatório de testes automatizados encontrado. Execute a suíte de testes para gerar o log."
 
 # Aliases de compatibilidade retroativa
-ShinpanaiTestResult = ShinpanAITestResult
-ShinpanaiTestRunner = ShinpanAITestRunner
+SenpaiTestResult = SenpAITestResult
+SenpaiTestRunner = SenpAITestRunner
+ShinpanAITestResult = SenpAITestResult
+ShinpanAITestRunner = SenpAITestRunner
+ShinpanaiTestResult = SenpAITestResult
+ShinpanaiTestRunner = SenpAITestRunner

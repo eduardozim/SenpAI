@@ -1,5 +1,5 @@
 """
-ShinpanAI - CLI Principal para Execução de Análise de Lutas de Kendo.
+SenpAI - CLI Principal para Execução de Análise de Lutas de Kendo.
 Suporta os 3 Modos Principais de Operação:
 1. 'recorded' (Modo de Arbitragem Gravada)
 2. 'training' (Modo de Treinamento & Aprendizado)
@@ -16,7 +16,7 @@ if sys.stdout.encoding != 'utf-8':
     except Exception:
         pass
 
-from src.pipeline import ShinpanAIPipeline
+from src.pipeline import SenpAIPipeline
 from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager
 from src.utils.settings_manager import get_processing_device
@@ -24,7 +24,7 @@ from src.utils.hardware import validate_and_setup_gpu_requirements
 
 def main():
     default_device = get_processing_device()
-    parser = argparse.ArgumentParser(description="ShinpanAI - AI Kendo Match Analysis System")
+    parser = argparse.ArgumentParser(description="SenpAI - AI Kendo Match Analysis System")
     parser.add_argument("--video", type=str, help="Caminho para o arquivo de vídeo de luta (.mp4, .avi)")
     parser.add_argument("--output", type=str, default="output_annotated.mp4", help="Caminho para salvar o vídeo anotado")
     parser.add_argument("--profile", type=str, default="normal", choices=["permissivo", "normal", "rigido"],
@@ -52,16 +52,16 @@ def main():
     feedback_mgr = FeedbackManager()
 
     if args.optimize_profile:
-        print(f"[ShinpanAI - Treinamento] Otimizando o perfil '{args.profile}' com base no histórico de feedback...")
-        pipeline_temp = ShinpanAIPipeline(calibration_profile=args.profile, device_preference=args.device)
+        print(f"[SenpAI - Treinamento] Otimizando o perfil '{args.profile}' com base no histórico de feedback...")
+        pipeline_temp = SenpAIPipeline(calibration_profile=args.profile, device_preference=args.device)
         curr_cfg = pipeline_temp.calibrator.active_config
         new_cfg, opt_stats = feedback_mgr.optimize_profile_config(args.profile, curr_cfg)
         
         if opt_stats["status"] == "no_data":
-            print(f"[ShinpanAI - Treinamento] {opt_stats['message']}")
+            print(f"[SenpAI - Treinamento] {opt_stats['message']}")
         else:
             pipeline_temp.calibrator.update_and_save_profile(args.profile, new_cfg)
-            print(f"[ShinpanAI - Treinamento] Perfil '{args.profile}' recalibrado com sucesso!")
+            print(f"[SenpAI - Treinamento] Perfil '{args.profile}' recalibrado com sucesso!")
             for chg in opt_stats["changes"]:
                 print(f"  - {chg}")
         return
@@ -69,26 +69,26 @@ def main():
     video_path = args.video
 
     if args.demo or not video_path:
-        print("[ShinpanAI] Nenhum vídeo fornecido ou modo --demo selecionado. Gerando vídeo de teste sintético...")
+        print("[SenpAI] Nenhum vídeo fornecido ou modo --demo selecionado. Gerando vídeo de teste sintético...")
         video_path = generate_demo_kendo_video("demo_kendo_match.mp4")
-        print(f"[ShinpanAI] Vídeo sintético criado em: {video_path}")
+        print(f"[SenpAI] Vídeo sintético criado em: {video_path}")
 
-    print(f"[ShinpanAI] Modo de Operação: '{active_mode.upper()}'")
-    print(f"[ShinpanAI] Aplicando perfil de calibração: '{args.profile}'")
-    print(f"[ShinpanAI] Preferência de Hardware Solicitada: '{args.device.upper()}'")
+    print(f"[SenpAI] Modo de Operação: '{active_mode.upper()}'")
+    print(f"[SenpAI] Aplicando perfil de calibração: '{args.profile}'")
+    print(f"[SenpAI] Preferência de Hardware Solicitada: '{args.device.upper()}'")
 
     if args.device == "gpu":
         gpu_val = validate_and_setup_gpu_requirements(auto_install=True)
-        print(f"[ShinpanAI - Hardware Check] {gpu_val['message']}")
+        print(f"[SenpAI - Hardware Check] {gpu_val['message']}")
 
-    pipeline = ShinpanAIPipeline(calibration_profile=args.profile, device_preference=args.device)
-    print(f"[ShinpanAI] Status de Hardware: {pipeline.device_status_message}")
+    pipeline = SenpAIPipeline(calibration_profile=args.profile, device_preference=args.device)
+    print(f"[SenpAI] Status de Hardware: {pipeline.device_status_message}")
     
     def on_progress(p):
         print(f"\rProgress: {int(p * 100)}%", end="", flush=True)
 
     result = pipeline.process_video(video_path, output_video_path=args.output, progress_callback=on_progress)
-    print("\n[ShinpanAI] Processamento concluído!")
+    print("\n[SenpAI] Processamento concluído!")
     print("=" * 60)
     print(f"Vídeo: {result['video_path']}")
     print(f"Duração: {result['duration_seconds']}s ({result['total_frames']} frames)")

@@ -1,5 +1,5 @@
 """
-ShinpanAI - Web Dashboard Interativo de Arbitragem e Análise de Kendo (Streamlit App)
+SenpAI - Web Dashboard Interativo de Arbitragem e Análise de Kendo (Streamlit App)
 Suporta 3 Modos Principais de Operação:
 1. 📹 Modo de Arbitragem Gravada
 2. 🎓 Modo de Treinamento & Aprendizado
@@ -13,7 +13,7 @@ import cv2
 import json
 import time
 
-from src.pipeline import ShinpanaiPipeline, AnalysisWorker
+from src.pipeline import SenpAIPipeline, AnalysisWorker
 from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager
 from src.analytics.sonkyo_detector import SonkyoDetector
@@ -31,7 +31,7 @@ from src.utils.test_runner import (
 setup_system_logger()
 
 st.set_page_config(
-    page_title="ShinpanAI - AI Kendo Referee & Analysis System",
+    page_title="SenpAI - AI Kendo Referee & Analysis System",
     page_icon="⚔️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -252,7 +252,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">⚔️ Shinpanai (審判 AI)</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">⚔️ SenpAI (先輩 AI)</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Sistema de Visão Computacional para Análise de Lutas de Kendo, Detecção de Golpes e Avaliação de Yuko-Datotsu</div>', unsafe_allow_html=True)
 
 # --- SIDEBAR: NAVEGAÇÃO PRINCIPAL ---
@@ -367,7 +367,7 @@ if nav_page == "settings":
         st.download_button(
             label="📥 Baixar Treinamento (.json)",
             data=pkg_json_str,
-            file_name=f"shinpanai_training_package_{int(time.time())}.json",
+            file_name=f"senpai_training_package_{int(time.time())}.json",
             mime="application/json",
             width="stretch"
         )
@@ -406,12 +406,12 @@ if nav_page == "settings":
 
     with dbg_col1:
         st.markdown("**📥 Log de Debug**")
-        st.caption("Baixa o arquivo completo de eventos do sistema (`shinpanai_debug.log`).")
+        st.caption("Baixa o arquivo completo de eventos do sistema (`senpai_debug.log`).")
         debug_log_text = get_debug_log_file_content()
         st.download_button(
             label="📥 Baixar Log (.log)",
             data=debug_log_text,
-            file_name=f"shinpanai_debug_{int(time.time())}.log",
+            file_name=f"senpai_debug_{int(time.time())}.log",
             mime="text/plain",
             width="stretch"
         )
@@ -439,12 +439,12 @@ if nav_page == "settings":
 
     with dbg_col4:
         st.markdown("**📥 Log dos Testes**")
-        st.caption("Baixa o relatório descritivo do último teste (`shinpanai_test_report.log`).")
+        st.caption("Baixa o relatório descritivo do último teste (`senpai_test_report.log`).")
         test_log_content = get_latest_test_report_content(TEST_LOG_PATH)
         st.download_button(
             label="📥 Baixar Log Testes (.log)",
             data=test_log_content,
-            file_name="shinpanai_test_report.log",
+            file_name="senpai_test_report.log",
             mime="text/plain",
             width="stretch"
         )
@@ -645,7 +645,7 @@ else:
 
         if run_live_detection:
             dev_pref = st.session_state.get("device_preference", get_processing_device())
-            pipeline = ShinpanaiPipeline(
+            pipeline = SenpAIPipeline(
                 calibration_profile=profile_choice if profile_choice != "custom" else "normal",
                 device_preference=dev_pref
             )
@@ -721,13 +721,13 @@ else:
                         video_file_path = cached_file_path
                     else:
                         # Limpar arquivo temporário anterior se existir
-                        if cached_file_path and os.path.exists(cached_file_path) and ("shinpanai_uploads" in cached_file_path or "tmp" in cached_file_path):
+                        if cached_file_path and os.path.exists(cached_file_path) and ("senpai_uploads" in cached_file_path or "tmp" in cached_file_path):
                             try:
                                 os.remove(cached_file_path)
                             except Exception:
                                 pass
 
-                        uploads_dir = os.path.join(tempfile.gettempdir(), "shinpanai_uploads")
+                        uploads_dir = os.path.join(tempfile.gettempdir(), "senpai_uploads")
                         os.makedirs(uploads_dir, exist_ok=True)
                         
                         # Limpar arquivos temporários antigos de sessões anteriores
@@ -758,7 +758,7 @@ else:
                 else:
                     if "uploaded_file_name" in st.session_state:
                         cached_file_path = st.session_state.get("video_file_path")
-                        if cached_file_path and os.path.exists(cached_file_path) and ("shinpanai_uploads" in cached_file_path or "tmp" in cached_file_path):
+                        if cached_file_path and os.path.exists(cached_file_path) and ("senpai_uploads" in cached_file_path or "tmp" in cached_file_path):
                             try:
                                 os.remove(cached_file_path)
                             except Exception:
@@ -790,7 +790,7 @@ else:
                 col_btn1, col_btn2 = st.columns([1, 1])
                 with col_btn1:
                     start_btn = st.button(
-                        "⚡ Executar Arbitragem com Shinpanai" if not is_running else "⏳ Processando Arbitragem...",
+                        "⚡ Executar Arbitragem com SenpAI" if not is_running else "⏳ Processando Arbitragem...",
                         type="primary",
                         width="stretch",
                         disabled=(video_file_path is None or is_running),
@@ -823,7 +823,7 @@ else:
                 # 2. Se o usuário clicar em Iniciar Arbitragem
                 if start_btn and video_file_path and not is_running:
                     dev_pref = st.session_state.get("device_preference", get_processing_device())
-                    pipeline = ShinpanaiPipeline(
+                    pipeline = SenpAIPipeline(
                         calibration_profile=profile_choice if profile_choice != "custom" else "normal",
                         device_preference=dev_pref
                     )
@@ -1108,7 +1108,7 @@ else:
                         <div style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border: 2px solid #818CF8; border-radius: 10px; padding: 12px 16px; margin: 10px 0;">
                             <h4 style="color: #E0E7FF; margin: 0 0 4px 0;">⚡ Momentos de Sonkyō Alterados pelo Árbitro</h4>
                             <p style="color: #C7D2FE; font-size: 0.88rem; margin: 0 0 8px 0;">
-                                Os limites regulamentares de Sonkyō foram modificados. O ShinpanAI irá <b>aprender a movimentação corporal</b> deste combate para reprocessar a arbitragem.
+                                Os limites regulamentares de Sonkyō foram modificados. O SenpAI irá <b>aprender a movimentação corporal</b> deste combate para reprocessar a arbitragem.
                             </p>
                         </div>
                         """,
@@ -1118,7 +1118,7 @@ else:
                     with col_rep1:
                         if st.button("🔄 Reprocessar Arbitragem com Aprendizado de Sonkyō", type="primary", width="stretch", key="btn_reprocess_sonkyo_learning"):
                             dev_pref = st.session_state.get("device_preference", get_processing_device())
-                            pipeline = ShinpanaiPipeline(
+                            pipeline = SenpAIPipeline(
                                 calibration_profile=profile_choice if profile_choice != "custom" else "normal",
                                 device_preference=dev_pref
                             )
@@ -1879,7 +1879,7 @@ else:
                                     current_profile_config=current_p
                                 )
                                 # Atualizar o perfil ativo no calibrador
-                                pipeline_temp = ShinpanaiPipeline(calibration_profile=profile_choice)
+                                pipeline_temp = SenpAIPipeline(calibration_profile=profile_choice)
                                 pipeline_temp.calibrator.update_and_save_profile(profile_choice, new_cfg)
 
                                 st.success(f"🎉 Revisão salva e modelo retreinado com sucesso! ({len(items_to_save)} marcações processadas por {dan_options.get(selected_dan)}).")
@@ -1903,7 +1903,7 @@ else:
                                 if opt_summary["status"] == "no_data":
                                     st.warning(opt_summary["message"])
                                 else:
-                                    pipeline_temp = ShinpanaiPipeline(calibration_profile=profile_choice)
+                                    pipeline_temp = SenpAIPipeline(calibration_profile=profile_choice)
                                     pipeline_temp.calibrator.update_and_save_profile(profile_choice, updated_config)
                                     st.success(f"🎉 O perfil '{profile_choice}' foi recalibrado com sucesso!")
                                     for chg in opt_summary["changes"]:

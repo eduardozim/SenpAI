@@ -323,7 +323,7 @@ class FeedbackManager:
         now_iso = datetime.datetime.now().isoformat(timespec="seconds")
 
         pkg = {
-            "system_name": "ShinpanAI",
+            "system_name": "SenpAI",
             "package_version": "1.0",
             "exported_at": now_iso,
             "summary": {

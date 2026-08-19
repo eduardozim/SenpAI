@@ -8,7 +8,7 @@ import tempfile
 import cv2
 import numpy as np
 
-from src.pipeline import ShinpanAIPipeline
+from src.pipeline import SenpAIPipeline
 from src.utils.demo_generator import generate_demo_kendo_video
 from src.utils.logger_manager import get_memory_logs
 
@@ -26,7 +26,7 @@ class TestPipelineCancellation(unittest.TestCase):
 
     def test_immediate_cancellation(self):
         """Verifica que o pipeline interrompe imediatamente quando is_cancelled é True desde o início."""
-        pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
+        pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
         out_vid = os.path.join(self.temp_dir.name, "out_immediate_cancel.mp4")
 
         result = pipeline.process_video(
@@ -39,7 +39,7 @@ class TestPipelineCancellation(unittest.TestCase):
 
     def test_midway_cancellation_during_frame_extraction(self):
         """Verifica que o pipeline interrompe no meio da extração de frames e libera recursos."""
-        pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
+        pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
         out_vid = os.path.join(self.temp_dir.name, "out_midway_cancel.mp4")
 
         calls = [0]
@@ -58,7 +58,7 @@ class TestPipelineCancellation(unittest.TestCase):
 
     def test_cancellation_logs_warning(self):
         """Verifica que o cancelamento registra um evento de WARNING nos logs do sistema."""
-        pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
+        pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
 
         _ = pipeline.process_video(
             video_path=self.test_video,
@@ -71,7 +71,7 @@ class TestPipelineCancellation(unittest.TestCase):
 
     def test_normal_execution_without_cancellation(self):
         """Verifica que quando is_cancelled=lambda: False, o processamento ocorre normalmente."""
-        pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
+        pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
         out_vid = os.path.join(self.temp_dir.name, "out_normal.mp4")
 
         result = pipeline.process_video(
@@ -89,7 +89,7 @@ class TestPipelineCancellation(unittest.TestCase):
         import time
         from src.pipeline import AnalysisWorker
 
-        pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
+        pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
         out_vid = os.path.join(self.temp_dir.name, "out_worker_cancel.mp4")
 
         worker = AnalysisWorker(
@@ -110,7 +110,7 @@ class TestPipelineCancellation(unittest.TestCase):
         """Verifica que AnalysisWorker conclui a execução em background com sucesso e mede o tempo."""
         from src.pipeline import AnalysisWorker
 
-        pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
+        pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
         out_vid = os.path.join(self.temp_dir.name, "out_worker_success.mp4")
 
         worker = AnalysisWorker(
@@ -132,7 +132,7 @@ class TestPipelineCancellation(unittest.TestCase):
 
     def test_processing_summary_logged_on_completion(self):
         """Verifica que o resumo completo do processamento é registrado no log do sistema."""
-        pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
+        pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
         out_vid = os.path.join(self.temp_dir.name, "out_summary_log.mp4")
 
         result = pipeline.process_video(

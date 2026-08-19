@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Script de Execução de Testes Automatizados do ShinpanAI.
+Script de Execução de Testes Automatizados do SenpAI.
 Executa a suíte de 44 testes automatizados, exibe o progresso em tempo real
-e salva o log detalhado descritivo em 'logs/shinpanai_test_report.log'.
+e salva o log detalhado descritivo em 'logs/senpai_test_report.log'.
 Mantém estritamente apenas o último log de testes na pasta logs/.
 """
 

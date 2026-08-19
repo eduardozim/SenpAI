@@ -2,7 +2,7 @@
 
 ## 🎯 Visão da Versão Final: 3 Modos de Operação (Nodos)
 
-A versão final do **ShinpanAI** será organizada em **3 Nodos / Modos Principais de Operação**:
+A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais de Operação**:
 
 1. **Modo de Detecção em Tempo Real**
    - **Processamento Ao Vivo**: Processamento e detecção instantânea de golpes via transmissão ao vivo (Webcam / Câmeras de transmissão).
@@ -132,11 +132,11 @@ Versão 1.5.0
    -Melhorias Aplicadas:
     - **Processamento de Vídeo com Múltiplas Câmeras (RTSP)**: Suporte nativo a múltiplas fontes de vídeo simultâneas em tempo real via protocolo RTSP (Real Time Streaming Protocol).
     - **Aquisição de Vídeo em Tempo Real (Webcam)**: Captura e processamento em tempo real via webcam (`/dev/video0`) além do upload de arquivos locais.
-    - **Interface Gráfica Unificada (SHINPANAI Hub)**: Dashboard centralizado para gerenciamento de câmeras, transmissões ao vivo, uploads locais e painel de arbitragem.
+    - **Interface Gráfica Unificada (SENPAI Hub)**: Dashboard centralizado para gerenciamento de câmeras, transmissões ao vivo, uploads locais e painel de arbitragem.
     - **Sincronização de Múltiplas Câmeras (Sync)**: Ferramentas e lógica de sincronização para combates com múltiplas perspectivas (ex: câmera frontal + câmera lateral).
     - **Arbitragem Assistida em Vídeo**: Processamento e análise biomecânica de vídeos pré-gravados de combates com pontuação ponderada (Ki-Ken-Tai-Ichi), cortes de clipes e relatórios diagnósticos no Modo de Arbitragem Gravada.
    - **Aprendizagem por Reforço & Seleção de Graduação (Dan)**: Otimização contínua de perfis de calibração via feedback do usuário (TP, FP, FN) incorporando a seleção de graduação (Dan) do revisor para ajustar dinamicamente a sensibilidade dos limiares.
-   - **Sistema de Diagnóstico, Alertas & Log de Debug**: Módulo central de logging (`logger_manager.py`) retendo logs no disco (`logs/shinpanai_debug.log`) e em memória, Seção 4 no menu de configurações com monitoramento em tempo real de alertas (com filtro por `ERROR`, `WARNING`, `INFO`, `DEBUG`), registro automático de resets de treinamento, importações/exportações de pacotes JSON e retreinamentos por Dan no log, botão de download do log de debug, ferramenta de diagnóstico automatizado, badges de status de golpe (CONFIRMADO / EDITADO), botões de reset de revisão e suíte de testes unitários (`test_logger_manager.py`).
+   - **Sistema de Diagnóstico, Alertas & Log de Debug**: Módulo central de logging (`logger_manager.py`) retendo logs no disco (`logs/senpai_debug.log`) e em memória, Seção 4 no menu de configurações com monitoramento em tempo real de alertas (com filtro por `ERROR`, `WARNING`, `INFO`, `DEBUG`), registro automático de resets de treinamento, importações/exportações de pacotes JSON e retreinamentos por Dan no log, botão de download do log de debug, ferramenta de diagnóstico automatizado, badges de status de golpe (CONFIRMADO / EDITADO), botões de reset de revisão e suíte de testes unitários (`test_logger_manager.py`).
 
 Versão 1.4.0
    -Melhorias Aplicadas:
