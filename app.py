@@ -1,7 +1,7 @@
 """
-SenpAI - Web Dashboard Interativo de Arbitragem e Análise de Kendo (Streamlit App)
+SenpAI - Web Dashboard Interativo de Análise de Kendo (Streamlit App)
 Suporta 3 Modos Principais de Operação:
-1. 📹 Modo de Arbitragem Gravada
+1. 📹 Modo de Detecção Gravada
 2. 🎓 Modo de Treinamento & Aprendizado
 3. 🔴 Modo de Detecção em Tempo Real (Webcam / Stream RTSP/RTCP)
 """
@@ -261,7 +261,7 @@ nav_page = st.sidebar.radio(
     "Selecione a Página",
     options=["analysis", "settings"],
     format_func=lambda x: {
-        "analysis": "⚔️ Arbitragem & Análise de Lutas",
+        "analysis": "⚔️ Análise de Lutas",
         "settings": "⚙️ Menu de Configurações"
     }[x]
 )
@@ -273,7 +273,7 @@ st.sidebar.markdown("---")
 # ==============================================================================
 if nav_page == "settings":
     st.header("⚙️ Configurações Gerais do Sistema")
-    st.markdown("Gerencie os parâmetros de aceleração de hardware, calibração de arbitragem e preferências globais.")
+    st.markdown("Gerencie os parâmetros de aceleração de hardware, calibração de detecção e preferências globais.")
 
     saved_sys_settings = load_settings()
     default_device_pref = st.session_state.get("device_preference", saved_sys_settings.get("processing_device", "cpu"))
@@ -483,11 +483,11 @@ if nav_page == "settings":
                     st.markdown(f"🔵 `[{timestamp_str}]` **[{mod_str}]** {msg_str}")
 
     st.markdown("---")
-    st.info("💡 **Dica:** Para alterar os parâmetros de hardware selecionados, utilize a Seção 1. Para iniciar a análise de lutas, navegue no menu lateral até **'⚔️ Arbitragem & Análise de Lutas'**.")
+    st.info("💡 **Dica:** Para alterar os parâmetros de hardware selecionados, utilize a Seção 1. Para iniciar a análise de lutas, navegue no menu lateral até **'⚔️ Análise de Lutas'**.")
 
 
 # ==============================================================================
-# PÁGINA 2: ARBITRAGEM & ANÁLISE DE LUTAS (PÁGINA PRINCIPAL)
+# PÁGINA 2: ANÁLISE DE LUTAS (PÁGINA PRINCIPAL)
 # ==============================================================================
 else:
     # --- SIDEBAR DA ANÁLISE: SELEÇÃO DOS 3 MODOS DE OPERAÇÃO ---
@@ -497,7 +497,7 @@ else:
         options=["realtime", "recorded", "training"],
         format_func=lambda x: {
             "realtime": "🔴 Modo de Detecção em Tempo Real",
-            "recorded": "📹 Modo de Arbitragem Gravada",
+            "recorded": "📹 Modo de Detecção Gravada",
             "training": "🎓 Modo de Treinamento & Aprendizado"
         }[x]
     )
@@ -613,7 +613,7 @@ else:
 
     # BANNER DO MODO ATIVO
     if app_mode == "recorded":
-        st.markdown('<div class="mode-banner-recorded">📹 <b>Modo de Arbitragem Gravada Ativo:</b> Análise de vídeos pré-gravados de combates de Kendo, detecção de Yuko-Datotsu e relatórios diagnósticos.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="mode-banner-recorded">📹 <b>Modo de Detecção Gravada Ativo:</b> Análise de vídeos pré-gravados de combates de Kendo, detecção de Yuko-Datotsu e relatórios diagnósticos.</div>', unsafe_allow_html=True)
     elif app_mode == "training":
         st.markdown('<div class="mode-banner-training">🎓 <b>Modo de Treinamento & Aprendizado Ativo:</b> Anotação por reforço (TP, FP, FN), calibração por Dan/nível de graduação e otimização adaptativa dos perfis técnicos.</div>', unsafe_allow_html=True)
     else:
@@ -700,7 +700,7 @@ else:
                 cap.release()
 
     # ==========================================================================
-    # MODOS 1 E 2: ARBITRAGEM GRAVADA & TREINAMENTO & APRENDIZADO
+    # MODOS 1 E 2: DETECÇÃO GRAVADA & TREINAMENTO & APRENDIZADO
     # ==========================================================================
     else:
         with st.expander("📹 Carregar Vídeo da Luta", expanded=("analysis_result" not in st.session_state)):
@@ -710,7 +710,7 @@ else:
             with col_in1:
                 st.subheader("📹 Fazer Upload de Vídeo")
                 st.markdown("Selecione o arquivo de vídeo da luta de Kendo a ser analisado:")
-                uploaded_file = st.file_uploader("Vídeo da Luta (.mp4, .avi, .mov)", type=["mp4", "avi", "mov"], help="Suporta arquivos de vídeo de qualquer tamanho (HD/4K, sem limite de 200MB).")
+                uploaded_file = st.file_uploader("Vídeo da Luta (.mp4, .avi, .mov)", type=["mp4", "avi", "mov"], help="Suporta arquivos de vídeo de qualquer tamanho. Arquivos acima de 200MB podem ter tempos de carregamento extensos.")
                 if uploaded_file is not None:
                     cached_file_name = st.session_state.get("uploaded_file_name")
                     cached_file_size = st.session_state.get("uploaded_file_size")
@@ -769,7 +769,7 @@ else:
                         video_file_path = None
 
             with col_in2:
-                st.subheader("Executar Arbitragem")
+                st.subheader("Executar Analise")
                 st.markdown("Inicie o rastreamento de pose, detecção de impactos e avaliação de Yuko-Datotsu:")
 
                 dev_pref = st.session_state.get("device_preference", get_processing_device())
@@ -784,13 +784,13 @@ else:
 
                 # Alerta visual caso o processamento anterior tenha sido interrompido
                 if st.session_state.get("processing_cancelled", False) and not is_running:
-                    st.warning("⚠️ O processamento de arbitragem foi interrompido pelo usuário.")
+                    st.warning("⚠️ O processamento foi interrompido pelo usuário.")
                     st.session_state["processing_cancelled"] = False
 
                 col_btn1, col_btn2 = st.columns([1, 1])
                 with col_btn1:
                     start_btn = st.button(
-                        "⚡ Executar Arbitragem com SenpAI" if not is_running else "⏳ Processando Arbitragem...",
+                        "⚡ Executar Analise com SenpAI" if not is_running else "⏳ Processando Vídeo...",
                         type="primary",
                         width="stretch",
                         disabled=(video_file_path is None or is_running),
@@ -973,7 +973,7 @@ else:
                         else:
                             raw_shiro_strikes.append(ev_d)
 
-                # 2. Golpes adicionais incluídos manualmente pelo árbitro
+                # 2. Golpes adicionais incluídos manualmente pelo usuário
                 for fn_k, fn_v in session_revs.items():
                     if fn_v.get("is_included"):
                         is_fn_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
@@ -1037,7 +1037,7 @@ else:
                 if aka_val_strikes:
                     aka_items = "".join([f'<span style="display:inline-block; background: #991B1B; color: #FEE2E2; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">🔴 {s["event_info"]["type"]} ({s["event_info"]["timestamp"]})</span>' for s in aka_val_strikes])
                 else:
-                    aka_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
+                    aka_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon detectado</span>'
 
                 # HTML de Ippons do Shiro
                 if shiro_val_strikes:
@@ -1045,12 +1045,12 @@ else:
                 else:
                     shiro_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
 
-                # RENDERIZAÇÃO DO PLACAR OFICIAL NO TOPO (LARGURA TOTAL)
+                # RENDERIZAÇÃO DO PLACAR NO TOPO (LARGURA TOTAL)
                 st.markdown(
                     f"""
                     <div style="background: #090D16; border: 2px solid #374151; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1F2937; padding-bottom: 8px; margin-bottom: 12px;">
-                            <span style="color: #D1D5DB; font-size: 13px; font-weight: 800; letter-spacing: 0.8px;">🥋 PLACAR OFICIAL DE ARBITRAGEM (SANBON-SHOBU)</span>
+                            <span style="color: #D1D5DB; font-size: 13px; font-weight: 800; letter-spacing: 0.8px;">🥋 PONTUAÇÃO FINAL (SANBON-SHOBU)</span>
                             <span style="color: #93C5FD; font-size: 12px; font-weight: 500;">{flag_badge}</span>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
@@ -1088,7 +1088,7 @@ else:
                     rev_header_col1, rev_header_col2 = st.columns([3, 1])
                     with rev_header_col1:
                         selected_dan = st.selectbox(
-                            "🥋 Graduação DAN do Árbitro Revisor:",
+                            "🥋 Graduação DAN do Revisor:",
                             options=list(dan_options.keys()),
                             format_func=lambda x: dan_options[x],
                             index=2,
@@ -1106,9 +1106,9 @@ else:
                     st.markdown(
                         """
                         <div style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border: 2px solid #818CF8; border-radius: 10px; padding: 12px 16px; margin: 10px 0;">
-                            <h4 style="color: #E0E7FF; margin: 0 0 4px 0;">⚡ Momentos de Sonkyō Alterados pelo Árbitro</h4>
+                            <h4 style="color: #E0E7FF; margin: 0 0 4px 0;">⚡ Momentos de Sonkyō Alterados pelo Revisor</h4>
                             <p style="color: #C7D2FE; font-size: 0.88rem; margin: 0 0 8px 0;">
-                                Os limites regulamentares de Sonkyō foram modificados. O SenpAI irá <b>aprender a movimentação corporal</b> deste combate para reprocessar a arbitragem.
+                                Os limites regulamentares de Sonkyō foram modificados. O SenpAI irá <b>aprender a movimentação corporal</b> deste combate para reprocessar a analise.
                             </p>
                         </div>
                         """,
@@ -1116,7 +1116,7 @@ else:
                     )
                     col_rep1, col_rep2 = st.columns([3, 1])
                     with col_rep1:
-                        if st.button("🔄 Reprocessar Arbitragem com Aprendizado de Sonkyō", type="primary", width="stretch", key="btn_reprocess_sonkyo_learning"):
+                        if st.button("🔄 Reprocessar Analise com Aprendizado de Sonkyō", type="primary", width="stretch", key="btn_reprocess_sonkyo_learning"):
                             dev_pref = st.session_state.get("device_preference", get_processing_device())
                             pipeline = SenpAIPipeline(
                                 calibration_profile=profile_choice if profile_choice != "custom" else "normal",
@@ -1211,7 +1211,7 @@ else:
                     m_s1, m_s2 = st.columns(2)
                     start_ts = sonkyo_info.get("match_start_timestamp", "00:00.000")
                     end_ts = sonkyo_info.get("match_end_timestamp", f"{res['duration_seconds']}s")
-                    m_s1.metric("🥋 Início (Pós-Sonkyō)", start_ts)
+                    m_s1.metric("🥋 Início (Sonkyō Inicial)", start_ts)
                     m_s2.metric("🥋 Fim (Sonkyō Final)", end_ts)
 
                     m3, m4 = st.columns(2)
@@ -1237,7 +1237,7 @@ else:
             with col_results:
                 st.subheader("🥋 Linha do Tempo & Revisão de Golpes")
                 if "analysis_result" not in st.session_state:
-                    st.info("👈 Clique em **⚡ Executar Arbitragem** para visualizar a linha do tempo de eventos e análise detalhada.")
+                    st.info("👈 Clique em **⚡ Executar Analise** para visualizar a linha do tempo de eventos e análise detalhada.")
                 else:
                     res = st.session_state["analysis_result"]
                     sonkyo_info = res.get("sonkyo_analysis", {})
@@ -1298,7 +1298,7 @@ else:
                             "diagnostic_report": ev_data.get("diagnostic_report", "")
                         })
 
-                    # 2. Golpes incluídos manualmente pelo árbitro
+                    # 2. Golpes incluídos manualmente pelo revisor
                     for fn_k, fn_v in session_revs.items():
                         if fn_v.get("is_included"):
                             ts_val = fn_v.get("timestamp", "00:00.000")
@@ -1635,13 +1635,13 @@ else:
                                                         default_strat_idx = strat_codes.index(curr_cat) if curr_cat in strat_codes else 0
 
                                                         selected_strat_lbl = st.radio(
-                                                            "Classificação pelo Árbitro Revisor:",
+                                                            "Classificação pelo Revisor:",
                                                             options=strat_labels,
                                                             index=default_strat_idx,
                                                             key=f"rad_strat_{idx}_{event_id_str}"
                                                         )
                                                         selected_strat_code = strat_codes[strat_labels.index(selected_strat_lbl)]
-                                                        new_notes = st.text_input("Observações do Árbitro", value=current_rev.get("notes", ""), key=f"inp_notes_{idx}_{event_id_str}")
+                                                        new_notes = st.text_input("Observações do Revisor", value=current_rev.get("notes", ""), key=f"inp_notes_{idx}_{event_id_str}")
 
                                                         if st.button("💾 Aplicar Edição neste Golpe", key=f"btn_apply_edit_{idx}_{event_id_str}"):
                                                             if selected_strat_code == "VALID_IPPON":
@@ -1698,7 +1698,7 @@ else:
                                             if strike_item["diagnostic_report"]:
                                                 st.markdown(strike_item["diagnostic_report"])
                                             else:
-                                                st.info("ℹ️ Este golpe foi inserido manualmente pelo árbitro revisor na sequência temporal do combate.")
+                                                st.info("ℹ️ Este golpe foi inserido manualmente pelo revisor na sequência temporal do combate.")
 
                                     # Inseridor inline de golpe (+) entre este golpe e o próximo (ou Sonkyō Final)
                                     if idx < len(combined_strikes) - 1:

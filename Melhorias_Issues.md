@@ -94,6 +94,8 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
 
 - **Processamento & Hardware**:
   - Vazamento de memória (memory leak) durante o processamento de vídeos longos ou transmissões ao vivo.
+  - Sempre limpar arquivos de vídeo usados anteriormente
+  - Configuração de limpeza de arquivos temporários
 - **Vídeo, Marcações e Sincronização**:
   - O vídeo com as marcações sobrepostas não está funcionando corretamente.
   - Dessincronização entre o vídeo original, as marcações e os clipes gerados.
