@@ -196,7 +196,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertGreaterEqual(init_s["end_frame"], 28)
 
     def test_pipeline_integration_with_sonkyo(self):
-        """Valida a integração end-to-end do pipeline de arbitragem com detecção de Sonkyō, filtragem de planos e vídeo anotado."""
+        """Valida a integração end-to-end do pipeline de avaliação com detecção de Sonkyō, filtragem de planos e vídeo anotado."""
         # Gerar vídeo sintético de teste
         test_vid = "test_sonkyo_pipeline_match.mp4"
         out_vid = "test_sonkyo_pipeline_annotated.mp4"

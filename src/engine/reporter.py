@@ -1,17 +1,37 @@
 """
-Gerador de Feedback & Diagnóstico de Arbitragem em Kendo.
+Gerador de Feedback & Diagnóstico Técnico e Avaliação em Kendo.
 Transforma as métricas técnicas e de calibração em relatórios e críticas construtivas em português.
 """
 
 from typing import Dict, Any
 
 class DiagnosticReporter:
+    STRIKE_NAMES = {
+        "MEN": "メ MEN",
+        "KOTE": "コ KOTE",
+        "DO": "ド DO",
+        "TSUKI": "ツ TSUKI",
+        "メ MEN": "メ MEN",
+        "コ KOTE": "コ KOTE",
+        "ド DO": "ド DO",
+        "ツ TSUKI": "ツ TSUKI",
+    }
+
+    @staticmethod
+    def format_strike_name(strike_type: str) -> str:
+        """Formata o nome da técnica/golpe com Katakana para exibição."""
+        if not strike_type:
+            return ""
+        st_clean = str(strike_type).strip()
+        return DiagnosticReporter.STRIKE_NAMES.get(st_clean.upper(), DiagnosticReporter.STRIKE_NAMES.get(st_clean, st_clean))
+
     @staticmethod
     def generate_strike_report(event_info: Dict[str, Any], evaluation: Dict[str, Any], fumikomi_offset_ms: float) -> str:
         """
         Gera a crítica textual detalhada para um golpe analisado.
         """
-        strike_type = event_info["type"]
+        raw_strike_type = event_info.get("type", "MEN")
+        strike_type = DiagnosticReporter.format_strike_name(raw_strike_type)
         timestamp = event_info["timestamp"]
         attacker_name = event_info.get("attacker_name", "Kenshi Aka")
         is_valid = evaluation["is_valid"]

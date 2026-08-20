@@ -1,7 +1,7 @@
 """
 SenpAI - CLI Principal para Execução de Análise de Lutas de Kendo.
 Suporta os 3 Modos Principais de Operação:
-1. 'recorded' (Modo de Arbitragem Gravada)
+1. 'recorded' (Modo de Detecção Gravada)
 2. 'training' (Modo de Treinamento & Aprendizado)
 3. 'realtime' (Modo de Detecção em Tempo Real)
 """
@@ -28,9 +28,9 @@ def main():
     parser.add_argument("--video", type=str, help="Caminho para o arquivo de vídeo de luta (.mp4, .avi)")
     parser.add_argument("--output", type=str, default="output_annotated.mp4", help="Caminho para salvar o vídeo anotado")
     parser.add_argument("--profile", type=str, default="normal", choices=["permissivo", "normal", "rigido"],
-                        help="Perfil de calibração de arbitragem (permissivo, normal, rigido)")
+                        help="Perfil de calibração e sensibilidade (permissivo, normal, rigido)")
     parser.add_argument("--mode", type=str, default="recorded", choices=["recorded", "training", "realtime", "user", "learning"],
-                        help="Modo de operação: 'recorded' (Arbitragem Gravada), 'training' (Treinamento & Aprendizado) ou 'realtime' (Detecção em Tempo Real)")
+                        help="Modo de operação: 'recorded' (Detecção Gravada), 'training' (Treinamento & Aprendizado) ou 'realtime' (Detecção em Tempo Real)")
     parser.add_argument("--device", type=str, default=default_device, choices=["cpu", "gpu"],
                         help="Dispositivo de processamento: 'cpu' (somente CPU) ou 'gpu' (GPU NVIDIA quando disponível)")
     parser.add_argument("--optimize-profile", action="store_true",
@@ -92,7 +92,7 @@ def main():
     print("=" * 60)
     print(f"Vídeo: {result['video_path']}")
     print(f"Duração: {result['duration_seconds']}s ({result['total_frames']} frames)")
-    print(f"Perfil de Arbitragem Aplicado: {result['profile_applied']}")
+    print(f"Perfil de Avaliação Aplicado: {result['profile_applied']}")
     print(f"Golpes Detectados: {result['events_detected_count']}")
     print("=" * 60)
 

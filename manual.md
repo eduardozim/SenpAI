@@ -6,7 +6,7 @@
 
 ## 1. Visão Geral do Sistema e Filosofia de Arquitetura
 
-O **SenpAI (先輩 AI)** é uma plataforma avançada de visão computacional, análise biomecânica e arbitragem assistida por inteligência artificial projetada para a arte marcial do **Kendo**.
+O **SenpAI (先輩 AI)** é uma plataforma avançada de visão computacional, análise biomecânica e avaliação assistida por inteligência artificial projetada para a arte marcial do **Kendo**.
 
 No Kendo tradicional, a atribuição de um ponto válido (*Yuko-Datotsu*) é regida pelo conceito fundamental de **Ki-Ken-Tai-Ichi** (気剣体一致 — Espírito, Espada e Corpo em harmonia unificada):
 
@@ -25,7 +25,7 @@ A estrutura de arquivos do projeto está organizada de forma modular:
 ```text
 Dev/
 ├── config/
-│   ├── calibration_profiles.json   # Configurações e pesos dos perfis de arbitragem
+│   ├── calibration_profiles.json   # Configurações e pesos dos perfis de calibração
 │   ├── settings.json               # Configurações globais do sistema (CPU/GPU)
 │   └── sonkyo_learned_profile.json # Perfil adaptativo aprendido de postura de Sonkyō
 ├── data/
@@ -111,7 +111,7 @@ Calcula quantitativamente os 4 pilares do **Ki-Ken-Tai-Ichi**:
 Módulo biomecânico que monitora e reconhece o ritual sagrado de **Sonkyō** (agachamento sobre os calcanhares com coluna vertical):
 - **Classificação Postural Multifatorial**: Avalia rebaixamento de quadril ($\Delta Y$), proporção tronco-altura, compressão vertical relativa ($H_{sonkyo} \le 0.75 \times H_{standing}$) e verticalidade da coluna.
 - **Delimitação Regulamentar da Luta**: Marca o início oficial do combate (`match_start_frame`) no término do Sonkyō Inicial e o encerramento oficial (`match_end_frame`) no início do Sonkyō Final.
-- **Filtragem Estrita de Golpes**: Qualquer golpe fora desse intervalo ritual é sumariamente descartado da arbitragem oficial.
+- **Filtragem Estrita de Golpes**: Qualquer golpe fora desse intervalo ritual é sumariamente descartado da avaliação oficial.
 - **Aprendizado Biomecânico Adaptativo**: Permite edição interativa de intervalos na UI e recalibra os limiares de Sonkyō, persistindo o aprendizado em `config/sonkyo_learned_profile.json`.
 
 ---
@@ -131,7 +131,7 @@ Para um golpe ser validado como **Yuko-Datotsu** (Ponto Válido / *Ippon*):
 | Perfil | $\text{min\_total\_score}$ | Pesos ($w_{\text{target}}, w_{\text{fumikomi}}, w_{\text{posture}}, w_{\text{zanshin}}$) | Aplicação Principal |
 | :--- | :---: | :--- | :--- |
 | **Rígido** | `82%` | Target: 35%, Fumikomi: 25%, Posture: 20%, Zanshin: 20% | Campeonatos / Exames de Dan |
-| **Normal** | `65%` | Target: 40%, Fumikomi: 25%, Posture: 20%, Zanshin: 15% | Treinos de Dojang e Arbitragem Geral |
+| **Normal** | `65%` | Target: 40%, Fumikomi: 25%, Posture: 20%, Zanshin: 15% | Treinos de Dojang e Avaliação Geral |
 | **Permissivo** | `45%` | Target: 55%, Fumikomi: 20%, Posture: 15%, Zanshin: 10% | Iniciantes / Avaliação Educacional |
 | **Custom** | Dinâmico | Definido pelo usuário via sliders no Streamlit | Pesquisa e Ajustes Finos |
 
@@ -207,29 +207,52 @@ Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
-### `[v1.6.0]` — 2026-08-18 *(Versão Atual)*
+### `[v1.6.1]` — 2026-08-19 *(Versão Atual)*
+
+- **Padronização das Marcações Katakana no Placar Oficial (Sanbon-shobu)**:
+  - Mapeamento estrito e exclusivo dos caracteres Katakana oficiais da arbitragem de Kendo no painel de Pontuação Final ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)):
+    - **`MEN`** $\rightarrow$ **`メ`**
+    - **`KOTE`** $\rightarrow$ **`コ`**
+    - **`DO`** $\rightarrow$ **`ド`**
+    - **`TSUKI`** $\rightarrow$ **`ツ`**
+  - Renderização dos badges dos Ippons de **Aka** e **Shiro** com a marcação compacta (ex: `🔴 メ (00:02.500)` e `⚪ コ (00:04.120)`).
+- **Destaque Visual dos Golpes Responsáveis pela Marcação na Linha do Tempo**:
+  - Destaque automático de todos os golpes com pontuação válida (*Yuko-Datotsu / Ippon*) no painel de Linha do Tempo & Revisão de Golpes:
+    - **Título do Card Expansível**: Exibição da técnica com prefixo Katakana (ex: `🥊 Golpe #1: メ MEN @ 00:02.500 (🔴 Kenshi Aka) - ✅ IPPON`).
+    - **Banner de Marcação Oficial**: Card colorido dedicado destacando a pontuação do lutador (`🔴 MARCAÇÃO OFICIAL (AKA): メ MEN` ou `⚪ MARCAÇÃO OFICIAL (SHIRO): コ KOTE`).
+    - **Campo Técnica**: Destaque tipográfico com indicação de golpe pontuado: `**Técnica:** **メ MEN** 🥋 *(Golpe Pontuado no Placar)*`.
+    - **Seletor de Navegação Rápida (Quick Jump Selectbox)**: Distinção imediata dos pontos válidos (`🥊 Golpe #1: メ MEN @ 00:02.500 (✅ Ippon - 🔴 Kenshi Aka)`).
+  - Golpes inválidos mantêm a nomenclatura limpa (`MEN`, `KOTE`, `DO`, `TSUKI`), permitindo distinção visual instantânea na sequência da luta.
+- **Nomenclatura Limpa nos Demais Componentes**:
+  - Restauração da nomenclatura padrão limpa nos formulários de inserção inline, inclusão de golpes perdidos, edição de técnica, notificações toasts e modo ao vivo.
+- **Suíte de Testes Automatizados**:
+  - Execução e aprovação integral de **44/44 testes automatizados** com relatório descritivo emitido em `logs/senpai_test_report.log`.
+
+---
+
+### `[v1.6.0]` — 2026-08-18
 
 - **Relatório Descritivo de Testes Automatizados & Retenção Única de Log**:
   - Criado o runner customizado ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py)) e script de execução na raiz ([run_tests.py](file:///d:/Projetos/SenpAI/Dev/run_tests.py)).
   - Geração automática de relatório descritivo por teste com módulo, classe, método, descrição em Português, status individual, duração em segundos e sumário executivo.
   - Salvo na pasta `logs/` ([`logs/senpai_test_report.log`](file:///d:/Projetos/SenpAI/Dev/logs/senpai_test_report.log)) com política estrita de retenção: **apenas o último log de testes é mantido na pasta**.
   - Botões de execução rápida (`🔬 Rodar Testes (44)`) e download do relatório (`📥 Baixar Log Testes (.log)`) integrados na **Seção 5 de Diagnóstico e Logs** do Web App.
-- **Detecção e Scoring Consolidado (Modo de Arbitragem Gravada)**:
+- **Detecção e Scoring Consolidado (Modo de Detecção Gravada)**:
   - Validação completa de *Yuko-Datotsu* com score ponderado (*Ki-Ken-Tai-Ichi*: impacto no alvo, sincronismo de *Fumikomi*, postura e *Zanshin*), corte automático de clipes de eventos e relatórios diagnósticos de combate.
 - **Navegação Interativa no Vídeo com Salto Temporal Calibrado (-1.0s)**:
   - Salto temporal instantâneo no player de vídeo ao clicar nos botões individuais de evento (Sonkyō Inicial, Golpes Detectados ou Sonkyō Final) ou ao selecionar eventos no menu dropdown.
-  - Calibração de **1 segundo de pré-roll (`-1.0s`)** antes do início do evento para permitir que o árbitro assista à preparação, execução e finalização da ação com clareza.
+  - Calibração de **1 segundo de pré-roll (`-1.0s`)** antes do início do evento para permitir que o revisor assista à preparação, execução e finalização da ação com clareza.
   - Banner dinâmico com indicação da posição ativa (`🎯 Posicionado em X.Xs`) e botão de reset rápido (`✖️ Início`).
 - **Otimização da Escala Visual da Interface (Zoom 80%)**:
   - Aplicação de redução global de 20% na escala de fontes e elementos (`zoom: 0.8`) com compactação ergonômica de paddings e containers (`max-width: 96%`), eliminando necessidade de rolagem excessiva.
 - **Detecção de Sonkyō & Delimitação Temporal da Luta**:
-  - Identificação e verificação automática da postura ritualística de *Sonkyō* (agachamento profundo sobre os calcanhares, flexão de joelhos e coluna ereta) para marcação do Início Oficial (`match_start_frame`) e Encerramento Oficial (`match_end_frame`) da luta no Modo de Arbitragem Gravada.
+  - Identificação e verificação automática da postura ritualística de *Sonkyō* (agachamento profundo sobre os calcanhares, flexão de joelhos e coluna ereta) para marcação do Início Oficial (`match_start_frame`) e Encerramento Oficial (`match_end_frame`) da luta no Modo de Detecção Gravada.
   - Filtragem estrita de golpes por Sonkyō: consideração e pontuação de *Yuko-Datotsu* realizada **estritamente entre os momentos de Sonkyō de início e término**, descartando movimentações e cortes fora da janela regulamentar de combate.
   - Edição interativa de Sonkyō com aprendizado biomecânico adaptativo contínuo persistido em `config/sonkyo_learned_profile.json`.
 - **Rastreamento dos 2 Kenshi Principais e Filtragem de Planos**:
   - Rastreamento contínuo dos dois atletas principais que iniciaram o combate no Shiaijo (`Kenshi Aka - Vermelho` e `Kenshi Shiro - Branco`).
-  - Calibração geométrica automática de plano principal, descartando elementos de segundo plano (outras lutas ao fundo, árbitros distantes, arquibancadas) e oclusões de primeiro plano (pessoas passando na frente da câmera).
-- **Placar Oficial de Arbitragem (Sanbon-shobu Scoreboard) e Inversão Manual Aka ⇄ Shiro**:
+  - Calibração geométrica automática de plano principal, descartando elementos de segundo plano (outras lutas ao fundo, pessoas distantes, arquibancadas) e oclusões de primeiro plano (pessoas passando na frente da câmera).
+- **Placar Oficial Eletrônico (Sanbon-shobu Scoreboard) e Inversão Manual Aka ⇄ Shiro**:
   - Placar eletrônico no topo dos resultados com contagem de Ippon para Aka e Shiro, técnicas pontuadas e declaração automática de resultado (*Sanbon-shobu*).
   - Detecção cromática HSV de flag dorsal (Tasukuki) e botão de ação rápida `🔄 Inverter Lutadores (Aka ⇄ Shiro)` para reatribuição imediata de pontuação, eventos e relatórios em gravações com câmera no lado oposto do Shiaijo.
 - **Aceleração GPU NVIDIA CUDA com Tensor Cores FP16 & Streaming de Renderização**:
@@ -272,8 +295,8 @@ Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ### `[v1.4.11]` — 2026-08-17
 
-- **Placar Oficial de Arbitragem, Detecção de Flag Dorsal e Inversão Aka/Shiro**:
-  - **Placar Oficial de Arbitragem (Sanbon-shobu Scoreboard) ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py) e [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py))**:
+- **Placar Oficial Eletrônico, Detecção de Flag Dorsal e Inversão Aka/Shiro**:
+  - **Placar Oficial Eletrônico (Sanbon-shobu Scoreboard) ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py) e [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py))**:
     - Exibição de painel visual eletrônico no topo dos resultados com contagem de **Ippon** válidos para Aka (Vermelho) e Shiro (Branco), badges com as técnicas pontuadas e declaração automática do resultado regulamentar (*Vitória de Aka*, *Vitória de Shiro* ou *Empate / Hikiwake*).
   - **Detecção da Cor da Flag (Tasukuki / Faixa Vermelha nas Costas) ([combatant_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/combatant_tracker.py))**:
     - Implementada a segmentação cromática HSV no dorso/tronco (`detect_red_flag_score`) para identificar a fita vermelha dorsal do Kenshi Aka, independente da cor do Keikogi (azul escuro, branco, preto).
@@ -301,8 +324,8 @@ Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 
 - **Inclusão Automática de Sonkyō no Início e Fim da Gravação**:
   - **Garantia de Delimitação Ritual**: Quando a análise de visão computacional não detecta com alta confiança os rituais de Sonkyō nos primeiros ou últimos segundos da gravação, o sistema ([sonkyo_detector.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/sonkyo_detector.py)) **atribui automaticamente os movimentos de Sonkyō no início (00:00.000) e no encerramento do vídeo**.
-  - **Identificação Visual Transparente**: No painel de Arbitragem Gravada ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)), os cards exibem a badge correspondente (`🥋 SONKYŌ DETECTADO` para detecção automática por pose ou `📌 SONKYŌ (Início/Fim do Vídeo / Ajustável)` para fallback padrão).
-  - **Edição e Reprocessamento Imediatos**: O árbitro tem a garantia de que ambos os rituais estarão sempre visíveis e expansíveis, podendo editar os intervalos com exatidão e reprocessar o combate com aprendizado contínuo.
+  - **Identificação Visual Transparente**: No painel de Detecção Gravada ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)), os cards exibem a badge correspondente (`🥋 SONKYŌ DETECTADO` para detecção automática por pose ou `📌 SONKYŌ (Início/Fim do Vídeo / Ajustável)` para fallback padrão).
+  - **Edição e Reprocessamento Imediatos**: O usuário tem a garantia de que ambos os rituais estarão sempre visíveis e expansíveis, podendo editar os intervalos com exatidão e reprocessar o combate com aprendizado contínuo.
 - **Testes Automatizados**: Suíte de testes expandida em [test_sonkyo_and_plane_filtering.py](file:///d:/Projetos/SenpAI/Dev/tests/test_sonkyo_and_plane_filtering.py) com validação de inclusão de rituais padrão (39 testes automatizados com 100% de aprovação).
 
 ---
@@ -310,8 +333,8 @@ Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 ### `[v1.4.8]` — 2026-08-17
 
 - **Edição Interativa de Sonkyō, Reprocessamento e Aprendizado Contínuo**:
-  - **Edição de Momentos de Sonkyō**: No Modo de Arbitragem Gravada ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)), o árbitro agora pode editar com precisão os tempos de início e fim tanto do Sonkyō Inicial quanto do Sonkyō Final (ou definir intervalos manuais caso não tenham sido detectados automaticamente).
-  - **Botão de Reprocessamento com Aprendizado**: Ao alterar um dos momentos de Sonkyō, a interface habilita o botão de ação rápida `🔄 Reprocessar Arbitragem com Aprendizado de Sonkyō`.
+  - **Edição de Momentos de Sonkyō**: No Modo de Detecção Gravada ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)), é possível editar com precisão os tempos de início e fim tanto do Sonkyō Inicial quanto do Sonkyō Final (ou definir intervalos manuais caso não tenham sido detectados automaticamente).
+  - **Botão de Reprocessamento com Aprendizado**: Ao alterar um dos momentos de Sonkyō, a interface habilita o botão de ação rápida `🔄 Reprocessar Análise com Aprendizado de Sonkyō`.
   - **Aprendizado Biomecânico Contínuo ([sonkyo_detector.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/sonkyo_detector.py))**:
     - As posturas e proporções corporais no intervalo editado são extraídas dinamicamente para calibrar a sensibilidade do detector de Sonkyō.
     - O perfil adaptado é persistido em `config/sonkyo_learned_profile.json`, sendo aplicado imediatamente neste reprocessamento e em **todas as futuras análises de vídeo**.
@@ -334,8 +357,8 @@ Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 - **Aceleração Nativa com GPU NVIDIA CUDA (YOLOv8-Pose)**:
   - **Motor de Inferência GPU de Alta Velocidade**: O módulo [pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py) foi atualizado para utilizar o modelo **YOLOv8-Pose em PyTorch CUDA (`cuda:0`)** sobre a placa NVIDIA GeForce RTX 4050.
   - **Detecção Paralela Multi-Pessoa**: A análise de todos os atletas presentes no enquadramento agora ocorre em um **único passo direto na VRAM da GPU**, eliminando as 3 execuções redundantes por corte que eram feitas na CPU pelo MediaPipe.
-  - **Aumento de Desempenho (FPS)**: A velocidade de processamento atinge taxas de **27 a 100+ FPS** dependendo da resolução do vídeo, reduzindo drasticamente o tempo de análise na Arbitragem Gravada.
-  - **Seletor de Hardware na Sidebar e Painel de Arbitragem**: Adicionado seletor e badges de diagnóstico em tempo real no [app.py](file:///d:/Projetos/SenpAI/Dev/app.py), permitindo alternar facilmente entre aceleração GPU NVIDIA CUDA e CPU.
+  - **Aumento de Desempenho (FPS)**: A velocidade de processamento atinge taxas de **27 a 100+ FPS** dependendo da resolução do vídeo, reduzindo drasticamente o tempo de análise na Detecção Gravada.
+  - **Seletor de Hardware na Sidebar e Painel de Avaliação**: Adicionado seletor e badges de diagnóstico em tempo real no [app.py](file:///d:/Projetos/SenpAI/Dev/app.py), permitindo alternar facilmente entre aceleração GPU NVIDIA CUDA e CPU.
 - **Testes Automatizados**: Suíte completa de 34 testes automatizados validada com 100% de aprovação.
 
 ---
@@ -363,7 +386,7 @@ Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ### `[v1.4.3]` — 2026-08-17
 
-- **Cronômetro em Tempo Real e Persistência do Tempo de Processamento (Arbitragem Gravada)**:
+- **Cronômetro em Tempo Real e Persistência do Tempo de Processamento (Detecção Gravada)**:
   - Inclusão do **cronômetro dinâmico em tempo real** exibido durante o processamento do vídeo no [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) (`MM:SS.s` e segundos decorridos).
   - Persistência visual do **tempo final de execução e taxa média de processamento (FPS)** no painel de status fixo e no cartão de resumo de métricas do combate (`summary-card`).
   - Suporte a medição precisa de tempo em [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py) via `AnalysisWorker.elapsed_seconds` e retorno de `processing_time_seconds` e `processing_fps`.
@@ -375,7 +398,7 @@ Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ### `[v1.4.2]` — 2026-08-17
 
-- **Apresentação de Eventos de Sonkyō na Arbitragem Gravada**:
+- **Apresentação de Eventos de Sonkyō na Detecção Gravada**:
   - Inclusão dos eventos de **Sonkyō Inicial** (Abertura / Início do Combate) e **Sonkyō Final** (Encerramento / Fechamento do Combate) diretamente na lista de eventos apresentados no container de resultados (`col_results`) do [app.py](file:///d:/Projetos/SenpAI/Dev/app.py).
   - Exibição de cartões expansíveis detalhados com badge `🥋 SONKYŌ DETECTADO`, intervalo ritual (timestamps), contagem de frames de início e fim, duração em segundos, liberação regulamentar de combate e diagnóstico biomecânico da postura de respeito (*Reigi*).
   - Sequenciamento cronológico completo do combate: **Sonkyō Inicial ➡️ Golpes Identificados na Janela Regulamentar ➡️ Sonkyō Final**.
@@ -384,7 +407,7 @@ Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ### `[v1.4.1]` — 2026-08-17
 
-- **Botão de Interromper Processamento na Arbitragem Gravada**:
+- **Botão de Interromper Processamento na Detecção Gravada**:
   - Inclusão do botão `⏹️ Interromper Processamento` no painel de execução de vídeo no [app.py](file:///d:/Projetos/SenpAI/Dev/app.py).
   - Suporte a cancelamento cooperativo no método `process_video` do [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py) através do parâmetro `is_cancelled`.
   - Liberação segura de recursos e fechamento de streams (`VideoCapture` e `VideoWriter`) através de blocos `try...finally`.
@@ -396,12 +419,18 @@ Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ### `[v1.4.0]` — 2026-08-15
 
-- **Modo de Arbitragem Gravada - Edição de Golpes por Dan**:
+- **Modo de Detecção Gravada - Edição de Golpes por Dan**:
   - Adicionado o botão `✏️ Habilitar Edição dos Golpes Detectados`.
   - Inclusão do **Combo Box de Graduação DAN do Revisor** (Shodan a Hachidan / 1º ao 8º Dan).
   - Suporte a **confirmar marcação**, **editar marcação** (técnica, timestamp, resultado e observações) e **incluir marcação** de golpes perdidos.
   - Implementação da **regra de auditabilidade (sem exclusão)**, impedindo a exclusão acidental ou indevida de marcações.
   - Botão de salvamento final `💾 Salvar Alterações e Retreinar Modelo` para recalibração automática.
+- **Menu de Configurações - Governança de Treinamento**:
+  - Adicionado contador de treinamentos realizados, nível médio (Dan) dos treinamentos e total de marcações.
+  - Tabela formatada de quantidade e percentual de treinamentos agrupados por Dan.
+  - Opção `🗑️ Apagar Treinamento do Sistema` com confirmação de segurança para resetar ao estágio inicial.
+  - Opção `📥 Baixar Treinamento Atual` para exportar pacote `.json` com o Dan do revisor e a data do treinamento feito.
+  - Opção `📤 Carregar Treinamento Baixado` para importar pacotes previamente baixados e recalibrar o modelo.
 - **Menu de Configurações - Governança de Treinamento**:
   - Adicionado contador de treinamentos realizados, nível médio (Dan) dos treinamentos e total de marcações.
   - Tabela formatada de quantidade e percentual de treinamentos agrupados por Dan.

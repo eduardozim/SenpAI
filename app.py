@@ -39,6 +39,52 @@ st.set_page_config(
 
 feedback_mgr = FeedbackManager()
 
+# Mapeamento oficial de marcações Katakana para o Painel de Pontuação Final (Sanbon-Shobu)
+SCOREBOARD_KATAKANA_MARKS = {
+    "MEN": "メ",
+    "KOTE": "コ",
+    "DO": "ド",
+    "TSUKI": "ツ",
+    "メ MEN": "メ",
+    "コ KOTE": "コ",
+    "ド DO": "ド",
+    "ツ TSUKI": "ツ",
+    "メ": "メ",
+    "コ": "コ",
+    "ド": "ド",
+    "ツ": "ツ",
+}
+
+def format_scoreboard_strike_name(strike_type: str) -> str:
+    """Formata a nomenclatura do golpe exclusivamente com o caractere Katakana oficial (メ, コ, ド, ツ) para o painel de pontuação final."""
+    if not strike_type:
+        return ""
+    st_clean = str(strike_type).strip()
+    return SCOREBOARD_KATAKANA_MARKS.get(st_clean.upper(), SCOREBOARD_KATAKANA_MARKS.get(st_clean, st_clean))
+
+# Mapeamento oficial para destaque na Linha do Tempo de golpes com marcação válida (Ippon)
+TIMELINE_KATAKANA_STRIKES = {
+    "MEN": "メ MEN",
+    "KOTE": "コ KOTE",
+    "DO": "ド DO",
+    "TSUKI": "ツ TSUKI",
+    "メ MEN": "メ MEN",
+    "コ KOTE": "コ KOTE",
+    "ド DO": "ド DO",
+    "ツ TSUKI": "ツ TSUKI",
+    "メ": "メ MEN",
+    "コ": "コ KOTE",
+    "ド": "ド DO",
+    "ツ": "ツ TSUKI",
+}
+
+def format_katakana_strike(strike_type: str) -> str:
+    """Formata a nomenclatura do golpe com prefixo Katakana oficial (ex: 'メ MEN', 'コ KOTE', 'ド DO', 'ツ TSUKI')."""
+    if not strike_type:
+        return ""
+    st_clean = str(strike_type).strip()
+    return TIMELINE_KATAKANA_STRIKES.get(st_clean.upper(), TIMELINE_KATAKANA_STRIKES.get(st_clean, st_clean))
+
 def parse_ts_to_seconds(ts_str: str) -> float:
     """Converte timestamps (ex: '00:02.500', '02.500', '2.5s') em segundos (float)."""
     if not ts_str:
@@ -534,7 +580,7 @@ else:
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🎛️ Calibração de Sensibilidade")
     profile_choice = st.sidebar.selectbox(
-        "Perfil de Arbitragem Predefinido",
+        "Perfil de Calibração Predefinido",
         options=["permissivo", "normal", "rigido", "custom"],
         index=1,
         key="sidebar_profile_selector",
@@ -794,7 +840,7 @@ else:
                         type="primary",
                         width="stretch",
                         disabled=(video_file_path is None or is_running),
-                        key="btn_start_recorded_arbitration"
+                        key="btn_start_recorded_analysis"
                     )
                 with col_btn2:
                     stop_btn = st.button(
@@ -802,7 +848,7 @@ else:
                         type="secondary",
                         width="stretch",
                         disabled=not is_running,
-                        key="btn_stop_recorded_arbitration"
+                        key="btn_stop_recorded_analysis"
                     )
 
                 # 1. Se o usuário clicar no botão de Interromper
@@ -820,7 +866,7 @@ else:
                     log_event("WARNING", f"Processamento de vídeo interrompido via botão pelo usuário após {elapsed_cancel:.2f}s.", "app")
                     st.rerun()
 
-                # 2. Se o usuário clicar em Iniciar Arbitragem
+                # 2. Se o usuário clicar em Iniciar Análise
                 if start_btn and video_file_path and not is_running:
                     dev_pref = st.session_state.get("device_preference", get_processing_device())
                     pipeline = SenpAIPipeline(
@@ -1035,13 +1081,13 @@ else:
 
                 # HTML de Ippons do Aka
                 if aka_val_strikes:
-                    aka_items = "".join([f'<span style="display:inline-block; background: #991B1B; color: #FEE2E2; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">🔴 {s["event_info"]["type"]} ({s["event_info"]["timestamp"]})</span>' for s in aka_val_strikes])
+                    aka_items = "".join([f'<span style="display:inline-block; background: #991B1B; color: #FEE2E2; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">🔴 {format_scoreboard_strike_name(s["event_info"]["type"])} ({s["event_info"]["timestamp"]})</span>' for s in aka_val_strikes])
                 else:
                     aka_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon detectado</span>'
 
                 # HTML de Ippons do Shiro
                 if shiro_val_strikes:
-                    shiro_items = "".join([f'<span style="display:inline-block; background: #475569; color: #F8FAFC; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">⚪ {s["event_info"]["type"]} ({s["event_info"]["timestamp"]})</span>' for s in shiro_val_strikes])
+                    shiro_items = "".join([f'<span style="display:inline-block; background: #475569; color: #F8FAFC; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">⚪ {format_scoreboard_strike_name(s["event_info"]["type"])} ({s["event_info"]["timestamp"]})</span>' for s in shiro_val_strikes])
                 else:
                     shiro_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
 
@@ -1337,7 +1383,8 @@ else:
                         is_ippon_j = rev_j.get("is_valid_ippon", rev_j.get("category") == "VALID_IPPON" or rev_j.get("label") == "TP")
                         status_sym_j = "✅ Ippon" if is_ippon_j else "❌ Inválido"
                         tag_inc = " [➕ Incluído]" if strike_item["source"] == "INCLUDED" else ""
-                        label_sj = f"🥊 Golpe #{idx_j+1}: {rev_j.get('strike_type')} @ {strike_item['timestamp']} ({status_sym_j} - {strike_item['attacker_label']}){tag_inc}"
+                        st_display_j = format_katakana_strike(rev_j.get('strike_type')) if is_ippon_j else rev_j.get('strike_type')
+                        label_sj = f"🥊 Golpe #{idx_j+1}: {st_display_j} @ {strike_item['timestamp']} ({status_sym_j} - {strike_item['attacker_label']}){tag_inc}"
                         jump_options.append(label_sj)
                         jump_map[label_sj] = (max(0.0, strike_item["time_sec"] - 1.0), label_sj)
 
@@ -1527,8 +1574,10 @@ else:
                                     orig_is_valid = strike_item["orig_is_valid"]
                                     eval_info = strike_item["raw_event"]["evaluation"] if strike_item["raw_event"] else {"total_score": 100.0 if orig_is_valid else 0.0, "min_required": 65.0, "sub_scores": {}}
 
+                                    is_this_ippon = False
                                     if current_rev.get("is_included"):
                                         inc_is_ippon = current_rev.get("is_valid_ippon", current_rev.get("category") == "VALID_IPPON")
+                                        is_this_ippon = inc_is_ippon
                                         if inc_is_ippon:
                                             status_badge = "➕ INCLUÍDO: IPPON"
                                             badge_html = '<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6;">➕ INCLUÍDO: GOLPE VÁLIDO (IPPON)</div>'
@@ -1538,6 +1587,7 @@ else:
                                     elif current_rev.get("is_edited"):
                                         cat = current_rev.get("category", "")
                                         if cat == "VALID_IPPON":
+                                            is_this_ippon = True
                                             status_badge = "✏️ EDITADO: IPPON"
                                             badge_html = '<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6;">✏️ EDITADO: GOLPE VÁLIDO (IPPON)</div>'
                                         elif cat == "INVALID_HIT":
@@ -1550,26 +1600,58 @@ else:
                                             status_badge = f"✏️ EDITADO ({current_rev.get('label', 'EDIT')})"
                                             badge_html = f'<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD;">✏️ EDITADO ({current_rev.get("label", "EDIT")})</div>'
                                     elif current_rev.get("is_confirmed"):
+                                        is_this_ippon = orig_is_valid
                                         status_badge = "✅ CONFIRMADO"
                                         badge_html = f'<div class="valid-badge" style="background-color:#14532D; color:#86EFAC; border: 1px solid #22C55E;">✅ CONFIRMADO ({dan_options.get(selected_dan, "Dan")})</div>'
                                     elif orig_is_valid:
+                                        is_this_ippon = True
                                         status_badge = "✅ IPPON"
                                         badge_html = '<div class="valid-badge">✅ PONTO VÁLIDO (IPPON)</div>'
                                     else:
+                                        is_this_ippon = False
                                         status_badge = "❌ INVÁLIDO"
                                         badge_html = '<div class="invalid-badge">❌ GOLPE INVÁLIDO</div>'
 
-                                    with st.expander(f"🥊 Golpe #{idx+1}: {current_rev['strike_type']} @ {current_rev['timestamp']} ({attacker_label}) - {status_badge}", expanded=True):
+                                    # Destaque do golpe responsável pela marcação (Katakana: メ MEN, コ KOTE, ド DO, ツ TSUKI)
+                                    display_strike_title = format_katakana_strike(current_rev['strike_type']) if is_this_ippon else current_rev['strike_type']
+
+                                    with st.expander(f"🥊 Golpe #{idx+1}: {display_strike_title} @ {current_rev['timestamp']} ({attacker_label}) - {status_badge}", expanded=True):
                                         c_a, c_b = st.columns([1, 1.5])
                                         with c_a:
                                             seek_strike_s = max(0.0, parse_ts_to_seconds(current_rev['timestamp']) - 1.0)
                                             if st.button("🎬 Assistir no Vídeo", key=f"btn_seek_strike_{idx}_{event_id_str}", width="stretch", help=f"Reproduzir o vídeo no momento deste golpe ({seek_strike_s:.1f}s)"):
                                                 st.session_state["video_start_time"] = seek_strike_s
-                                                st.session_state["video_seek_label"] = f"Golpe #{idx+1} {current_rev['strike_type']} @ {current_rev['timestamp']}"
+                                                st.session_state["video_seek_label"] = f"Golpe #{idx+1} {display_strike_title} @ {current_rev['timestamp']}"
                                                 st.toast(f"🎥 Vídeo posicionado em {seek_strike_s:.1f}s!", icon="🎬")
                                                 st.rerun()
 
-                                            st.markdown(f"**Técnica:** `{current_rev['strike_type']}`")
+                                            if is_this_ippon:
+                                                katakana_name = format_katakana_strike(current_rev['strike_type'])
+                                                is_aka_attacker = (attacker_id == "KENSHI_AKA")
+                                                if not is_inverted:
+                                                    is_aka_actual = is_aka_attacker
+                                                else:
+                                                    is_aka_actual = not is_aka_attacker
+
+                                                if is_aka_actual:
+                                                    st.markdown(
+                                                        f'<div style="background: rgba(239, 68, 68, 0.18); border: 1.5px solid #EF4444; border-radius: 6px; padding: 6px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">'
+                                                        f'<span style="color: #FCA5A5; font-weight: 800; font-size: 12px; letter-spacing: 0.5px;">🔴 MARCAÇÃO OFICIAL (AKA):</span>'
+                                                        f'<span style="background: #991B1B; color: #FEE2E2; font-weight: 900; font-size: 13px; padding: 2px 10px; border-radius: 4px;">{katakana_name}</span>'
+                                                        f'</div>',
+                                                        unsafe_allow_html=True
+                                                    )
+                                                else:
+                                                    st.markdown(
+                                                        f'<div style="background: rgba(148, 163, 184, 0.16); border: 1.5px solid #CBD5E1; border-radius: 6px; padding: 6px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">'
+                                                        f'<span style="color: #F1F5F9; font-weight: 800; font-size: 12px; letter-spacing: 0.5px;">⚪ MARCAÇÃO OFICIAL (SHIRO):</span>'
+                                                        f'<span style="background: #475569; color: #F8FAFC; font-weight: 900; font-size: 13px; padding: 2px 10px; border-radius: 4px;">{katakana_name}</span>'
+                                                        f'</div>',
+                                                        unsafe_allow_html=True
+                                                    )
+                                                st.markdown(f"**Técnica:** **`{katakana_name}`** 🥋 *(Golpe Pontuado no Placar)*")
+                                            else:
+                                                st.markdown(f"**Técnica:** `{current_rev['strike_type']}`")
                                             st.markdown(f"**Atacante:** `{attacker_label}`")
                                             st.markdown(f"**Timestamp:** `{current_rev['timestamp']}`" + (f" (Frame {strike_item['impact_frame']})" if strike_item['impact_frame'] > 0 else ""))
                                             if strike_source == "AI_DETECTED":
@@ -1586,7 +1668,7 @@ else:
                                                     st.markdown(f"**Ações para Golpe Incluído ({dan_options.get(selected_dan, 'Dan')}):**")
                                                     if st.button("🗑️ Remover esta inclusão", key=f"btn_del_inc_slot_{idx}_{event_id_str}", width="stretch"):
                                                         if event_id_str in st.session_state["session_reviews"]:
-                                                            del st.session_state["session_reviews"][event_id_str]
+                                                             del st.session_state["session_reviews"][event_id_str]
                                                         st.toast(f"Golpe #{idx+1} incluído removido com sucesso!", icon="🗑️")
                                                         st.rerun()
                                                 else:
@@ -1612,7 +1694,10 @@ else:
                                                         show_edit = st.checkbox("✏️ Editar", key=f"chk_edit_{idx}_{event_id_str}")
 
                                                     if show_edit:
-                                                        new_type = st.selectbox("Editar Técnica", ["MEN", "KOTE", "DO", "TSUKI"], index=["MEN", "KOTE", "DO", "TSUKI"].index(current_rev['strike_type']), key=f"sel_type_{idx}_{event_id_str}")
+                                                        curr_st = current_rev['strike_type']
+                                                        st_opts = ["MEN", "KOTE", "DO", "TSUKI"]
+                                                        st_idx = st_opts.index(curr_st) if curr_st in st_opts else 0
+                                                        new_type = st.selectbox("Editar Técnica", st_opts, index=st_idx, format_func=format_strike_name, key=f"sel_type_{idx}_{event_id_str}")
                                                         new_ts = st.text_input("Editar Timestamp", value=current_rev['timestamp'], key=f"inp_ts_{idx}_{event_id_str}")
                                                         
                                                         # Estratégias de Revisão conforme diretrizes oficiais

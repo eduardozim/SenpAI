@@ -153,7 +153,7 @@ class FeedbackManager:
         current_profile_config: Dict[str, Any]
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        Salva uma sessão de revisão de arbitragem gravada, atualiza os dados por Dan,
+        Salva uma sessão de revisão de detecção gravada, atualiza os dados por Dan,
         executa o retreinamento do modelo e grava no histórico de treinamentos.
         """
         dan_val = max(1, min(8, int(reviewer_dan)))
