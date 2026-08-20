@@ -43,6 +43,7 @@ Para iniciar o dashboard web com reprodutor de vídeo, gráficos e sliders:
 
 Recursos da Interface Web:
 - Interface otimizada e dimensionada (escala visual 80%) para visualização integrada e ergonômica.
+- Validação e Consenso Multi-Câmeras (Tempo Real): A definição de haver ou não o golpe é tomada com base no conjunto das imagens das câmeras em background. Quanto mais câmeras ativas, maior a exigência de confirmação síncrona em frames (quórum escalonado de 1 a 4 câmeras), com descarte silencioso de movimentações sem consenso.
 - Placar Oficial de Arbitragem Eletrônico (Sanbon-shobu) com contagem de Ippon para Aka (Vermelho) e Shiro (Branco) e declaração regulamentar de resultado.
 - Detecção da Flag Dorsal (Tasukuki) e botão de ação rápida de inversão de identidade (Aka ⇄ Shiro).
 - Navegação Interativa no Vídeo com Salto Temporal Calibrado: clique no evento (Sonkyō Inicial, Golpe ou Sonkyō Final) ou selecione no dropdown para posicionar o player 1 segundo antes (-1.0s) do início do evento para revisão detalhada.
@@ -74,7 +75,7 @@ Para processar vídeos diretamente no terminal:
 - Otimizar perfil com base no dataset de feedback gravado:
    python main.py --profile normal --optimize-profile
 
-- Executar suíte completa de testes automatizados com relatório descritivo salvo em logs/:
+- Executar suíte completa de testes automatizados (52 testes) com relatório descritivo salvo em logs/:
    python run_tests.py
    (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
    * Gera o arquivo descritivo logs/shinpanai_test_report.log com detalhes de cada teste
@@ -123,7 +124,9 @@ Opções disponíveis:
    calibrar a exigência por nível Dan e recalibrar adaptativamente os limiares.
 
 3. MODO DE DETECÇÃO EM TEMPO REAL (realtime):
-   Processamento instantâneo via Webcam ou streams RTSP/RTCP de câmeras IP.
+   Processamento instantâneo via Webcam ou streams RTSP/RTCP de 1 a 4 câmeras IP simultâneas.
+   Conta com validação de consenso multi-câmeras em background baseada no conjunto
+   de imagens/frames (com quórum escalonado e descarte silencioso de falsos positivos).
 
 -------------------------------------------------------------------------------
 5. PERFIS DE ARBITRAGEM (SENSIBILIDADE)

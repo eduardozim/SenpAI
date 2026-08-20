@@ -16,6 +16,7 @@ from src.vision.combatant_tracker import CombatantTracker
 from src.analytics.event_spotter import EventSpotter, StrikeEvent
 from src.analytics.sonkyo_detector import SonkyoDetector
 from src.analytics.biomechanics import BiomechanicsAnalyzer
+from src.analytics.multi_camera_fusion import MultiCameraFusionEngine, MultiCameraStrikeEvaluation
 from src.engine.calibrator import CalibrationEngine
 from src.engine.reporter import DiagnosticReporter
 from src.utils.hardware import get_effective_device
@@ -33,6 +34,7 @@ class ShinpanAIPipeline:
         self.event_spotter = EventSpotter()
         self.biomechanics = BiomechanicsAnalyzer()
         self.calibrator = CalibrationEngine(profile_name=calibration_profile)
+        self.multicam_fusion = MultiCameraFusionEngine(profile_name=calibration_profile)
 
     def process_video(
         self,

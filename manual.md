@@ -114,6 +114,20 @@ Módulo biomecânico que monitora e reconhece o ritual sagrado de **Sonkyō** (a
 - **Filtragem Estrita de Golpes**: Qualquer golpe fora desse intervalo ritual é sumariamente descartado da arbitragem oficial.
 - **Aprendizado Biomecânico Adaptativo**: Permite edição interativa de intervalos na UI e recalibra os limiares de Sonkyō, persistindo o aprendizado em `config/sonkyo_learned_profile.json`.
 
+#### `MultiCameraFusionEngine` ([multi_camera_fusion.py](file:///d:/Projetos/ShinpanAI/Dev/src/analytics/multi_camera_fusion.py))
+Motor de **Consenso e Validação Cruzada Multi-Câmeras**. Implementa a regra fundamental de arbitragem:
+> **"A definição de haver ou não o golpe deve ser tomada com base no conjunto das imagens das câmeras. Quanto mais câmeras disponíveis, mais necessária e rigorosa é a confirmação em imagens/frames da realização da técnica."**
+
+- **Escalonamento do Quórum de Confirmação**:
+  À medida que o número de câmeras $N$ aumenta, o sistema eleva a exigência de quórum de câmeras ativas com evidência visual síncrona nos quadros:
+  - **1 Câmera**: Quórum de **1/1** (100% monocular).
+  - **2 Câmeras**: Quórum de **2/2** (100% de confirmação cruzada obrigatória — elimina artefatos de perspectiva ou oclusões unilaterais).
+  - **3 Câmeras**: Quórum de **2/3** ($\ge 66.7\%$ no modo Normal) ou **3/3** (100% no modo Rígido).
+  - **4 Câmeras**: Quórum de **3/4** ($\ge 75\%$ no modo Normal) ou **4/4** (100% no modo Rígido).
+- **Alinhamento Temporal Síncrono ($\Delta t$)**: Janela de busca cruzada ($\pm 10$ frames / $\approx 350\text{ ms}$) entre as séries temporais de aceleração de pulso e trajetória das câmeras.
+- **Extração de Evidências em Frames (`CameraFrameEvidence`)**: Mede aceleração do pulso, proximidade do alvo no ângulo visual e conformidade técnica para cada câmera individual.
+- **Decisão e Fusão Conjunta (`MultiCameraStrikeEvaluation`)**: Computa o score médio conjunto das visões confirmadas e classifica o golpe em `CONFIRMED_MULTICAM`, `REJECTED_SINGLE_ANGLE` ou `REJECTED_INSUFFICIENT_CONSENSUS`.
+
 ---
 
 ### 3.3. Engine de Calibração ([calibrator.py](file:///d:/Projetos/ShinpanAI/Dev/src/engine/calibrator.py) & [calibration_profiles.json](file:///d:/Projetos/ShinpanAI/Dev/config/calibration_profiles.json))
@@ -189,17 +203,18 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **Política de Retenção Única**:
   - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
 
-### Módulos de Testes Incluídos (44 Testes)
+### Módulos de Testes Incluídos (52 Testes)
 
 - **`test_dan_training_governance.py`**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador, média e tabela por Dan), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
 - **`test_feedback_loop.py`**: Valida salvamento, persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
 - **`test_hardware_settings.py`**: Valida detecção de GPU NVIDIA, configurações globais e resolução de fallback transparente para CPU.
 - **`test_logger_manager.py`**: Valida sistema de logs, métricas em tempo real e diagnósticos automatizados.
+- **`test_multi_camera_fusion.py`**: Valida o motor de consenso e fusão multi-câmeras, escalonamento de quórum por quantidade de câmeras ($N=1$ a $4$), rejeição de falsos positivos unilaterais, alinhamento temporal e fusão de scores.
 - **`test_pipeline_cancellation.py`**: Valida cancelamento cooperativo, liberação de recursos de streaming e cronômetro em tempo real.
 - **`test_scoreboard_and_flag_detection.py`**: Valida o placar eletrônico Sanbon-shobu, detecção cromática de flag dorsal (Tasukuki) e inversão Aka ⇄ Shiro.
 - **`test_sonkyo_and_plane_filtering.py`**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes) e persistência de aprendizado de Sonkyō.
 
-Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
+Total de **52 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -207,7 +222,23 @@ Total de **44 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
-### `[v1.6.0]` — 2026-08-18 *(Versão Atual)*
+### `[v1.7.0]` — 2026-08-20 *(Versão Atual)*
+
+- **Consenso & Validação de Golpes por Conjunto Multi-Câmeras (`MultiCameraFusionEngine`)**:
+  - Implementada a regra central: *"A definição de haver ou não o golpe deve ser tomado com base no conjunto das imagens das câmeras. Quanto mais câmeras, mais necessária a confirmação em imagens/frames da realização da técnica."*
+  - Escalonamento progressivo do quórum de confirmação:
+    - **1 Câmera**: $1/1$ (100%)
+    - **2 Câmeras**: $2/2$ (100% de confirmação cruzada síncrona obrigatória)
+    - **3 Câmeras**: $2/3$ ($\ge 66.7\%$ no modo Normal) ou $3/3$ (100% no modo Rígido)
+    - **4 Câmeras**: $3/4$ ($\ge 75\%$ no modo Normal) ou $4/4$ (100% no modo Rígido)
+  - Descarte automático de falsos positivos originados em visões unilaterais (`REJECTED_SINGLE_ANGLE` / `REJECTED_INSUFFICIENT_CONSENSUS`).
+  - Sincronização temporal por janela $\Delta t$ ($\pm 10$ frames / $\approx 350\text{ ms}$) entre câmeras.
+  - Painel de Consenso & Métricas Multi-Câmeras integrado no Modo Ao Vivo do Web App com exibição de quórum ativo, score conjunto e detalhamento por câmera.
+  - Suíte de 8 novos testes automatizados dedicados em `tests/test_multi_camera_fusion.py` (totalizando 52 testes aprovados).
+
+---
+
+### `[v1.6.0]` — 2026-08-18
 
 - **Relatório Descritivo de Testes Automatizados & Retenção Única de Log**:
   - Criado o runner customizado ([test_runner.py](file:///d:/Projetos/ShinpanAI/Dev/src/utils/test_runner.py)) e script de execução na raiz ([run_tests.py](file:///d:/Projetos/ShinpanAI/Dev/run_tests.py)).

@@ -732,6 +732,9 @@ else:
                 device_preference=dev_pref
             )
 
+            active_profile_str = profile_choice if profile_choice != "custom" else "normal"
+            pipeline.multicam_fusion.profile_name = active_profile_str
+
             col_live_cams, col_live_feed = st.columns([7, 5])
 
             with col_live_feed:
@@ -781,6 +784,7 @@ else:
                 st.error("❌ Não foi possível conectar a nenhuma das câmeras configuradas. Verifique conexões e permissões.")
             else:
                 live_pose_histories = [[] for _ in range(num_cameras)]
+                latest_drawn_frames = [None for _ in range(num_cameras)]
                 frame_count = 0
                 start_time = time.time()
                 current_fps = 30.0
@@ -800,6 +804,7 @@ else:
                         # Processar Pose Tracking na câmera k
                         landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
                         live_pose_histories[k].append(landmarks)
+                        latest_drawn_frames[k] = drawn_frame
 
                         # Exibir frame anotado
                         frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
@@ -810,22 +815,25 @@ else:
                             width="stretch"
                         )
 
-                        # Detecção de golpes a cada 10 quadros por câmera
-                        if len(live_pose_histories[k]) >= 15 and frame_count % 10 == 0:
-                            detected_strikes = pipeline.event_spotter.detect_strikes(
-                                live_pose_histories[k][-30:],
-                                fps=current_fps or 30.0
-                            )
-                            if detected_strikes:
-                                last_ev = detected_strikes[-1]
-                                ev_ts = getattr(last_ev, "timestamp", getattr(last_ev, "timestamp_impact", "00:00.000"))
-                                strike_alert_box.error(f"🚨 GOLPE DETECTADO: **{last_ev.type}** (Câmera {k + 1}, Timestamp: `{ev_ts}`)")
-                                with live_events_container:
-                                    st.markdown(f"🥊 **{last_ev.type}** | Câmera {k + 1} ({cam_configs[k]['label']}) no tempo `{ev_ts}` (Frame #{frame_count})")
-
                     if not any_frame_read:
                         st.warning("⚠️ Nenhuma transmissão ativa ou sinal de vídeo interrompido.")
                         break
+
+                    # Avaliação conjunta do golpe pelo conjunto de imagens das câmeras (processado em background)
+                    if frame_count % 3 == 0 and any(len(h) >= 15 for h in live_pose_histories):
+                        multicam_eval = pipeline.multicam_fusion.evaluate_live_step(
+                            live_pose_histories=live_pose_histories,
+                            camera_configs=cam_configs,
+                            current_fps=current_fps or 30.0,
+                            current_frame_idx=frame_count,
+                            latest_frames=latest_drawn_frames
+                        )
+
+                        if multicam_eval and multicam_eval.is_strike_confirmed:
+                            ts_str = multicam_eval.timestamp_ref
+                            strike_alert_box.error(f"🚨 GOLPE DETECTADO: **{multicam_eval.technique}** (Timestamp: `{ts_str}`)")
+                            with live_events_container:
+                                st.markdown(f"🥊 **{multicam_eval.technique}** no tempo `{ts_str}` (Frame #{frame_count})")
 
                     frame_count += 1
                     elapsed = time.time() - start_time

@@ -111,6 +111,21 @@ A versão final do **ShinpanAI** será organizada em **3 Nodos / Modos Principai
 ## ✅ Concluídas
 
 
+Versão 1.7.0
+   -Melhorias Aplicadas:
+      - **Validação de Golpes por Consenso Multi-Câmeras (`MultiCameraFusionEngine` - v1.7.0)**: Definição da ocorrência de golpes baseada no conjunto das imagens/frames das câmeras ativas com sincronização temporal síncrona ($\pm 10$ frames / $\approx 350\text{ ms}$).
+      - **Escalonamento Progressivo de Quórum por Quantidade de Câmeras (v1.7.0)**: Quanto mais câmeras ativas, maior a exigência de confirmação cruzada nos quadros:
+        - 1 Câmera: Quórum 1/1 (100%)
+        - 2 Câmeras: Quórum 2/2 (100% de confirmação cruzada obrigatória)
+        - 3 Câmeras: Quórum 2/3 (Normal) ou 3/3 (Rígido)
+        - 4 Câmeras: Quórum 3/4 (Normal) ou 4/4 (Rígido)
+      - **Descarte Silencioso de Falsos Positivos Unilaterais (v1.7.0)**: Movimentações vistas apenas em um ângulo que não atingem o quórum de confirmação são descartadas em background sem poluir a interface visual com mensagens de descarte.
+      - **Interface Limpa no Modo Tempo Real (v1.7.0)**: Alertas diretos e objetivos (`🚨 GOLPE DETECTADO: MEN`) com registro conciso no feed de golpes.
+      - **Suíte de Testes Automatizados Expandida (52 Testes - v1.7.0)**: Criação de `tests/test_multi_camera_fusion.py` com 8 novos testes cobrindo escalonamento de quórum, rejeição de visões unilaterais e alinhamento temporal (100% de aprovação na suíte geral).
+   - Issues Solucionadas:
+      - Falsos positivos gerados por artefatos de perspectiva ou oclusões em configurações com múltiplas câmeras.
+      - Poluição visual no feed ao vivo decorrente de alertas desnecessários de técnicas descartadas.
+
 Versão 1.6.0
    -Melhorias Aplicadas:
       - **Processamento Hardware (CPU vs GPU - v1.6.0)**: Seleção dinâmica e otimização entre modo CPU (exclusivo) e GPU NVIDIA CUDA (quando presente) para aceleração de detecção de pose e inferência de IA com fallback automático no Menu de Configurações.
