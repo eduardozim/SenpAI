@@ -43,6 +43,7 @@ Para iniciar o dashboard web com reprodutor de vídeo, gráficos e sliders:
 
 Recursos da Interface Web:
 - Interface otimizada e dimensionada (escala visual 80%) para visualização integrada e ergonômica.
+- Validação e Consenso Multi-Câmeras (Tempo Real): A definição de haver ou não o golpe é tomada com base no conjunto das imagens das câmeras em background. Quanto mais câmeras ativas, maior a exigência de confirmação síncrona em frames (quórum escalonado de 1 a 4 câmeras), com descarte silencioso de movimentações sem consenso.
 - Placar Oficial Eletrônico (Sanbon-shobu) com contagem de Ippon para Aka (Vermelho) e Shiro (Branco), declaração regulamentar de resultado e marcação em caracteres Katakana oficiais (メ, コ, ド, ツ).
 - Destaque Visual na Linha do Tempo: golpes responsáveis pela marcação de Ippon são destacados com a nomenclatura oficial Katakana (メ MEN, コ KOTE, ド DO, ツ TSUKI), banner cromático por lutador e identificação no seletor de navegação rápida.
 - Detecção da Flag Dorsal (Tasukuki) e botão de ação rápida de inversão de identidade (Aka ⇄ Shiro).
@@ -75,10 +76,10 @@ Para processar vídeos diretamente no terminal:
 - Otimizar perfil com base no dataset de feedback gravado:
    python main.py --profile normal --optimize-profile
 
-- Executar suíte completa de testes automatizados com relatório descritivo salvo em logs/:
+- Executar suíte completa de testes automatizados (52 testes) com relatório descritivo salvo em logs/:
    python run_tests.py
    (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
-   * Executa a suíte de 44 testes automatizados com 100% de aprovação
+   * Executa a suíte de 52 testes automatizados com 100% de aprovação
    * Gera o arquivo descritivo logs/senpai_test_report.log com detalhes de cada teste
    * Mantém estritamente apenas o último log de testes executado na pasta logs/
 
@@ -127,7 +128,9 @@ Opções disponíveis:
    calibrar a exigência por nível Dan e recalibrar adaptativamente os limiares.
 
 3. MODO DE DETECÇÃO EM TEMPO REAL (realtime):
-   Processamento instantâneo via Webcam ou streams RTSP/RTCP de câmeras IP.
+   Processamento instantâneo via Webcam ou streams RTSP/RTCP de 1 a 4 câmeras IP simultâneas.
+   Conta com validação de consenso multi-câmeras em background baseada no conjunto
+   de imagens/frames (com quórum escalonado e descarte silencioso de falsos positivos).
 
 -------------------------------------------------------------------------------
 5. PERFIS DE CALIBRAÇÃO (SENSIBILIDADE)

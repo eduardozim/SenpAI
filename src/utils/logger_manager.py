@@ -75,6 +75,25 @@ def setup_system_logger(log_file: str = DEFAULT_LOG_PATH, level: int = logging.D
     _ring_handler.setFormatter(formatter)
     root_logger.addHandler(_ring_handler)
 
+    # Silencia exceção inofensiva do ProactorEventLoop no Windows (WinError 10054) ao fechar/recarregar a aba do navegador
+    if sys.platform == "win32":
+        try:
+            from asyncio.proactor_events import _ProactorBasePipeTransport
+            _orig_call_conn_lost = _ProactorBasePipeTransport._call_connection_lost
+
+            def _silenced_call_conn_lost(self, exc):
+                try:
+                    _orig_call_conn_lost(self, exc)
+                except (ConnectionResetError, OSError) as err:
+                    if getattr(err, "winerror", None) == 10054 or isinstance(err, ConnectionResetError):
+                        pass
+                    else:
+                        raise
+
+            _ProactorBasePipeTransport._call_connection_lost = _silenced_call_conn_lost
+        except Exception:
+            pass
+
     _logger_initialized = True
     root_logger.info(f"Sistema de Log & Debug inicializado. Arquivo: '{log_file}'")
 
