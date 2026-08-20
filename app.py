@@ -16,6 +16,7 @@ import time
 from src.pipeline import SenpAIPipeline, AnalysisWorker
 from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager
+from src.engine.reporter import DiagnosticReporter
 from src.analytics.sonkyo_detector import SonkyoDetector
 from src.utils.hardware import detect_nvidia_gpu, get_effective_device, check_cuda_framework_support, validate_and_setup_gpu_requirements
 from src.utils.settings_manager import load_settings, save_settings, get_processing_device, set_processing_device
@@ -1697,7 +1698,7 @@ else:
                                                         curr_st = current_rev['strike_type']
                                                         st_opts = ["MEN", "KOTE", "DO", "TSUKI"]
                                                         st_idx = st_opts.index(curr_st) if curr_st in st_opts else 0
-                                                        new_type = st.selectbox("Editar Técnica", st_opts, index=st_idx, format_func=format_strike_name, key=f"sel_type_{idx}_{event_id_str}")
+                                                        new_type = st.selectbox("Editar Técnica", st_opts, index=st_idx, format_func=DiagnosticReporter.format_strike_name, key=f"sel_type_{idx}_{event_id_str}")
                                                         new_ts = st.text_input("Editar Timestamp", value=current_rev['timestamp'], key=f"inp_ts_{idx}_{event_id_str}")
                                                         
                                                         # Estratégias de Revisão conforme diretrizes oficiais
