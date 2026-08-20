@@ -17,7 +17,10 @@ from src.pipeline import ShinpanaiPipeline, AnalysisWorker
 from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager
 from src.analytics.sonkyo_detector import SonkyoDetector
-from src.utils.hardware import detect_nvidia_gpu, get_effective_device, check_cuda_framework_support, validate_and_setup_gpu_requirements
+from src.utils.hardware import (
+    detect_nvidia_gpu, get_effective_device, check_cuda_framework_support,
+    validate_and_setup_gpu_requirements, detect_connected_cameras
+)
 from src.utils.settings_manager import load_settings, save_settings, get_processing_device, set_processing_device
 from src.utils.logger_manager import (
     setup_system_logger, get_log_summary, get_memory_logs,
@@ -620,28 +623,107 @@ else:
         st.markdown('<div class="mode-banner-realtime">🔴 <b>Modo de Detecção em Tempo Real Ativo:</b> Processamento instantâneo de vídeo ao vivo via Webcam ou Câmeras IP (RTSP/RTCP) com sinalização em tempo real.</div>', unsafe_allow_html=True)
 
     # ==========================================================================
-    # MODO 3: DETECÇÃO EM TEMPO REAL (WEBCAM / STREAM RTSP)
+    # MODO 3: DETECÇÃO EM TEMPO REAL MULTI-CÂMERAS (1 A 4 CÂMERAS)
     # ==========================================================================
     if app_mode == "realtime":
-        st.subheader("🔴 Transmissão Ao Vivo (Webcam / Stream RTSP/RTCP)")
-        col_rt1, col_rt2 = st.columns([1, 1])
+        st.subheader("🔴 Detecção em Tempo Real Multi-Câmeras (1 a 4 Câmeras)")
 
-        with col_rt1:
-            rt_source_choice = st.radio(
-                "Selecione a Origem da Transmissão Ao Vivo:",
-                ["🎥 Webcam Local (Câmera 0)", "📡 Stream RTSP / RTCP / Câmera IP"]
+        # Obter lista de câmeras detectadas no sistema
+        detected_cams = detect_connected_cameras()
+
+        col_rt_config, col_rt_diagram = st.columns([6, 5])
+
+        with col_rt_config:
+            st.markdown("##### 📹 1. Seleção e Configuração das Câmeras")
+            num_cameras = st.radio(
+                "Quantidade de Câmeras Simultâneas:",
+                options=[1, 2, 3, 4],
+                index=0,
+                horizontal=True,
+                key="rt_num_cameras_radio",
+                format_func=lambda x: f"{x} Câmera{'s' if x > 1 else ''}"
             )
-            if "Webcam" in rt_source_choice:
-                camera_idx = st.number_input("Dispositivo de Vídeo (Índice)", min_value=0, max_value=5, value=0)
-                live_source_val = camera_idx
-            else:
-                rtsp_url_input = st.text_input("Endereço do Stream RTSP/RTCP", value="rtsp://192.168.1.100:554/live.sdp")
-                live_source_val = rtsp_url_input
 
-        with col_rt2:
-            st.markdown("**Controle do Processamento em Tempo Real:**")
-            run_live_detection = st.checkbox("▶️ Iniciar Transmissão Ao Vivo", value=False)
-            st.markdown("*Dica: Desmarque a caixa acima a qualquer momento para interromper a transmissão ao vivo.*")
+            st.markdown("**Configuração Individual por Câmera:**")
+            cam_configs = []
+
+            for k in range(num_cameras):
+                st.markdown(f"**📷 Câmera {k + 1}:**")
+                row_c1, row_c2 = st.columns([1.2, 2.2])
+
+                with row_c1:
+                    src_type = st.selectbox(
+                        f"Tipo de Fonte (Câmera {k + 1}):",
+                        options=["webcam", "rtsp"],
+                        index=0,
+                        key=f"rt_src_type_row_{k}",
+                        format_func=lambda x: "🎥 Webcam Local" if x == "webcam" else "📡 Stream RTSP / IP",
+                        label_visibility="collapsed"
+                    )
+                with row_c2:
+                    if src_type == "webcam":
+                        webcam_opts = [c["label"] for c in detected_cams] + ["➕ Outro Índice Manual..."]
+                        default_idx = min(k, len(detected_cams) - 1) if detected_cams else 0
+                        selected_cam_label = st.selectbox(
+                            f"Dispositivo de Vídeo (Câmera {k + 1}):",
+                            options=webcam_opts,
+                            index=default_idx,
+                            key=f"rt_webcam_select_row_{k}",
+                            label_visibility="collapsed"
+                        )
+                        if selected_cam_label == "➕ Outro Índice Manual...":
+                            cam_idx_val = st.number_input(
+                                f"Índice Numérico (Câmera {k + 1}):",
+                                min_value=0,
+                                max_value=10,
+                                value=k,
+                                key=f"rt_manual_idx_row_{k}",
+                                label_visibility="collapsed"
+                            )
+                            cam_val = int(cam_idx_val)
+                            cam_name_display = f"Webcam (Índice {cam_val})"
+                        else:
+                            found_cam = next((c for c in detected_cams if c["label"] == selected_cam_label), None)
+                            cam_val = found_cam["index"] if found_cam else k
+                            cam_name_display = found_cam["name"] if found_cam else f"Webcam {k}"
+                    else:
+                        rtsp_val = st.text_input(
+                            f"Endereço Stream RTSP/RTCP (Câmera {k + 1}):",
+                            value=f"rtsp://192.168.1.{100 + k}:554/live.sdp",
+                            key=f"rt_rtsp_url_row_{k}",
+                            label_visibility="collapsed"
+                        )
+                        cam_val = rtsp_val.strip()
+                        cam_name_display = f"RTSP (Cam {k + 1})"
+
+                    cam_configs.append({
+                        "id": k + 1,
+                        "type": src_type,
+                        "source": cam_val,
+                        "label": cam_name_display
+                    })
+
+        with col_rt_diagram:
+            diagram_map = {
+                1: ("assets/camera_layouts/1camdisp.png", "📐 Posicionamento: 1 Câmera (Visão Lateral Principal)"),
+                2: ("assets/camera_layouts/2camdisp.png", "📐 Posicionamento: 2 Câmeras (Visões Laterais Opostas em Linha)"),
+                3: ("assets/camera_layouts/3camdisp.png", "📐 Posicionamento: 3 Câmeras em Pirâmide (Topo/Frontal + 2 Laterais)"),
+                4: ("assets/camera_layouts/4camdisp.png", "📐 Posicionamento: 4 Câmeras em Quadrado 2x2 (4 Cantos do Shiai-jo)")
+            }
+            img_rel_path, img_title = diagram_map[num_cameras]
+            img_filename = img_rel_path if os.path.exists(img_rel_path) else os.path.basename(img_rel_path)
+            st.markdown(f"##### {img_title}")
+            if os.path.exists(img_filename):
+                st.image(img_filename, caption=f"Disposição recomendada no Shiai-jo para {num_cameras} câmera{'s' if num_cameras > 1 else ''}", width="stretch")
+            else:
+                st.info(f"Instruções de posicionamento no Shiai-jo para {num_cameras} câmera(s).")
+
+        st.markdown("---")
+        col_ctrl1, col_ctrl2 = st.columns([1, 1])
+        with col_ctrl1:
+            run_live_detection = st.checkbox("▶️ Iniciar Transmissão Ao Vivo Multi-Câmeras", value=False, key="run_multi_live_detection")
+        with col_ctrl2:
+            st.caption("💡 *Marque para ativar o processamento em tempo real de todas as câmeras. Desmarque a qualquer momento para pausar.*")
 
         if run_live_detection:
             dev_pref = st.session_state.get("device_preference", get_processing_device())
@@ -650,54 +732,117 @@ else:
                 device_preference=dev_pref
             )
 
-            col_live_v, col_live_m = st.columns([7, 5])
-            with col_live_v:
-                st.markdown("##### 🎥 Feed de Vídeo com Pose Tracking Ao Vivo")
-                frame_placeholder = st.empty()
+            col_live_cams, col_live_feed = st.columns([7, 5])
 
-            with col_live_m:
-                st.markdown("##### 📊 Métricas & Alertas em Tempo Real")
+            with col_live_feed:
+                st.markdown("##### 📊 Feed de Golpes & Painel de Métricas")
                 fps_metric = st.empty()
                 strike_alert_box = st.empty()
-                st.markdown("**Histórico de Golpes Detectados nesta Sessão Ao Vivo:**")
-                live_events_list = st.container(height=350)
+                st.markdown("**Histórico de Golpes Detectados na Sessão:**")
+                live_events_container = st.container(height=420)
 
-            cap = cv2.VideoCapture(live_source_val)
-            if not cap.isOpened():
-                st.error(f"❌ Não foi possível conectar à fonte de vídeo ao vivo: `{live_source_val}`")
+            with col_live_cams:
+                st.markdown(f"##### 🎥 Feeds de Vídeo ({num_cameras} Câmera{'s' if num_cameras > 1 else ''})")
+                frame_placeholders = []
+                # 1 Câmera: Única
+                if num_cameras == 1:
+                    frame_placeholders.append(st.empty())
+                # 2 Câmeras: Em linha
+                elif num_cameras == 2:
+                    c1, c2 = st.columns(2)
+                    frame_placeholders.append(c1.empty())
+                    frame_placeholders.append(c2.empty())
+                # 3 Câmeras: Pirâmide (1 topo + 2 base)
+                elif num_cameras == 3:
+                    top_col1, top_col2, top_col3 = st.columns([1, 6, 1])
+                    top_ph = top_col2.empty()
+                    bot_col1, bot_col2 = st.columns(2)
+                    bot1_ph = bot_col1.empty()
+                    bot2_ph = bot_col2.empty()
+                    frame_placeholders.extend([top_ph, bot1_ph, bot2_ph])
+                # 4 Câmeras: Quadrado 2x2
+                elif num_cameras == 4:
+                    r1_c1, r1_c2 = st.columns(2)
+                    r2_c1, r2_c2 = st.columns(2)
+                    frame_placeholders.extend([r1_c1.empty(), r1_c2.empty(), r2_c1.empty(), r2_c2.empty()])
+
+            # Abrir conexões de captura de vídeo para cada câmera
+            caps = []
+            for cfg in cam_configs:
+                src = cfg["source"]
+                if isinstance(src, int) and hasattr(cv2, "CAP_DSHOW"):
+                    cap = cv2.VideoCapture(src, cv2.CAP_DSHOW)
+                else:
+                    cap = cv2.VideoCapture(src)
+                caps.append(cap)
+
+            open_indices = [i for i, c in enumerate(caps) if c.isOpened()]
+            if not open_indices:
+                st.error("❌ Não foi possível conectar a nenhuma das câmeras configuradas. Verifique conexões e permissões.")
             else:
+                live_pose_histories = [[] for _ in range(num_cameras)]
                 frame_count = 0
                 start_time = time.time()
-                live_pose_history = []
+                current_fps = 30.0
 
-                while run_live_detection and cap.isOpened():
-                    ret, frame = cap.read()
-                    if not ret:
-                        st.warning("⚠️ Transmissão finalizada ou sinal de vídeo interrompido.")
+                while run_live_detection:
+                    any_frame_read = False
+
+                    for k in range(num_cameras):
+                        cap = caps[k]
+                        if not cap.isOpened():
+                            continue
+                        ret, frame = cap.read()
+                        if not ret:
+                            continue
+                        any_frame_read = True
+
+                        # Processar Pose Tracking na câmera k
+                        landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
+                        live_pose_histories[k].append(landmarks)
+
+                        # Exibir frame anotado
+                        frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
+                        frame_placeholders[k].image(
+                            frame_rgb,
+                            caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']}",
+                            channels="RGB",
+                            width="stretch"
+                        )
+
+                        # Detecção de golpes a cada 10 quadros por câmera
+                        if len(live_pose_histories[k]) >= 15 and frame_count % 10 == 0:
+                            detected_strikes = pipeline.event_spotter.detect_strikes(
+                                live_pose_histories[k][-30:],
+                                fps=current_fps or 30.0
+                            )
+                            if detected_strikes:
+                                last_ev = detected_strikes[-1]
+                                ev_ts = getattr(last_ev, "timestamp", getattr(last_ev, "timestamp_impact", "00:00.000"))
+                                strike_alert_box.error(f"🚨 GOLPE DETECTADO: **{last_ev.type}** (Câmera {k + 1}, Timestamp: `{ev_ts}`)")
+                                with live_events_container:
+                                    st.markdown(f"🥊 **{last_ev.type}** | Câmera {k + 1} ({cam_configs[k]['label']}) no tempo `{ev_ts}` (Frame #{frame_count})")
+
+                    if not any_frame_read:
+                        st.warning("⚠️ Nenhuma transmissão ativa ou sinal de vídeo interrompido.")
                         break
-
-                    landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
-                    live_pose_history.append(landmarks)
-
-                    # Exibir frame anotado ao vivo no Streamlit
-                    frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
-                    frame_placeholder.image(frame_rgb, channels="RGB", width="stretch")
 
                     frame_count += 1
                     elapsed = time.time() - start_time
-                    current_fps = frame_count / elapsed if elapsed > 0 else 0.0
-                    fps_metric.metric("Desempenho Ao Vivo", f"{current_fps:.1f} FPS", f"Total Quadros: {frame_count}")
+                    current_fps = (frame_count * len(open_indices)) / elapsed if elapsed > 0 else 0.0
+                    fps_metric.metric(
+                        "Desempenho Multi-Câmeras Ao Vivo",
+                        f"{current_fps:.1f} FPS",
+                        f"Câmeras Ativas: {len(open_indices)}/{num_cameras}"
+                    )
 
-                    # Detecção instantânea de golpes a cada 10 frames
-                    if len(live_pose_history) >= 15 and frame_count % 10 == 0:
-                        detected_strikes = pipeline.event_spotter.detect_strikes(live_pose_history[-30:], fps=current_fps or 30.0)
-                        if detected_strikes:
-                            last_ev = detected_strikes[-1]
-                            strike_alert_box.error(f"🚨 GOLPE DETECTADO AO VIVO: **{last_ev.type}** (Timestamp: {last_ev.timestamp})")
-                            with live_events_list:
-                                st.markdown(f"🥊 **{last_ev.type}** detectado no tempo `{last_ev.timestamp}` (Frame #{frame_count})")
+            # Liberar todas as câmeras ao finalizar
+            for cap in caps:
+                try:
+                    cap.release()
+                except Exception:
+                    pass
 
-                cap.release()
 
     # ==========================================================================
     # MODOS 1 E 2: ARBITRAGEM GRAVADA & TREINAMENTO & APRENDIZADO

@@ -36,6 +36,10 @@ class StrikeEvent:
         millis = int((seconds - int(seconds)) * 1000)
         return f"{mins:02d}:{secs:02d}.{millis:03d}"
 
+    @property
+    def timestamp(self) -> str:
+        return self.timestamp_impact
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "type": self.type,

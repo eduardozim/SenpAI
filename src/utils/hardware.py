@@ -5,7 +5,7 @@ Módulo de detecção e gerenciamento de aceleração por hardware (CPU e GPU NV
 import os
 import subprocess
 import logging
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, Tuple, List
 
 logger = logging.getLogger(__name__)
 
@@ -213,3 +213,71 @@ def get_effective_device(preference: str = "cpu") -> Tuple[str, str, Dict[str, A
             msg = "💻 Modo CPU ativado (Processamento padrão via CPU)."
 
     return effective, msg, gpu_info
+ 
+def detect_connected_cameras() -> List[Dict[str, Any]]:
+    """
+    Detecta e lista as webcams e dispositivos de captura de vídeo conectados ao sistema,
+    retornando o índice do dispositivo e o nome de hardware (quando disponível).
+    Retorna lista de dicts: [{'index': 0, 'name': 'BisonCam,NB Pro', 'label': '🎥 [0] BisonCam,NB Pro'}, ...]
+    """
+    cameras: List[Dict[str, Any]] = []
+
+    # 1. Tentar DirectShow via pygrabber (se instalado)
+    try:
+        from pygrabber.dshow_graph import FilterGraph
+        graph = FilterGraph()
+        devices = graph.get_input_devices()
+        if devices:
+            for idx, dev in enumerate(devices):
+                cameras.append({
+                    "index": idx,
+                    "name": str(dev),
+                    "label": f"🎥 Câmera {idx} - {dev}"
+                })
+            return cameras
+    except Exception:
+        pass
+
+    # 2. Tentar via Windows PowerShell (PnPEntity - Câmeras / Dispositivos de Imagem)
+    try:
+        cmd = "Get-CimInstance Win32_PnPEntity | Where-Object { $_.PNPClass -eq 'Camera' -or $_.PNPClass -eq 'Image' } | Select-Object -ExpandProperty Name"
+        res = subprocess.run(["powershell", "-NoProfile", "-Command", cmd], capture_output=True, text=True, timeout=3)
+        names = [n.strip() for n in res.stdout.strip().splitlines() if n.strip()]
+        if names:
+            for idx, name in enumerate(names):
+                cameras.append({
+                    "index": idx,
+                    "name": name,
+                    "label": f"🎥 Câmera {idx} - {name}"
+                })
+            return cameras
+    except Exception:
+        pass
+
+    # 3. Fallback: Sondagem rápida OpenCV para índices 0 a 3
+    try:
+        import cv2
+        for idx in range(4):
+            backend = cv2.CAP_DSHOW if hasattr(cv2, "CAP_DSHOW") else cv2.CAP_ANY
+            cap = cv2.VideoCapture(idx, backend)
+            if cap.isOpened():
+                cameras.append({
+                    "index": idx,
+                    "name": f"Dispositivo de Vídeo {idx}",
+                    "label": f"🎥 Câmera {idx} (Dispositivo Padrão)"
+                })
+                cap.release()
+    except Exception:
+        pass
+
+    # 4. Fallback padrão caso nenhuma câmera física tenha respondido de imediato
+    if not cameras:
+        for idx in range(4):
+            cameras.append({
+                "index": idx,
+                "name": f"Câmera {idx}",
+                "label": f"🎥 Câmera {idx} (Padrão do Sistema)"
+            })
+
+    return cameras
+
