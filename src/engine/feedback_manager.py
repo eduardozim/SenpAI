@@ -6,7 +6,7 @@ Gerencia a gravação de marcações (TP, FP, FN, edições e revisões por Dan)
 import json
 import os
 import datetime
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from src.utils.logger_manager import log_event
 
 DAN_NAMES: Dict[int, str] = {
@@ -91,7 +91,7 @@ class FeedbackManager:
         profile_key: str,
         event_id: str,
         label: str,  # "TP", "FP", "FN", "CONFIRMED", "EDITED", "INCLUDED"
-        sub_scores: Dict[str, float] = None,
+        sub_scores: Optional[Dict[str, Any]] = None,
         total_score: float = 0.0,
         strike_type: str = "MEN",
         timestamp: str = "00:00.000",
@@ -105,7 +105,7 @@ class FeedbackManager:
         Adiciona ou atualiza uma anotação de feedback no dataset com registro de Dan e categoria de decisão.
         """
         data = self.load_feedback()
-        dan_val = max(1, min(8, int(reviewer_dan)))
+        dan_val = max(1, min(8, reviewer_dan))
         dan_name = DAN_NAMES.get(dan_val, f"{dan_val}º Dan")
         now_iso = datetime.datetime.now().isoformat(timespec="seconds")
 
@@ -156,7 +156,7 @@ class FeedbackManager:
         Salva uma sessão de revisão de detecção gravada, atualiza os dados por Dan,
         executa o retreinamento do modelo e grava no histórico de treinamentos.
         """
-        dan_val = max(1, min(8, int(reviewer_dan)))
+        dan_val = max(1, min(8, reviewer_dan))
         dan_name = DAN_NAMES.get(dan_val, f"{dan_val}º Dan")
         now_iso = datetime.datetime.now().isoformat(timespec="seconds")
 
@@ -175,7 +175,7 @@ class FeedbackManager:
                 reviewer_dan=dan_val,
                 is_edited=item.get("is_edited", False),
                 is_included=item.get("is_included", False),
-                decision_category=item.get("decision_category", item.get("category", ""))
+                decision_category=str(item.get("decision_category") or item.get("category") or "")
             )
             saved_entries.append(entry)
 
@@ -201,7 +201,7 @@ class FeedbackManager:
 
         return new_config, session_record
 
-    def get_stats(self, profile_key: str = None) -> Dict[str, Any]:
+    def get_stats(self, profile_key: Optional[str] = None) -> Dict[str, Any]:
         """
         Retorna estatísticas de anotações (TP, FP, FN) gerais ou filtradas por perfil.
         """
@@ -264,7 +264,7 @@ class FeedbackManager:
 
         avg_dan = (dan_sum / weight_count) if weight_count > 0 else 0.0
         avg_dan_round = round(avg_dan, 1)
-        avg_dan_int = max(1, min(8, int(round(avg_dan)))) if avg_dan > 0 else 1
+        avg_dan_int = max(1, min(8, round(avg_dan))) if avg_dan > 0 else 1
         avg_dan_label = f"{avg_dan_round}º Dan ({DAN_NAMES.get(avg_dan_int, '')})" if avg_dan > 0 else "Nenhum treinamento"
 
         table_data = []

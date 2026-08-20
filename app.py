@@ -12,6 +12,7 @@ import os
 import cv2
 import json
 import time
+from typing import Any, Dict, List, Optional
 
 from src.pipeline import SenpAIPipeline, AnalysisWorker
 from src.utils.demo_generator import generate_demo_kendo_video
@@ -60,7 +61,7 @@ def format_scoreboard_strike_name(strike_type: str) -> str:
     """Formata a nomenclatura do golpe exclusivamente com o caractere Katakana oficial (メ, コ, ド, ツ) para o painel de pontuação final."""
     if not strike_type:
         return ""
-    st_clean = str(strike_type).strip()
+    st_clean = strike_type.strip()
     return SCOREBOARD_KATAKANA_MARKS.get(st_clean.upper(), SCOREBOARD_KATAKANA_MARKS.get(st_clean, st_clean))
 
 # Mapeamento oficial para destaque na Linha do Tempo de golpes com marcação válida (Ippon)
@@ -83,7 +84,7 @@ def format_katakana_strike(strike_type: str) -> str:
     """Formata a nomenclatura do golpe com prefixo Katakana oficial (ex: 'メ MEN', 'コ KOTE', 'ド DO', 'ツ TSUKI')."""
     if not strike_type:
         return ""
-    st_clean = str(strike_type).strip()
+    st_clean = strike_type.strip()
     return TIMELINE_KATAKANA_STRIKES.get(st_clean.upper(), TIMELINE_KATAKANA_STRIKES.get(st_clean, st_clean))
 
 def parse_ts_to_seconds(ts_str: str) -> float:
@@ -91,7 +92,7 @@ def parse_ts_to_seconds(ts_str: str) -> float:
     if not ts_str:
         return 0.0
     try:
-        ts = str(ts_str).strip().lower().replace("s", "")
+        ts = ts_str.strip().lower().replace("s", "")
         if ":" in ts:
             parts = ts.split(":")
             return float(parts[0]) * 60.0 + float(parts[1])
@@ -1763,10 +1764,15 @@ else:
                                                 st.markdown("---")
                                                 st.markdown("**🎓 Anotação (Reforço):**")
                                                 btn_col1, btn_col2 = st.columns(2)
+                                                sub_scores_raw = eval_info.get("sub_scores")
+                                                sub_scores_val: Dict[str, Any] = sub_scores_raw if isinstance(sub_scores_raw, dict) else {}
+                                                total_score_raw = eval_info.get("total_score", 0.0)
+                                                total_score_val: float = float(total_score_raw) if isinstance(total_score_raw, (int, float, str)) else 0.0
+
                                                 if btn_col1.button("👍 Correto", key=f"btn_tp_{idx}_{event_id_str}"):
                                                     feedback_mgr.save_feedback(
                                                         video_name=video_name_simple, profile_key=profile_choice, event_id=event_id_str, label="TP",
-                                                        sub_scores=eval_info.get("sub_scores", {}), total_score=eval_info.get("total_score", 0.0),
+                                                        sub_scores=sub_scores_val, total_score=total_score_val,
                                                         strike_type=current_rev['strike_type'], timestamp=current_rev['timestamp'], reviewer_dan=selected_dan,
                                                         decision_category="VALID_IPPON" if orig_is_valid else "INVALID_HIT"
                                                     )
@@ -1774,7 +1780,7 @@ else:
                                                 if btn_col2.button("👎 Falso Positivo", key=f"btn_fp_{idx}_{event_id_str}"):
                                                     feedback_mgr.save_feedback(
                                                         video_name=video_name_simple, profile_key=profile_choice, event_id=event_id_str, label="FP",
-                                                        sub_scores=eval_info.get("sub_scores", {}), total_score=eval_info.get("total_score", 0.0),
+                                                        sub_scores=sub_scores_val, total_score=total_score_val,
                                                         strike_type=current_rev['strike_type'], timestamp=current_rev['timestamp'], reviewer_dan=selected_dan,
                                                         decision_category="INVALID_HIT" if orig_is_valid else "NO_STRIKE"
                                                     )

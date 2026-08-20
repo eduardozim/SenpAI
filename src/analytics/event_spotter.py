@@ -36,6 +36,10 @@ class StrikeEvent:
         millis = int((seconds - int(seconds)) * 1000)
         return f"{mins:02d}:{secs:02d}.{millis:03d}"
 
+    @property
+    def timestamp(self) -> str:
+        return self.timestamp_impact
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "type": self.type,
@@ -87,10 +91,10 @@ class EventSpotter:
             r_wrist = np.array([lm["RIGHT_WRIST"]["x"], lm["RIGHT_WRIST"]["y"]])
             hand_y_positions.append(r_wrist[1])
 
-            if idx == 0 or not pose_history[idx - 1] or "RIGHT_WRIST" not in pose_history[idx - 1]:
+            prev_lm = pose_history[idx - 1] if idx > 0 else None
+            if prev_lm is None or "RIGHT_WRIST" not in prev_lm:
                 velocities.append(0.0)
             else:
-                prev_lm = pose_history[idx - 1]
                 prev_r_wrist = np.array([prev_lm["RIGHT_WRIST"]["x"], prev_lm["RIGHT_WRIST"]["y"]])
                 dist = float(np.linalg.norm(r_wrist - prev_r_wrist))
                 velocities.append(dist)
