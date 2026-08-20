@@ -1,0 +1,19 @@
+{
+  "include": [
+    "src",
+    "tests",
+    "app.py",
+    "main.py",
+    "run_tests.py"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    ".venv"
+  ],
+  "extraPaths": [
+    "."
+  ],
+  "venvPath": ".",
+  "venv": ".venv"
+}

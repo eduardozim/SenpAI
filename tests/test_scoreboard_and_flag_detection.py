@@ -4,7 +4,7 @@ import cv2
 from typing import Dict, Any
 
 from src.vision.combatant_tracker import CombatantTracker
-from src.pipeline import ShinpanAIPipeline
+from src.pipeline import SenpAIPipeline
 
 
 class TestScoreboardAndFlagDetection(unittest.TestCase):
@@ -95,7 +95,7 @@ class TestScoreboardAndFlagDetection(unittest.TestCase):
             test_vid = os.path.join(tmpdir, "demo_kendo_scoreboard.mp4")
             generate_demo_kendo_video(test_vid, duration_sec=2, fps=30)
 
-            pipeline = ShinpanAIPipeline()
+            pipeline = SenpAIPipeline()
             res = pipeline.process_video(test_vid)
             self.assertIsNotNone(res)
             self.assertIn("scoreboard", res)

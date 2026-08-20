@@ -2,13 +2,16 @@
 
 ## 🎯 Visão da Versão Final: 3 Modos de Operação (Nodos)
 
-A versão final do **ShinpanAI** será organizada em **3 Nodos / Modos Principais de Operação**:
+A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais de Operação**:
 
 1. **Modo de Detecção em Tempo Real**
    - **Processamento Ao Vivo**: Processamento e detecção instantânea de golpes via transmissão ao vivo (Webcam / Câmeras de transmissão).
    - **Suporte Multi-Câmera (RTCP)**: Incluir suporte ao protocolo RTCP/RTSP para integração de múltiplos ângulos de câmera.
    - **Sinalização Instantânea**: Exibição em tempo real dos pontos válidos durante a luta.
 
+2. **Modo de Detecção Gravada**
+   - **Opção de analise de video por link de youtube**
+   
 3. **Modo de Treinamento & Aprendizado**
    - **Análise Técnica e Exercícios**: Incluir modo de treino de Kendo onde a IA fornecerá dicas de melhorias nas técnicas e recomendará exercícios de desenvolvimento específicos para o Kenshi.
    - **Avaliação de Exame de Graduação**: Módulo específico para simulação e avaliação diagnóstica de exames de graduação (Kyu / Dan), testando a conformidade com os exigentes critérios de cada nível.
@@ -31,7 +34,7 @@ A versão final do **ShinpanAI** será organizada em **3 Nodos / Modos Principai
 - **Sincronização Multicâmera**: Alinhar automaticamente transmissões por timestamp, áudio ou evento visual.
 - **Detecção de Câmera Inadequada**: Alertar quando o ângulo não permitir avaliar corretamente determinado critério técnico.
 
-### 3. Arbitragem e Regras (Modo Live & Geral)
+### 3. Avaliação Técnica e Regras (Modo Live & Geral)
 - **Detecção de Área e Limites do Shiai-jo**: Identificar saídas de quadra, posição relativa dos atletas e eventos próximos às bordas.
 - **Detecção de Infrações**: Evoluir o sistema para identificar possíveis *Hansoku*, empurrões irregulares, quedas e outras ocorrências.
 - **Controle do Estado da Luta**: Manter placar, tempo decorrido, prorrogação (*Encho*), penalidades e linha do tempo de eventos em ordem cronológica.
@@ -76,14 +79,14 @@ A versão final do **ShinpanAI** será organizada em **3 Nodos / Modos Principai
 
 ### 9. Acessibilidade e Experiência de Uso (UX)
 - **Internacionalização (i18n)**: Suporte a Português, Japonês e Inglês, com padronização da terminologia técnica do Kendo.
-- **Atalhos de Teclado**: Navegação rápida entre golpes, frames e decisões de arbitragem.
+- **Atalhos de Teclado**: Navegação rápida entre golpes, frames e decisões de avaliação.
 - **Modo de Alto Contraste e Daltonismo**: Garantir que a interface não dependa exclusivamente das cores Aka/Shiro.
 - **Tutorial Interativo**: Onboarding guiado apresentando os 3 modos e orientando a primeira análise.
 - **Perfis de Usuário**: Níveis de acesso diferenciados para Atleta, Instrutor, Árbitro, Pesquisador e Administrador.
 - **Salvamento Automático**: Preservar análises e revisões em tempo real contra perdas acidentais.
 
 ### 10. Configurações Gerais do Sistema
-- **Calibração & Limiares**: Escolha e ajuste fino dos perfis de arbitragem e critérios técnicos.
+- **Calibração & Limiares**: Escolha e ajuste fino dos perfis de calibração e critérios técnicos.
 - **Câmeras & Rede**: Parâmetros de suporte ao protocolo RTCP/RTSP para múltiplas câmeras.
 - **Interface & Preferências**: Opções visuais e de exibição do dashboard.
 - **Testes Automatizados**: Expansão contínua da cobertura de testes unitários, de integração e e2e da aplicação.
@@ -94,6 +97,8 @@ A versão final do **ShinpanAI** será organizada em **3 Nodos / Modos Principai
 
 - **Processamento & Hardware**:
   - Vazamento de memória (memory leak) durante o processamento de vídeos longos ou transmissões ao vivo.
+  - Sempre limpar arquivos de vídeo usados anteriormente
+  - Configuração de limpeza de arquivos temporários
 - **Vídeo, Marcações e Sincronização**:
   - O vídeo com as marcações sobrepostas não está funcionando corretamente.
   - Dessincronização entre o vídeo original, as marcações e os clipes gerados.
@@ -131,8 +136,8 @@ Versão 1.6.0
       - **Processamento Hardware (CPU vs GPU - v1.6.0)**: Seleção dinâmica e otimização entre modo CPU (exclusivo) e GPU NVIDIA CUDA (quando presente) para aceleração de detecção de pose e inferência de IA com fallback automático no Menu de Configurações.
       - **Delimitação da Luta por Sonkyō (v1.6.0)**: Garantir que golpes válidos sejam considerados estritamente entre o *sonkyou* inicial e final da luta.
       - **Correção e Inversão Manual de Identidade (Aka ⇄ Shiro - v1.6.0)**: Botão de ação rápida na interface e controle no pipeline para inversão e reatribuição da pontuação, eventos e relatórios entre Kenshi Aka (Vermelho) e Kenshi Shiro (Branco).
-      - **Detecção e Scoring (Modo de Arbitragem Gravada - v1.6.0)**: Validação de *Yuko-Datotsu* com score ponderado (*Ki-Ken-Tai-Ichi*: impacto no alvo, sincronismo de *Fumikomi*, postura e *Zanshin*), corte automático de clipes, relatórios diagnósticos de combate e navegação integrada com salto temporal calibrado para 1 segundo antes do evento.
-      - **Detecção de Sonkyō & Delimitação Temporal da Luta (v1.6.0)**: Identificação e verificação automática da postura ritualística de *Sonkyō* (agachamento profundo sobre os calcanhares, flexão de joelhos e coluna ereta) para marcação do Início Oficial (`match_start_frame`) e Encerramento Oficial (`match_end_frame`) da luta no Modo de Arbitragem Gravada.
+      - **Detecção e Scoring (Modo de Detecção Gravada - v1.6.0)**: Validação de *Yuko-Datotsu* com score ponderado (*Ki-Ken-Tai-Ichi*: impacto no alvo, sincronismo de *Fumikomi*, postura e *Zanshin*), corte automático de clipes, relatórios diagnósticos de combate e navegação integrada com salto temporal calibrado para 1 segundo antes do evento.
+      - **Detecção de Sonkyō & Delimitação Temporal da Luta (v1.6.0)**: Identificação e verificação automática da postura ritualística de *Sonkyō* (agachamento profundo sobre os calcanhares, flexão de joelhos e coluna ereta) para marcação do Início Oficial (`match_start_frame`) e Encerramento Oficial (`match_end_frame`) da luta no Modo de Detecção Gravada.
       - **Filtragem Estrita de Golpes por Sonkyō (v1.6.0)**: Consideração e avaliação técnica de Yuko-Datotsu (Ippon) realizada **estritamente entre os momentos de Sonkyō de início e término**, descartando movimentações e cortes fora da janela regulamentar de combate.
       - **Rastreamento Focado nos 2 Kenshi Principais (v1.6.0)**: Associação e acompanhamento contínuo dos 2 atletas que executaram o Sonkyō inicial de abertura no Shiaijo (`Kenshi Aka - Vermelho` e `Kenshi Shiro - Branco`).
       - **Filtragem de Planos Diferentes & Descarte de Ruídos Visuais (v1.6.0)**: Calibração automática da escala geométrica do plano principal de combate, descartando elementos de segundo plano (outras lutas ao fundo, árbitros distantes, arquibancadas) e oclusões de primeiro plano (pessoas passando na frente da câmera).
@@ -147,17 +152,17 @@ Versão 1.5.0
    -Melhorias Aplicadas:
     - **Processamento de Vídeo com Múltiplas Câmeras (RTSP)**: Suporte nativo a múltiplas fontes de vídeo simultâneas em tempo real via protocolo RTSP (Real Time Streaming Protocol).
     - **Aquisição de Vídeo em Tempo Real (Webcam)**: Captura e processamento em tempo real via webcam (`/dev/video0`) além do upload de arquivos locais.
-    - **Interface Gráfica Unificada (SHINPANAI Hub)**: Dashboard centralizado para gerenciamento de câmeras, transmissões ao vivo, uploads locais e painel de arbitragem.
+    - **Interface Gráfica Unificada (SENPAI Hub)**: Dashboard centralizado para gerenciamento de câmeras, transmissões ao vivo, uploads locais e painel de análise.
     - **Sincronização de Múltiplas Câmeras (Sync)**: Ferramentas e lógica de sincronização para combates com múltiplas perspectivas (ex: câmera frontal + câmera lateral).
-    - **Arbitragem Assistida em Vídeo**: Processamento e análise biomecânica de vídeos pré-gravados de combates com pontuação ponderada (Ki-Ken-Tai-Ichi), cortes de clipes e relatórios diagnósticos no Modo de Arbitragem Gravada.
+    - **Avaliação Assistida em Vídeo**: Processamento e análise biomecânica de vídeos pré-gravados de combates com pontuação ponderada (Ki-Ken-Tai-Ichi), cortes de clipes e relatórios diagnósticos no Modo de Detecção Gravada.
    - **Aprendizagem por Reforço & Seleção de Graduação (Dan)**: Otimização contínua de perfis de calibração via feedback do usuário (TP, FP, FN) incorporando a seleção de graduação (Dan) do revisor para ajustar dinamicamente a sensibilidade dos limiares.
-   - **Sistema de Diagnóstico, Alertas & Log de Debug**: Módulo central de logging (`logger_manager.py`) retendo logs no disco (`logs/shinpanai_debug.log`) e em memória, Seção 4 no menu de configurações com monitoramento em tempo real de alertas (com filtro por `ERROR`, `WARNING`, `INFO`, `DEBUG`), registro automático de resets de treinamento, importações/exportações de pacotes JSON e retreinamentos por Dan no log, botão de download do log de debug, ferramenta de diagnóstico automatizado, badges de status de golpe (CONFIRMADO / EDITADO), botões de reset de revisão e suíte de testes unitários (`test_logger_manager.py`).
+   - **Sistema de Diagnóstico, Alertas & Log de Debug**: Módulo central de logging (`logger_manager.py`) retendo logs no disco (`logs/senpai_debug.log`) e em memória, Seção 4 no menu de configurações com monitoramento em tempo real de alertas (com filtro por `ERROR`, `WARNING`, `INFO`, `DEBUG`), registro automático de resets de treinamento, importações/exportações de pacotes JSON e retreinamentos por Dan no log, botão de download do log de debug, ferramenta de diagnóstico automatizado, badges de status de golpe (CONFIRMADO / EDITADO), botões de reset de revisão e suíte de testes unitários (`test_logger_manager.py`).
 
 Versão 1.4.0
    -Melhorias Aplicadas:
       - **Licença & Disclaimer (Open Code)**: Licença oficial de código aberto (GNU General Public License v3.0 em `LICENSE.txt`), definindo uso livre para estudo, modificação e contribuição comunitária com isenção de responsabilidade (*AS IS*).
-      - **Modo de Arbitragem Gravada**: Definição e consolidação do modo de análise de vídeos pré-gravados do sistema.
-      - **Edição de Golpes por Dan (Modo Gravado)**: Adição do botão para habilitar a edição dos golpes detectados no Modo de Arbitragem Gravada, combo box de seleção da graduação DAN do revisor (Shodan 1º Dan a Hachidan 8º Dan), suporte a confirmação, edição e inclusão de marcações, regra estrita de não exclusão e salvamento com retreinamento automático do modelo.
+      - **Modo de Detecção Gravada**: Definição e consolidação do modo de análise de vídeos pré-gravados do sistema.
+      - **Edição de Golpes por Dan (Modo Gravado)**: Adição do botão para habilitar a edição dos golpes detectados no Modo de Detecção Gravada, combo box de seleção da graduação DAN do revisor (Shodan 1º Dan a Hachidan 8º Dan), suporte a confirmação, edição e inclusão de marcações, regra estrita de não exclusão e salvamento com retreinamento automático do modelo.
 - **Governança de Treinamento no Menu de Configurações**: Seção de governança no Menu de Configurações contendo contador de treinamentos realizados, nível médio (Dan) dos treinamentos, tabela de quantidade de treinamentos por Dan, opção de apagar treinamento (reset ao estágio inicial), opção de baixar treinamento atual (pacote JSON contendo Dan e data de cada treinamento) e opção de carregar treinamento baixado anteriormente com recalibração imediata.
 - **Suíte de Testes Automatizados de Governança por Dan**: Implementação do arquivo `tests/test_dan_training_governance.py` garantindo cobertura de código para todo o fluxo de revisão por Dan, retreinamento e gestão de pacotes de dados.
 
@@ -168,7 +173,7 @@ Versão 1.3.0
       - **Seleção de Hardware (CPU vs GPU)**: Implementação do seletor entre modo CPU (exclusivo) e GPU (quando presente) com detecção dinâmica e fallback automático.
 - **Mover Seleção de CPU e GPU para Página de Configurações**: Estruturação da navegação multi-páginas, movendo a gestão de hardware para uma página dedicada de configurações.
 - **Processamento por GPU (PyTorch CUDA)**: Utilização da GPU NVIDIA quando disponível para aceleração da detecção de pose e inferência dos modelos.
-- **Modo de Arbitragem Gravada**: Renomeado modo Usuário para "Modo de Arbitragem Gravada" (análise de vídeos gravados de combates).
+- **Modo de Detecção Gravada**: Renomeado modo Usuário para "Modo de Detecção Gravada" (análise de vídeos gravados de combates).
 - **Modo de Treinamento & Aprendizado**: Renomeado modo Aprendizagem para "Modo de Treinamento & Aprendizado" (reforço, anotação TP/FP/FN e otimização por Dan).
 - **Modo de Detecção em Tempo Real**: Implementação da detecção ao vivo via Webcam local ou streams de câmeras IP (RTSP/RTCP) com métricas de FPS e ticker de alertas instantâneos.
 

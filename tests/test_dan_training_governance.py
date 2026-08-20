@@ -1,5 +1,5 @@
 """
-Testes Automatizados para Edição por Dan, Retreinamento e Governança de Treinamento no ShinpanAI.
+Testes Automatizados para Edição por Dan, Retreinamento e Governança de Treinamento no SenpAI.
 """
 
 import os
@@ -118,7 +118,7 @@ class TestDanTrainingGovernance(unittest.TestCase):
         self.mgr.save_review_session("m1.mp4", "normal", 6, [{"event_id": "e1", "label": "TP", "strike_type": "MEN", "timestamp": "00:01.000"}], current_config)
 
         pkg = self.mgr.export_training_package()
-        self.assertEqual(pkg["system_name"], "ShinpanAI")
+        self.assertEqual(pkg["system_name"], "SenpAI")
         self.assertIn("exported_at", pkg)
         self.assertEqual(len(pkg["review_items"]), 1)
         self.assertEqual(pkg["review_items"][0]["reviewer_dan"], 6)

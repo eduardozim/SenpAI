@@ -1,5 +1,5 @@
 """
-Módulo de Gerenciamento de Logs, Alertas e Diagnóstico de Debug do ShinpanAI.
+Módulo de Gerenciamento de Logs, Alertas e Diagnóstico de Debug do SenpAI.
 Captura eventos do sistema, erros, avisos e possibilita visualização e download dos arquivos de log.
 """
 
@@ -13,7 +13,7 @@ import platform
 from collections import deque
 from typing import Dict, Any, List, Optional
 
-DEFAULT_LOG_PATH = "logs/shinpanai_debug.log"
+DEFAULT_LOG_PATH = "logs/senpai_debug.log"
 MAX_MEMORY_LOGS = 1000
 
 class RingBufferHandler(logging.Handler):
@@ -45,11 +45,11 @@ _logger_initialized = False
 
 def setup_system_logger(log_file: str = DEFAULT_LOG_PATH, level: int = logging.DEBUG) -> logging.Logger:
     """
-    Inicializa e configura o logger central do sistema ShinpanAI com salvamento em arquivo e buffer em memória.
+    Inicializa e configura o logger central do sistema SenpAI com salvamento em arquivo e buffer em memória.
     """
     global _ring_handler, _logger_initialized
 
-    root_logger = logging.getLogger("shinpanai")
+    root_logger = logging.getLogger("senpai")
     root_logger.setLevel(level)
 
     # Evitar duplicar handlers se já inicializado
@@ -102,7 +102,7 @@ def setup_system_logger(log_file: str = DEFAULT_LOG_PATH, level: int = logging.D
 def get_system_logger() -> logging.Logger:
     if not _logger_initialized:
         return setup_system_logger()
-    return logging.getLogger("shinpanai")
+    return logging.getLogger("senpai")
 
 def log_event(level: str, message: str, module_name: str = "app") -> None:
     logger = get_system_logger()
@@ -188,7 +188,7 @@ def run_system_diagnostic_check() -> Dict[str, Any]:
     e grava os alertas no log do sistema.
     """
     logger = get_system_logger()
-    logger.info("=== INICIANDO TESTE DE DIAGNÓSTICO DO SISTEMA SHINPANAI ===")
+    logger.info("=== INICIANDO TESTE DE DIAGNÓSTICO DO SISTEMA SENPAI ===")
 
     diagnostic_report = {
         "timestamp": datetime.datetime.now().isoformat(),

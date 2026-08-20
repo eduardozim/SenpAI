@@ -9,7 +9,7 @@ import numpy as np
 from src.analytics.sonkyo_detector import SonkyoDetector, SonkyoInterval
 from src.vision.combatant_tracker import CombatantTracker, CombatantProfile
 from src.analytics.event_spotter import EventSpotter, StrikeEvent
-from src.pipeline import ShinpanAIPipeline
+from src.pipeline import SenpAIPipeline
 from src.utils.demo_generator import generate_demo_kendo_video
 
 class TestSonkyoAndPlaneFiltering(unittest.TestCase):
@@ -196,14 +196,14 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertGreaterEqual(init_s["end_frame"], 28)
 
     def test_pipeline_integration_with_sonkyo(self):
-        """Valida a integração end-to-end do pipeline de arbitragem com detecção de Sonkyō, filtragem de planos e vídeo anotado."""
+        """Valida a integração end-to-end do pipeline de avaliação com detecção de Sonkyō, filtragem de planos e vídeo anotado."""
         # Gerar vídeo sintético de teste
         test_vid = "test_sonkyo_pipeline_match.mp4"
         out_vid = "test_sonkyo_pipeline_annotated.mp4"
         generate_demo_kendo_video(test_vid, duration_sec=3, fps=30)
 
         try:
-            pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
+            pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
             result = pipeline.process_video(video_path=test_vid, output_video_path=out_vid)
 
             self.assertIn("sonkyo_analysis", result)
@@ -306,7 +306,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         generate_demo_kendo_video(test_vid, duration_sec=4, fps=30)
 
         try:
-            pipeline = ShinpanAIPipeline(calibration_profile="normal", device_preference="cpu")
+            pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
             
             init_ov = {"start_timestamp": "00:00.000", "end_timestamp": "00:01.000"}
             fin_ov = {"start_timestamp": "00:03.000", "end_timestamp": "00:03.900"}

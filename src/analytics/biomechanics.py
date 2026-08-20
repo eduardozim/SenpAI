@@ -34,12 +34,14 @@ class BiomechanicsAnalyzer:
 
         r_wrist = np.array([landmarks["RIGHT_WRIST"]["x"], landmarks["RIGHT_WRIST"]["y"]])
         
-        if strike_type == "MEN":
+        st_clean = str(strike_type).replace("メ ", "").replace("コ ", "").replace("ド ", "").replace("ツ ", "").replace("メ", "").replace("コ", "").replace("ド", "").replace("ツ", "").strip().upper()
+
+        if st_clean == "MEN":
             # Alvo Men: Acima da linha dos olhos/nariz
             nose_y = landmarks["NOSE"]["y"]
             diff = abs(r_wrist[1] - nose_y)
             score = max(0.0, 1.0 - (diff * 2.5))
-        elif strike_type == "KOTE":
+        elif st_clean == "KOTE":
             # Alvo Kote: Linha da cintura/ombro com boa extensão de cotovelo
             r_elbow = np.array([landmarks["RIGHT_ELBOW"]["x"], landmarks["RIGHT_ELBOW"]["y"], landmarks["RIGHT_ELBOW"]["z"]])
             r_shoulder = np.array([landmarks["RIGHT_SHOULDER"]["x"], landmarks["RIGHT_SHOULDER"]["y"], landmarks["RIGHT_SHOULDER"]["z"]])
@@ -47,7 +49,7 @@ class BiomechanicsAnalyzer:
             elbow_angle = self.calculate_angle_3d(r_shoulder, r_elbow, p_wrist)
             # No Kote a extensão do cotovelo deve ser forte (140° a 170°)
             score = 1.0 - (abs(155.0 - elbow_angle) / 60.0)
-        elif strike_type == "DO":
+        elif st_clean == "DO":
             # Alvo Do: Mãos na altura do peito, trajetória lateral
             hip_y = landmarks["RIGHT_HIP"]["y"]
             diff = abs(r_wrist[1] - hip_y)

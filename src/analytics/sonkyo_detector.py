@@ -1,5 +1,5 @@
 """
-Módulo de Detecção e Análise de Sonkyō para Arbitragem de Kendo.
+Módulo de Detecção e Análise de Sonkyō para Kendo.
 Identifica a postura ritualística de Sonkyō (agachamento sobre a ponta dos pés com coluna ereta e joelhos flexionados)
 para determinar com precisão o Início Oficial e o Término Oficial da Luta.
 """

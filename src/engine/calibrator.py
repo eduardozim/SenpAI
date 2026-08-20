@@ -1,6 +1,6 @@
 """
-Motor de Calibração de Sensibilidade de Arbitragem.
-Gerencia perfis de arbitragem (Rígido, Normal, Permissivo) e calcula a pontuação final ponderada.
+Motor de Calibração de Sensibilidade e Avaliação Técnica.
+Gerencia perfis de calibração (Rígido, Normal, Permissivo) e calcula a pontuação final ponderada.
 """
 
 import json

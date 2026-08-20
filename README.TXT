@@ -1,9 +1,9 @@
 ===============================================================================
-                       SHINPANAI (審判 AI) - GUIA RÁPIDO
-        Sistema de Arbitragem e Análise Biomecânica de Kendo com IA
+                        SENPAI (先輩 AI) - GUIA RÁPIDO
+          Sistema de Avaliação e Análise Biomecânica de Kendo com IA
 ===============================================================================
 
-O ShinpanAI é um sistema de visão computacional e análise biomecânica projetado
+O SenpAI é um sistema de visão computacional e análise biomecânica projetado
 para avaliar golpes em lutas de Kendo de acordo com o conceito de Yuko-Datotsu
 e o princípio do Ki-Ken-Tai-Ichi (Espírito, Espada e Corpo em um só).
 
@@ -44,14 +44,15 @@ Para iniciar o dashboard web com reprodutor de vídeo, gráficos e sliders:
 Recursos da Interface Web:
 - Interface otimizada e dimensionada (escala visual 80%) para visualização integrada e ergonômica.
 - Validação e Consenso Multi-Câmeras (Tempo Real): A definição de haver ou não o golpe é tomada com base no conjunto das imagens das câmeras em background. Quanto mais câmeras ativas, maior a exigência de confirmação síncrona em frames (quórum escalonado de 1 a 4 câmeras), com descarte silencioso de movimentações sem consenso.
-- Placar Oficial de Arbitragem Eletrônico (Sanbon-shobu) com contagem de Ippon para Aka (Vermelho) e Shiro (Branco) e declaração regulamentar de resultado.
+- Placar Oficial Eletrônico (Sanbon-shobu) com contagem de Ippon para Aka (Vermelho) e Shiro (Branco), declaração regulamentar de resultado e marcação em caracteres Katakana oficiais (メ, コ, ド, ツ).
+- Destaque Visual na Linha do Tempo: golpes responsáveis pela marcação de Ippon são destacados com a nomenclatura oficial Katakana (メ MEN, コ KOTE, ド DO, ツ TSUKI), banner cromático por lutador e identificação no seletor de navegação rápida.
 - Detecção da Flag Dorsal (Tasukuki) e botão de ação rápida de inversão de identidade (Aka ⇄ Shiro).
 - Navegação Interativa no Vídeo com Salto Temporal Calibrado: clique no evento (Sonkyō Inicial, Golpe ou Sonkyō Final) ou selecione no dropdown para posicionar o player 1 segundo antes (-1.0s) do início do evento para revisão detalhada.
 - Delimitação Temporal da Luta por Sonkyō: identificação automática da postura ritualística de Sonkyō de início e término do combate, com filtragem estrita de golpes na janela regulamentar.
 - Rastreamento dos 2 Kenshi Principais e Filtragem de Planos: descarte inteligente de elementos de fundo (outras lutas, arquibancadas) e oclusões de primeiro plano.
 - Menu de Configurações com seletor de Hardware (CPU vs GPU NVIDIA CUDA com Tensor Cores FP16) e painel de Governança de Treinamento.
-- Painel de Diagnóstico, Alertas e Log de Debug do Sistema com monitoramento de eventos em tempo real (`shinpanai_debug.log`).
-- Edição de Golpes por Dan no Modo de Arbitragem Gravada (Shodan 1º Dan a Hachidan 8º Dan) com badges CONFIRMADO e EDITADO.
+- Painel de Diagnóstico, Alertas e Log de Debug do Sistema com monitoramento de eventos em tempo real (`senpai_debug.log`).
+- Edição de Golpes por Dan no Modo de Detecção Gravada (Shodan 1º Dan a Hachidan 8º Dan) com badges CONFIRMADO e EDITADO.
 - Botão de Reset Geral e Individual de revisão, regra de auditabilidade (sem exclusão de dados) e retreinamento contínuo.
 - Gestão de Pacotes de Treinamento: exportação e importação de arquivos JSON com registro por Dan e data.
 - Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de eventos com barra de rolagem à direita.
@@ -66,7 +67,7 @@ Para processar vídeos diretamente no terminal:
 - Executar teste rápido com GPU NVIDIA (se disponível):
    python main.py --video "caminho/do/seu_video.mp4" --device gpu
 
-- Especificar perfil de arbitragem:
+- Especificar perfil de calibração:
    python main.py --video "video.mp4" --profile rigido
 
 - Especificar caminho do vídeo anotado de saída:
@@ -78,7 +79,8 @@ Para processar vídeos diretamente no terminal:
 - Executar suíte completa de testes automatizados (52 testes) com relatório descritivo salvo em logs/:
    python run_tests.py
    (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
-   * Gera o arquivo descritivo logs/shinpanai_test_report.log com detalhes de cada teste
+   * Executa a suíte de 52 testes automatizados com 100% de aprovação
+   * Gera o arquivo descritivo logs/senpai_test_report.log com detalhes de cada teste
    * Mantém estritamente apenas o último log de testes executado na pasta logs/
 
 - Ou executar via runner padrão unittest:
@@ -94,7 +96,7 @@ Opções disponíveis:
   --video CAMINHO         Caminho para o vídeo de entrada (.mp4, .avi, .mov).
   --output CAMINHO        Caminho para salvar o vídeo anotado.
                           (Padrão: output_annotated.mp4)
-  --profile PERFIL        Perfil de arbitragem a aplicar:
+  --profile PERFIL        Perfil de calibração a aplicar:
                           - normal     : Treino geral / Keiko (Padrão)
                           - rigido     : Campeonato / Exame de Dan
                           - permissivo : Iniciantes / Educacional
@@ -112,12 +114,14 @@ Opções disponíveis:
 4. MODOS DE OPERAÇÃO
 -------------------------------------------------------------------------------
 
-1. MODO DE ARBITRAGEM GRAVADA (recorded):
+1. MODO DE DETECÇÃO GRAVADA (recorded):
    Análise biomecânica completa de combates gravados. Inclui detecção e delimitação
    temporal da luta por Sonkyō, pontuação ponderada de Yuko-Datotsu (Ki-Ken-Tai-Ichi),
-   placar eletrônico oficial (Aka vs Shiro), navegação interativa com salto calibrado
-   de 1 segundo antes do evento, edição de golpes por Dan (Shodan a Hachidan), corte
-   automático de clipes e relatórios diagnósticos de combate.
+   placar eletrônico oficial (Aka vs Shiro com caracteres Katakana: メ, コ, ド, ツ),
+   destaque de golpes pontuados na Linha do Tempo (メ MEN, コ KOTE, ド DO, ツ TSUKI),
+   navegação interativa com salto calibrado de 1 segundo antes do evento, edição de
+   golpes por Dan (Shodan a Hachidan), corte automático de clipes e relatórios
+   diagnósticos de combate.
 
 2. MODO DE TREINAMENTO & APRENDIZADO (training):
    Projetado para instrutores e atletas. Permite rotular resultados (TP, FP, FN),
@@ -129,7 +133,7 @@ Opções disponíveis:
    de imagens/frames (com quórum escalonado e descarte silencioso de falsos positivos).
 
 -------------------------------------------------------------------------------
-5. PERFIS DE ARBITRAGEM (SENSIBILIDADE)
+5. PERFIS DE CALIBRAÇÃO (SENSIBILIDADE)
 -------------------------------------------------------------------------------
 
 - Treino Geral / Keiko (Normal):

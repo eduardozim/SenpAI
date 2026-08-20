@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Tuple, Any
 
 logger = logging.getLogger(__name__)
 
-# Mapeamento oficial dos 17 keypoints COCO para o padrão de nomenclatura ShinpanAI / MediaPipe
+# Mapeamento oficial dos 17 keypoints COCO para o padrão de nomenclatura SenpAI / MediaPipe
 COCO_INDEX_TO_LANDMARK = {
     0: "NOSE",
     1: "LEFT_EYE",
@@ -84,7 +84,7 @@ class PoseDetector:
             )
 
     def _yolo_results_to_landmarks_list(self, yolo_res, w: int, h: int) -> List[Dict[str, Any]]:
-        """Converte as predições de múltiplos esqueletos do YOLOv8-Pose para o formato de landmarks do ShinpanAI."""
+        """Converte as predições de múltiplos esqueletos do YOLOv8-Pose para o formato de landmarks do SenpAI."""
         candidates = []
         if not yolo_res or len(yolo_res) == 0:
             return candidates
@@ -303,7 +303,7 @@ class PoseDetector:
             cv2.addWeighted(overlay, 0.75, out, 0.25, 0, out)
             cv2.line(out, (0, overlay_h), (w, overlay_h), (59, 130, 246), 2)
 
-            info_text = f"⚔️ SHINPANAI | {sonkyo_status or 'COMBATE ATIVO'}"
+            info_text = f"⚔️ SENPAI | {sonkyo_status or 'COMBATE ATIVO'}"
             if match_timer_str:
                 info_text += f" | ⏱️ {match_timer_str}"
             cv2.putText(out, info_text, (20, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (255, 255, 255), 2)

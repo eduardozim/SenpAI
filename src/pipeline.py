@@ -1,5 +1,5 @@
 """
-Pipeline Principal de Processamento do ShinpanAI.
+Pipeline Principal de Processamento do SenpAI.
 Orquestra Leitura de Vídeo -> Pose Tracking -> Action Spotting -> Avaliação Biomecânica -> Calibração -> Relatório.
 """
 
@@ -22,7 +22,7 @@ from src.engine.reporter import DiagnosticReporter
 from src.utils.hardware import get_effective_device
 from src.utils.logger_manager import log_event
 
-class ShinpanAIPipeline:
+class SenpAIPipeline:
     def __init__(self, calibration_profile: str = "normal", device_preference: str = "cpu"):
         self.device_preference = device_preference
         self.effective_device, self.device_status_message, self.gpu_info = get_effective_device(device_preference)
@@ -47,7 +47,7 @@ class ShinpanAIPipeline:
         invert_combatants: bool = False
     ) -> Optional[Dict[str, Any]]:
         """
-        Executa a análise completa de um arquivo de vídeo de luta de Kendo no Modo de Arbitragem Gravada:
+        Executa a análise completa de um arquivo de vídeo de luta de Kendo no Modo de Detecção Gravada:
         1. Rastreamento e associação exclusiva dos 2 Kenshi (Aka e Shiro) no Plano Principal com detecção da cor da flag dorsal (Tasukuki).
         2. Descarte automático de elementos de Segundo Plano (Background) e Oclusões na frente da câmera.
         3. Detecção e verificação dos momentos de Sonkyō (Abertura e Encerramento) ou aplicação de ajustes manuais com aprendizado contínuo.
@@ -322,7 +322,7 @@ class ShinpanAIPipeline:
             f"  • Tempo Total de Processamento: {total_elapsed_sec:.2f}s ({total_frames} frames a {processing_fps:.1f} FPS)\n"
             f"  • Duração do Vídeo: {round(total_frames / fps, 2)}s (Tempo Efetivo de Combate: {sonkyo_analysis['effective_combat_duration_seconds']}s)\n"
             f"  • Dispositivo / Acelerador: {self.effective_device.upper()} ({self.device_status_message})\n"
-            f"  • Perfil de Arbitragem Aplicado: {self.calibrator.active_config.get('name', 'Custom')}\n"
+            f"  • Perfil de Avaliação Aplicado: {self.calibrator.active_config.get('name', 'Custom')}\n"
             f"  • Placar Oficial: Aka {aka_score} x {shiro_score} Shiro — {result_description}\n"
             f"  • Identificação de Flag (Tasukuki): {tracker_summary.get('flag_decision', 'N/A')} (Confiança: {int(tracker_summary.get('flag_confidence', 0.5)*100)}%)\n"
             f"  • Sonkyō Inicial: {init_sonkyo_str}\n"
@@ -357,7 +357,7 @@ class AnalysisWorker:
     """
     def __init__(
         self,
-        pipeline: "ShinpanAIPipeline",
+        pipeline: "SenpAIPipeline",
         video_path: str,
         output_video_path: Optional[str] = None,
         initial_sonkyo_override: Optional[Dict[str, Any]] = None,
@@ -449,5 +449,7 @@ class AnalysisWorker:
             self.is_done = True
 
 
-# Alias de compatibilidade retroativa
-ShinpanaiPipeline = ShinpanAIPipeline
+# Aliases de compatibilidade retroativa
+SenpaiPipeline = SenpAIPipeline
+ShinpanAIPipeline = SenpAIPipeline
+ShinpanaiPipeline = SenpAIPipeline
