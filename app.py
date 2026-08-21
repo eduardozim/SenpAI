@@ -300,6 +300,40 @@ st.markdown("""
     div[data-testid="stVerticalBlockBorderWrapper"] > div::-webkit-scrollbar-thumb:hover {
         background: #64748B !important;
     }
+
+    /* 5. Estilização Premium para Guias (Tabs) */
+    div[data-baseweb="tab-list"] {
+        gap: 8px !important;
+        background-color: #0B1120 !important;
+        padding: 6px !important;
+        border-radius: 10px !important;
+        border: 1px solid #1E293B !important;
+        margin-bottom: 1.5rem !important;
+    }
+    button[data-baseweb="tab"] {
+        border-radius: 8px !important;
+        padding: 8px 20px !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        color: #94A3B8 !important;
+        background-color: transparent !important;
+        border: 1px solid transparent !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    button[data-baseweb="tab"]:hover {
+        background-color: #1E293B !important;
+        color: #F8FAFC !important;
+        border-color: #334155 !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        background-color: #1E293B !important;
+        color: #60A5FA !important;
+        border: 1px solid #3B82F6 !important;
+        box-shadow: 0 0 14px rgba(59, 130, 246, 0.25) !important;
+    }
+    div[data-baseweb="tab-highlight"], div[data-baseweb="tab-border"] {
+        display: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -320,221 +354,326 @@ nav_page = st.sidebar.radio(
 st.sidebar.markdown("---")
 
 # ==============================================================================
-# PÁGINA 1: MENU DE CONFIGURAÇÕES (PÁGINA DEDICADA SEPARADA)
+# PÁGINA 1: MENU DE CONFIGURAÇÕES (LAYOUT EM GUIAS / TABS)
 # ==============================================================================
 if nav_page == "settings":
     st.header("⚙️ Configurações Gerais do Sistema")
-    st.markdown("Gerencie os parâmetros de aceleração de hardware, calibração de detecção e preferências globais.")
+    st.markdown("Gerencie os parâmetros de aceleração de hardware, governança de modelos, perfis de calibração e ferramentas de diagnóstico.")
 
     saved_sys_settings = load_settings()
     default_device_pref = st.session_state.get("device_preference", saved_sys_settings.get("processing_device", "cpu"))
 
-    # --- SEÇÃO 1: ACELERAÇÃO DE HARDWARE & DISPOSITIVO DE PROCESSAMENTO ---
-    st.subheader("🖥️ 1. Processamento & Aceleração de Hardware")
-    
-    col_hw1, col_hw2 = st.columns([1, 1])
-    
-    with col_hw1:
-        st.markdown("**Seletor do Modo de Processamento dos Modelos:**")
-        selected_hw_option = st.radio(
-            "Escolha o acelerador:",
-            options=["cpu", "gpu"],
-            index=0 if default_device_pref == "cpu" else 1,
-            format_func=lambda x: {
-                "cpu": "💻 Processamento por CPU somente",
-                "gpu": "⚡ Processamento por GPU (quando houver)"
-            }[x],
-            help="• CPU Somente: Utiliza o processador da máquina.\n• GPU (quando houver): Processa via GPU NVIDIA se disponível no computador (RTX/GTX), ou faz fallback automático para CPU."
-        )
+    tab_hw, tab_train, tab_calib, tab_diag = st.tabs([
+        "🖥️ Processamento & Hardware",
+        "🎓 Governança de Treinamento",
+        "🎛️ Perfis de Calibração",
+        "🐛 Diagnóstico, Alertas & Logs"
+    ])
 
-        if st.button("💾 Salvar Configurações de Hardware", type="primary", width="stretch"):
-            set_processing_device(selected_hw_option)
-            st.session_state["device_preference"] = selected_hw_option
-            st.success("✅ Configurações de hardware salvas com sucesso!")
+    # --------------------------------------------------------------------------
+    # GUIA 1: PROCESSAMENTO & HARDWARE
+    # --------------------------------------------------------------------------
+    with tab_hw:
+        st.markdown("### 🖥️ Aceleração de Hardware & Seleção de Dispositivo")
+        st.caption("Configure o dispositivo de inferência para os modelos neurais (CPU ou GPU NVIDIA CUDA com aceleração FP16).")
 
-    with col_hw2:
-        st.markdown("**Status e Diagnóstico de Hardware em Tempo Real:**")
-        gpu_check_info = detect_nvidia_gpu()
-        cuda_fw = check_cuda_framework_support()
+        col_hw1, col_hw2 = st.columns([1, 1])
 
-        if gpu_check_info["has_nvidia_gpu"]:
-            st.success(f"🟢 **Placa NVIDIA Aceleradora Detectada:** {gpu_check_info['gpu_name']}")
-            st.caption(f"Driver: {gpu_check_info['driver_version']} | VRAM: {gpu_check_info['memory_total']}")
-            
-            if cuda_fw["torch_cuda"]:
-                st.info(f"✅ **Ambiente PyTorch CUDA Ativo:** Dispositivo `{cuda_fw['torch_device_name']}` pronto para inferência rápida.")
+        with col_hw1:
+            st.markdown("**Seletor do Modo de Processamento:**")
+            selected_hw_option = st.radio(
+                "Escolha o acelerador:",
+                options=["cpu", "gpu"],
+                index=0 if default_device_pref == "cpu" else 1,
+                format_func=lambda x: {
+                    "cpu": "💻 Processamento por CPU somente",
+                    "gpu": "⚡ Processamento por GPU (quando houver)"
+                }[x],
+                help="• CPU Somente: Utiliza o processador da máquina.\n• GPU (quando houver): Processa via GPU NVIDIA se disponível no computador (RTX/GTX), ou faz fallback automático para CPU."
+            )
+
+            if st.button("💾 Salvar Configurações de Hardware", type="primary", width="stretch", key="btn_save_hw_tab"):
+                set_processing_device(selected_hw_option)
+                st.session_state["device_preference"] = selected_hw_option
+                st.success("✅ Configurações de hardware salvas com sucesso!")
+
+        with col_hw2:
+            st.markdown("**Status e Diagnóstico de Hardware em Tempo Real:**")
+            gpu_check_info = detect_nvidia_gpu()
+            cuda_fw = check_cuda_framework_support()
+
+            if gpu_check_info["has_nvidia_gpu"]:
+                st.success(f"🟢 **Placa NVIDIA Aceleradora Detectada:** {gpu_check_info['gpu_name']}")
+                st.caption(f"Driver: {gpu_check_info['driver_version']} | VRAM: {gpu_check_info['memory_total']}")
+
+                if cuda_fw["torch_cuda"]:
+                    st.info(f"✅ **Ambiente PyTorch CUDA Ativo:** Dispositivo `{cuda_fw['torch_device_name']}` pronto para inferência rápida.")
+                else:
+                    st.warning("⚠️ **Dependências CUDA incompletas:** Suporte PyTorch CUDA não detectado.")
+                    if st.button("🚀 Instalar Requisitos CUDA para GPU NVIDIA", width="stretch", key="btn_install_cuda_tab"):
+                        with st.spinner(f"Instalando pacotes PyTorch CUDA para {gpu_check_info['gpu_name']}..."):
+                            install_res = validate_and_setup_gpu_requirements(auto_install=True)
+                            if install_res["cuda_ready"]:
+                                st.success("✅ Pacotes CUDA instalados com sucesso!")
+                                st.rerun()
+                            else:
+                                st.error(install_res["message"])
             else:
-                st.warning("⚠️ **Dependências CUDA incompletas:** Suporte PyTorch CUDA não detectado.")
-                if st.button("🚀 Instalar Requisitos CUDA para GPU NVIDIA", width="stretch"):
-                    with st.spinner(f"Instalando pacotes PyTorch CUDA para {gpu_check_info['gpu_name']}..."):
-                        install_res = validate_and_setup_gpu_requirements(auto_install=True)
-                        if install_res["cuda_ready"]:
-                            st.success("✅ Pacotes CUDA instalados com sucesso!")
-                            st.rerun()
-                        else:
-                            st.error(install_res["message"])
-        else:
-            st.info("💻 **Computador rodando em Modo CPU.** Nenhuma GPU NVIDIA dedicada detectada.")
+                st.info("💻 **Computador rodando em Modo CPU.** Nenhuma GPU NVIDIA dedicada detectada.")
 
-    st.markdown("---")
+    # --------------------------------------------------------------------------
+    # GUIA 2: GOVERNANÇA DE TREINAMENTO & PAINEL DE REVISÃO POR DAN
+    # --------------------------------------------------------------------------
+    with tab_train:
+        st.markdown("### 🎓 Governança de Treinamento & Painel de Revisão por Dan")
+        st.caption("Acompanhe as métricas globais de retreinamento do modelo, distribuição por graduação Dan e gerencie os dados de revisão.")
 
-    # --- SEÇÃO 2: GOVERNANÇA DE TREINAMENTO & APRENDIZADO POR DAN ---
-    st.subheader("🎓 2. Governança de Treinamento & Painel de Revisão por Dan")
-    st.markdown("Acompanhe as métricas globais de retreinamento do modelo, distribuição por graduação Dan e gerenciamento de arquivos de revisão.")
+        training_metrics = feedback_mgr.get_training_metrics()
 
-    training_metrics = feedback_mgr.get_training_metrics()
+        m_col1, m_col2, m_col3 = st.columns(3)
+        m_col1.metric("Total de Treinamentos Realizados", training_metrics["total_trainings_count"])
+        m_col2.metric("Nível Médio (Dan) dos Treinamentos", training_metrics["average_dan_label"])
+        m_col3.metric("Total de Marcações de Revisão", training_metrics["total_review_items"])
 
-    m_col1, m_col2, m_col3 = st.columns(3)
-    m_col1.metric("Total de Treinamentos Realizados", training_metrics["total_trainings_count"])
-    m_col2.metric("Nível Médio (Dan) dos Treinamentos", training_metrics["average_dan_label"])
-    m_col3.metric("Total de Marcações de Revisão", training_metrics["total_review_items"])
+        st.markdown("#### 📊 Distribuição de Treinamentos por Graduação Dan:")
+        dan_table_md = "| Dan | Nome da Graduação | Quantidade de Treinamentos | Percentual (%) |\n| :--- | :--- | :---: | :---: |\n"
+        for d_row in training_metrics["dan_distribution"]:
+            dan_table_md += f"| **{d_row['Dan']}** | {d_row['Nome Graduação']} | {d_row['Quantidade Treinamentos']} | {d_row['Percentual (%)']} |\n"
+        st.markdown(dan_table_md)
 
-    st.markdown("**Tabela de Quantidade de Treinamentos por Dan:**")
-    dan_table_md = "| Dan | Nome da Graduação | Quantidade de Treinamentos | Percentual (%) |\n| :--- | :--- | :---: | :---: |\n"
-    for d_row in training_metrics["dan_distribution"]:
-        dan_table_md += f"| **{d_row['Dan']}** | {d_row['Nome Graduação']} | {d_row['Quantidade Treinamentos']} | {d_row['Percentual (%)']} |\n"
-    st.markdown(dan_table_md)
+        st.markdown("#### 🛠️ Gerenciamento do Dataset de Treinamento:")
+        act_col1, act_col2, act_col3 = st.columns(3)
 
-    st.markdown("##### 🛠️ Gerenciamento do Dataset de Treinamento:")
-    act_col1, act_col2, act_col3 = st.columns(3)
-
-    with act_col1:
-        st.markdown("**🗑️ Apagar Treinamento do Sistema**")
-        st.caption("Reseta todo o histórico de revisões e restaura o modelo ao estágio inicial.")
-        confirm_reset = st.checkbox("Confirmo que desejo apagar todo o treinamento", key="chk_confirm_reset")
-        if st.button("🗑️ Apagar Treinamento", type="secondary", width="stretch"):
-            if confirm_reset:
-                feedback_mgr.reset_all_training_data()
-                st.success("✅ Treinamento do sistema apagado com sucesso! Sistema restaurado ao estágio inicial.")
-                st.rerun()
-            else:
-                st.warning("⚠️ Marque a caixa de confirmação acima antes de apagar.")
-
-    with act_col2:
-        st.markdown("**📥 Baixar Treinamento Atual**")
-        st.caption("Baixa pacote contendo todas as revisões, Dan dos revisores e datas dos treinamentos.")
-        pkg_data = feedback_mgr.export_training_package()
-        pkg_json_str = json.dumps(pkg_data, indent=2, ensure_ascii=False)
-        st.download_button(
-            label="📥 Baixar Treinamento (.json)",
-            data=pkg_json_str,
-            file_name=f"senpai_training_package_{int(time.time())}.json",
-            mime="application/json",
-            width="stretch"
-        )
-
-    with act_col3:
-        st.markdown("**📤 Carregar Treinamento Baixado**")
-        st.caption("Importa arquivos de revisão previamente baixados para recalibrar o modelo.")
-        imported_file = st.file_uploader("Selecione pacote (.json)", type=["json"], key="import_pkg_file")
-        if imported_file is not None:
-            if st.button("📤 Importar e Retreinar Modelo", type="primary", width="stretch"):
-                try:
-                    imported_file.seek(0)
-                    pkg_content = json.loads(imported_file.read().decode("utf-8"))
-                    import_res = feedback_mgr.import_training_package(pkg_content)
-                    st.success(f"🎉 Pacote importado com sucesso! {import_res['new_items_added']} novos itens integrados. Novo Dan médio: {import_res['average_dan_now']}.")
+        with act_col1:
+            st.markdown("**🗑️ Apagar Treinamento do Sistema**")
+            st.caption("Reseta todo o histórico de revisões e restaura o modelo ao estágio inicial.")
+            confirm_reset = st.checkbox("Confirmo que desejo apagar todo o treinamento", key="chk_confirm_reset_tab")
+            if st.button("🗑️ Apagar Treinamento", type="secondary", width="stretch", key="btn_reset_train_tab"):
+                if confirm_reset:
+                    feedback_mgr.reset_all_training_data()
+                    st.success("✅ Treinamento do sistema apagado com sucesso! Sistema restaurado ao estágio inicial.")
                     st.rerun()
-                except Exception as ex:
-                    st.error(f"❌ Erro ao importar pacote de treinamento: {ex}")
+                else:
+                    st.warning("⚠️ Marque a caixa de confirmação acima antes de apagar.")
 
-    st.markdown("---")
+        with act_col2:
+            st.markdown("**📥 Baixar Treinamento Atual**")
+            st.caption("Baixa pacote contendo todas as revisões, Dan dos revisores e datas dos treinamentos.")
+            pkg_data = feedback_mgr.export_training_package()
+            pkg_json_str = json.dumps(pkg_data, indent=2, ensure_ascii=False)
+            st.download_button(
+                label="📥 Baixar Treinamento (.json)",
+                data=pkg_json_str,
+                file_name=f"senpai_training_package_{int(time.time())}.json",
+                mime="application/json",
+                width="stretch",
+                key="btn_dl_train_tab"
+            )
 
-    # --- SEÇÃO 3: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA ---
-    st.subheader("🐛 3. Diagnóstico, Alertas & Log de Debug do Sistema")
-    st.markdown("Rastreie alertas e erros do sistema em tempo real, execute testes de integridade e baixe o arquivo de log completo.")
+        with act_col3:
+            st.markdown("**📤 Carregar Treinamento Baixado**")
+            st.caption("Importa arquivos de revisão previamente baixados para recalibrar o modelo.")
+            imported_file = st.file_uploader("Selecione pacote (.json)", type=["json"], key="import_pkg_file_tab")
+            if imported_file is not None:
+                if st.button("📤 Importar e Retreinar Modelo", type="primary", width="stretch", key="btn_import_train_tab"):
+                    try:
+                        imported_file.seek(0)
+                        pkg_content = json.loads(imported_file.read().decode("utf-8"))
+                        import_res = feedback_mgr.import_training_package(pkg_content)
+                        st.success(f"🎉 Pacote importado com sucesso! {import_res['new_items_added']} novos itens integrados. Novo Dan médio: {import_res['average_dan_now']}.")
+                        st.rerun()
+                    except Exception as ex:
+                        st.error(f"❌ Erro ao importar pacote de treinamento: {ex}")
 
-    log_summary = get_log_summary()
+    # --------------------------------------------------------------------------
+    # GUIA 3: PERFIS DE CALIBRAÇÃO & CRITÉRIOS DE ARBITRAGEM
+    # --------------------------------------------------------------------------
+    with tab_calib:
+        st.markdown("### 🎛️ Perfis de Calibração & Critérios Técnicos")
+        st.caption("Consulte os perfis de rigor de arbitragem e os pesos de validação de Ki-Ken-Tai-Ichi aplicados na detecção de Ippon.")
 
-    l_col1, l_col2, l_col3, l_col4 = st.columns(4)
-    l_col1.metric("Total de Eventos Registrados", log_summary["total_logs"])
-    l_col2.metric("Erros do Sistema", log_summary["errors_count"], delta_color="inverse")
-    l_col3.metric("Alertas & Avisos", log_summary["warnings_count"], delta_color="inverse")
-    l_col4.metric("Informações de Execução", log_summary["info_count"])
+        calib_file_path = "config/calibration_profiles.json"
+        calib_data = {}
+        if os.path.exists(calib_file_path):
+            with open(calib_file_path, "r", encoding="utf-8") as f:
+                calib_data = json.load(f)
 
-    st.markdown("##### 🛠️ Ferramentas de Diagnóstico e Rastreamento:")
-    dbg_col1, dbg_col2, dbg_col3, dbg_col4 = st.columns(4)
+        c_card1, c_card2, c_card3 = st.columns(3)
 
-    with dbg_col1:
-        st.markdown("**📥 Log de Debug**")
-        st.caption("Baixa o arquivo completo de eventos do sistema (`senpai_debug.log`).")
-        debug_log_text = get_debug_log_file_content()
-        st.download_button(
-            label="📥 Baixar Log (.log)",
-            data=debug_log_text,
-            file_name=f"senpai_debug_{int(time.time())}.log",
-            mime="text/plain",
-            width="stretch"
-        )
+        p_perm = calib_data.get("permissivo", {})
+        p_norm = calib_data.get("normal", {})
+        p_rig = calib_data.get("rigido", {})
 
-    with dbg_col2:
-        st.markdown("**🧪 Diagnóstico Rápido**")
-        st.caption("Verifica hardware, CUDA, integridade de arquivos e dependências.")
-        if st.button("🧪 Executar Diagnóstico", type="secondary", width="stretch"):
-            with st.spinner("Executando checagem de diagnóstico do sistema..."):
-                diag_res = run_system_diagnostic_check()
-                st.success("✅ Teste de diagnóstico concluído! Alertas gravados no log.")
+        with c_card1:
+            st.markdown(
+                f"""
+                <div style="background-color: #1E293B; border-left: 4px solid #10B981; border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+                    <div style="font-weight: 700; color: #34D399; font-size: 1.05rem;">🟢 {p_perm.get('name', 'Permissivo')}</div>
+                    <div style="color: #94A3B8; font-size: 0.85rem; margin-top: 4px; margin-bottom: 10px;">{p_perm.get('description', '')}</div>
+                    <div style="font-size: 0.88rem; color: #E2E8F0;">
+                        <b>Pontuação Mínima:</b> {int(p_perm.get('min_total_score', 0.50) * 100)}%<br>
+                        <b>Alvo:</b> {int(p_perm.get('weights', {}).get('target_impact', 0.35) * 100)}% |
+                        <b>Fumikomi:</b> {int(p_perm.get('weights', {}).get('fumikomi_sync', 0.25) * 100)}%<br>
+                        <b>Postura:</b> {int(p_perm.get('weights', {}).get('posture', 0.20) * 100)}% |
+                        <b>Zanshin:</b> {int(p_perm.get('weights', {}).get('zanshin', 0.20) * 100)}%
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with c_card2:
+            st.markdown(
+                f"""
+                <div style="background-color: #1E293B; border-left: 4px solid #3B82F6; border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+                    <div style="font-weight: 700; color: #60A5FA; font-size: 1.05rem;">🔵 {p_norm.get('name', 'Normal')}</div>
+                    <div style="color: #94A3B8; font-size: 0.85rem; margin-top: 4px; margin-bottom: 10px;">{p_norm.get('description', '')}</div>
+                    <div style="font-size: 0.88rem; color: #E2E8F0;">
+                        <b>Pontuação Mínima:</b> {int(p_norm.get('min_total_score', 0.65) * 100)}%<br>
+                        <b>Alvo:</b> {int(p_norm.get('weights', {}).get('target_impact', 0.40) * 100)}% |
+                        <b>Fumikomi:</b> {int(p_norm.get('weights', {}).get('fumikomi_sync', 0.25) * 100)}%<br>
+                        <b>Postura:</b> {int(p_norm.get('weights', {}).get('posture', 0.20) * 100)}% |
+                        <b>Zanshin:</b> {int(p_norm.get('weights', {}).get('zanshin', 0.15) * 100)}%
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with c_card3:
+            st.markdown(
+                f"""
+                <div style="background-color: #1E293B; border-left: 4px solid #8B5CF6; border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+                    <div style="font-weight: 700; color: #A78BFA; font-size: 1.05rem;">🟣 {p_rig.get('name', 'Rígido')}</div>
+                    <div style="color: #94A3B8; font-size: 0.85rem; margin-top: 4px; margin-bottom: 10px;">{p_rig.get('description', '')}</div>
+                    <div style="font-size: 0.88rem; color: #E2E8F0;">
+                        <b>Pontuação Mínima:</b> {int(p_rig.get('min_total_score', 0.78) * 100)}%<br>
+                        <b>Alvo:</b> {int(p_rig.get('weights', {}).get('target_impact', 0.45) * 100)}% |
+                        <b>Fumikomi:</b> {int(p_rig.get('weights', {}).get('fumikomi_sync', 0.25) * 100)}%<br>
+                        <b>Postura:</b> {int(p_rig.get('weights', {}).get('posture', 0.15) * 100)}% |
+                        <b>Zanshin:</b> {int(p_rig.get('weights', {}).get('zanshin', 0.15) * 100)}%
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        st.markdown("#### 📋 Tabela Comparativa Detalhada dos Perfis:")
+        calib_table_md = """| Critério Técnico | 🟢 Permissivo (Iniciante) | 🔵 Normal (Keiko) | 🟣 Rígido (Campeonato / Dan) |
+| :--- | :---: | :---: | :---: |
+| **Pontuação Mínima Global** | **50%** | **65%** | **78%** |
+| **Peso: Impacto no Alvo (Datotsu-bu)** | 35% | 40% | 45% |
+| **Peso: Fumikomi (Sincronia Mão-Pé)** | 25% | 25% | 25% |
+| **Peso: Postura Corporal** | 20% | 20% | 15% |
+| **Peso: Zanshin (Vontade & Guarda)** | 20% | 15% | 15% |
+| **Sub-limiar de Impacto** | 0.45 | 0.60 | 0.70 |
+| **Sub-limiar de Fumikomi** | 0.35 | 0.50 | 0.60 |
+| **Sub-limiar de Postura** | 0.35 | 0.50 | 0.60 |
+| **Sub-limiar de Zanshin** | 0.30 | 0.45 | 0.55 |
+"""
+        st.markdown(calib_table_md)
+        st.info("💡 **Dica de Calibração:** Durante a análise de lutas, você pode selecionar o perfil desejado ou escolher a opção **'⚙️ Personalizado'** na barra lateral para ajustar os sliders de limiares em tempo real.")
+
+    # --------------------------------------------------------------------------
+    # GUIA 4: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA
+    # --------------------------------------------------------------------------
+    with tab_diag:
+        st.markdown("### 🐛 Diagnóstico do Sistema, Alertas & Registros de Debug")
+        st.caption("Rastreie alertas e erros do sistema em tempo real, execute testes de integridade e baixe o arquivo de log completo.")
+
+        log_summary = get_log_summary()
+
+        l_col1, l_col2, l_col3, l_col4 = st.columns(4)
+        l_col1.metric("Total de Eventos Registrados", log_summary["total_logs"])
+        l_col2.metric("Erros do Sistema", log_summary["errors_count"], delta_color="inverse")
+        l_col3.metric("Alertas & Avisos", log_summary["warnings_count"], delta_color="inverse")
+        l_col4.metric("Informações de Execução", log_summary["info_count"])
+
+        st.markdown("#### 🛠️ Ferramentas de Diagnóstico e Rastreamento:")
+        dbg_col1, dbg_col2, dbg_col3, dbg_col4 = st.columns(4)
+
+        with dbg_col1:
+            st.markdown("**📥 Log de Debug**")
+            st.caption("Baixa o arquivo completo de eventos do sistema (`senpai_debug.log`).")
+            debug_log_text = get_debug_log_file_content()
+            st.download_button(
+                label="📥 Baixar Log (.log)",
+                data=debug_log_text,
+                file_name=f"senpai_debug_{int(time.time())}.log",
+                mime="text/plain",
+                width="stretch",
+                key="btn_dl_debug_log_tab"
+            )
+
+        with dbg_col2:
+            st.markdown("**🧪 Diagnóstico Rápido**")
+            st.caption("Verifica hardware, CUDA, integridade de arquivos e dependências.")
+            if st.button("🧪 Executar Diagnóstico", type="secondary", width="stretch", key="btn_run_diag_tab"):
+                with st.spinner("Executando checagem de diagnóstico do sistema..."):
+                    diag_res = run_system_diagnostic_check()
+                    st.success("✅ Teste de diagnóstico concluído! Alertas gravados no log.")
+                    st.rerun()
+
+        with dbg_col3:
+            st.markdown("**🔬 Testes Automatizados**")
+            st.caption("Executa toda a suíte de testes automatizados e salva o log detalhado.")
+            if st.button("🔬 Rodar Testes (52)", type="primary", width="stretch", key="btn_run_tests_tab"):
+                with st.spinner("Executando suíte de testes automatizados..."):
+                    t_res = run_automated_tests(test_dir="tests", log_file=TEST_LOG_PATH, verbosity=1)
+                    if t_res["success"]:
+                        st.success(f"✅ Todos os {t_res['total_tests']} testes aprovados com sucesso ({t_res['duration_seconds']:.2f}s)!")
+                    else:
+                        st.error(f"❌ {t_res['failed']} falha(s) e {t_res['errors']} erro(s) detectados nos testes.")
+                    st.rerun()
+
+        with dbg_col4:
+            st.markdown("**📥 Log dos Testes**")
+            st.caption("Baixa o relatório descritivo do último teste (`senpai_test_report.log`).")
+            test_log_content = get_latest_test_report_content(TEST_LOG_PATH)
+            st.download_button(
+                label="📥 Baixar Log Testes (.log)",
+                data=test_log_content,
+                file_name="senpai_test_report.log",
+                mime="text/plain",
+                width="stretch",
+                key="btn_dl_test_rep_tab"
+            )
+
+        col_clean, _ = st.columns([1, 3])
+        with col_clean:
+            if st.button("🧹 Limpar Logs de Debug", type="secondary", width="stretch", key="btn_clear_logs_tab"):
+                clear_debug_logs()
+                st.success("✅ Histórico de logs de debug zerado com sucesso!")
                 st.rerun()
 
-    with dbg_col3:
-        st.markdown("**🔬 Testes Automatizados**")
-        st.caption("Executa toda a suíte de 44 testes e salva o log detalhado em `logs/`.")
-        if st.button("🔬 Rodar Testes (44)", type="primary", width="stretch"):
-            with st.spinner("Executando suíte de 44 testes automatizados..."):
-                t_res = run_automated_tests(test_dir="tests", log_file=TEST_LOG_PATH, verbosity=1)
-                if t_res["success"]:
-                    st.success(f"✅ Todos os {t_res['total_tests']} testes aprovados com sucesso ({t_res['duration_seconds']:.2f}s)!")
-                else:
-                    st.error(f"❌ {t_res['failed']} falha(s) e {t_res['errors']} erro(s) detectados nos testes.")
-                st.rerun()
+        st.markdown("#### 📜 Alertas e Registros de Debug em Tempo Real:")
+        filter_col1, filter_col2 = st.columns([1, 2])
+        with filter_col1:
+            lvl_filter = st.selectbox("Filtrar por Nível:", ["TODOS", "ERROR", "WARNING", "INFO", "DEBUG"], index=0, key="log_lvl_filter_select_tab")
 
-    with dbg_col4:
-        st.markdown("**📥 Log dos Testes**")
-        st.caption("Baixa o relatório descritivo do último teste (`senpai_test_report.log`).")
-        test_log_content = get_latest_test_report_content(TEST_LOG_PATH)
-        st.download_button(
-            label="📥 Baixar Log Testes (.log)",
-            data=test_log_content,
-            file_name="senpai_test_report.log",
-            mime="text/plain",
-            width="stretch"
-        )
+        logs_display = get_memory_logs(max_entries=150, level_filter=lvl_filter)
 
-    col_clean, _ = st.columns([1, 3])
-    with col_clean:
-        if st.button("🧹 Limpar Logs de Debug", type="secondary", width="stretch"):
-            clear_debug_logs()
-            st.success("✅ Histórico de logs de debug zerado com sucesso!")
-            st.rerun()
+        with st.container(height=350):
+            if not logs_display:
+                st.info("Nenhum registro de log encontrado para o filtro selecionado.")
+            else:
+                for entry in logs_display:
+                    timestamp_str = entry.get("timestamp", "")
+                    level_str = entry.get("level", "INFO")
+                    mod_str = entry.get("module", "sys")
+                    msg_str = entry.get("message", "")
 
-    st.markdown("##### 📜 Alertas e Registros de Debug em Tempo Real:")
-    filter_col1, filter_col2 = st.columns([1, 2])
-    with filter_col1:
-        lvl_filter = st.selectbox("Filtrar por Nível:", ["TODOS", "ERROR", "WARNING", "INFO", "DEBUG"], index=0, key="log_lvl_filter_select")
-
-    logs_display = get_memory_logs(max_entries=150, level_filter=lvl_filter)
-
-    with st.container(height=350):
-        if not logs_display:
-            st.info("Nenhum registro de log encontrado para o filtro selecionado.")
-        else:
-            for entry in logs_display:
-                timestamp_str = entry.get("timestamp", "")
-                level_str = entry.get("level", "INFO")
-                mod_str = entry.get("module", "sys")
-                msg_str = entry.get("message", "")
-
-                if level_str == "ERROR":
-                    st.error(f"🔴 `[{timestamp_str}]` **[{mod_str}]** {msg_str}")
-                elif level_str in ["WARNING", "WARN"]:
-                    st.warning(f"🟡 `[{timestamp_str}]` **[{mod_str}]** {msg_str}")
-                elif level_str == "DEBUG":
-                    st.caption(f"⚙️ `[{timestamp_str}]` **[{mod_str}]** {msg_str}")
-                else:
-                    st.markdown(f"🔵 `[{timestamp_str}]` **[{mod_str}]** {msg_str}")
+                    if level_str == "ERROR":
+                        st.error(f"🔴 `[{timestamp_str}]` **[{mod_str}]** {msg_str}")
+                    elif level_str in ["WARNING", "WARN"]:
+                        st.warning(f"🟡 `[{timestamp_str}]` **[{mod_str}]** {msg_str}")
+                    elif level_str == "DEBUG":
+                        st.caption(f"⚙️ `[{timestamp_str}]` **[{mod_str}]** {msg_str}")
+                    else:
+                        st.markdown(f"🔵 `[{timestamp_str}]` **[{mod_str}]** {msg_str}")
 
     st.markdown("---")
-    st.info("💡 **Dica:** Para alterar os parâmetros de hardware selecionados, utilize a Seção 1. Para iniciar a análise de lutas, navegue no menu lateral até **'⚔️ Análise de Lutas'**.")
+    st.info("💡 **Dica:** Para alterar os parâmetros de hardware ou perfis, selecione as abas acima. Para iniciar a análise de lutas, navegue no menu lateral até **'⚔️ Análise de Lutas'**.")
 
 
 # ==============================================================================
