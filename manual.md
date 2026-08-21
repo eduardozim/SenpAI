@@ -292,6 +292,17 @@ Total de **52 testes automatizados** executados e aprovados com 100% de sucesso.
 - **Suíte de Testes Automatizados**:
   - 44 testes automatizados em `unittest` com 100% de aprovação cobrindo todo o pipeline cinemático, Sonkyō, planos, placar, flag dorsal, hardware, governança por Dan e logs.
 
+### `[v1.6.1]` — 2026-08-20
+
+- **Menu de Configurações em Layout de Guias (Tabs)**:
+  - Reestruturação completa da página de configurações ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)) com navegação modular em 4 guias especializadas via `st.tabs`:
+    1. 🖥️ **Processamento & Hardware**: Seletor de dispositivo (CPU / GPU NVIDIA), status e diagnóstico de hardware em tempo real e instalador de pacotes CUDA.
+    2. 🎓 **Governança de Treinamento**: Métricas de retreinamento por Dan, tabela de distribuição por graduação e ferramentas de backup/reset/importação de dados.
+    3. 🎛️ **Perfis de Calibração**: Cards e tabela comparativa dos perfis de arbitragem (*Permissivo*, *Normal*, *Rígido*) e pesos dos critérios de *Ki-Ken-Tai-Ichi*.
+    4. 🐛 **Diagnóstico, Alertas & Logs**: Métricas de eventos do sistema, ferramentas de download de logs, diagnóstico rápido, execução de testes automatizados e console de logs em tempo real com filtro por nível.
+  - Estilização CSS refinada para as abas no tema escuro do SenpAI com destaque azul ativo, transições suaves e contraste ergonômico.
+- **Suíte de Testes Automatizados**: 52 testes automatizados executados com 100% de aprovação.
+
 ---
 
 ### `[v1.5.0]` — 2026-08-15
