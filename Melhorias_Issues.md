@@ -10,7 +10,7 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
    - **Sinalização Instantânea**: Exibição em tempo real dos pontos válidos durante a luta.
 
 2. **Modo de Detecção Gravada**
-   - **Opção de analise de video por link de youtube**
+   - **Opção de análise de vídeo por link do YouTube / Streaming Web (Concluído v1.6.2)**: Suporte completo a carregamento e download de vídeos por URL do YouTube (padrão, shorts, encurtado, live) e links de streaming, com caching e extração de metadados.
    
 3. **Modo de Treinamento & Aprendizado**
    - **Análise Técnica e Exercícios**: Incluir modo de treino de Kendo onde a IA fornecerá dicas de melhorias nas técnicas e recomendará exercícios de desenvolvimento específicos para o Kenshi.
@@ -163,6 +163,15 @@ Versão 1.7.0
    - Issues Solucionadas:
       - Falsos positivos gerados por artefatos de perspectiva ou oclusões em configurações com múltiplas câmeras.
       - Poluição visual no feed ao vivo decorrente de alertas desnecessários de técnicas descartadas.
+
+Versão 1.6.2
+   - Melhorias Aplicadas:
+      - **Suporte a Links do YouTube, Streaming Web e Seleção de Qualidade (Modo de Detecção Gravada - v1.6.2)**: Inclusão de seletor visual na interface para escolha entre `📁 Fazer Upload de Arquivo` e `🌐 Link do YouTube / Streaming Web`.
+      - **Seletor de Qualidade de Download**: Opções de download nos níveis **Baixa** (menor resolução / download rápido), **Média** (padrão: intermediária até 720p @ 30 FPS) e **Alta** (máxima resolução e FPS disponíveis no vídeo).
+      - **Módulo `video_downloader.py` com `yt-dlp`**: Extração de metadados (título, canal, duração, resolução e FPS), miniatura de visualização, validação de múltiplos formatos de link (padrão, shorts, youtu.be, live, embeds) e download direto para formato compatível com OpenCV.
+      - **Sistema de Caching por Nível de Qualidade**: Reutilização instantânea de vídeos já baixados no cache local (`senpai_uploads`), evitando re-downloads redundantes.
+      - **Exibição Transparente da Qualidade Baixada**: Card de carregamento com nível de qualidade (Baixa, Média, Alta), resolução física real do vídeo baixado, FPS real e tamanho em MB; badge visual com link direto no player de vídeo e legenda explicativa no resumo de combate.
+      - **Suíte de Testes Automatizados Expandida (64 testes)**: Criação de `tests/test_video_downloader.py` (12 testes unitários e de integração) com 100% de aprovação na suíte completa.
 
 Versão 1.6.0
    -Melhorias Aplicadas:

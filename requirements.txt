@@ -6,6 +6,7 @@ fastdtw>=0.3.4
 streamlit>=1.30.0
 pillow>=10.0.0
 protobuf>=4.25.0,<5.0.0
+yt-dlp>=2024.0.0
 
 # --- Requisitos Opcionais para Aceleração de Hardware via GPU NVIDIA (CUDA) ---
 # Para ativar aceleração máxima via GPU NVIDIA (ex: RTX 4050/3060/4090):

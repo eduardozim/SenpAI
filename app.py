@@ -31,6 +31,10 @@ from src.utils.logger_manager import (
 from src.utils.test_runner import (
     run_automated_tests, get_latest_test_report_content, TEST_LOG_PATH
 )
+from src.utils.video_downloader import (
+    validate_video_url, extract_video_info, download_video_stream,
+    format_video_duration, VideoDownloadError, QUALITY_LABELS
+)
 
 # Inicializa o logger central do sistema
 setup_system_logger()
@@ -1048,65 +1052,203 @@ else:
             video_file_path = st.session_state.get("video_file_path", None)
             
             with col_in1:
-                st.subheader("📹 Fazer Upload de Vídeo")
-                st.markdown("Selecione o arquivo de vídeo da luta de Kendo a ser analisado:")
-                uploaded_file = st.file_uploader("Vídeo da Luta (.mp4, .avi, .mov)", type=["mp4", "avi", "mov"], help="Suporta arquivos de vídeo de qualquer tamanho. Arquivos acima de 200MB podem ter tempos de carregamento extensos.")
-                if uploaded_file is not None:
-                    cached_file_name = st.session_state.get("uploaded_file_name")
-                    cached_file_size = st.session_state.get("uploaded_file_size")
-                    cached_file_path = st.session_state.get("video_file_path")
+                st.subheader("📹 Carregar Vídeo")
+                source_choice = st.radio(
+                    "Selecione a Origem do Vídeo:",
+                    ["📁 Fazer Upload de Arquivo", "🌐 Link do YouTube / Streaming Web"],
+                    horizontal=True,
+                    key="recorded_source_choice"
+                )
 
-                    # Reutilizar o arquivo salvo caso seja exatamente o mesmo upload
-                    if cached_file_path and os.path.exists(cached_file_path) and cached_file_name == uploaded_file.name and cached_file_size == uploaded_file.size:
-                        video_file_path = cached_file_path
-                    else:
-                        # Limpar arquivo temporário anterior se existir
-                        if cached_file_path and os.path.exists(cached_file_path) and ("senpai_uploads" in cached_file_path or "tmp" in cached_file_path):
-                            try:
-                                os.remove(cached_file_path)
-                            except Exception:
-                                pass
-
-                        uploads_dir = os.path.join(tempfile.gettempdir(), "senpai_uploads")
-                        os.makedirs(uploads_dir, exist_ok=True)
-                        
-                        # Limpar arquivos temporários antigos de sessões anteriores
-                        try:
-                            now = time.time()
-                            for old_f in os.listdir(uploads_dir):
-                                f_p = os.path.join(uploads_dir, old_f)
-                                if os.path.isfile(f_p) and (now - os.path.getmtime(f_p) > 3600):
-                                    os.remove(f_p)
-                        except Exception:
-                            pass
-
-                        safe_filename = f"upload_{int(time.time())}_{uploaded_file.name}"
-                        target_file_path = os.path.join(uploads_dir, safe_filename)
-
-                        uploaded_file.seek(0)
-                        with open(target_file_path, "wb") as f_out:
-                            while True:
-                                chunk = uploaded_file.read(8 * 1024 * 1024)
-                                if not chunk:
-                                    break
-                                f_out.write(chunk)
-
-                        video_file_path = target_file_path
-                        st.session_state["video_file_path"] = video_file_path
-                        st.session_state["uploaded_file_name"] = uploaded_file.name
-                        st.session_state["uploaded_file_size"] = uploaded_file.size
-                else:
-                    if "uploaded_file_name" in st.session_state:
+                if source_choice == "📁 Fazer Upload de Arquivo":
+                    st.markdown("Selecione o arquivo de vídeo local da luta de Kendo a ser analisado:")
+                    uploaded_file = st.file_uploader(
+                        "Vídeo da Luta (.mp4, .avi, .mov)",
+                        type=["mp4", "avi", "mov"],
+                        help="Suporta arquivos de vídeo de qualquer tamanho. Arquivos acima de 200MB podem ter tempos de carregamento extensos.",
+                        key="recorded_local_file_uploader"
+                    )
+                    if uploaded_file is not None:
+                        cached_file_name = st.session_state.get("uploaded_file_name")
+                        cached_file_size = st.session_state.get("uploaded_file_size")
                         cached_file_path = st.session_state.get("video_file_path")
-                        if cached_file_path and os.path.exists(cached_file_path) and ("senpai_uploads" in cached_file_path or "tmp" in cached_file_path):
+
+                        # Reutilizar o arquivo salvo caso seja exatamente o mesmo upload
+                        if cached_file_path and os.path.exists(cached_file_path) and cached_file_name == uploaded_file.name and cached_file_size == uploaded_file.size:
+                            video_file_path = cached_file_path
+                        else:
+                            # Limpar arquivo temporário anterior se existir
+                            if cached_file_path and os.path.exists(cached_file_path) and ("senpai_uploads" in cached_file_path or "tmp" in cached_file_path):
+                                try:
+                                    os.remove(cached_file_path)
+                                except Exception:
+                                    pass
+
+                            uploads_dir = os.path.join(tempfile.gettempdir(), "senpai_uploads")
+                            os.makedirs(uploads_dir, exist_ok=True)
+                            
+                            # Limpar arquivos temporários antigos de sessões anteriores
                             try:
-                                os.remove(cached_file_path)
+                                now = time.time()
+                                for old_f in os.listdir(uploads_dir):
+                                    f_p = os.path.join(uploads_dir, old_f)
+                                    if os.path.isfile(f_p) and (now - os.path.getmtime(f_p) > 3600):
+                                        os.remove(f_p)
                             except Exception:
                                 pass
-                        st.session_state.pop("uploaded_file_name", None)
-                        st.session_state.pop("uploaded_file_size", None)
+
+                            safe_filename = f"upload_{int(time.time())}_{uploaded_file.name}"
+                            target_file_path = os.path.join(uploads_dir, safe_filename)
+
+                            uploaded_file.seek(0)
+                            with open(target_file_path, "wb") as f_out:
+                                while True:
+                                    chunk = uploaded_file.read(8 * 1024 * 1024)
+                                    if not chunk:
+                                        break
+                                    f_out.write(chunk)
+
+                            video_file_path = target_file_path
+                            st.session_state["video_file_path"] = video_file_path
+                            st.session_state["uploaded_file_name"] = uploaded_file.name
+                            st.session_state["uploaded_file_size"] = uploaded_file.size
+                            st.session_state["video_source_type"] = "upload"
+                            st.session_state.pop("youtube_video_info", None)
+                            st.session_state.pop("youtube_url", None)
+                    else:
+                        if st.session_state.get("video_source_type") == "upload":
+                            if "uploaded_file_name" in st.session_state:
+                                cached_file_path = st.session_state.get("video_file_path")
+                                if cached_file_path and os.path.exists(cached_file_path) and ("senpai_uploads" in cached_file_path or "tmp" in cached_file_path):
+                                    try:
+                                        os.remove(cached_file_path)
+                                    except Exception:
+                                        pass
+                                st.session_state.pop("uploaded_file_name", None)
+                                st.session_state.pop("uploaded_file_size", None)
+                                st.session_state.pop("video_file_path", None)
+                                video_file_path = None
+
+                else:
+                    # Origem: Link do YouTube / Streaming Web
+                    st.markdown("Insira o link de vídeo de Kendo do YouTube ou stream da web:")
+                    yt_url_input = st.text_input(
+                        "🔗 Link do Vídeo (YouTube, Shorts, Streaming):",
+                        placeholder="https://www.youtube.com/watch?v=... ou https://youtu.be/...",
+                        value=st.session_state.get("youtube_url", ""),
+                        key="recorded_youtube_url_input"
+                    )
+
+                    yt_quality_keys = ["media", "alta", "baixa"]
+                    selected_quality = st.selectbox(
+                        "⚙️ Qualidade do Download:",
+                        options=yt_quality_keys,
+                        format_func=lambda k: QUALITY_LABELS.get(k, k),
+                        index=0,  # "media" padrão
+                        key="recorded_youtube_quality_select",
+                        help="• Média (Padrão): Resolução intermediária (até 720p) a 30 FPS.\n• Alta: Máxima resolução e FPS originais do vídeo.\n• Baixa: Menor resolução disponível com download mais rápido."
+                    )
+
+                    yt_loaded_path = st.session_state.get("video_file_path") if st.session_state.get("video_source_type") == "youtube" else None
+                    yt_info = st.session_state.get("youtube_video_info", {})
+
+                    col_yt_btn1, col_yt_btn2 = st.columns([1.8, 1.2])
+                    with col_yt_btn1:
+                        load_yt_btn = st.button(
+                            "📥 Carregar Vídeo do Link" if not yt_loaded_path else "🔄 Recarregar Link",
+                            type="primary" if not yt_loaded_path else "secondary",
+                            width="stretch",
+                            key="btn_load_recorded_youtube"
+                        )
+                    with col_yt_btn2:
+                        clear_yt_btn = st.button(
+                            "🗑️ Limpar Vídeo",
+                            type="secondary",
+                            width="stretch",
+                            disabled=not yt_loaded_path,
+                            key="btn_clear_recorded_youtube"
+                        )
+
+                    if clear_yt_btn:
                         st.session_state.pop("video_file_path", None)
-                        video_file_path = None
+                        st.session_state.pop("youtube_video_info", None)
+                        st.session_state.pop("youtube_url", None)
+                        st.session_state.pop("video_source_type", None)
+                        st.session_state.pop("analysis_result", None)
+                        st.toast("Vídeo descarregado com sucesso!", icon="🗑️")
+                        st.rerun()
+
+                    if load_yt_btn and yt_url_input:
+                        if not validate_video_url(yt_url_input):
+                            st.error("❌ Link inválido. Forneça uma URL válida do YouTube (ex: youtube.com/watch?v=... ou youtu.be/...) ou streaming de vídeo.")
+                        else:
+                            prog_bar = st.progress(0.0)
+                            status_txt = st.empty()
+                            def _ui_progress(pct: float, msg: str):
+                                prog_bar.progress(min(1.0, max(0.0, pct)))
+                                status_txt.markdown(f"<span style='color: #60a5fa; font-size: 0.88rem;'>⏳ {msg}</span>", unsafe_allow_html=True)
+                            
+                            try:
+                                with st.spinner(f"⏳ Conectando e baixando vídeo ({QUALITY_LABELS.get(selected_quality, selected_quality)})..."):
+                                    dl_path, extracted_info = download_video_stream(
+                                        url=yt_url_input,
+                                        quality=selected_quality,
+                                        progress_callback=_ui_progress
+                                    )
+                                st.session_state["video_file_path"] = dl_path
+                                st.session_state["youtube_video_info"] = extracted_info
+                                st.session_state["youtube_url"] = yt_url_input
+                                st.session_state["video_source_type"] = "youtube"
+                                # Limpa upload local anterior
+                                st.session_state.pop("uploaded_file_name", None)
+                                st.session_state.pop("uploaded_file_size", None)
+                                st.toast(f"✅ Vídeo '{extracted_info.get('title', 'Kendo')}' carregado com sucesso!", icon="🎥")
+                                st.rerun()
+                            except VideoDownloadError as e:
+                                st.error(f"❌ {str(e)}")
+                            except Exception as e:
+                                st.error(f"❌ Erro ao carregar vídeo do YouTube: {str(e)}")
+
+                    # Exibir card informativo se o vídeo do YouTube estiver carregado
+                    if yt_loaded_path and yt_info and os.path.exists(yt_loaded_path):
+                        video_file_path = yt_loaded_path
+                        yt_thumb = yt_info.get("thumbnail", "")
+                        yt_title = yt_info.get("title", "Vídeo do YouTube")
+                        yt_uploader = yt_info.get("uploader", "Canal")
+                        yt_dur = yt_info.get("duration_formatted", "00:00")
+                        yt_res = yt_info.get("downloaded_resolution", yt_info.get("resolution", "HD"))
+                        yt_fps = yt_info.get("downloaded_fps", yt_info.get("fps", 30.0))
+                        yt_qual = yt_info.get("quality_label", QUALITY_LABELS.get(selected_quality, "Média (Intermediária / 30 FPS)"))
+                        yt_size = yt_info.get("downloaded_file_size_mb", 0.0)
+                        size_str = f" &nbsp;|&nbsp; 💾 {yt_size:.1f} MB" if yt_size > 0 else ""
+                        
+                        thumb_html = f'<img src="{yt_thumb}" style="width: 100%; border-radius: 6px; aspect-ratio: 16/9; object-fit: cover; border: 1px solid #3b82f6;">' if yt_thumb else ''
+                        
+                        st.markdown(
+                            f"""
+                            <div style="background: linear-gradient(135deg, rgba(30, 27, 75, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%); border: 1px solid #4f46e5; border-radius: 8px; padding: 10px 14px; margin-top: 10px;">
+                                <div style="display: flex; gap: 12px; align-items: center;">
+                                    <div style="flex: 0 0 110px;">
+                                        {thumb_html}
+                                    </div>
+                                    <div style="flex: 1; min-width: 0;">
+                                        <span style="background: #ef4444; color: white; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">▶ YOUTUBE / STREAM</span>
+                                        <div style="color: #f8fafc; font-weight: 600; font-size: 0.90rem; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{yt_title}">{yt_title}</div>
+                                        <div style="color: #94a3b8; font-size: 0.78rem; margin-top: 2px;">
+                                            👤 {yt_uploader} &nbsp;|&nbsp; ⏱️ {yt_dur}{size_str}
+                                        </div>
+                                        <div style="background: rgba(99, 102, 241, 0.18); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 4px; padding: 3px 8px; margin-top: 4px; font-size: 0.76rem; color: #c7d2fe;">
+                                            ⚙️ <b>Qualidade Baixada:</b> <span style="color: #38bdf8; font-weight: 700;">{yt_qual}</span> &nbsp;•&nbsp; 📐 <b>Resolução:</b> {yt_res} @ {yt_fps:.0f} FPS
+                                        </div>
+                                        <div style="color: #34d399; font-size: 0.78rem; font-weight: 600; margin-top: 4px;">
+                                            ✅ Vídeo pronto para execução da análise
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
 
             with col_in2:
                 st.subheader("Executar Analise")
@@ -1281,7 +1423,10 @@ else:
             session_revs = st.session_state.get("session_reviews", {})
             sonkyo_edits = st.session_state.get("sonkyo_edits", {})
             is_inverted = st.session_state.get("invert_aka_shiro", False)
-            video_name_simple = os.path.basename(video_file_path) if video_file_path else "recorded_match.mp4"
+            if st.session_state.get("video_source_type") == "youtube" and "youtube_video_info" in st.session_state:
+                video_name_simple = st.session_state["youtube_video_info"].get("title", os.path.basename(video_file_path) if video_file_path else "youtube_match.mp4")
+            else:
+                video_name_simple = os.path.basename(video_file_path) if video_file_path else "recorded_match.mp4"
 
             if "analysis_result" in st.session_state:
                 res = st.session_state["analysis_result"]
@@ -1496,6 +1641,21 @@ else:
             
             with col_video:
                 st.subheader("🎥 Vídeo da Luta")
+                if st.session_state.get("video_source_type") == "youtube" and "youtube_url" in st.session_state:
+                    yt_u = st.session_state["youtube_url"]
+                    yt_inf = st.session_state.get("youtube_video_info", {})
+                    yt_t = yt_inf.get("title", "Vídeo do YouTube")
+                    yt_q = yt_inf.get("quality_label", "Média (Intermediária / 30 FPS)")
+                    yt_r = yt_inf.get("downloaded_resolution", yt_inf.get("resolution", ""))
+                    yt_f = yt_inf.get("downloaded_fps", yt_inf.get("fps", 30.0))
+                    res_tag = f" &nbsp;[📐 {yt_r} @ {yt_f:.0f} FPS]" if yt_r else ""
+                    st.markdown(
+                        f'<div style="background: rgba(239, 68, 68, 0.10); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; font-size: 0.82rem; display: flex; justify-content: space-between; align-items: center;">'
+                        f'<span style="color: #FCA5A5;">🌐 <b>Origem:</b> {yt_t[:32]}{"..." if len(yt_t) > 32 else ""} &nbsp;|&nbsp; ⚙️ <b>Qualidade:</b> <span style="color: #38bdf8; font-weight: 700;">{yt_q}</span>{res_tag}</span>'
+                        f'<a href="{yt_u}" target="_blank" style="color: #93C5FD; text-decoration: underline; font-size: 0.78rem; flex-shrink: 0; margin-left: 8px;">Ver no YouTube ↗️</a>'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
                 
                 has_annotated = "annotated_output" in st.session_state and os.path.exists(st.session_state.get("annotated_output", ""))
                 if has_annotated:
@@ -1572,6 +1732,13 @@ else:
                     if sonkyo_info.get("status_message"):
                         st.caption(f"🥋 **Status do Sonkyō:** {sonkyo_info['status_message']}")
                     st.caption(f"ℹ️ {res.get('device_status', '')}")
+                    if st.session_state.get("video_source_type") == "youtube":
+                        yt_inf = st.session_state.get("youtube_video_info", {})
+                        yt_q = yt_inf.get("quality_label", "Média")
+                        yt_r = yt_inf.get("downloaded_resolution", "")
+                        yt_f = yt_inf.get("downloaded_fps", "")
+                        fps_tag = f" @ {yt_f:.0f} FPS" if yt_f else ""
+                        st.caption(f"🌐 **Fonte:** Streaming Web / YouTube &nbsp;|&nbsp; ⚙️ **Qualidade do Vídeo Baixado:** {yt_q} ({yt_r}{fps_tag})")
                     st.markdown('</div>', unsafe_allow_html=True)
 
             with col_results:
