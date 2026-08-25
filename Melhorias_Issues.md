@@ -10,7 +10,7 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
    - **Sinalização Instantânea**: Exibição em tempo real dos pontos válidos durante a luta.
 
 2. **Modo de Detecção Gravada**
-   - **Opção de analise de video por link de youtube**
+   - **Opção de análise de vídeo por link do YouTube / Streaming Web (Concluído v1.6.2)**: Suporte completo a carregamento e download de vídeos por URL do YouTube (padrão, shorts, encurtado, live) e links de streaming, com caching e extração de metadados.
    
 3. **Modo de Treinamento & Aprendizado**
    - **Análise Técnica e Exercícios**: Incluir modo de treino de Kendo onde a IA fornecerá dicas de melhorias nas técnicas e recomendará exercícios de desenvolvimento específicos para o Kenshi.
@@ -113,6 +113,39 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
 
 ---
 
+## 📱 Módulo Mobile (SenpAI Companion App)
+
+O **SenpAI Mobile** foi concebido como uma extensão portátil e interativa do ecossistema SenpAI, conectando praticantes (*Kenshi*), professores (*Sensei*) e árbitros (*Shinpan*) ao poder de processamento de visão computacional e IA do sistema.
+
+### 1. Transformação do Smartphone em Câmera Inteligente ("SenpAI Cam")
+- **Transmissão RTSP / WebRTC em Alta Performance**: Utilização da câmera do smartphone como nó de captura sem fio de alta taxa de quadros (60/120 FPS), integrando-se automaticamente ao servidor/hub do SenpAI.
+- **Assistente de Enquadramento com Realidade Aumentada (AR)**: Guia visual na tela sobrepondo as linhas recomendadas do *Shiai-jo*, distância e ângulo ideais do tripé antes de iniciar a gravação.
+- **Modo de Gravação Offline & Sincronização Automática**: Capacidade de gravar treinos locais no dojo sem conexão de internet ativa e realizar upload em segundo plano quando reconectar ao Wi-Fi.
+- **Modo Econômico & Gestão Térmica**: Escurecimento de tela e baixo consumo de energia durante gravações e transmissões longas em campeonatos.
+
+### 2. Treinamento Individual & Assistente Pessoal ("Pocket Sensei")
+- **Feedback em Tempo Real por Áudio (Bluetooth)**: Instruções e correções instantâneas por voz diretamente no fone de ouvido durante treinos solo de *Suburi* e *Uchikomi* (ex: *"Aumente o Zanshin"*, *"Sincronize o Fumikomi"*, *"Men detectado com 92% de precisão"*).
+- **Metrônomo Biomecânico & Contador de Suburi**: Monitoramento de cadência rítmica, altura de elevação do *Shinai* e consistência de postura com contagem automática de repetições.
+- **Acesso Completo às Rotinas Propostas de Treino**: Planos de treino personalizados gerados pelo motor de IA com metas diárias, séries recomendadas e vídeos tutoriais de referência técnica.
+- **Simulador Interativo de Exames de Graduação (Kyu/Dan)**: Checklist diagnóstico pré-exame com avaliação de postura, rituais de cortesia (*Reiho*), *Kihon* e conformidade biomecânica para cada nível.
+
+### 3. Gamificação, Comunidade & Social Dojo
+- **Scoreboard & Rankings do Dojo**: Placares semanais e mensais de volume de treino, regularidade (*streaks*), precisão de golpes e evolução técnica entre os membros do dojo.
+- **Cartões de Golpe & Exportação para Redes Sociais**: Geração de cards em vídeo/GIF estilizados (formato Shorts/Reels) com traçado do esqueleto biomecânico, métricas de *Ki-Ken-Tai-Ichi* e selo de validação da IA para compartilhamento direto no Instagram/WhatsApp.
+- **Compartilhamento de Sessões com Amigos e Sensei**: Envio de clipes e relatórios com marcações e anotações para análise remota pelo professor do dojo.
+- **Painel do Sensei (Gestão de Alunos)**: Interface dedicada para instrutores acompanharem o progresso da turma, atribuírem tarefas de treino personalizadas e deixarem notas por áudio/texto em lances específicos.
+
+### 4. Modo Shinpan & Árbitro de Bolso (Suporte ao Shiaijo)
+- **Controle Remoto de Placar e Cronômetro**: Uso do celular como mesa de controle wireless de pontuação (*Ippon*, *Hansoku*, *Encho*, contagem de tempo), sincronizando os eventos diretamente com a gravação de vídeo do SenpAI.
+- **VAR de Bolso (Revisão Rápida com Gestos Touch)**: Player otimizado para replay instantâneo com avanço/retrocesso quadro a quadro tátil (*scrubbing* fluido), permitindo revisão rápida de lances duvidosos na lateral da quadra.
+- **Notificações Hápticas de Consenso de Câmeras**: Alerta por vibração no celular ou smartwatch quando o quórum de múltiplas câmeras validar um ponto com alta confiança estatística.
+
+### 5. Integração com Wearables & Sensores
+- **Suporte a Smartwatch (Apple Watch / Wear OS)**: Leitura de dados de frequência cardíaca, impacto e aceleração do punho integrados à análise visual de *Ki-Ken-Tai-Ichi*.
+- **Diário de Bordo & Biometria do Kenshi**: Histórico consolidado de tempo de treino, calorias, fadiga e tempo de reação ao longo de semanas e meses.
+
+---
+
 ## ✅ Concluídas
 
 
@@ -130,6 +163,15 @@ Versão 1.7.0
    - Issues Solucionadas:
       - Falsos positivos gerados por artefatos de perspectiva ou oclusões em configurações com múltiplas câmeras.
       - Poluição visual no feed ao vivo decorrente de alertas desnecessários de técnicas descartadas.
+
+Versão 1.6.2
+   - Melhorias Aplicadas:
+      - **Suporte a Links do YouTube, Streaming Web e Seleção de Qualidade (Modo de Detecção Gravada - v1.6.2)**: Inclusão de seletor visual na interface para escolha entre `📁 Fazer Upload de Arquivo` e `🌐 Link do YouTube / Streaming Web`.
+      - **Seletor de Qualidade de Download**: Opções de download nos níveis **Baixa** (menor resolução / download rápido), **Média** (padrão: intermediária até 720p @ 30 FPS) e **Alta** (máxima resolução e FPS disponíveis no vídeo).
+      - **Módulo `video_downloader.py` com `yt-dlp`**: Extração de metadados (título, canal, duração, resolução e FPS), miniatura de visualização, validação de múltiplos formatos de link (padrão, shorts, youtu.be, live, embeds) e download direto para formato compatível com OpenCV.
+      - **Sistema de Caching por Nível de Qualidade**: Reutilização instantânea de vídeos já baixados no cache local (`senpai_uploads`), evitando re-downloads redundantes.
+      - **Exibição Transparente da Qualidade Baixada**: Card de carregamento com nível de qualidade (Baixa, Média, Alta), resolução física real do vídeo baixado, FPS real e tamanho em MB; badge visual com link direto no player de vídeo e legenda explicativa no resumo de combate.
+      - **Suíte de Testes Automatizados Expandida (64 testes)**: Criação de `tests/test_video_downloader.py` (12 testes unitários e de integração) com 100% de aprovação na suíte completa.
 
 Versão 1.6.0
    -Melhorias Aplicadas:

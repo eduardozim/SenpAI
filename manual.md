@@ -46,7 +46,8 @@ Dev/
 │   │   ├── demo_generator.py       # Gerador sintético de vídeos de teste de Kendo
 │   │   ├── hardware.py             # Detecção de GPU NVIDIA e resolução de fallback CPU
 │   │   ├── logger_manager.py       # Gerenciador central de logs, alertas e diagnósticos de debug
-│   │   └── settings_manager.py     # Gerenciamento e persistência das configurações do sistema
+│   │   ├── settings_manager.py     # Gerenciamento e persistência das configurações do sistema
+│   │   └── video_downloader.py     # Download, extração de metadados e streaming do YouTube/Web
 │   ├── vision/
 │   │   ├── combatant_tracker.py    # Rastreamento dos 2 Kenshi (Aka/Shiro), flag dorsal e planos
 │   │   ├── pose_detector.py        # Rastreamento de esqueleto 3D via YOLOv8-Pose / MediaPipe
@@ -59,7 +60,8 @@ Dev/
 │   ├── test_logger_manager.py      # Testes automatizados do sistema de logs e diagnóstico
 │   ├── test_pipeline_cancellation.py # Testes automatizados de cancelamento e interrupção do pipeline
 │   ├── test_scoreboard_and_flag_detection.py # Testes do placar oficial e detecção de flag dorsal
-│   └── test_sonkyo_and_plane_filtering.py # Testes de Sonkyō, limites da luta e filtragem de planos
+│   ├── test_sonkyo_and_plane_filtering.py # Testes de Sonkyō, limites da luta e filtragem de planos
+│   └── test_video_downloader.py    # Testes unitários e de integração do downloader de YouTube
 ├── app.py                          # Dashboard Web Interativo em Streamlit (com HUD, Placar e Configurações)
 ├── main.py                         # Interface de Linha de Comando (CLI com flags completas)
 ├── Melhorias_Issues.md             # Registro de pendências, issues e histórico de versões
@@ -291,6 +293,29 @@ Total de **52 testes automatizados** executados e aprovados com 100% de sucesso.
   - Streaming direto de renderização em 2ª passada no pipeline de gravação de vídeo anotado, reduzindo o consumo de memória RAM de 15+ GB para menos de 100 MB.
 - **Suíte de Testes Automatizados**:
   - 44 testes automatizados em `unittest` com 100% de aprovação cobrindo todo o pipeline cinemático, Sonkyō, planos, placar, flag dorsal, hardware, governança por Dan e logs.
+
+### `[v1.6.2]` — 2026-08-25
+
+- **Suporte a Links do YouTube, Streaming Web e Seleção de Qualidade no Modo de Detecção Gravada**:
+  - Inclusão do seletor visual de origem de vídeo no painel de carregamento ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)), permitindo alternar facilmente entre:
+    1. 📁 **Fazer Upload de Arquivo**: Upload de arquivos de vídeo locais (.mp4, .avi, .mov).
+    2. 🌐 **Link do YouTube / Streaming Web**: Entrada de URLs de vídeos do YouTube (links padrão, encurtados `youtu.be`, `shorts`, transmissões e links de streaming direto).
+  - **Seletor de Qualidade de Download**: Permite ao usuário escolher o nível de qualidade para download de streams:
+    - **Média (Intermediária / 30 FPS - Padrão)**: Resolução intermediária (até 720p) limitada a 30 FPS para equilíbrio perfeito entre velocidade e fidelidade biomecânica.
+    - **Alta (Máxima Disponível)**: Máxima resolução e FPS originais do vídeo.
+    - **Baixa (Menor Disponível / Download Rápido)**: Menor resolução disponível para processamento ultrarrápido com baixo consumo de banda.
+  - Implementação do módulo [video_downloader.py](file:///d:/Projetos/SenpAI/Dev/src/utils/video_downloader.py) utilizando a biblioteca `yt-dlp`:
+    - Validação de múltiplos formatos de URLs e streams web.
+    - Extração assíncrona rápida de metadados sem necessidade de download prévio completo (título, canal/autor, miniatura, duração formatada, resolução e taxa de quadros FPS).
+    - Download otimizado no formato MP4 multiplexado com suporte a callbacks de progresso em tempo real e verificação de integridade.
+    - Sistema de **caching local inteligente por nível de qualidade**: reutilização imediata de arquivos já baixados em `senpai_uploads`, eliminando downloads repetitivos da mesma luta.
+    - **Exibição Transparente da Qualidade Baixada**:
+      - *Card de Carregamento*: Exibe a etiqueta de qualidade (ex: `Média (Intermediária / 30 FPS)`), resolução real do arquivo baixado (ex: `1280x720 @ 30 FPS`), duração e tamanho do arquivo em MB.
+      - *Player de Vídeo*: Badge no topo do player destacando a origem do YouTube, a qualidade baixada com resolução/FPS reais e link direto `[Ver no YouTube ↗️]`.
+      - *Resumo do Combate*: Legenda informativa detalhando a fonte de streaming e a qualidade/resolução efetiva do vídeo processado pelo pipeline.
+- **Expansão da Suíte de Testes Automatizados (64 Testes)**:
+  - Criação do módulo [test_video_downloader.py](file:///d:/Projetos/SenpAI/Dev/tests/test_video_downloader.py) com 12 testes cobrindo validação de URLs, formatação de tempo, sanitização de nomes, extração de metadados mockados, rejeição de streams ao vivo, limites de duração, seletores de formato para cada qualidade (baixa, média, alta), persistência de cache por qualidade e integração de ponta a ponta com o [SenpAIPipeline](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py).
+  - Suíte completa de 64 testes executada com 100% de sucesso.
 
 ### `[v1.6.1]` — 2026-08-20
 
