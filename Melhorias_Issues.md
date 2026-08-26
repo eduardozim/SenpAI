@@ -5,12 +5,8 @@
 A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais de Operação**:
 
 1. **Modo de Detecção em Tempo Real**
-   - **Processamento Ao Vivo**: Processamento e detecção instantânea de golpes via transmissão ao vivo (Webcam / Câmeras de transmissão).
-   - **Suporte Multi-Câmera (RTCP)**: Incluir suporte ao protocolo RTCP/RTSP para integração de múltiplos ângulos de câmera.
-   - **Sinalização Instantânea**: Exibição em tempo real dos pontos válidos durante a luta.
 
 2. **Modo de Detecção Gravada**
-   - **Opção de análise de vídeo por link do YouTube / Streaming Web (Concluído v1.6.2)**: Suporte completo a carregamento e download de vídeos por URL do YouTube (padrão, shorts, encurtado, live) e links de streaming, com caching e extração de metadados.
    
 3. **Modo de Treinamento & Aprendizado**
    - **Análise Técnica e Exercícios**: Incluir modo de treino de Kendo onde a IA fornecerá dicas de melhorias nas técnicas e recomendará exercícios de desenvolvimento específicos para o Kenshi.
@@ -99,6 +95,8 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
   - Vazamento de memória (memory leak) durante o processamento de vídeos longos ou transmissões ao vivo.
   - Sempre limpar arquivos de vídeo usados anteriormente
   - Configuração de limpeza de arquivos temporários
+- **Processamento em tempo real**:
+  - Delay na recepção de vídeo via RTSP causando falha de sincronização com cameras locais (webcam)
 - **Vídeo, Marcações e Sincronização**:
   - O vídeo com as marcações sobrepostas não está funcionando corretamente.
   - Dessincronização entre o vídeo original, as marcações e os clipes gerados.
@@ -108,8 +106,6 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
   - Perda de conexão e dessincronização em transmissões de múltiplas câmeras via RTSP.
 - **Rastreamento de Atletas & Plano de Fundo**:
   - Falha na persistência ou troca acidental de identidade entre os Kenshi Aka e Shiro durante a luta.
-- **Interface & Feedback de Usuário**:
-  - Interface sem indicação clara de status de processamento, mensagens de erro ou estado de análise incompleta.
 
 ---
 
@@ -151,22 +147,26 @@ O **SenpAI Mobile** foi concebido como uma extensão portátil e interativa do e
 
 Versão 1.7.0
    -Melhorias Aplicadas:
-      - **Validação de Golpes por Consenso Multi-Câmeras (`MultiCameraFusionEngine` - v1.7.0)**: Definição da ocorrência de golpes baseada no conjunto das imagens/frames das câmeras ativas com sincronização temporal síncrona ($\pm 10$ frames / $\approx 350\text{ ms}$).
-      - **Escalonamento Progressivo de Quórum por Quantidade de Câmeras (v1.7.0)**: Quanto mais câmeras ativas, maior a exigência de confirmação cruzada nos quadros:
+      - **Validação de Golpes por Consenso Multi-Câmeras**: Definição da ocorrência de golpes baseada no conjunto das imagens/frames das câmeras ativas com sincronização temporal síncrona ($\pm 10$ frames / $\approx 350\text{ ms}$).
+      - **Escalonamento Progressivo de Quórum por Quantidade de Câmeras**: Quanto mais câmeras ativas, maior a exigência de confirmação cruzada nos quadros:
         - 1 Câmera: Quórum 1/1 (100%)
         - 2 Câmeras: Quórum 2/2 (100% de confirmação cruzada obrigatória)
         - 3 Câmeras: Quórum 2/3 (Normal) ou 3/3 (Rígido)
         - 4 Câmeras: Quórum 3/4 (Normal) ou 4/4 (Rígido)
-      - **Descarte Silencioso de Falsos Positivos Unilaterais (v1.7.0)**: Movimentações vistas apenas em um ângulo que não atingem o quórum de confirmação são descartadas em background sem poluir a interface visual com mensagens de descarte.
+	  - **Processamento Ao Vivo**: Processamento e detecção instantânea de golpes via transmissão ao vivo (Webcam / Câmeras de transmissão).
+      - **Suporte Multi-Câmera (RTCP)**: Incluir suporte ao protocolo RTCP/RTSP para integração de múltiplos ângulos de câmera.
+      - **Sinalização Instantânea**: Exibição em tempo real dos pontos válidos durante a luta.
+      - **Descarte Silencioso de Falsos Positivos Unilaterais**: Movimentações vistas apenas em um ângulo que não atingem o quórum de confirmação são descartadas em background sem poluir a interface visual com mensagens de descarte.
       - **Interface Limpa no Modo Tempo Real (v1.7.0)**: Alertas diretos e objetivos (`🚨 GOLPE DETECTADO: MEN`) com registro conciso no feed de golpes.
-      - **Suíte de Testes Automatizados Expandida (52 Testes - v1.7.0)**: Criação de `tests/test_multi_camera_fusion.py` com 8 novos testes cobrindo escalonamento de quórum, rejeição de visões unilaterais e alinhamento temporal (100% de aprovação na suíte geral).
+      - **Suíte de Testes Automatizados Expandida (52 Testes )**: Criação de `tests/test_multi_camera_fusion.py` com 8 novos testes cobrindo escalonamento de quórum, rejeição de visões unilaterais e alinhamento temporal (100% de aprovação na suíte geral).
    - Issues Solucionadas:
       - Falsos positivos gerados por artefatos de perspectiva ou oclusões em configurações com múltiplas câmeras.
       - Poluição visual no feed ao vivo decorrente de alertas desnecessários de técnicas descartadas.
+	  - **Interface & Feedback de Usuário**: Interface sem indicação clara de status de processamento, mensagens de erro ou estado de análise incompleta.
 
 Versão 1.6.2
    - Melhorias Aplicadas:
-      - **Suporte a Links do YouTube, Streaming Web e Seleção de Qualidade (Modo de Detecção Gravada - v1.6.2)**: Inclusão de seletor visual na interface para escolha entre `📁 Fazer Upload de Arquivo` e `🌐 Link do YouTube / Streaming Web`.
+      - **Suporte a Links do YouTube, Streaming Web e Seleção de Qualidade**: Inclusão de seletor visual na interface para escolha entre `📁 Fazer Upload de Arquivo` e `🌐 Link do YouTube / Streaming Web`.
       - **Seletor de Qualidade de Download**: Opções de download nos níveis **Baixa** (menor resolução / download rápido), **Média** (padrão: intermediária até 720p @ 30 FPS) e **Alta** (máxima resolução e FPS disponíveis no vídeo).
       - **Módulo `video_downloader.py` com `yt-dlp`**: Extração de metadados (título, canal, duração, resolução e FPS), miniatura de visualização, validação de múltiplos formatos de link (padrão, shorts, youtu.be, live, embeds) e download direto para formato compatível com OpenCV.
       - **Sistema de Caching por Nível de Qualidade**: Reutilização instantânea de vídeos já baixados no cache local (`senpai_uploads`), evitando re-downloads redundantes.
