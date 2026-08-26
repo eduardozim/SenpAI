@@ -136,13 +136,13 @@ Opções disponíveis:
 5. PERFIS DE CALIBRAÇÃO (SENSIBILIDADE)
 -------------------------------------------------------------------------------
 
+- Iniciantes / Educacional (Permissivo):
+  Limiar mínimo: 45%. Foco na precisão ao alvo, tolerando pequenas falhas
+  de postura e sincronismo.
 - Treino Geral / Keiko (Normal):
   Limiar mínimo: 65%. Equilíbrio ideal entre precisão técnica e tolerância.
 - Campeonato / Audit de Dan (Rígido):
   Limiar mínimo: 82%. Exige execução perfeita de Ki-Ken-Tai-Ichi e Zanshin.
-- Iniciantes / Educacional (Permissivo):
-  Limiar mínimo: 45%. Foco na precisão ao alvo, tolerando pequenas falhas
-  de postura e sincronismo.
 - Personalizado (Custom):
   Disponível na interface Web para ajuste manual de pesos e limiares via sliders.
 
