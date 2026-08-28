@@ -1953,7 +1953,7 @@ else:
             col_video, col_results = st.columns([5, 7])
             
             with col_video:
-                st.subheader("🎥 Vídeo de Treinamento" if app_mode == "training" else "🎥 Vídeo da Luta")
+                st.subheader("🎥 Vídeo da Luta")
                 if st.session_state.get("video_source_type") == "youtube" and "youtube_url" in st.session_state:
                     yt_u = st.session_state["youtube_url"]
                     yt_inf = st.session_state.get("youtube_video_info", {})
