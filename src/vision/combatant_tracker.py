@@ -40,6 +40,11 @@ class CombatantTracker:
         - max_foreground_scale_ratio: Limiar acima do qual o elemento é classificado como Oclusão de Primeiro Plano (Frente da Câmera).
         - ground_line_tolerance: Tolerância de deslocamento vertical dos pés em relação ao solo do Shiaijo.
         - invert_assignment: Se True, inverte manualmente as identidades de Aka e Shiro.
+
+        Configuração Padrão de Posição (Câmera Oposta à Mesa dos Juízes):
+        Em Kendo oficial, observando do lado oposto à mesa dos juízes (visão padrão da câmera):
+        - Esquerda do enquadramento (x <= 0.50) = Kenshi Shiro (Branco)
+        - Direita do enquadramento (x > 0.50) = Kenshi Aka (Vermelho)
         """
         self.min_bg_ratio = min_background_scale_ratio
         self.max_fg_ratio = max_foreground_scale_ratio
@@ -55,7 +60,7 @@ class CombatantTracker:
         self.candidate_right_red_score = 0.0
         self.red_evidence_frames_left = 0
         self.red_evidence_frames_right = 0
-        self.flag_decision = "POSITION_DEFAULT"
+        self.flag_decision = "POSITION_DEFAULT_OPPOSITE_JUDGES"
         self.flag_confidence = 0.50
 
         # Referência do Plano Principal de Combate (calibrado a partir do Sonkyō ou dos primeiros frames)
@@ -300,17 +305,17 @@ class CombatantTracker:
                 else:
                     return None, cand, discarded_items
             else:
-                # Default: Se x < 0.5 é Aka (lado esquerdo), senão Shiro
+                # Posição padrão da câmera (oposta à mesa dos juízes): Esquerda (cx <= 0.50) = Shiro, Direita (cx > 0.50) = Aka
                 if not self.invert_assignment:
                     if cx <= 0.50:
-                        return cand, None, discarded_items
+                        return None, cand, discarded_items  # Shiro à esquerda
                     else:
-                        return None, cand, discarded_items
+                        return cand, None, discarded_items  # Aka à direita
                 else:
                     if cx <= 0.50:
-                        return None, cand, discarded_items
+                        return cand, None, discarded_items  # Aka à esquerda (quando invertido manualmente)
                     else:
-                        return cand, None, discarded_items
+                        return None, cand, discarded_items  # Shiro à direita (quando invertido manualmente)
 
         # Se tiver 2 ou mais candidatos no plano principal:
         # Ordenar geometricamente no Shiaijo (candidato à esquerda e candidato à direita)
@@ -335,22 +340,23 @@ class CombatantTracker:
         diff = self.candidate_right_red_score - self.candidate_left_red_score
         
         if diff >= 0.40:
-            # O lutador da DIREITA possui a flag vermelha (Aka) -> Câmera invertida ou posição invertida
+            # O lutador da DIREITA possui a flag vermelha (Aka) -> Alinhado com a posição padrão oposta à mesa dos juízes
             aka_lm = cand_right
             shiro_lm = cand_left
             self.flag_decision = "FLAG_DETECTED_RIGHT_IS_AKA"
             self.flag_confidence = float(np.clip(diff / 2.0, 0.60, 0.98))
         elif diff <= -0.40:
-            # O lutador da ESQUERDA possui a flag vermelha (Aka)
+            # O lutador da ESQUERDA possui a flag vermelha (Aka) -> Inversão de posição no Shiaijo
             aka_lm = cand_left
             shiro_lm = cand_right
             self.flag_decision = "FLAG_DETECTED_LEFT_IS_AKA"
             self.flag_confidence = float(np.clip(abs(diff) / 2.0, 0.60, 0.98))
         else:
-            # Evidência insuficiente / inicial: usar padrão posicional do Shiaijo (Aka à esquerda)
-            aka_lm = cand_left
-            shiro_lm = cand_right
-            self.flag_decision = "POSITION_DEFAULT"
+            # Evidência de flag inconclusiva/inicial: padrão posicional da câmera oposta à mesa dos juízes
+            # No enquadramento: Shiro está à esquerda (cand_left) e Aka está à direita (cand_right)
+            aka_lm = cand_right
+            shiro_lm = cand_left
+            self.flag_decision = "POSITION_DEFAULT_OPPOSITE_JUDGES"
             self.flag_confidence = 0.50
 
         # Se o usuário solicitou inversão manual de Aka e Shiro

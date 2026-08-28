@@ -153,13 +153,15 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
 
     def test_two_combatants_association(self):
         """Testa o rastreamento e associação contínua dos dois Kenshi principais (Aka e Shiro), descartando oponentes secundários."""
-        aka_pose = self._create_synthetic_standing_pose(center_x=0.35)
-        shiro_pose = self._create_synthetic_standing_pose(center_x=0.65)
-        bg_pose = {k: {"x": v["x"] * 0.3 + 0.3, "y": v["y"] * 0.3 + 0.2, "z": 0.0, "visibility": 0.8, "px": int((v["x"]*0.3+0.3)*640), "py": int((v["y"]*0.3+0.2)*480)} for k, v in aka_pose.items()}
+        left_pose = self._create_synthetic_standing_pose(center_x=0.35)
+        right_pose = self._create_synthetic_standing_pose(center_x=0.65)
+        bg_pose = {k: {"x": v["x"] * 0.3 + 0.3, "y": v["y"] * 0.3 + 0.2, "z": 0.0, "visibility": 0.8, "px": int((v["x"]*0.3+0.3)*640), "py": int((v["y"]*0.3+0.2)*480)} for k, v in left_pose.items()}
 
-        aka_res, shiro_res, disc = self.tracker.associate_and_filter([aka_pose, shiro_pose, bg_pose])
+        aka_res, shiro_res, disc = self.tracker.associate_and_filter([left_pose, right_pose, bg_pose])
         self.assertIsNotNone(aka_res)
         self.assertIsNotNone(shiro_res)
+        self.assertEqual(aka_res, right_pose, "Lutador à direita deve ser associado ao Aka.")
+        self.assertEqual(shiro_res, left_pose, "Lutador à esquerda deve ser associado ao Shiro.")
         self.assertEqual(len(disc), 1)
         self.assertEqual(disc[0]["plane_type"], "BACKGROUND")
 

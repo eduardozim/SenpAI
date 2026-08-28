@@ -5,6 +5,11 @@ Detector de Poses com suporte Dual-Backend de Alta Performance:
 """
 
 import os
+import warnings
+
+# Suprime aviso benigno interno de depreciação do protobuf com mediapipe
+warnings.filterwarnings("ignore", category=UserWarning, module="google.protobuf")
+
 import cv2
 import numpy as np
 import logging
