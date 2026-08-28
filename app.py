@@ -9,6 +9,11 @@ Suporta 3 Modos Principais de Operação:
 import streamlit as st
 import tempfile
 import os
+import warnings
+
+# Suprime aviso benigno interno de depreciação do protobuf com mediapipe
+warnings.filterwarnings("ignore", category=UserWarning, module="google.protobuf")
+
 import cv2
 import json
 import time
@@ -993,9 +998,23 @@ else:
                         any_frame_read = True
 
                         # Processar Pose Tracking na câmera k
-                        landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
-                        live_pose_histories[k].append(landmarks)
-                        latest_drawn_frames[k] = drawn_frame
+                        if num_cameras == 1:
+                            candidates, _ = pipeline.pose_detector.process_frame_candidates(frame)
+                            aka_lm, shiro_lm, disc = pipeline.combatant_tracker.associate_and_filter(candidates, frame=frame)
+                            drawn_frame = pipeline.pose_detector.draw_combatants_overlay(
+                                frame,
+                                aka_landmarks=aka_lm,
+                                shiro_landmarks=shiro_lm,
+                                discarded_items=disc,
+                                sonkyo_status="🔴 AO VIVO | ⚪ SHIRO (ESQUERDA) ⇄ AKA (DIREITA) 🔴"
+                            )
+                            active_lm = aka_lm or shiro_lm
+                            live_pose_histories[0].append(active_lm)
+                            latest_drawn_frames[0] = drawn_frame
+                        else:
+                            landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
+                            live_pose_histories[k].append(landmarks)
+                            latest_drawn_frames[k] = drawn_frame
 
                         # Exibir frame anotado
                         frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
@@ -1539,15 +1558,15 @@ else:
                             <span style="color: #93C5FD; font-size: 12px; font-weight: 500;">{flag_badge}</span>
                         </div>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                            <div style="background: linear-gradient(180deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.22) 100%); border: 1.5px solid #EF4444; border-radius: 8px; padding: 12px; text-align: center;">
-                                <div style="color: #FCA5A5; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">🔴 KENSHI AKA (VERMELHO)</div>
-                                <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{aka_score_val} <span style="font-size: 14px; font-weight: 700; color: #FCA5A5;">IPPON</span></div>
-                                <div style="margin-top: 6px;">{aka_items}</div>
-                            </div>
                             <div style="background: linear-gradient(180deg, rgba(243, 244, 246, 0.10) 0%, rgba(100, 116, 139, 0.18) 100%); border: 1.5px solid #E5E7EB; border-radius: 8px; padding: 12px; text-align: center;">
-                                <div style="color: #F3F4F6; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">⚪ KENSHI SHIRO (BRANCO)</div>
+                                <div style="color: #F3F4F6; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">⚪ KENSHI SHIRO (BRANCO - ESQUERDA)</div>
                                 <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{shiro_score_val} <span style="font-size: 14px; font-weight: 700; color: #E5E7EB;">IPPON</span></div>
                                 <div style="margin-top: 6px;">{shiro_items}</div>
+                            </div>
+                            <div style="background: linear-gradient(180deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.22) 100%); border: 1.5px solid #EF4444; border-radius: 8px; padding: 12px; text-align: center;">
+                                <div style="color: #FCA5A5; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">🔴 KENSHI AKA (VERMELHO - DIREITA)</div>
+                                <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{aka_score_val} <span style="font-size: 14px; font-weight: 700; color: #FCA5A5;">IPPON</span></div>
+                                <div style="margin-top: 6px;">{aka_items}</div>
                             </div>
                         </div>
                         <div style="background: {winner_bg}; border: 1px solid {winner_border}; border-radius: 6px; padding: 8px; margin-top: 10px; text-align: center;">
@@ -1888,13 +1907,13 @@ else:
                             with c_in2:
                                 if is_inverted:
                                     att_opts = [
-                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Direita)"),
-                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Esquerda)")
+                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Esquerda)"),
+                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Direita)")
                                     ]
                                 else:
                                     att_opts = [
-                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho)"),
-                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco)")
+                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Esquerda)"),
+                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Direita)")
                                     ]
                                 att_labels = [o[1] for o in att_opts]
                                 ins_att_sel = st.selectbox("Lutador Atacante", att_labels, key=f"ins_att_{slot_id}")
@@ -2337,13 +2356,13 @@ else:
                                 # 1. Lutador Aka ou Shiro
                                 if is_inverted:
                                     att_options = [
-                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Direita)"),
-                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Esquerda)")
+                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Esquerda)"),
+                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Direita)")
                                     ]
                                 else:
                                     att_options = [
-                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho)"),
-                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco)")
+                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Esquerda)"),
+                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Direita)")
                                     ]
                                 att_labels = [opt[1] for opt in att_options]
                                 fn_att_sel = st.selectbox("Lutador Atacante", att_labels, key="fn_attacker_input")

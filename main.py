@@ -9,6 +9,10 @@ Suporta os 3 Modos Principais de Operação:
 import sys
 import os
 import argparse
+import warnings
+
+# Suprime aviso benigno interno de depreciação do protobuf com mediapipe
+warnings.filterwarnings("ignore", category=UserWarning, module="google.protobuf")
 
 if sys.stdout.encoding != 'utf-8':
     try:

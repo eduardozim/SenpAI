@@ -73,6 +73,44 @@ class TestScoreboardAndFlagDetection(unittest.TestCase):
         self.assertEqual(shiro_lm, c_left)
         self.assertIn("RIGHT_IS_AKA", tracker.flag_decision)
 
+    def test_default_position_assignment_opposite_judges(self):
+        """
+        Valida que por padrão (câmera oposta à mesa dos juízes),
+        o lutador à esquerda (c_left) é atribuído ao Kenshi Shiro (Branco)
+        e o lutador à direita (c_right) é atribuído ao Kenshi Aka (Vermelho).
+        """
+        c_left = self._create_mock_landmarks(0.30, 0.5)
+        c_right = self._create_mock_landmarks(0.70, 0.5)
+
+        tracker = CombatantTracker()
+        aka_lm, shiro_lm, _ = tracker.associate_and_filter([c_left, c_right])
+
+        self.assertEqual(aka_lm, c_right, "Lutador à direita deve ser Aka por padrão.")
+        self.assertEqual(shiro_lm, c_left, "Lutador à esquerda deve ser Shiro por padrão.")
+        self.assertIn("OPPOSITE_JUDGES", tracker.flag_decision)
+
+    def test_flag_detection_identifies_left_kenshi_as_aka(self):
+        """
+        Valida que se o lutador à esquerda tiver a flag vermelha (troca de lados),
+        ele é identificado como Aka e o da direita como Shiro.
+        """
+        frame = np.full((480, 640, 3), (40, 40, 40), dtype=np.uint8)
+        c_left = self._create_mock_landmarks(0.30, 0.5)
+        c_right = self._create_mock_landmarks(0.70, 0.5)
+
+        # Pintar flag vermelha no lutador da ESQUERDA (x ~ 0.30 -> pixels 170-220)
+        cv2.rectangle(frame, (170, 200), (220, 250), (20, 20, 220), -1)
+
+        tracker = CombatantTracker()
+        for _ in range(5):
+            aka_lm, shiro_lm, _ = tracker.associate_and_filter([c_left, c_right], frame=frame)
+
+        self.assertIsNotNone(aka_lm)
+        self.assertIsNotNone(shiro_lm)
+        self.assertEqual(aka_lm, c_left)
+        self.assertEqual(shiro_lm, c_right)
+        self.assertIn("LEFT_IS_AKA", tracker.flag_decision)
+
     def test_manual_inversion_of_combatants(self):
         """Valida que a opção de inversão manual inverte Aka e Shiro."""
         c_left = self._create_mock_landmarks(0.30, 0.5)
@@ -81,9 +119,9 @@ class TestScoreboardAndFlagDetection(unittest.TestCase):
         tracker_inverted = CombatantTracker(invert_assignment=True)
         aka_lm, shiro_lm, _ = tracker_inverted.associate_and_filter([c_left, c_right])
 
-        # Com inversão manual e sem flag, o da direita torna-se Aka e o da esquerda Shiro
-        self.assertEqual(aka_lm, c_right)
-        self.assertEqual(shiro_lm, c_left)
+        # Com inversão manual e sem flag, o da esquerda torna-se Aka e o da direita Shiro
+        self.assertEqual(aka_lm, c_left)
+        self.assertEqual(shiro_lm, c_right)
 
     def test_scoreboard_result_calculation(self):
         """Valida cálculo de placar oficial (Ippon), vencedor e empate."""
