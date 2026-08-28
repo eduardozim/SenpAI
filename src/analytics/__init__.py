@@ -11,6 +11,13 @@ from src.analytics.multi_camera_fusion import (
     CameraFrameEvidence,
     MultiCameraStrikeEvaluation
 )
+from src.analytics.training_analyzer import (
+    TrainingAnalyzer,
+    TRAINING_MODALITIES_METADATA,
+    TrainingPillarMetrics,
+    KendokaTrainingProfile,
+    TrainingSessionResult
+)
 
 __all__ = [
     "EventSpotter",
@@ -19,5 +26,10 @@ __all__ = [
     "BiomechanicsAnalyzer",
     "MultiCameraFusionEngine",
     "CameraFrameEvidence",
-    "MultiCameraStrikeEvaluation"
+    "MultiCameraStrikeEvaluation",
+    "TrainingAnalyzer",
+    "TRAINING_MODALITIES_METADATA",
+    "TrainingPillarMetrics",
+    "KendokaTrainingProfile",
+    "TrainingSessionResult"
 ]

@@ -24,6 +24,13 @@ from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager
 from src.engine.reporter import DiagnosticReporter
 from src.analytics.sonkyo_detector import SonkyoDetector
+from src.analytics.training_analyzer import (
+    TrainingAnalyzer,
+    TRAINING_MODALITIES_METADATA,
+    TrainingPillarMetrics,
+    KendokaTrainingProfile,
+    TrainingSessionResult
+)
 from src.utils.hardware import (
     detect_nvidia_gpu, get_effective_device, check_cuda_framework_support,
     validate_and_setup_gpu_requirements, detect_connected_cameras
@@ -119,6 +126,241 @@ def format_seconds_to_ts(seconds: float) -> str:
     mins = int(seconds // 60)
     secs = seconds % 60
     return f"{mins:02d}:{secs:06.3f}"
+
+def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
+    """
+    Renderiza o Painel Especializado de Treinamento & Aprendizado de Kendo:
+    - Identificação e metadados das 10 modalidades de treinamento.
+    - Avaliação minuciosa dos 3 Pilares (Forma, Precisão e Constância).
+    - Rastreamento e nomeação customizada de cada Kendoca no Shiaijo.
+    - Diagnósticos pedagógicos (Pontos Fortes, Pontos de Melhoria e Prescrições Práticas).
+    - Exportação de relatório em JSON.
+    """
+    train_data = res.get("training_analysis", {})
+    if not train_data:
+        st.info("ℹ️ Nenhuma métrica de treinamento disponível para este vídeo.")
+        return
+
+    mod_key = train_data.get("modality_key", "suburi")
+    mod_conf = int(train_data.get("detection_confidence", 0.8) * 100)
+    det_method = train_data.get("detection_method", "AUTO_DETECTED")
+    kendokas = train_data.get("kendokas", [])
+    dur_sec = train_data.get("duration_seconds", res.get("duration_seconds", 0.0))
+
+    meta = TRAINING_MODALITIES_METADATA.get(mod_key, TRAINING_MODALITIES_METADATA["suburi"])
+
+    # 1. CABEÇALHO DA MODALIDADE DE TREINO
+    st.markdown(
+        f"""
+        <div style="background: linear-gradient(135deg, #090D16 0%, #1E1B4B 100%); border: 2px solid #6366F1; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25);">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(99, 102, 241, 0.35); padding-bottom: 8px; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 26px;">🎓</span>
+                    <div>
+                        <div style="color: #A5B4FC; font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">AVALIAÇÃO DE TREINAMENTO & APRENDIZADO DE KENDO</div>
+                        <div style="color: #FFFFFF; font-size: 20px; font-weight: 900; font-family: monospace; line-height: 1.2;">
+                            {meta['name']} <span style="color: #818CF8; font-size: 16px; font-family: sans-serif;">({meta['japanese']})</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <span style="background: rgba(99, 102, 241, 0.25); color: #C7D2FE; border: 1px solid #6366F1; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;">
+                        {'🔍 IA Detectou' if det_method == 'AUTO_DETECTED' else '⚙️ Seleção Manual'} ({mod_conf}% Confiança)
+                    </span>
+                    <div style="color: #94A3B8; font-size: 11px; margin-top: 3px;">⏱️ Duração: {dur_sec:.1f}s • 🥋 Praticantes: {len(kendokas)}</div>
+                </div>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.06);">
+                <div style="color: #E2E8F0; font-size: 13px; margin-bottom: 3px;"><b>{meta['category']}:</b> {meta['description']}</div>
+                <div style="color: #94A3B8; font-size: 12px;">🎯 <b>Focos Principais de Avaliação:</b> {' • '.join(meta['focus_areas'])}</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # 2. CONTROLES: NOMEAÇÃO E DOWNLOAD DO RELATÓRIO
+    top_c1, top_c2 = st.columns([3, 1])
+    with top_c1:
+        st.caption("💡 *Os 3 Pilares avaliam a biomecânica da coluna e pés (Forma), sincronismo de corte Ki-Ken-Tai-Ichi (Precisão) e cadência com ritmo respiratório (Constância).*")
+    with top_c2:
+        report_json_str = json.dumps(train_data, indent=2, ensure_ascii=False)
+        st.download_button(
+            label="📥 Exportar Relatório (.JSON)",
+            data=report_json_str,
+            file_name=f"relatorio_treino_{mod_key}_{int(time.time())}.json",
+            mime="application/json",
+            width="stretch",
+            key="btn_dl_train_report_json"
+        )
+
+    # 3. RASTREAMENTO INDIVIDUAL DOS KENDOCAS NO DOJO
+    for idx_k, k_prof in enumerate(kendokas):
+        k_id = k_prof.get("kendoka_id", f"KENSHI_{idx_k+1}")
+        k_def = k_prof.get("default_name", f"Kendoca {idx_k+1}")
+        k_cust = k_prof.get("custom_name", k_def)
+        k_role = k_prof.get("role", "Praticante")
+        pillars = k_prof.get("pillars", {})
+        strengths = k_prof.get("strengths", [])
+        improvements = k_prof.get("improvements", [])
+        exercises = k_prof.get("recommended_exercises", [])
+        timeline = k_prof.get("repetition_timeline", [])
+
+        overall = float(pillars.get("overall_score", 0.0))
+        forma = float(pillars.get("forma", 0.0))
+        prec = float(pillars.get("precisao", 0.0))
+        const = float(pillars.get("constancia", 0.0))
+        cadence_cpm = float(pillars.get("cadence_cpm", 0.0))
+        reps = int(pillars.get("total_repetitions", 0))
+
+        if overall >= 85:
+            badge_perf = ("🏆 EXCELENTE (NÍVEL AVANÇADO)", "#22C55E", "rgba(34, 197, 94, 0.15)", "#15803D")
+        elif overall >= 70:
+            badge_perf = ("🥇 MUITO BOM (NÍVEL INTERMEDIÁRIO)", "#38BDF8", "rgba(56, 189, 248, 0.15)", "#0284C7")
+        elif overall >= 55:
+            badge_perf = ("🥈 SATISFATÓRIO (EM DESENVOLVIMENTO)", "#EAB308", "rgba(234, 179, 8, 0.15)", "#A16207")
+        else:
+            badge_perf = ("⚠️ NECESSITA AJUSTES DE FUNDAMENTO", "#EF4444", "rgba(239, 68, 68, 0.15)", "#B91C1C")
+
+        st.markdown(
+            f"""
+            <div style="background: #0B1120; border: 1.5px solid #334155; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 8px; margin-bottom: 12px;">
+                    <div>
+                        <span style="color: #F8FAFC; font-size: 16px; font-weight: 800;">🥋 {k_cust}</span>
+                        <span style="color: #94A3B8; font-size: 12px; margin-left: 8px;">({k_def} • {k_role})</span>
+                    </div>
+                    <div style="background: {badge_perf[2]}; border: 1px solid {badge_perf[3]}; border-radius: 6px; padding: 4px 10px;">
+                        <span style="color: {badge_perf[1]}; font-weight: 800; font-size: 13px;">{badge_perf[0]} — {overall:.1f}/100</span>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        col_in_name, col_meta_k = st.columns([1.5, 2.5])
+        with col_in_name:
+            curr_name_input = st.text_input(
+                f"Nome / Identificação no Dojo ({k_def}):",
+                value=k_cust,
+                key=f"train_name_in_{k_id}_{idx_k}"
+            )
+            if curr_name_input and curr_name_input != k_cust:
+                if "training_kendoka_names" not in st.session_state:
+                    st.session_state["training_kendoka_names"] = {}
+                st.session_state["training_kendoka_names"][k_id] = curr_name_input
+                k_prof["custom_name"] = curr_name_input
+        with col_meta_k:
+            st.markdown(
+                f"""
+                <div style="background: rgba(30, 41, 59, 0.4); border-radius: 6px; padding: 8px 12px; margin-top: 14px; display: flex; justify-content: space-around; font-size: 12px;">
+                    <span>⏱️ Cadência: <b style="color:#F8FAFC;">{cadence_cpm:.1f} CPM</b></span>
+                    <span>🔁 Repetições: <b style="color:#F8FAFC;">{reps}</b></span>
+                    <span>📊 Desvio de Ritmo: <b style="color:#F8FAFC;">{pillars.get('cadence_std_dev_seconds', 0.0):.2f}s DP</b></span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        # OS 3 PILARES
+        p_col1, p_col2, p_col3 = st.columns(3)
+        with p_col1:
+            st.markdown(
+                f"""
+                <div style="background: #0F172A; border: 1.5px solid #38BDF8; border-radius: 8px; padding: 12px; height: 100%;">
+                    <div style="color: #38BDF8; font-size: 13px; font-weight: 800; display: flex; justify-content: space-between;">
+                        <span>📐 PILAR 1: FORMA</span>
+                        <span>{forma:.1f}%</span>
+                    </div>
+                    <div style="background: #1E293B; border-radius: 4px; height: 8px; margin: 6px 0 10px 0; overflow: hidden;">
+                        <div style="background: #38BDF8; width: {forma}%; height: 100%;"></div>
+                    </div>
+                    <div style="font-size: 11px; color: #94A3B8; line-height: 1.6;">
+                        • Verticalidade da Coluna: <b style="color:#F1F5F9;">{pillars.get('forma_submetrics', {}).get('verticalidade_coluna', 0):.1f}%</b><br>
+                        • Nivelamento de Ombros: <b style="color:#F1F5F9;">{pillars.get('forma_submetrics', {}).get('nivelamento_ombros', 0):.1f}%</b><br>
+                        • Base e Calcanhar Esquerdo: <b style="color:#F1F5F9;">{pillars.get('forma_submetrics', {}).get('alinhamento_base_pes', 0):.1f}%</b><br>
+                        • Amplitude Furikaburi: <b style="color:#F1F5F9;">{pillars.get('forma_submetrics', {}).get('amplitude_furikaburi', 0):.1f}%</b>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with p_col2:
+            st.markdown(
+                f"""
+                <div style="background: #0F172A; border: 1.5px solid #A855F7; border-radius: 8px; padding: 12px; height: 100%;">
+                    <div style="color: #C084FC; font-size: 13px; font-weight: 800; display: flex; justify-content: space-between;">
+                        <span>🎯 PILAR 2: PRECISÃO</span>
+                        <span>{prec:.1f}%</span>
+                    </div>
+                    <div style="background: #1E293B; border-radius: 4px; height: 8px; margin: 6px 0 10px 0; overflow: hidden;">
+                        <div style="background: #A855F7; width: {prec}%; height: 100%;"></div>
+                    </div>
+                    <div style="font-size: 11px; color: #94A3B8; line-height: 1.6;">
+                        • Trajetória no Ponto Alvo: <b style="color:#F1F5F9;">{pillars.get('precisao_submetrics', {}).get('trajetoria_alvo', 0):.1f}%</b><br>
+                        • Sincronismo Ki-Ken-Tai: <b style="color:#F1F5F9;">{pillars.get('precisao_submetrics', {}).get('kikentai_sincronismo', 0):.1f}%</b><br>
+                        • Controle Linha de Centro: <b style="color:#F1F5F9;">{pillars.get('precisao_submetrics', {}).get('controle_linha_centro', 0):.1f}%</b>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with p_col3:
+            st.markdown(
+                f"""
+                <div style="background: #0F172A; border: 1.5px solid #F59E0B; border-radius: 8px; padding: 12px; height: 100%;">
+                    <div style="color: #FBBF24; font-size: 13px; font-weight: 800; display: flex; justify-content: space-between;">
+                        <span>⏱️ PILAR 3: CONSTÂNCIA</span>
+                        <span>{const:.1f}%</span>
+                    </div>
+                    <div style="background: #1E293B; border-radius: 4px; height: 8px; margin: 6px 0 10px 0; overflow: hidden;">
+                        <div style="background: #F59E0B; width: {const}%; height: 100%;"></div>
+                    </div>
+                    <div style="font-size: 11px; color: #94A3B8; line-height: 1.6;">
+                        • Regularidade do Ritmo: <b style="color:#F1F5F9;">{pillars.get('constancia_submetrics', {}).get('regularidade_ritmo', 0):.1f}%</b><br>
+                        • Resistência à Fadiga: <b style="color:#F1F5F9;">{pillars.get('constancia_submetrics', {}).get('resistencia_fadiga', 0):.1f}%</b><br>
+                        • Adequação à Cadência: <b style="color:#F1F5F9;">{pillars.get('constancia_submetrics', {}).get('adequacao_cadencia', 0):.1f}%</b>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        # DIAGNÓSTICOS PEDAGÓGICOS E PRESCRIÇÕES DE EXERCÍCIOS
+        d_col1, d_col2 = st.columns(2)
+        with d_col1:
+            st.markdown("##### 🌟 Pontos Fortes Observados")
+            if strengths:
+                for s in strengths:
+                    st.markdown(f"✅ <span style='color:#86EFAC; font-size:13px;'>{s}</span>", unsafe_allow_html=True)
+            else:
+                st.caption("Padrão de execução em fase de consolidação.")
+
+        with d_col2:
+            st.markdown("##### ⚠️ Pontos de Atenção & Correção Técnica")
+            if improvements:
+                for imp in improvements:
+                    st.markdown(f"⚠️ <span style='color:#FCA5A5; font-size:13px;'>{imp}</span>", unsafe_allow_html=True)
+            else:
+                st.success("Nenhum vício biomecânico crítico detectado.")
+
+        # Prescrição de Exercícios do Kendo
+        st.markdown("##### 🏋️ Exercícios Recomendados para Evolução Técnica")
+        if exercises:
+            for ex in exercises:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(30, 41, 59, 0.7); border-left: 4px solid #6366F1; border-radius: 6px; padding: 10px 14px; margin-bottom: 8px;">
+                        <div style="color: #A5B4FC; font-weight: 800; font-size: 13px;">🥋 {ex.get('name', 'Exercício')} <span style="color:#94A3B8; font-size:11px; font-weight:400;">(Foco: {ex.get('target', 'Fundamentos')})</span></div>
+                        <div style="color: #E2E8F0; font-size: 12px; margin-top: 3px;">📋 <b>Prescrição:</b> {ex.get('prescription', '')}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
 # Estilização CSS Moderna, Equilibrada (Escala 90%) e sem Cortes na Interface
 st.markdown("""
@@ -1065,13 +1307,13 @@ else:
     # ==========================================================================
     # MODOS 1 E 2: DETECÇÃO GRAVADA & TREINAMENTO & APRENDIZADO
     # ==========================================================================
-    else:
-        with st.expander("📹 Carregar Vídeo da Luta", expanded=("analysis_result" not in st.session_state)):
+        expander_title = "🥋 Carregar Vídeo de Treinamento & Aprendizado" if app_mode == "training" else "📹 Carregar Vídeo da Luta"
+        with st.expander(expander_title, expanded=("analysis_result" not in st.session_state)):
             col_in1, col_in2 = st.columns([1, 1])
             video_file_path = st.session_state.get("video_file_path", None)
             
             with col_in1:
-                st.subheader("📹 Carregar Vídeo")
+                st.subheader("🥋 Carregar Vídeo de Treino" if app_mode == "training" else "📹 Carregar Vídeo")
                 source_choice = st.radio(
                     "Selecione a Origem do Vídeo:",
                     ["📁 Fazer Upload de Arquivo", "🌐 Link do YouTube / Streaming Web"],
@@ -1080,9 +1322,9 @@ else:
                 )
 
                 if source_choice == "📁 Fazer Upload de Arquivo":
-                    st.markdown("Selecione o arquivo de vídeo local da luta de Kendo a ser analisado:")
+                    st.markdown("Selecione o arquivo de vídeo local do treinamento de Kendo a ser analisado:" if app_mode == "training" else "Selecione o arquivo de vídeo local da luta de Kendo a ser analisado:")
                     uploaded_file = st.file_uploader(
-                        "Vídeo da Luta (.mp4, .avi, .mov)",
+                        "Vídeo de Treinamento (.mp4, .avi, .mov)" if app_mode == "training" else "Vídeo da Luta (.mp4, .avi, .mov)",
                         type=["mp4", "avi", "mov"],
                         help="Suporta arquivos de vídeo de qualquer tamanho. Arquivos acima de 200MB podem ter tempos de carregamento extensos.",
                         key="recorded_local_file_uploader"
@@ -1150,7 +1392,7 @@ else:
 
                 else:
                     # Origem: Link do YouTube / Streaming Web
-                    st.markdown("Insira o link de vídeo de Kendo do YouTube ou stream da web:")
+                    st.markdown("Insira o link de vídeo de treino de Kendo do YouTube ou stream da web:" if app_mode == "training" else "Insira o link de vídeo de Kendo do YouTube ou stream da web:")
                     yt_url_input = st.text_input(
                         "🔗 Link do Vídeo (YouTube, Shorts, Streaming):",
                         placeholder="https://www.youtube.com/watch?v=... ou https://youtu.be/...",
@@ -1160,7 +1402,7 @@ else:
 
                     yt_quality_keys = ["media", "alta", "baixa"]
                     selected_quality = st.selectbox(
-                        "⚙️ Qualidade do Download:",
+                        "⚙️ Resolução / Qualidade do Download:",
                         options=yt_quality_keys,
                         format_func=lambda k: QUALITY_LABELS.get(k, k),
                         index=0,  # "media" padrão
@@ -1270,8 +1512,8 @@ else:
                         )
 
             with col_in2:
-                st.subheader("Executar Analise")
-                st.markdown("Inicie o rastreamento de pose, detecção de impactos e avaliação de Yuko-Datotsu:")
+                st.subheader("🥋 Executar Análise de Treinamento" if app_mode == "training" else "⚡ Executar Análise de Combate")
+                st.markdown("Inicie o rastreamento de pose, identificação da modalidade e avaliação dos 3 Pilares (Forma, Precisão, Constância):" if app_mode == "training" else "Inicie o rastreamento de pose, detecção de impactos e avaliação de Yuko-Datotsu:")
 
                 dev_pref = st.session_state.get("device_preference", get_processing_device())
                 effective_dev, dev_msg, dev_gpu = get_effective_device(dev_pref)
@@ -1279,6 +1521,21 @@ else:
                     st.markdown(f'<div style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.88rem; color: #4ade80;">🚀 <b>Aceleração GPU Ativa:</b> {dev_gpu.get("gpu_name", "NVIDIA GPU")} (YOLOv8-Pose CUDA)</div>', unsafe_allow_html=True)
                 else:
                     st.markdown(f'<div style="background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.88rem; color: #cbd5e1;">💻 <b>Processamento por CPU:</b> MediaPipe Pose (TFLite CPU)</div>', unsafe_allow_html=True)
+
+                if app_mode == "training":
+                    st.markdown("##### 🥋 Modalidade de Treino & Aprendizado")
+                    mod_keys = ["auto"] + list(TRAINING_MODALITIES_METADATA.keys())
+                    selected_mod_key = st.selectbox(
+                        "Tipo de Treinamento:",
+                        options=mod_keys,
+                        format_func=lambda k: "🔍 Detecção Inteligente Automática pela IA" if k == "auto" else f"{TRAINING_MODALITIES_METADATA[k]['name']} [{TRAINING_MODALITIES_METADATA[k]['japanese']}]",
+                        index=0,
+                        key="training_modality_select_pre"
+                    )
+                    st.session_state["training_modality_selected"] = None if selected_mod_key == "auto" else selected_mod_key
+                    if selected_mod_key != "auto":
+                        m_desc = TRAINING_MODALITIES_METADATA[selected_mod_key]
+                        st.caption(f"ℹ️ **{m_desc['category']}:** {m_desc['description']}")
 
                 active_worker = st.session_state.get("analysis_worker", None)
                 is_running = (active_worker is not None and not active_worker.is_done)
@@ -1290,8 +1547,9 @@ else:
 
                 col_btn1, col_btn2 = st.columns([1, 1])
                 with col_btn1:
+                    btn_start_label = "⚡ Executar Análise de Treinamento" if app_mode == "training" else "⚡ Executar Análise com SenpAI"
                     start_btn = st.button(
-                        "⚡ Executar Analise com SenpAI" if not is_running else "⏳ Processando Vídeo...",
+                        btn_start_label if not is_running else "⏳ Processando Vídeo...",
                         type="primary",
                         width="stretch",
                         disabled=(video_file_path is None or is_running),
@@ -1343,7 +1601,9 @@ else:
                         pipeline=pipeline,
                         video_path=video_file_path,
                         output_video_path=annotated_output,
-                        invert_combatants=st.session_state.get("invert_aka_shiro", False)
+                        invert_combatants=st.session_state.get("invert_aka_shiro", False),
+                        training_modality_override=st.session_state.get("training_modality_selected"),
+                        custom_kendoka_names=st.session_state.get("training_kendoka_names", {})
                     )
                     worker.start()
                     st.session_state["analysis_worker"] = worker
@@ -1549,33 +1809,67 @@ else:
                 else:
                     shiro_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
 
-                # RENDERIZAÇÃO DO PLACAR NO TOPO (LARGURA TOTAL)
-                st.markdown(
-                    f"""
-                    <div style="background: #090D16; border: 2px solid #374151; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1F2937; padding-bottom: 8px; margin-bottom: 12px;">
-                            <span style="color: #D1D5DB; font-size: 13px; font-weight: 800; letter-spacing: 0.8px;">🥋 PONTUAÇÃO FINAL (SANBON-SHOBU)</span>
-                            <span style="color: #93C5FD; font-size: 12px; font-weight: 500;">{flag_badge}</span>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                            <div style="background: linear-gradient(180deg, rgba(243, 244, 246, 0.10) 0%, rgba(100, 116, 139, 0.18) 100%); border: 1.5px solid #E5E7EB; border-radius: 8px; padding: 12px; text-align: center;">
-                                <div style="color: #F3F4F6; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">⚪ KENSHI SHIRO (BRANCO - ESQUERDA)</div>
-                                <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{shiro_score_val} <span style="font-size: 14px; font-weight: 700; color: #E5E7EB;">IPPON</span></div>
-                                <div style="margin-top: 6px;">{shiro_items}</div>
+                # RENDERIZAÇÃO PRINCIPAL DO TOPO CONFORME O MODO DE OPERAÇÃO
+                if app_mode == "training":
+                    # MODO DE TREINAMENTO: PAINEL DE 10 MODALIDADES, 3 PILARES E PRESCRIÇÃO PEDAGÓGICA
+                    render_training_analysis_view(res, is_inverted)
+                    with st.expander("⚔️ Visualizar Simulação de Placar Sanbon-Shobu (Competitivo)", expanded=False):
+                        st.markdown(
+                            f"""
+                            <div style="background: #090D16; border: 2px solid #374151; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1F2937; padding-bottom: 8px; margin-bottom: 12px;">
+                                    <span style="color: #D1D5DB; font-size: 13px; font-weight: 800; letter-spacing: 0.8px;">🥋 PONTUAÇÃO FINAL (SANBON-SHOBU)</span>
+                                    <span style="color: #93C5FD; font-size: 12px; font-weight: 500;">{flag_badge}</span>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                    <div style="background: linear-gradient(180deg, rgba(243, 244, 246, 0.10) 0%, rgba(100, 116, 139, 0.18) 100%); border: 1.5px solid #E5E7EB; border-radius: 8px; padding: 12px; text-align: center;">
+                                        <div style="color: #F3F4F6; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">⚪ KENSHI SHIRO (BRANCO - ESQUERDA)</div>
+                                        <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{shiro_score_val} <span style="font-size: 14px; font-weight: 700; color: #E5E7EB;">IPPON</span></div>
+                                        <div style="margin-top: 6px;">{shiro_items}</div>
+                                    </div>
+                                    <div style="background: linear-gradient(180deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.22) 100%); border: 1.5px solid #EF4444; border-radius: 8px; padding: 12px; text-align: center;">
+                                        <div style="color: #FCA5A5; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">🔴 KENSHI AKA (VERMELHO - DIREITA)</div>
+                                        <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{aka_score_val} <span style="font-size: 14px; font-weight: 700; color: #FCA5A5;">IPPON</span></div>
+                                        <div style="margin-top: 6px;">{aka_items}</div>
+                                    </div>
+                                </div>
+                                <div style="background: {winner_bg}; border: 1px solid {winner_border}; border-radius: 6px; padding: 8px; margin-top: 10px; text-align: center;">
+                                    <span style="color: {winner_color}; font-size: 15px; font-weight: 800;">{winner_txt}</span>
+                                </div>
                             </div>
-                            <div style="background: linear-gradient(180deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.22) 100%); border: 1.5px solid #EF4444; border-radius: 8px; padding: 12px; text-align: center;">
-                                <div style="color: #FCA5A5; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">🔴 KENSHI AKA (VERMELHO - DIREITA)</div>
-                                <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{aka_score_val} <span style="font-size: 14px; font-weight: 700; color: #FCA5A5;">IPPON</span></div>
-                                <div style="margin-top: 6px;">{aka_items}</div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                else:
+                    # MODO GRAVADO / COMPETITIVO: PLACAR SANBON-SHOBU NO TOPO
+                    st.markdown(
+                        f"""
+                        <div style="background: #090D16; border: 2px solid #374151; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1F2937; padding-bottom: 8px; margin-bottom: 12px;">
+                                <span style="color: #D1D5DB; font-size: 13px; font-weight: 800; letter-spacing: 0.8px;">🥋 PONTUAÇÃO FINAL (SANBON-SHOBU)</span>
+                                <span style="color: #93C5FD; font-size: 12px; font-weight: 500;">{flag_badge}</span>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                                <div style="background: linear-gradient(180deg, rgba(243, 244, 246, 0.10) 0%, rgba(100, 116, 139, 0.18) 100%); border: 1.5px solid #E5E7EB; border-radius: 8px; padding: 12px; text-align: center;">
+                                    <div style="color: #F3F4F6; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">⚪ KENSHI SHIRO (BRANCO - ESQUERDA)</div>
+                                    <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{shiro_score_val} <span style="font-size: 14px; font-weight: 700; color: #E5E7EB;">IPPON</span></div>
+                                    <div style="margin-top: 6px;">{shiro_items}</div>
+                                </div>
+                                <div style="background: linear-gradient(180deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.22) 100%); border: 1.5px solid #EF4444; border-radius: 8px; padding: 12px; text-align: center;">
+                                    <div style="color: #FCA5A5; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">🔴 KENSHI AKA (VERMELHO - DIREITA)</div>
+                                    <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{aka_score_val} <span style="font-size: 14px; font-weight: 700; color: #FCA5A5;">IPPON</span></div>
+                                    <div style="margin-top: 6px;">{aka_items}</div>
+                                </div>
+                            </div>
+                            <div style="background: {winner_bg}; border: 1px solid {winner_border}; border-radius: 6px; padding: 8px; margin-top: 10px; text-align: center;">
+                                <span style="color: {winner_color}; font-size: 15px; font-weight: 800;">{winner_txt}</span>
                             </div>
                         </div>
-                        <div style="background: {winner_bg}; border: 1px solid {winner_border}; border-radius: 6px; padding: 8px; margin-top: 10px; text-align: center;">
-                            <span style="color: {winner_color}; font-size: 15px; font-weight: 800;">{winner_txt}</span>
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    with st.expander("🎓 Diagnóstico Pedagógico de Treinamento & 3 Pilares", expanded=False):
+                        render_training_analysis_view(res, is_inverted)
 
                 # BARRA DE CONTROLES: INVERSÃO DE LUTADORES, HABILITAR EDIÇÃO & PAINEL DAN
                 col_ctrl1, col_ctrl2 = st.columns([1.6, 2.4])
@@ -1659,7 +1953,7 @@ else:
             col_video, col_results = st.columns([5, 7])
             
             with col_video:
-                st.subheader("🎥 Vídeo da Luta")
+                st.subheader("🎥 Vídeo de Treinamento" if app_mode == "training" else "🎥 Vídeo da Luta")
                 if st.session_state.get("video_source_type") == "youtube" and "youtube_url" in st.session_state:
                     yt_u = st.session_state["youtube_url"]
                     yt_inf = st.session_state.get("youtube_video_info", {})
