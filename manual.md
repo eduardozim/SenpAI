@@ -215,8 +215,10 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_pipeline_cancellation.py`**: Valida cancelamento cooperativo, liberação de recursos de streaming e cronômetro em tempo real.
 - **`test_scoreboard_and_flag_detection.py`**: Valida o placar eletrônico Sanbon-shobu, detecção cromática de flag dorsal (Tasukuki) e inversão Aka ⇄ Shiro.
 - **`test_sonkyo_and_plane_filtering.py`**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes) e persistência de aprendizado de Sonkyō.
+- **`test_training_modes.py`**: Valida o motor de treinamento, reconhecimento das 10 modalidades de treino, cálculo dos 3 Pilares (Forma, Precisão, Constância), rastreamento e nomeação de Kendocas e diagnósticos pedagógicos.
+- **`test_video_downloader.py`**: Valida extração de streams do YouTube e streaming web, cache local de downloads, validação de URLs, formatação e seletor multi-resolução (Baixa, Média, Alta).
 
-Total de **52 testes automatizados** executados e aprovados com 100% de sucesso.
+Total de **73 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -224,7 +226,39 @@ Total de **52 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
-### `[v1.7.0]` — 2026-08-20 *(Versão Atual)*
+### `[v1.8.0]` — 2026-08-28 *(Versão Atual)*
+
+- **Modo Avançado de Treinamento & Aprendizado de Kendo (`TrainingAnalyzer`)**:
+  - Implementado motor analítico completo para avaliação e diagnóstico pedagógico de treinos de Kendo (*Keiko / Hitori-geiko*).
+  - Reconhecimento e suporte às **10 modalidades oficiais**:
+    - **Ashi-sabaki (足捌き)**: Deslocamentos fundamentais (*Okuri-ashi, Ayumi-ashi, Hiraki-ashi, Tsugi-ashi*).
+    - **Suburi (素振り)**: Cortes repetidos no ar (*Jōge-buri, Naname-buri, Shōmen-uchi, Sayū-men*).
+    - **Kihon (基本)**: Fundamentos de postura (*Shisei*), distância (*Maai*), guarda (*Chudan Kamae*) e *Zanshin*.
+    - **Kirikaeshi (切り返し)**: Sequência de ritmo, precisão e resistência (Shōmen + 9 cortes Sayū-men).
+    - **Uchikomi-geiko (打込稽古)**: Execução de golpes em oportunidades abertas pelo parceiro.
+    - **Kakari-geiko (掛稽古)**: Ataques contínuos de esforço máximo em blocos de tempo curtos.
+    - **Waza-geiko (技稽古)**: Prática de técnicas ofensivas (*Debana, Hiki, Renzoku*) e contra-ataques.
+    - **Oji-waza-geiko (応じ技稽古)**: Técnicas de resposta (*Nuki-waza, Kaeshi-waza, Suriage-waza, Uchiotoshi*).
+    - **Ji-geiko (地稽古)**: Combate livre aplicando fundamentos e pressão (*Seme*).
+    - **Shiai-geiko (試合稽古)**: Simulação de luta competitiva com arbitragem oficial *Sanbon-shobu*.
+  - Avaliação detalhada baseada nos **3 Pilares Fundamentais**:
+    - **Forma** (Verticalidade da coluna *Shisei*, nivelamento de ombros, calcanhar esquerdo e amplitude do *Furikaburi*).
+    - **Precisão** (Trajetória no alvo, sincronismo pé-mão *Ki-Ken-Tai-Ichi* e domínio da linha central *Chushin-sen*).
+    - **Constância** (Cadência em CPM, regularidade do ritmo, resistência à fadiga muscular e adequação temporal).
+  - **Rastreamento e Nomeação Individual de Kendocas**: Suporte a praticante solo ou dupla (*Kenshi Shiro*, *Kenshi Aka*), personalização de nomes reais no painel, geração de *Pontos Fortes*, *Pontos de Atenção* e prescrição de *Exercícios Tradicionais de Kendo* com séries e repetições recomendadas. Exportação de relatório em JSON formatado (`relatorio_treino_*.json`).
+- **Flexibilidade de Origem de Vídeo e Seletor Multi-Resolução**:
+  - Suporte completo no Modo de Treinamento e no Modo Gravado para **Upload de arquivo de vídeo local** (`.mp4`, `.avi`, `.mov`) ou **Link de streaming web / YouTube / Shorts**.
+  - Seletor de qualidade e resolução em 3 níveis:
+    - **Baixa Resolução**: Menor resolução disponível no stream, otimizando velocidade de download e economia de banda.
+    - **Média Resolução (Padrão)**: Resolução intermediária (até 720p) limitada a 30 FPS, balanceando nitidez e processamento.
+    - **Alta Resolução**: Maior resolução e taxa de quadros (FPS) originais disponíveis na transmissão.
+  - Regra de inversão de câmera oposta à mesa dos juízes aplicada universalmente (Shiro à esquerda, Aka à direita).
+- **Expansão da Suíte de Testes Automatizados**:
+  - Adicionados módulos `tests/test_training_modes.py` e `tests/test_video_downloader.py`. Total de **73 testes automatizados** aprovados com 100% de sucesso.
+
+---
+
+### `[v1.7.0]` — 2026-08-20
 
 - **Consenso & Validação de Golpes por Conjunto Multi-Câmeras (`MultiCameraFusionEngine`)**:
   - Implementada a regra central: *"A definição de haver ou não o golpe deve ser tomado com base no conjunto das imagens das câmeras. Quanto mais câmeras, mais necessária a confirmação em imagens/frames da realização da técnica."*

@@ -17,6 +17,7 @@ from src.analytics.event_spotter import EventSpotter, StrikeEvent
 from src.analytics.sonkyo_detector import SonkyoDetector
 from src.analytics.biomechanics import BiomechanicsAnalyzer
 from src.analytics.multi_camera_fusion import MultiCameraFusionEngine, MultiCameraStrikeEvaluation
+from src.analytics.training_analyzer import TrainingAnalyzer
 from src.engine.calibrator import CalibrationEngine
 from src.engine.reporter import DiagnosticReporter
 from src.utils.hardware import get_effective_device
@@ -33,6 +34,7 @@ class SenpAIPipeline:
         self.sonkyo_detector = SonkyoDetector()
         self.event_spotter = EventSpotter()
         self.biomechanics = BiomechanicsAnalyzer()
+        self.training_analyzer = TrainingAnalyzer()
         self.calibrator = CalibrationEngine(profile_name=calibration_profile)
         self.multicam_fusion = MultiCameraFusionEngine(profile_name=calibration_profile)
 
@@ -44,16 +46,19 @@ class SenpAIPipeline:
         is_cancelled: Optional[Callable[[], bool]] = None,
         initial_sonkyo_override: Optional[Dict[str, Any]] = None,
         final_sonkyo_override: Optional[Dict[str, Any]] = None,
-        invert_combatants: bool = False
+        invert_combatants: bool = False,
+        training_modality_override: Optional[str] = None,
+        custom_kendoka_names: Optional[Dict[str, str]] = None
     ) -> Optional[Dict[str, Any]]:
         """
-        Executa a análise completa de um arquivo de vídeo de luta de Kendo no Modo de Detecção Gravada:
+        Executa a análise completa de um arquivo de vídeo de luta/treino de Kendo:
         1. Rastreamento e associação exclusiva dos 2 Kenshi (Aka e Shiro) no Plano Principal com detecção da cor da flag dorsal (Tasukuki).
         2. Descarte automático de elementos de Segundo Plano (Background) e Oclusões na frente da câmera.
         3. Detecção e verificação dos momentos de Sonkyō (Abertura e Encerramento) ou aplicação de ajustes manuais com aprendizado contínuo.
         4. Delimitação estrita do início (match_start_frame) e fim (match_end_frame) da luta.
         5. Detecção e avaliação biomecânica exclusiva dos golpes dentro da janela de Sonkyō.
-        6. Controle de pontuação (Placar Oficial de Ippon) e renderização de vídeo anotado.
+        6. Análise especializada de Treinamento & Aprendizado (10 modalidades, 3 pilares, diagnósticos pedagógicos).
+        7. Controle de pontuação (Placar Oficial de Ippon) e renderização de vídeo anotado.
         """
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
@@ -316,6 +321,16 @@ class SenpAIPipeline:
         init_sonkyo_str = f"Detectado (Início: {sonkyo_analysis.get('match_start_timestamp', '00:00.000')})" if sonkyo_analysis["has_initial_sonkyo"] else "Não detectado"
         final_sonkyo_str = f"Detectado (Fim: {sonkyo_analysis.get('match_end_timestamp', f'{round(total_frames / fps, 2)}s')})" if sonkyo_analysis["has_final_sonkyo"] else "Não detectado"
         
+        # 7. Análise de Treinamento & Aprendizado (10 Modalidades Oficiais e 3 Pilares)
+        training_analysis = self.training_analyzer.analyze_session(
+            primary_history=primary_history,
+            secondary_history=secondary_history,
+            detected_strikes=all_raw_strikes,
+            modality_override=training_modality_override,
+            fps=fps,
+            custom_kendoka_names=custom_kendoka_names
+        )
+
         summary_log = (
             f"RESUMO DO PROCESSAMENTO DE VÍDEO CONCLUÍDO:\n"
             f"  • Arquivo de Vídeo: {os.path.basename(video_path)} ({video_path})\n"
@@ -323,6 +338,7 @@ class SenpAIPipeline:
             f"  • Duração do Vídeo: {round(total_frames / fps, 2)}s (Tempo Efetivo de Combate: {sonkyo_analysis['effective_combat_duration_seconds']}s)\n"
             f"  • Dispositivo / Acelerador: {self.effective_device.upper()} ({self.device_status_message})\n"
             f"  • Perfil de Avaliação Aplicado: {self.calibrator.active_config.get('name', 'Custom')}\n"
+            f"  • Modalidade de Treinamento: {training_analysis.modality_name} (Confiança: {int(training_analysis.detection_confidence*100)}%)\n"
             f"  • Placar Oficial: Aka {aka_score} x {shiro_score} Shiro — {result_description}\n"
             f"  • Identificação de Flag (Tasukuki): {tracker_summary.get('flag_decision', 'N/A')} (Confiança: {int(tracker_summary.get('flag_confidence', 0.5)*100)}%)\n"
             f"  • Sonkyō Inicial: {init_sonkyo_str}\n"
@@ -346,7 +362,8 @@ class SenpAIPipeline:
             "sonkyo_analysis": sonkyo_analysis,
             "plane_filtering": tracker_summary,
             "scoreboard": scoreboard,
-            "events": analyzed_events
+            "events": analyzed_events,
+            "training_analysis": training_analysis.to_dict()
         }
 
 
@@ -362,7 +379,9 @@ class AnalysisWorker:
         output_video_path: Optional[str] = None,
         initial_sonkyo_override: Optional[Dict[str, Any]] = None,
         final_sonkyo_override: Optional[Dict[str, Any]] = None,
-        invert_combatants: bool = False
+        invert_combatants: bool = False,
+        training_modality_override: Optional[str] = None,
+        custom_kendoka_names: Optional[Dict[str, str]] = None
     ):
         self.pipeline = pipeline
         self.video_path = video_path
@@ -370,6 +389,8 @@ class AnalysisWorker:
         self.initial_sonkyo_override = initial_sonkyo_override
         self.final_sonkyo_override = final_sonkyo_override
         self.invert_combatants = invert_combatants
+        self.training_modality_override = training_modality_override
+        self.custom_kendoka_names = custom_kendoka_names
         
         self.progress: float = 0.0
         self.status_message: str = "Inicializando pipeline de visão e pose tracking..."
@@ -426,7 +447,9 @@ class AnalysisWorker:
                 is_cancelled=check_cancel,
                 initial_sonkyo_override=self.initial_sonkyo_override,
                 final_sonkyo_override=self.final_sonkyo_override,
-                invert_combatants=self.invert_combatants
+                invert_combatants=self.invert_combatants,
+                training_modality_override=self.training_modality_override,
+                custom_kendoka_names=self.custom_kendoka_names
             )
 
             self.end_time = time.time()

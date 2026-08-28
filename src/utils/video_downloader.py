@@ -190,9 +190,9 @@ def extract_video_info(url: str, timeout: int = 15) -> Dict[str, Any]:
 
 
 QUALITY_LABELS = {
-    "media": "Média (Intermediária / 30 FPS)",
-    "alta": "Alta (Máxima Disponível)",
-    "baixa": "Baixa (Menor Disponível / Rápido)"
+    "media": "Média (Resolução intermediária, 30 FPS)",
+    "alta": "Alta (Maior resolução disponível)",
+    "baixa": "Baixa (Menor resolução disponível / Rápido)"
 }
 
 
