@@ -1307,6 +1307,7 @@ else:
     # ==========================================================================
     # MODOS 1 E 2: DETECÇÃO GRAVADA & TREINAMENTO & APRENDIZADO
     # ==========================================================================
+    else:
         expander_title = "🥋 Carregar Vídeo de Treinamento & Aprendizado" if app_mode == "training" else "📹 Carregar Vídeo da Luta"
         with st.expander(expander_title, expanded=("analysis_result" not in st.session_state)):
             col_in1, col_in2 = st.columns([1, 1])
