@@ -80,11 +80,13 @@ Recursos da Interface Web:
 - Delimitação Temporal da Luta por Sonkyō: identificação automática da postura ritualística de Sonkyō de início e término do combate, com filtragem estrita de golpes na janela regulamentar.
 - Rastreamento dos 2 Kenshi Principais e Filtragem de Planos: descarte inteligente de elementos de fundo (outras lutas, arquibancadas) e oclusões de primeiro plano.
 - Menu de Configurações com seletor de Hardware (CPU vs GPU NVIDIA CUDA com Tensor Cores FP16 / Ultralytics YOLOv8-Pose) e painel de Governança de Treinamento.
+- Governança de Treinamento e Painel de Revisão por Dan: Distribuição de treinamentos por Dan (1º a 8º Dan) e linha dedicada para Treinamentos Automatizados por IA (Web & Vídeo). Cálculo de nível médio Dan exclusivo para revisões humanas (sem distorção por treinos da IA).
 - Painel de Diagnóstico, Alertas e Log de Debug do Sistema com monitoramento de eventos em tempo real (`senpai_debug.log`).
 - Edição de Golpes por Dan no Modo de Detecção Gravada (Shodan 1º Dan a Hachidan 8º Dan) com badges CONFIRMADO e EDITADO.
 - Botão de Reset Geral e Individual de revisão, regra de auditabilidade (sem exclusão de dados) e retreinamento contínuo.
 - Gestão de Pacotes de Treinamento: exportação e importação de arquivos JSON com registro por Dan e data.
 - Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de eventos com barra de rolagem à direita.
+- Treinamento Automático por IA (Web & Vídeo Knowledge Ingestion): Na aba de Governança de Treinamento, permite disparar o motor autônomo de busca e mineração de conhecimento técnico (FIK, AJKF/ZNKR, biomecânica e corpus de vídeos) com duração determinada (em minutos) para aprender e recalibrar as 14 modalidades pedagógicas ou lutas (Shiai), conforme a necessidade mais latente, com tabela de evolução em HTML de alta performance.
 - Conformidade Estrita de Tipagem e Estabilidade: Narrowing de tipos e tratamento defensivo em todos os widgets Streamlit (câmeras, Dan, perfis, qualidades e acelerador), além de blindagem de renderização condicional da Linha do Tempo prevenindo exceções de runtime em resets ou antes da execução da análise.
 
 --- B. LINHA DE COMANDO (CLI) ---
@@ -105,10 +107,10 @@ Para processar vídeos diretamente no terminal:
 - Otimizar perfil com base no dataset de feedback gravado:
    python main.py --profile normal --optimize-profile
 
-- Executar suíte completa de testes automatizados (73 testes) com relatório descritivo salvo em logs/:
+- Executar suíte completa de testes automatizados (81 testes) com relatório descritivo salvo em logs/:
    python run_tests.py
    (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
-   * Executa a suíte de 73 testes automatizados com 100% de aprovação
+   * Executa a suíte de 81 testes automatizados com 100% de aprovação
    * Gera o arquivo descritivo logs/senpai_test_report.log com detalhes de cada teste
    * Mantém estritamente apenas o último log de testes executado na pasta logs/
 

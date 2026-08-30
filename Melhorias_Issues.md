@@ -50,6 +50,7 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
 - **Modo Instrutor**: Permitir que o Sensei revise, comente e aprove as recomendações e diagnósticos gerados pela IA.
 
 ### 6. Aprendizagem por Reforço & Governança dos Modelos
+- **Treinamento Automático por IA (Web & Vídeo Knowledge Ingestion) [IMPLEMENTADO]**: Motor autônomo com ingestão de diretrizes oficiais (FIK / AJKF / Biomecânica), diagnóstico automático de necessidade mais latente, tempo determinado em minutos e calibração das 14 modalidades pedagógicas e modos de combate (Shiai e Tempo Real).
 - **Separação entre Feedback e Treinamento**: Garantir que uma correção individual de usuário não altere imediatamente o comportamento global do modelo.
 - **Validação do Revisor**: Ponderar o feedback considerando graduação, experiência, consistência e quantidade de avaliações (não apenas o Dan).
 - **Consenso entre Revisores**: Encaminhar casos controversos para validação de múltiplos avaliadores.
@@ -145,6 +146,19 @@ O **SenpAI Mobile** foi concebido como uma extensão portátil e interativa do e
 
 ## ✅ Concluídas
 
+
+Versão 1.8.0
+   - Melhorias Aplicadas:
+      - **Treinamento Automático por Inteligência Artificial (Web & Vídeo Knowledge Ingestion)**: Motor autônomo de mineração e aprendizagem técnica (FIK, AJKF/ZNKR, biomecânica e vídeos de referência) com duração controlada em minutos e diagnóstico autônomo por necessidade mais latente.
+      - **Separação de Treinamentos de IA na Governança por Dan**: Inclusão de linha dedicada para `🤖 IA | Treinamentos Automatizados (IA / Web & Vídeo)` na tabela de distribuição e separação estrita para não poluir ou inflar o nível médio Dan humano (1º ao 8º Dan).
+      - **Renderização Nativa em HTML/CSS para Tabelas de Evolução**: Tabela de progressão de acurácia em HTML/CSS nativo via `st.html`, eliminando dependências de chunks dinâmicos do Vite e prevenindo erros de preload de CSS no navegador.
+      - **Suíte de Testes Automatizados Expandida (81 Testes)**: Cobertura total e 100% de aprovação na suíte de testes unitários e de integração (`test_auto_trainer.py`, `test_dan_training_governance.py`, etc.).
+
+Versão 1.7.1
+   - Melhorias Aplicadas:
+      - **Tipagem Estrita e Estabilidade de Widgets**: Type narrowing em todos os seletores do Streamlit (`st.selectbox`, `st.radio`, `st.number_input`), prevenindo valores `None` em rotinas de hardware, perfis e câmeras.
+      - **Limpeza Automática de Sessão na Troca de Modos**: Função `clear_previous_analysis` para reset seguro de workers e buffers entre os modos Gravado, Tempo Real e Treinamento Pedagógico.
+      - **Layout Pedagógico Lado a Lado**: Painel de avaliação das 14 modalidades posicionado diretamente ao lado do vídeo, suprimindo componentes desnecessários de arbitragem competitiva no modo de treino.
 
 Versão 1.7.0
    -Melhorias Aplicadas:

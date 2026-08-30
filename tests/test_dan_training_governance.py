@@ -94,17 +94,44 @@ class TestDanTrainingGovernance(unittest.TestCase):
         metrics = self.mgr.get_training_metrics()
 
         self.assertEqual(metrics["total_trainings_count"], 2)
+        self.assertEqual(metrics["human_trainings_count"], 2)
+        self.assertEqual(metrics["auto_trainings_count"], 0)
         self.assertEqual(metrics["average_dan_level"], 4.0)  # (3 + 5) / 2 = 4.0
         self.assertIn("4.0º Dan", metrics["average_dan_label"])
 
         dan_dist = metrics["dan_distribution"]
-        self.assertEqual(len(dan_dist), 8)  # 1º ao 8º Dan
+        self.assertEqual(len(dan_dist), 9)  # 1º ao 8º Dan + 🤖 IA
         
         dan3_entry = next(item for item in dan_dist if item["Dan"] == "3º Dan")
         dan5_entry = next(item for item in dan_dist if item["Dan"] == "5º Dan")
+        auto_entry = next(item for item in dan_dist if "IA" in item["Dan"])
         
         self.assertEqual(dan3_entry["Quantidade Treinamentos"], 1)
         self.assertEqual(dan5_entry["Quantidade Treinamentos"], 1)
+        self.assertEqual(auto_entry["Quantidade Treinamentos"], 0)
+
+        # Adicionar uma sessão de treinamento automático de IA e verificar que não altera o Dan médio humano
+        auto_session = {
+            "id": "auto_train_test_1",
+            "timestamp": "2026-08-30T12:00:00",
+            "video_name": "AI_Auto_Trainer_general_all",
+            "reviewer_dan": 0,
+            "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+            "is_auto_training": True,
+            "optimization_summary": {"mode": "auto_training_ai"}
+        }
+        hist = self.mgr.load_history()
+        hist.append(auto_session)
+        with open(self.test_history_path, "w", encoding="utf-8") as f:
+            json.dump(hist, f, indent=2, ensure_ascii=False)
+
+        metrics_with_auto = self.mgr.get_training_metrics()
+        self.assertEqual(metrics_with_auto["total_trainings_count"], 3)
+        self.assertEqual(metrics_with_auto["human_trainings_count"], 2)
+        self.assertEqual(metrics_with_auto["auto_trainings_count"], 1)
+        self.assertEqual(metrics_with_auto["average_dan_level"], 4.0)  # Continua 4.0, não poluído pela IA
+        auto_entry_post = next(item for item in metrics_with_auto["dan_distribution"] if "IA" in item["Dan"])
+        self.assertEqual(auto_entry_post["Quantidade Treinamentos"], 1)
 
     def test_export_and_import_training_package(self):
         """Testa a exportação e importação de pacotes de treinamento JSON com preservação de datas e graduação Dan."""

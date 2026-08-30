@@ -28,6 +28,11 @@ class CalibrationEngine:
                 }
             }
 
+    def get_all_profiles(self) -> Dict[str, Any]:
+        """Retorna todos os perfis de calibração carregados."""
+        self.profiles = self._load_profiles()
+        return self.profiles
+
     def set_profile(self, profile_name: str):
         if profile_name in self.profiles:
             self.current_profile_key = profile_name

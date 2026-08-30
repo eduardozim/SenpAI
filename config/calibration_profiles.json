@@ -4,8 +4,8 @@
     "description": "Tolerância ampliada para feedback formativo com praticantes de níveis iniciais.",
     "min_total_score": 0.5,
     "weights": {
-      "target_impact": 0.35,
-      "fumikomi_sync": 0.25,
+      "target_impact": 0.36,
+      "fumikomi_sync": 0.24,
       "posture": 0.2,
       "zanshin": 0.2
     },
@@ -27,10 +27,10 @@
       "zanshin": 0.15
     },
     "sub_thresholds": {
-      "target_impact": 0.6,
-      "fumikomi_sync": 0.5,
-      "posture": 0.5,
-      "zanshin": 0.45
+      "target_impact": 0.58,
+      "fumikomi_sync": 0.48,
+      "posture": 0.48,
+      "zanshin": 0.44
     }
   },
   "rigido": {
@@ -38,16 +38,16 @@
     "description": "Alta exigência em Ki-Ken-Tai-Ichi e Zanshin. Recomendado para exames de graduação e torneios oficiais.",
     "min_total_score": 0.78,
     "weights": {
-      "target_impact": 0.45,
-      "fumikomi_sync": 0.25,
-      "posture": 0.15,
-      "zanshin": 0.15
+      "target_impact": 0.44,
+      "fumikomi_sync": 0.26,
+      "posture": 0.16,
+      "zanshin": 0.14
     },
     "sub_thresholds": {
-      "target_impact": 0.7,
-      "fumikomi_sync": 0.6,
-      "posture": 0.6,
-      "zanshin": 0.55
+      "target_impact": 0.68,
+      "fumikomi_sync": 0.58,
+      "posture": 0.58,
+      "zanshin": 0.54
     }
   }
 }
