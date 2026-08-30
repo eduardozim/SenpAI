@@ -15,6 +15,7 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="google.protobuf")
 
 import cv2
+import numpy as np
 import json
 import time
 from typing import Any, Dict, List, Optional
@@ -144,7 +145,8 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
     mod_key = train_data.get("modality_key", "suburi")
     mod_conf = int(train_data.get("detection_confidence", 0.8) * 100)
     det_method = train_data.get("detection_method", "AUTO_DETECTED")
-    kendokas = train_data.get("kendokas", [])
+    kendokas_raw = train_data.get("kendokas", [])
+    kendokas = list(reversed(kendokas_raw)) if (is_inverted and len(kendokas_raw) > 1) else kendokas_raw
     dur_sec = train_data.get("duration_seconds", res.get("duration_seconds", 0.0))
 
     meta = TRAINING_MODALITIES_METADATA.get(mod_key, TRAINING_MODALITIES_METADATA.get("suburi", {}))
@@ -159,7 +161,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     <span style="font-size: 26px;">🎓</span>
                     <div>
                         <div style="color: #A5B4FC; font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">AVALIAÇÃO DE TREINAMENTO & APRENDIZADO DE KENDO</div>
-                        <div style="color: #FFFFFF; font-size: 20px; font-weight: 900; font-family: monospace; line-height: 1.2;">
+                        <div style="color: #FFFFFF; font-size: 19px; font-weight: 900; font-family: monospace; line-height: 1.2;">
                             {mod_display_name}
                         </div>
                     </div>
@@ -181,13 +183,13 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
     )
 
     # 2. CONTROLES: DOWNLOAD DO RELATÓRIO CONSOLIDADO
-    top_c1, top_c2 = st.columns([3, 1])
+    top_c1, top_c2 = st.columns([2.8, 1.2])
     with top_c1:
         st.caption("💡 *Os 3 Pilares avaliam a biomecânica e trabalho de pés (Movimentação), sincronismo Ki-Ken-Tai-Ichi e alvo (Precisão) e cadência com ritmo respiratório (Constância).*")
     with top_c2:
         report_json_str = json.dumps(train_data, indent=2, ensure_ascii=False)
         st.download_button(
-            label="📥 Exportar Sessão (.JSON)",
+            label="📥 Sessão (.JSON)",
             data=report_json_str,
             file_name=f"sessao_treino_{mod_key}_{int(time.time())}.json",
             mime="application/json",
@@ -225,8 +227,8 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
 
         st.markdown(
             f"""
-            <div style="background: #0B1120; border: 1.5px solid #334155; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 8px; margin-bottom: 12px;">
+            <div style="background: #0B1120; border: 1.5px solid #334155; border-radius: 10px; padding: 14px 18px; margin-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 8px; margin-bottom: 10px;">
                     <div>
                         <span style="color: #F8FAFC; font-size: 17px; font-weight: 800;">🥋 {k_cust}</span>
                         <span style="color: #94A3B8; font-size: 12px; margin-left: 8px;">({k_def} • {k_role})</span>
@@ -235,12 +237,17 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                         <span style="color: {badge_perf[1]}; font-weight: 800; font-size: 13px;">{badge_perf[0]} — {overall:.1f}/100</span>
                     </div>
                 </div>
+                <div style="background: rgba(30, 41, 59, 0.4); border-radius: 6px; padding: 6px 12px; margin-bottom: 4px; display: flex; justify-content: space-around; font-size: 12px;">
+                    <span>⏱️ Cadência: <b style="color:#F8FAFC;">{cadence_cpm:.1f} CPM</b></span>
+                    <span>🔁 Repetições: <b style="color:#F8FAFC;">{reps}</b></span>
+                    <span>📊 Desvio: <b style="color:#F8FAFC;">{pillars.get('cadence_std_dev_seconds', 0.0):.2f}s DP</b></span>
+                </div>
             </div>
             """,
             unsafe_allow_html=True
         )
 
-        col_in_name, col_meta_k, col_dl_indiv = st.columns([1.5, 2.0, 1.2])
+        col_in_name, col_dl_indiv = st.columns([1.6, 1.4])
         with col_in_name:
             curr_name_input = st.text_input(
                 f"Nomear Kendoca ({k_def}):",
@@ -253,18 +260,8 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                 st.session_state["training_kendoka_names"][k_id] = curr_name_input
                 k_prof["custom_name"] = curr_name_input
                 k_cust = curr_name_input
-        with col_meta_k:
-            st.markdown(
-                f"""
-                <div style="background: rgba(30, 41, 59, 0.4); border-radius: 6px; padding: 8px 12px; margin-top: 14px; display: flex; justify-content: space-around; font-size: 12px;">
-                    <span>⏱️ Cadência: <b style="color:#F8FAFC;">{cadence_cpm:.1f} CPM</b></span>
-                    <span>🔁 Repetições: <b style="color:#F8FAFC;">{reps}</b></span>
-                    <span>📊 Desvio: <b style="color:#F8FAFC;">{pillars.get('cadence_std_dev_seconds', 0.0):.2f}s DP</b></span>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
         with col_dl_indiv:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
             # Gerar relatório individual em Markdown
             k_obj = KendokaTrainingProfile(
                 kendoka_id=k_id,
@@ -290,7 +287,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
             indiv_md = k_obj.generate_individual_report_markdown(meta)
             safe_k_name = k_cust.replace(" ", "_").lower()
             st.download_button(
-                label=f"📥 Relatório de {k_cust[:10]} (.MD)",
+                label=f"📥 Relatório .MD ({k_cust[:8]})",
                 data=indiv_md,
                 file_name=f"relatorio_kenshi_{safe_k_name}_{int(time.time())}.md",
                 mime="text/markdown",
@@ -400,6 +397,55 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     unsafe_allow_html=True
                 )
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+def clear_previous_analysis() -> None:
+    """
+    Limpa completamente qualquer análise anterior, interrompe workers em segundo plano
+    e redefine todos os estados de sessão, revisões, arquivos de vídeo carregados e buffers de resultados.
+    """
+    # 1. Se houver worker de análise em execução, interromper imediatamente
+    active_worker = st.session_state.get("analysis_worker")
+    if active_worker and not getattr(active_worker, "is_done", True):
+        try:
+            active_worker.cancel()
+        except Exception:
+            pass
+
+    # 2. Lista completa de chaves de sessão relacionadas a análises, revisões e vídeos
+    keys_to_clear = [
+        "analysis_result",
+        "analysis_worker",
+        "annotated_output",
+        "last_processing_time",
+        "last_processing_fps",
+        "session_reviews",
+        "sonkyo_edits",
+        "training_kendoka_names",
+        "training_modality_selected",
+        "video_seek_label",
+        "video_start_time",
+        "editing_enabled",
+        "invert_aka_shiro",
+        "processing_cancelled",
+        "video_file_path",
+        "uploaded_file_name",
+        "uploaded_file_size",
+        "video_source_type",
+        "youtube_url",
+        "youtube_video_info",
+        "recorded_local_file_uploader",
+        "youtube_url_input",
+    ]
+    for k in keys_to_clear:
+        st.session_state.pop(k, None)
+
+    # 3. Remover arquivo temporário de vídeo anotado se existir
+    annotated_out = "annotated_match.mp4"
+    if os.path.exists(annotated_out):
+        try:
+            os.remove(annotated_out)
+        except Exception:
+            pass
 
 # Estilização CSS Moderna, Equilibrada (Escala 90%) e sem Cortes na Interface
 st.markdown("""
@@ -683,8 +729,9 @@ if nav_page == "settings":
             )
 
             if st.button("💾 Salvar Configurações de Hardware", type="primary", width="stretch", key="btn_save_hw_tab"):
-                set_processing_device(selected_hw_option)
-                st.session_state["device_preference"] = selected_hw_option
+                selected_hw_str = str(selected_hw_option or "cpu")
+                set_processing_device(selected_hw_str)
+                st.session_state["device_preference"] = selected_hw_str
                 st.success("✅ Configurações de hardware salvas com sucesso!")
 
         with col_hw2:
@@ -972,7 +1019,7 @@ if nav_page == "settings":
 else:
     # --- SIDEBAR DA ANÁLISE: SELEÇÃO DOS 3 MODOS DE OPERAÇÃO ---
     st.sidebar.markdown("### 🕹️ Modo de Operação")
-    app_mode = st.sidebar.radio(
+    app_mode_raw = st.sidebar.radio(
         "Selecione o Modo de Operação",
         options=["realtime", "recorded", "training"],
         format_func=lambda x: {
@@ -981,6 +1028,28 @@ else:
             "training": "🎓 Modo de Treinamento & Aprendizado"
         }[x]
     )
+    app_mode: str = str(app_mode_raw or "realtime")
+
+    # Limpar análise anterior automaticamente sempre que houver mudança de modo de operação
+    previous_mode_raw = st.session_state.get("previous_app_mode")
+    previous_mode: Optional[str] = str(previous_mode_raw) if previous_mode_raw else None
+    if previous_mode is not None and previous_mode != app_mode:
+        clear_previous_analysis()
+        mode_labels = {
+            "realtime": "Tempo Real",
+            "recorded": "Detecção Gravada",
+            "training": "Treinamento & Aprendizado"
+        }
+        prev_lbl = mode_labels.get(previous_mode, previous_mode)
+        new_lbl = mode_labels.get(app_mode, app_mode)
+        log_event("INFO", f"Modo de operação alterado de '{prev_lbl}' para '{new_lbl}'. Análise anterior limpa com sucesso.", "app")
+        st.toast(f"🧹 Modo alterado para {new_lbl}. Análise anterior limpa!", icon="🔄")
+
+    # No Modo de Treinamento & Aprendizado, a calibração de sensibilidade é sempre por padrão 'normal' (Treino Geral / Keiko)
+    if app_mode == "training" and (previous_mode != "training" or "sidebar_profile_selector" not in st.session_state):
+        st.session_state["sidebar_profile_selector"] = "normal"
+
+    st.session_state["previous_app_mode"] = app_mode
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### ⚡ Aceleração de Hardware")
@@ -1013,10 +1082,13 @@ else:
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🎛️ Calibração de Sensibilidade")
-    profile_choice = st.sidebar.selectbox(
+    profile_options = ["permissivo", "normal", "rigido", "custom"]
+    profile_idx_arg: Optional[int] = None if "sidebar_profile_selector" in st.session_state else (profile_options.index("normal") if app_mode == "training" else 1)
+
+    profile_choice_raw = st.sidebar.selectbox(
         "Perfil de Calibração Predefinido",
-        options=["permissivo", "normal", "rigido", "custom"],
-        index=1,
+        options=profile_options,
+        index=profile_idx_arg,
         key="sidebar_profile_selector",
         format_func=lambda x: {
             "permissivo": "Iniciantes / Educacional (Permissivo)",
@@ -1025,6 +1097,7 @@ else:
             "custom": "⚙️ Personalizado (Sliders Manual)"
         }[x]
     )
+    profile_choice: str = str(profile_choice_raw or "normal")
 
     with open("config/calibration_profiles.json", "r", encoding="utf-8") as f:
         profiles_data = json.load(f)
@@ -1112,7 +1185,7 @@ else:
 
         with col_rt_config:
             st.markdown("##### 📹 1. Seleção e Configuração das Câmeras")
-            num_cameras = st.radio(
+            num_cams_raw = st.radio(
                 "Quantidade de Câmeras Simultâneas:",
                 options=[1, 2, 3, 4],
                 index=0,
@@ -1120,6 +1193,7 @@ else:
                 key="rt_num_cameras_radio",
                 format_func=lambda x: f"{x} Câmera{'s' if x > 1 else ''}"
             )
+            num_cameras: int = int(num_cams_raw or 1)
 
             st.markdown("**Configuração Individual por Câmera:**")
             cam_configs = []
@@ -1157,7 +1231,7 @@ else:
                                 key=f"rt_manual_idx_row_{k}",
                                 label_visibility="collapsed"
                             )
-                            cam_val = int(cam_idx_val)
+                            cam_val = cam_idx_val
                             cam_name_display = f"Webcam (Índice {cam_val})"
                         else:
                             found_cam = next((c for c in detected_cams if c["label"] == selected_cam_label), None)
@@ -1261,7 +1335,7 @@ else:
                 st.error("❌ Não foi possível conectar a nenhuma das câmeras configuradas. Verifique conexões e permissões.")
             else:
                 live_pose_histories = [[] for _ in range(num_cameras)]
-                latest_drawn_frames = [None for _ in range(num_cameras)]
+                latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
                 frame_count = 0
                 start_time = time.time()
                 current_fps = 30.0
@@ -1441,7 +1515,7 @@ else:
                     )
 
                     yt_quality_keys = ["media", "alta", "baixa"]
-                    selected_quality = st.selectbox(
+                    selected_quality_raw = st.selectbox(
                         "⚙️ Resolução / Qualidade do Download:",
                         options=yt_quality_keys,
                         format_func=lambda k: QUALITY_LABELS.get(k, k),
@@ -1449,6 +1523,7 @@ else:
                         key="recorded_youtube_quality_select",
                         help="• Média (Padrão): Resolução intermediária (até 720p) a 30 FPS.\n• Alta: Máxima resolução e FPS originais do vídeo.\n• Baixa: Menor resolução disponível com download mais rápido."
                     )
+                    selected_quality: str = str(selected_quality_raw or "media")
 
                     yt_loaded_path = st.session_state.get("video_file_path") if st.session_state.get("video_source_type") == "youtube" else None
                     yt_info = st.session_state.get("youtube_video_info", {})
@@ -1565,13 +1640,14 @@ else:
                 if app_mode == "training":
                     st.markdown("##### 🥋 Modalidade de Treino & Aprendizado (14 Modalidades Oficiais)")
                     mod_keys = ["auto"] + list(TRAINING_MODALITIES_METADATA.keys())
-                    selected_mod_key = st.selectbox(
+                    selected_mod_key_raw = st.selectbox(
                         "Tipo de Treinamento:",
                         options=mod_keys,
                         format_func=lambda k: "🔍 Detecção Inteligente Automática pela IA" if k == "auto" else f"{TRAINING_MODALITIES_METADATA[k]['name']} — {TRAINING_MODALITIES_METADATA[k]['category']}",
                         index=0,
                         key="training_modality_select_pre"
                     )
+                    selected_mod_key: str = str(selected_mod_key_raw or "auto")
                     st.session_state["training_modality_selected"] = None if selected_mod_key == "auto" else selected_mod_key
                     if selected_mod_key != "auto":
                         m_desc = TRAINING_MODALITIES_METADATA[selected_mod_key]
@@ -1720,11 +1796,19 @@ else:
         # PAINEL PRINCIPAL DE RESULTADOS
         if video_file_path or "analysis_result" in st.session_state:
             st.markdown("---")
+            col_res_header, col_res_clear = st.columns([7.5, 2.5])
+            with col_res_header:
+                st.subheader("📊 Painel de Resultados da Análise" if app_mode != "training" else "🎓 Painel de Avaliação do Treinamento")
+            with col_res_clear:
+                if st.button("🧹 Nova Análise / Limpar", key="btn_clear_manual_analysis", type="secondary", help="Limpa todos os resultados atuais e redefine o formulário para um novo vídeo.", width="stretch"):
+                    clear_previous_analysis()
+                    st.toast("🧹 Análise anterior limpa com sucesso!", icon="🔄")
+                    st.rerun()
 
             # 0. SE EXISTIR RESULTADO: PLACAR OFICIAL (SANBON-SHOBU) NO TOPO DO PAINEL
             enable_editing = st.session_state.get("editing_enabled", False)
-            selected_dan = 3
-            dan_options = {
+            selected_dan: int = 3
+            dan_options: dict[int, str] = {
                 1: "1º Dan (Shodan)",
                 2: "2º Dan (Nidan)",
                 3: "3º Dan (Sandan)",
@@ -1747,140 +1831,130 @@ else:
             else:
                 video_name_simple = os.path.basename(video_file_path) if video_file_path else "recorded_match.mp4"
 
-            if "analysis_result" in st.session_state:
-                res = st.session_state["analysis_result"]
-                raw_scoreboard = res.get("scoreboard", {})
+            # 0. NO MODO COMPETITIVO / GRAVADO: PLACAR OFICIAL (SANBON-SHOBU) & BARRA DE CONTROLES NO TOPO DO PAINEL
+            if app_mode != "training":
+                enable_editing = st.session_state.get("editing_enabled", False)
+                selected_dan: int = 3
+                dan_options: dict[int, str] = {
+                    1: "1º Dan (Shodan)",
+                    2: "2º Dan (Nidan)",
+                    3: "3º Dan (Sandan)",
+                    4: "4º Dan (Yondan)",
+                    5: "5º Dan (Godan)",
+                    6: "6º Dan (Rokudan)",
+                    7: "7º Dan (Nanadan)",
+                    8: "8º Dan (Hachidan)"
+                }
+                if "session_reviews" not in st.session_state:
+                    st.session_state["session_reviews"] = {}
+                if "sonkyo_edits" not in st.session_state:
+                    st.session_state["sonkyo_edits"] = {}
 
-                # Extração dos golpes válidos (Ippon) considerando revisões ativas da sessão
-                raw_aka_strikes = []
-                raw_shiro_strikes = []
+                session_revs = st.session_state.get("session_reviews", {})
+                sonkyo_edits = st.session_state.get("sonkyo_edits", {})
 
-                # 1. Golpes detectados automaticamente pelo modelo
-                for ev_i, ev_d in enumerate(res.get("events", [])):
-                    ev_info_d = ev_d["event_info"]
-                    ev_id_d = f"event_{ev_i+1}_frame_{ev_info_d['impact_frame']}"
-                    rev_d = session_revs.get(ev_id_d)
+                if "analysis_result" in st.session_state:
+                    res = st.session_state["analysis_result"]
+                    raw_scoreboard = res.get("scoreboard", {})
 
-                    if rev_d:
-                        if rev_d.get("is_edited"):
-                            is_valid_d = (rev_d.get("category") == "VALID_IPPON")
-                        elif rev_d.get("is_confirmed"):
-                            is_valid_d = ev_d["evaluation"].get("is_valid", False)
-                        else:
-                            is_valid_d = (rev_d.get("label") == "TP" and rev_d.get("category") not in ["INVALID_HIT", "NO_STRIKE"])
-                    else:
-                        is_valid_d = ev_d["evaluation"].get("is_valid", False)
+                    # Extração dos golpes válidos (Ippon) considerando revisões ativas da sessão
+                    raw_aka_strikes = []
+                    raw_shiro_strikes = []
 
-                    if is_valid_d:
-                        if ev_info_d.get("attacker_id") == "KENSHI_AKA":
-                            raw_aka_strikes.append(ev_d)
-                        else:
-                            raw_shiro_strikes.append(ev_d)
+                    # 1. Golpes detectados automaticamente pelo modelo
+                    for ev_i, ev_d in enumerate(res.get("events", [])):
+                        ev_info_d = ev_d["event_info"]
+                        ev_id_d = f"event_{ev_i+1}_frame_{ev_info_d['impact_frame']}"
+                        rev_d = session_revs.get(ev_id_d)
 
-                # 2. Golpes adicionais incluídos manualmente pelo usuário
-                for fn_k, fn_v in session_revs.items():
-                    if fn_v.get("is_included"):
-                        is_fn_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
-                        if is_fn_ippon:
-                            fake_ev = {
-                                "event_info": {
-                                    "attacker_id": fn_v.get("attacker_id", "KENSHI_AKA"),
-                                    "attacker_name": fn_v.get("attacker_name", "Kenshi Aka (Vermelho)"),
-                                    "type": fn_v.get("strike_type", "MEN"),
-                                    "timestamp": fn_v.get("timestamp", "00:00.000"),
-                                    "impact_frame": 0
-                                },
-                                "evaluation": {"is_valid": True, "total_score": 100.0}
-                            }
-                            if fn_v.get("attacker_id") == "KENSHI_AKA":
-                                raw_aka_strikes.append(fake_ev)
+                        if rev_d:
+                            if rev_d.get("is_edited"):
+                                is_valid_d = (rev_d.get("category") == "VALID_IPPON")
+                            elif rev_d.get("is_confirmed"):
+                                is_valid_d = ev_d["evaluation"].get("is_valid", False)
                             else:
-                                raw_shiro_strikes.append(fake_ev)
+                                is_valid_d = (rev_d.get("label") == "TP" and rev_d.get("category") not in ["INVALID_HIT", "NO_STRIKE"])
+                        else:
+                            is_valid_d = ev_d["evaluation"].get("is_valid", False)
 
-                if not is_inverted:
-                    aka_val_strikes = raw_aka_strikes
-                    shiro_val_strikes = raw_shiro_strikes
-                else:
-                    aka_val_strikes = raw_shiro_strikes
-                    shiro_val_strikes = raw_aka_strikes
+                        if is_valid_d:
+                            if ev_info_d.get("attacker_id") == "KENSHI_AKA":
+                                raw_aka_strikes.append(ev_d)
+                            else:
+                                raw_shiro_strikes.append(ev_d)
 
-                aka_score_val = len(aka_val_strikes)
-                shiro_score_val = len(shiro_val_strikes)
+                    # 2. Golpes adicionais incluídos manualmente pelo usuário
+                    for fn_k, fn_v in session_revs.items():
+                        if fn_v.get("is_included"):
+                            is_fn_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
+                            if is_fn_ippon:
+                                fake_ev = {
+                                    "event_info": {
+                                        "attacker_id": fn_v.get("attacker_id", "KENSHI_AKA"),
+                                        "attacker_name": fn_v.get("attacker_name", "Kenshi Aka (Vermelho)"),
+                                        "type": fn_v.get("strike_type", "MEN"),
+                                        "timestamp": fn_v.get("timestamp", "00:00.000"),
+                                        "impact_frame": 0
+                                    },
+                                    "evaluation": {"is_valid": True, "total_score": 100.0}
+                                }
+                                if fn_v.get("attacker_id") == "KENSHI_AKA":
+                                    raw_aka_strikes.append(fake_ev)
+                                else:
+                                    raw_shiro_strikes.append(fake_ev)
 
-                if aka_score_val > shiro_score_val:
-                    winner_txt = f"🏆 Vitória de Kenshi Aka (Vermelho) [{aka_score_val} - {shiro_score_val}]"
-                    winner_bg = "rgba(239, 68, 68, 0.18)"
-                    winner_border = "#EF4444"
-                    winner_color = "#FCA5A5"
-                elif shiro_score_val > aka_score_val:
-                    winner_txt = f"🏆 Vitória de Kenshi Shiro (Branco) [{shiro_score_val} - {aka_score_val}]"
-                    winner_bg = "rgba(243, 244, 246, 0.15)"
-                    winner_border = "#E5E7EB"
-                    winner_color = "#F3F4F6"
-                else:
-                    winner_txt = f"🤝 Empate (Hikiwake) [{aka_score_val} - {shiro_score_val}]"
-                    winner_bg = "rgba(148, 163, 184, 0.15)"
-                    winner_border = "#64748B"
-                    winner_color = "#CBD5E1"
+                    if not is_inverted:
+                        aka_val_strikes = raw_aka_strikes
+                        shiro_val_strikes = raw_shiro_strikes
+                    else:
+                        aka_val_strikes = raw_shiro_strikes
+                        shiro_val_strikes = raw_aka_strikes
 
-                flag_info = raw_scoreboard.get("flag_detection", {})
-                flag_dec = flag_info.get("flag_decision", "POSITION_DEFAULT")
-                flag_conf = int(flag_info.get("confidence", 0.5) * 100)
+                    aka_score_val = len(aka_val_strikes)
+                    shiro_score_val = len(shiro_val_strikes)
 
-                if "RIGHT" in flag_dec:
-                    flag_badge = f"🚩 Flag Vermelha (Tasukuki) detectada nas costas do lutador à direita ({flag_conf}%)"
-                elif "LEFT" in flag_dec:
-                    flag_badge = f"🚩 Flag Vermelha (Tasukuki) detectada nas costas do lutador à esquerda ({flag_conf}%)"
-                else:
-                    flag_badge = "🚩 Identificação por posição inicial no Shiaijo"
+                    if aka_score_val > shiro_score_val:
+                        winner_txt = f"🏆 Vitória de Kenshi Aka (Vermelho) [{aka_score_val} - {shiro_score_val}]"
+                        winner_bg = "rgba(239, 68, 68, 0.18)"
+                        winner_border = "#EF4444"
+                        winner_color = "#FCA5A5"
+                    elif shiro_score_val > aka_score_val:
+                        winner_txt = f"🏆 Vitória de Kenshi Shiro (Branco) [{shiro_score_val} - {aka_score_val}]"
+                        winner_bg = "rgba(243, 244, 246, 0.15)"
+                        winner_border = "#E5E7EB"
+                        winner_color = "#F3F4F6"
+                    else:
+                        winner_txt = f"🤝 Empate (Hikiwake) [{aka_score_val} - {shiro_score_val}]"
+                        winner_bg = "rgba(148, 163, 184, 0.15)"
+                        winner_border = "#64748B"
+                        winner_color = "#CBD5E1"
 
-                if is_inverted:
-                    flag_badge += " • 🔄 Lados Invertidos Manualmente"
+                    flag_info = raw_scoreboard.get("flag_detection", {})
+                    flag_dec = flag_info.get("flag_decision", "POSITION_DEFAULT")
+                    flag_conf = int(flag_info.get("confidence", 0.5) * 100)
 
-                # HTML de Ippons do Aka
-                if aka_val_strikes:
-                    aka_items = "".join([f'<span style="display:inline-block; background: #991B1B; color: #FEE2E2; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">🔴 {format_scoreboard_strike_name(s["event_info"]["type"])} ({s["event_info"]["timestamp"]})</span>' for s in aka_val_strikes])
-                else:
-                    aka_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon detectado</span>'
+                    if "RIGHT" in flag_dec:
+                        flag_badge = f"🚩 Flag Vermelha (Tasukuki) detectada nas costas do lutador à direita ({flag_conf}%)"
+                    elif "LEFT" in flag_dec:
+                        flag_badge = f"🚩 Flag Vermelha (Tasukuki) detectada nas costas do lutador à esquerda ({flag_conf}%)"
+                    else:
+                        flag_badge = "🚩 Identificação por posição inicial no Shiaijo"
 
-                # HTML de Ippons do Shiro
-                if shiro_val_strikes:
-                    shiro_items = "".join([f'<span style="display:inline-block; background: #475569; color: #F8FAFC; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">⚪ {format_scoreboard_strike_name(s["event_info"]["type"])} ({s["event_info"]["timestamp"]})</span>' for s in shiro_val_strikes])
-                else:
-                    shiro_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
+                    if is_inverted:
+                        flag_badge += " • 🔄 Lados Invertidos Manualmente"
 
-                # RENDERIZAÇÃO PRINCIPAL DO TOPO CONFORME O MODO DE OPERAÇÃO
-                if app_mode == "training":
-                    # MODO DE TREINAMENTO: PAINEL DE 10 MODALIDADES, 3 PILARES E PRESCRIÇÃO PEDAGÓGICA
-                    render_training_analysis_view(res, is_inverted)
-                    with st.expander("⚔️ Visualizar Simulação de Placar Sanbon-Shobu (Competitivo)", expanded=False):
-                        st.markdown(
-                            f"""
-                            <div style="background: #090D16; border: 2px solid #374151; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1F2937; padding-bottom: 8px; margin-bottom: 12px;">
-                                    <span style="color: #D1D5DB; font-size: 13px; font-weight: 800; letter-spacing: 0.8px;">🥋 PONTUAÇÃO FINAL (SANBON-SHOBU)</span>
-                                    <span style="color: #93C5FD; font-size: 12px; font-weight: 500;">{flag_badge}</span>
-                                </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                                    <div style="background: linear-gradient(180deg, rgba(243, 244, 246, 0.10) 0%, rgba(100, 116, 139, 0.18) 100%); border: 1.5px solid #E5E7EB; border-radius: 8px; padding: 12px; text-align: center;">
-                                        <div style="color: #F3F4F6; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">⚪ KENSHI SHIRO (BRANCO - ESQUERDA)</div>
-                                        <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{shiro_score_val} <span style="font-size: 14px; font-weight: 700; color: #E5E7EB;">IPPON</span></div>
-                                        <div style="margin-top: 6px;">{shiro_items}</div>
-                                    </div>
-                                    <div style="background: linear-gradient(180deg, rgba(239, 68, 68, 0.15) 0%, rgba(185, 28, 28, 0.22) 100%); border: 1.5px solid #EF4444; border-radius: 8px; padding: 12px; text-align: center;">
-                                        <div style="color: #FCA5A5; font-size: 13px; font-weight: 800; letter-spacing: 0.5px;">🔴 KENSHI AKA (VERMELHO - DIREITA)</div>
-                                        <div style="color: #FFFFFF; font-size: 38px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 4px 0;">{aka_score_val} <span style="font-size: 14px; font-weight: 700; color: #FCA5A5;">IPPON</span></div>
-                                        <div style="margin-top: 6px;">{aka_items}</div>
-                                    </div>
-                                </div>
-                                <div style="background: {winner_bg}; border: 1px solid {winner_border}; border-radius: 6px; padding: 8px; margin-top: 10px; text-align: center;">
-                                    <span style="color: {winner_color}; font-size: 15px; font-weight: 800;">{winner_txt}</span>
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                else:
+                    # HTML de Ippons do Aka
+                    if aka_val_strikes:
+                        aka_items = "".join([f'<span style="display:inline-block; background: #991B1B; color: #FEE2E2; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">🔴 {format_scoreboard_strike_name(s["event_info"]["type"])} ({s["event_info"]["timestamp"]})</span>' for s in aka_val_strikes])
+                    else:
+                        aka_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon detectado</span>'
+
+                    # HTML de Ippons do Shiro
+                    if shiro_val_strikes:
+                        shiro_items = "".join([f'<span style="display:inline-block; background: #475569; color: #F8FAFC; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px; margin: 2px;">⚪ {format_scoreboard_strike_name(s["event_info"]["type"])} ({s["event_info"]["timestamp"]})</span>' for s in shiro_val_strikes])
+                    else:
+                        shiro_items = '<span style="color: #9CA3AF; font-size: 12px; font-style: italic;">Nenhum Ippon validado</span>'
+
                     # MODO GRAVADO / COMPETITIVO: PLACAR SANBON-SHOBU NO TOPO
                     st.markdown(
                         f"""
@@ -1925,13 +1999,14 @@ else:
                 if enable_editing:
                     rev_header_col1, rev_header_col2 = st.columns([3, 1])
                     with rev_header_col1:
-                        selected_dan = st.selectbox(
+                        dan_val = st.selectbox(
                             "🥋 Graduação DAN do Revisor:",
                             options=list(dan_options.keys()),
                             format_func=lambda x: dan_options[x],
                             index=2,
                             key="reviewer_dan_select"
                         )
+                        selected_dan = int(dan_val or 3)
                     with rev_header_col2:
                         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
                         if st.button("🔄 Resetar Revisão", width="stretch", help="Reseta todas as alterações de marcação e edições feitas nesta sessão"):
@@ -1989,11 +2064,11 @@ else:
                             st.toast("Edições de Sonkyō descartadas!", icon="🔄")
                             st.rerun()
 
-            # DUAS COLUNAS PERFEITAMENTE ALINHADAS LADO A LADO: VÍDEO (ESQUERDA) & LINHA DO TEMPO / GOLPES (DIREITA)
+            # DUAS COLUNAS PERFEITAMENTE ALINHADAS LADO A LADO: VÍDEO (ESQUERDA) & RESULTADOS (DIREITA)
             col_video, col_results = st.columns([5, 7])
             
             with col_video:
-                st.subheader("🎥 Vídeo da Luta")
+                st.subheader("🎥 Vídeo do Treinamento" if app_mode == "training" else "🎥 Vídeo da Luta")
                 if st.session_state.get("video_source_type") == "youtube" and "youtube_url" in st.session_state:
                     yt_u = st.session_state["youtube_url"]
                     yt_inf = st.session_state.get("youtube_video_info", {})
@@ -2013,7 +2088,7 @@ else:
                 has_annotated = "annotated_output" in st.session_state and os.path.exists(st.session_state.get("annotated_output", ""))
                 if has_annotated:
                     video_type = st.radio("Exibição do Vídeo:", ["📹 Vídeo Original", "🎥 Vídeo Anotado (Pose & Tracking)"], horizontal=True)
-                    selected_video = video_file_path if "Original" in video_type else st.session_state["annotated_output"]
+                    selected_video = video_file_path if (video_type and "Original" in video_type) else st.session_state["annotated_output"]
                 else:
                     selected_video = video_file_path
                     
@@ -2048,768 +2123,799 @@ else:
                     
                 if "analysis_result" in st.session_state:
                     res = st.session_state["analysis_result"]
-                    sonkyo_info = res.get("sonkyo_analysis", {})
-                    plane_info = res.get("plane_filtering", {})
                     proc_time = res.get("processing_time_seconds", st.session_state.get("last_processing_time", 0.0))
                     proc_fps = res.get("processing_fps", st.session_state.get("last_processing_fps", 0.0))
-
-                    st.markdown('<div class="summary-card">', unsafe_allow_html=True)
-                    st.markdown("##### 📌 Resumo do Combate & Delimitação por Sonkyō")
-                    
-                    m1, m2 = st.columns(2)
-                    m1.metric("Duração Total", f"{res['duration_seconds']}s")
-                    eff_sec = res.get('effective_combat_duration_seconds', res['duration_seconds'])
-                    m2.metric("Tempo Líquido (Luta)", f"{eff_sec}s", delta=f"{eff_sec - res['duration_seconds']:.1f}s" if eff_sec < res['duration_seconds'] else None)
-
-                    m_s1, m_s2 = st.columns(2)
-                    start_ts = sonkyo_info.get("match_start_timestamp", "00:00.000")
-                    end_ts = sonkyo_info.get("match_end_timestamp", f"{res['duration_seconds']}s")
-                    m_s1.metric("🥋 Início (Sonkyō Inicial)", start_ts)
-                    m_s2.metric("🥋 Fim (Sonkyō Final)", end_ts)
-
-                    m3, m4 = st.columns(2)
-                    m3.metric("Golpes Válidos na Janela", res['events_detected_count'])
-                    m4.metric("Perfil Aplicado", res['profile_applied'])
-                    
-                    m5, m6 = st.columns(2)
                     dev_used = res.get('device_used', 'cpu').lower()
-                    m5.metric("Processamento", "⚡ GPU NVIDIA" if dev_used == "gpu" else "💻 CPU Somente")
-                    bg_disc = plane_info.get("discarded_background_count", 0)
-                    fg_disc = plane_info.get("discarded_foreground_count", 0)
-                    m6.metric("Planos Descartados", f"{bg_disc + fg_disc}", help=f"Segundo Plano: {bg_disc} | Frente da Câmera: {fg_disc}")
 
-                    m_t1, m_t2 = st.columns(2)
-                    m_t1.metric("⏱️ Tempo de Processamento", f"{proc_time:.2f}s")
-                    m_t2.metric("⚡ Taxa de Processamento", f"{proc_fps:.1f} FPS" if proc_fps > 0 else "N/A")
+                    if app_mode == "training":
+                        st.markdown('<div class="summary-card">', unsafe_allow_html=True)
+                        st.markdown("##### 📌 Resumo da Sessão de Treinamento")
+                        
+                        m1, m2 = st.columns(2)
+                        m1.metric("Duração Total", f"{res['duration_seconds']:.1f}s")
+                        m2.metric("Quadros Analisados", f"{res.get('total_frames', 0)}")
+                        
+                        m3, m4 = st.columns(2)
+                        m3.metric("Sensibilidade", res.get('profile_applied', 'Treino Geral'))
+                        m4.metric("Processamento", "⚡ GPU NVIDIA" if dev_used == "gpu" else "💻 CPU Somente")
+                        
+                        m5, m6 = st.columns(2)
+                        m5.metric("⏱️ Tempo Total", f"{proc_time:.2f}s")
+                        m5_fps = f"{proc_fps:.1f} FPS" if proc_fps > 0 else "N/A"
+                        m6.metric("⚡ Taxa de FPS", m5_fps)
 
-                    if sonkyo_info.get("status_message"):
-                        st.caption(f"🥋 **Status do Sonkyō:** {sonkyo_info['status_message']}")
-                    st.caption(f"ℹ️ {res.get('device_status', '')}")
-                    if st.session_state.get("video_source_type") == "youtube":
-                        yt_inf = st.session_state.get("youtube_video_info", {})
-                        yt_q = yt_inf.get("quality_label", "Média")
-                        yt_r = yt_inf.get("downloaded_resolution", "")
-                        yt_f = yt_inf.get("downloaded_fps", "")
-                        fps_tag = f" @ {yt_f:.0f} FPS" if yt_f else ""
-                        st.caption(f"🌐 **Fonte:** Streaming Web / YouTube &nbsp;|&nbsp; ⚙️ **Qualidade do Vídeo Baixado:** {yt_q} ({yt_r}{fps_tag})")
-                    st.markdown('</div>', unsafe_allow_html=True)
+                        if res.get('device_status'):
+                            st.caption(f"ℹ️ {res.get('device_status')}")
+                        if st.session_state.get("video_source_type") == "youtube":
+                            yt_inf = st.session_state.get("youtube_video_info", {})
+                            yt_q = yt_inf.get("quality_label", "Média")
+                            yt_r = yt_inf.get("downloaded_resolution", "")
+                            yt_f = yt_inf.get("downloaded_fps", "")
+                            fps_tag = f" @ {yt_f:.0f} FPS" if yt_f else ""
+                            st.caption(f"🌐 **Fonte:** Streaming Web / YouTube &nbsp;|&nbsp; ⚙️ **Qualidade:** {yt_q} ({yt_r}{fps_tag})")
+                        st.markdown('</div>', unsafe_allow_html=True)
+
+                        if st.button("🔄 Inverter Lados dos Kendocas (Esquerda ⇄ Direita)", width="stretch", key="btn_toggle_invert_training", help="Inverte a ordem de exibição dos praticantes caso a câmera esteja posicionada do lado oposto do dojo"):
+                            st.session_state["invert_aka_shiro"] = not is_inverted
+                            st.toast(f"🔄 Identificação invertida: Kendoca 1 ⇄ Kendoca 2!", icon="🔄")
+                            st.rerun()
+                    else:
+                        sonkyo_info = res.get("sonkyo_analysis", {})
+                        plane_info = res.get("plane_filtering", {})
+
+                        st.markdown('<div class="summary-card">', unsafe_allow_html=True)
+                        st.markdown("##### 📌 Resumo do Combate & Delimitação por Sonkyō")
+                        
+                        m1, m2 = st.columns(2)
+                        m1.metric("Duração Total", f"{res['duration_seconds']}s")
+                        eff_sec = res.get('effective_combat_duration_seconds', res['duration_seconds'])
+                        m2.metric("Tempo Líquido (Luta)", f"{eff_sec}s", delta=f"{eff_sec - res['duration_seconds']:.1f}s" if eff_sec < res['duration_seconds'] else None)
+
+                        m_s1, m_s2 = st.columns(2)
+                        start_ts = sonkyo_info.get("match_start_timestamp", "00:00.000")
+                        end_ts = sonkyo_info.get("match_end_timestamp", f"{res['duration_seconds']}s")
+                        m_s1.metric("🥋 Início (Sonkyō Inicial)", start_ts)
+                        m_s2.metric("🥋 Fim (Sonkyō Final)", end_ts)
+
+                        m3, m4 = st.columns(2)
+                        m3.metric("Golpes Válidos na Janela", res['events_detected_count'])
+                        m4.metric("Perfil Aplicado", res['profile_applied'])
+                        
+                        m5, m6 = st.columns(2)
+                        m5.metric("Processamento", "⚡ GPU NVIDIA" if dev_used == "gpu" else "💻 CPU Somente")
+                        bg_disc = plane_info.get("discarded_background_count", 0)
+                        fg_disc = plane_info.get("discarded_foreground_count", 0)
+                        m6.metric("Planos Descartados", f"{bg_disc + fg_disc}", help=f"Segundo Plano: {bg_disc} | Frente da Câmera: {fg_disc}")
+
+                        m_t1, m_t2 = st.columns(2)
+                        m_t1.metric("⏱️ Tempo de Processamento", f"{proc_time:.2f}s")
+                        m_t2.metric("⚡ Taxa de Processamento", f"{proc_fps:.1f} FPS" if proc_fps > 0 else "N/A")
+
+                        if sonkyo_info.get("status_message"):
+                            st.caption(f"🥋 **Status do Sonkyō:** {sonkyo_info['status_message']}")
+                        st.caption(f"ℹ️ {res.get('device_status', '')}")
+                        if st.session_state.get("video_source_type") == "youtube":
+                            yt_inf = st.session_state.get("youtube_video_info", {})
+                            yt_q = yt_inf.get("quality_label", "Média")
+                            yt_r = yt_inf.get("downloaded_resolution", "")
+                            yt_f = yt_inf.get("downloaded_fps", "")
+                            fps_tag = f" @ {yt_f:.0f} FPS" if yt_f else ""
+                            st.caption(f"🌐 **Fonte:** Streaming Web / YouTube &nbsp;|&nbsp; ⚙️ **Qualidade do Vídeo Baixado:** {yt_q} ({yt_r}{fps_tag})")
+                        st.markdown('</div>', unsafe_allow_html=True)
 
             with col_results:
-                st.subheader("🥋 Linha do Tempo & Revisão de Golpes")
-                if "analysis_result" not in st.session_state:
-                    st.info("👈 Clique em **⚡ Executar Analise** para visualizar a linha do tempo de eventos e análise detalhada.")
+                if app_mode == "training":
+                    st.subheader("🎓 Avaliação de Treinamento")
+                    if "analysis_result" not in st.session_state:
+                        st.info("👈 Clique em **⚡ Executar Análise de Treinamento** acima para visualizar a avaliação dos 3 Pilares e dos praticantes.")
+                    else:
+                        res = st.session_state["analysis_result"]
+                        render_training_analysis_view(res, is_inverted)
                 else:
-                    res = st.session_state["analysis_result"]
-                    sonkyo_info = res.get("sonkyo_analysis", {})
+                    st.subheader("🥋 Linha do Tempo & Revisão de Golpes")
+                    if "analysis_result" not in st.session_state:
+                        st.info("👈 Clique em **⚡ Executar Analise** para visualizar a linha do tempo de eventos e análise detalhada.")
+                    else:
+                        res = st.session_state["analysis_result"]
+                        sonkyo_info = res.get("sonkyo_analysis", {})
 
-                    # Montagem da lista unificada e cronológica de todos os golpes (detectados + incluídos)
-                    combined_strikes = []
-                    session_revs = st.session_state.get("session_reviews", {})
+                        # Montagem da lista unificada e cronológica de todos os golpes (detectados + incluídos)
+                        combined_strikes = []
+                        session_revs = st.session_state.get("session_reviews", {})
 
-                    # 1. Golpes detectados pelo modelo
-                    for idx_raw, ev_data in enumerate(res.get("events", [])):
-                        ev = ev_data["event_info"]
-                        eval_info = ev_data["evaluation"]
-                        event_id_str = f"event_{idx_raw+1}_frame_{ev['impact_frame']}"
+                        # 1. Golpes detectados pelo modelo
+                        for idx_raw, ev_data in enumerate(res.get("events", [])):
+                            ev = ev_data["event_info"]
+                            eval_info = ev_data["evaluation"]
+                            event_id_str = f"event_{idx_raw+1}_frame_{ev['impact_frame']}"
 
-                        orig_att_name = ev.get("attacker_name", "Kenshi Aka (Vermelho)")
-                        orig_att_id = ev.get("attacker_id", "KENSHI_AKA")
-                        if is_inverted:
-                            attacker_label = "Kenshi Shiro (Branco)" if "AKA" in orig_att_id else "Kenshi Aka (Vermelho)"
-                            attacker_id = "KENSHI_SHIRO" if "AKA" in orig_att_id else "KENSHI_AKA"
-                        else:
-                            attacker_label = orig_att_name
-                            attacker_id = orig_att_id
+                            orig_att_name = ev.get("attacker_name", "Kenshi Aka (Vermelho)")
+                            orig_att_id = ev.get("attacker_id", "KENSHI_AKA")
+                            if is_inverted:
+                                attacker_label = "Kenshi Shiro (Branco)" if "AKA" in orig_att_id else "Kenshi Aka (Vermelho)"
+                                attacker_id = "KENSHI_SHIRO" if "AKA" in orig_att_id else "KENSHI_AKA"
+                            else:
+                                attacker_label = orig_att_name
+                                attacker_id = orig_att_id
 
-                        orig_is_valid = eval_info.get('is_valid', False)
+                            orig_is_valid = eval_info.get('is_valid', False)
 
-                        # Estado da revisão desta marcação
-                        current_rev = session_revs.get(event_id_str, {
-                            "event_id": event_id_str,
-                            "label": "TP" if orig_is_valid else "FP",
-                            "category": "VALID_IPPON" if orig_is_valid else "INVALID_HIT",
-                            "is_valid_ippon": orig_is_valid,
-                            "strike_type": ev['type'],
-                            "timestamp": ev['timestamp'],
-                            "attacker_id": attacker_id,
-                            "attacker_name": attacker_label,
-                            "total_score": eval_info.get('total_score', 0.0),
-                            "sub_scores": eval_info.get('sub_scores', {}),
-                            "is_edited": False,
-                            "is_confirmed": False,
-                            "is_included": False,
-                            "notes": ""
-                        })
-                        current_rev["attacker_name"] = attacker_label
-                        current_rev["attacker_id"] = attacker_id
+                            # Estado da revisão desta marcação
+                            current_rev = session_revs.get(event_id_str, {
+                                "event_id": event_id_str,
+                                "label": "TP" if orig_is_valid else "FP",
+                                "category": "VALID_IPPON" if orig_is_valid else "INVALID_HIT",
+                                "is_valid_ippon": orig_is_valid,
+                                "strike_type": ev['type'],
+                                "timestamp": ev['timestamp'],
+                                "attacker_id": attacker_id,
+                                "attacker_name": attacker_label,
+                                "total_score": eval_info.get('total_score', 0.0),
+                                "sub_scores": eval_info.get('sub_scores', {}),
+                                "is_edited": False,
+                                "is_confirmed": False,
+                                "is_included": False,
+                                "notes": ""
+                            })
+                            current_rev["attacker_name"] = attacker_label
+                            current_rev["attacker_id"] = attacker_id
 
-                        strike_ts = current_rev.get("timestamp", ev.get("timestamp", "00:00.000"))
-                        combined_strikes.append({
-                            "event_id": event_id_str,
-                            "source": "AI_DETECTED",
-                            "raw_event": ev_data,
-                            "review": current_rev,
-                            "timestamp": strike_ts,
-                            "time_sec": parse_ts_to_seconds(strike_ts),
-                            "orig_is_valid": orig_is_valid,
-                            "attacker_label": attacker_label,
-                            "attacker_id": attacker_id,
-                            "impact_frame": ev.get("impact_frame", 0),
-                            "diagnostic_report": ev_data.get("diagnostic_report", "")
-                        })
-
-                    # 2. Golpes incluídos manualmente pelo revisor
-                    for fn_k, fn_v in session_revs.items():
-                        if fn_v.get("is_included"):
-                            ts_val = fn_v.get("timestamp", "00:00.000")
-                            inc_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
+                            strike_ts = current_rev.get("timestamp", ev.get("timestamp", "00:00.000"))
                             combined_strikes.append({
-                                "event_id": fn_k,
-                                "source": "INCLUDED",
-                                "raw_event": None,
-                                "review": fn_v,
-                                "timestamp": ts_val,
-                                "time_sec": parse_ts_to_seconds(ts_val),
-                                "orig_is_valid": inc_ippon,
-                                "attacker_label": fn_v.get("attacker_name", "Kenshi Aka (Vermelho)"),
-                                "attacker_id": fn_v.get("attacker_id", "KENSHI_AKA"),
-                                "impact_frame": 0,
-                                "diagnostic_report": None
+                                "event_id": event_id_str,
+                                "source": "AI_DETECTED",
+                                "raw_event": ev_data,
+                                "review": current_rev,
+                                "timestamp": strike_ts,
+                                "time_sec": parse_ts_to_seconds(strike_ts),
+                                "orig_is_valid": orig_is_valid,
+                                "attacker_label": attacker_label,
+                                "attacker_id": attacker_id,
+                                "impact_frame": ev.get("impact_frame", 0),
+                                "diagnostic_report": ev_data.get("diagnostic_report", "")
                             })
 
-                    # Ordenação estrita cronológica pelo tempo do golpe
-                    combined_strikes.sort(key=lambda s: s["time_sec"])
+                        # 2. Golpes incluídos manualmente pelo revisor
+                        for fn_k, fn_v in session_revs.items():
+                            if fn_v.get("is_included"):
+                                ts_val = fn_v.get("timestamp", "00:00.000")
+                                inc_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
+                                combined_strikes.append({
+                                    "event_id": fn_k,
+                                    "source": "INCLUDED",
+                                    "raw_event": None,
+                                    "review": fn_v,
+                                    "timestamp": ts_val,
+                                    "time_sec": parse_ts_to_seconds(ts_val),
+                                    "orig_is_valid": inc_ippon,
+                                    "attacker_label": fn_v.get("attacker_name", "Kenshi Aka (Vermelho)"),
+                                    "attacker_id": fn_v.get("attacker_id", "KENSHI_AKA"),
+                                    "impact_frame": 0,
+                                    "diagnostic_report": None
+                                })
 
-                    # Seletor Rápido de Navegação por Eventos
-                    jump_options = ["-- 🎯 Selecionar evento para assistir no vídeo --"]
-                    jump_map = {}
+                        # Ordenação estrita cronológica pelo tempo do golpe
+                        combined_strikes.sort(key=lambda s: s["time_sec"])
 
-                    has_init_jump = sonkyo_info.get("has_initial_sonkyo", False) and sonkyo_info.get("initial_sonkyo")
-                    init_edit_jump = sonkyo_edits.get("initial")
-                    if has_init_jump or init_edit_jump:
-                        ts_i = init_edit_jump.get("start_timestamp") if init_edit_jump else sonkyo_info.get("initial_sonkyo", {}).get("start_timestamp", "00:00.000")
-                        label_i = f"🥋 Sonkyō Inicial (Abertura) @ {ts_i}"
-                        jump_options.append(label_i)
-                        jump_map[label_i] = (max(0.0, parse_ts_to_seconds(ts_i) - 1.0), label_i)
+                        # Seletor Rápido de Navegação por Eventos
+                        jump_options = ["-- 🎯 Selecionar evento para assistir no vídeo --"]
+                        jump_map = {}
 
-                    for idx_j, strike_item in enumerate(combined_strikes):
-                        rev_j = strike_item["review"]
-                        is_ippon_j = rev_j.get("is_valid_ippon", rev_j.get("category") == "VALID_IPPON" or rev_j.get("label") == "TP")
-                        status_sym_j = "✅ Ippon" if is_ippon_j else "❌ Inválido"
-                        tag_inc = " [➕ Incluído]" if strike_item["source"] == "INCLUDED" else ""
-                        st_display_j = format_katakana_strike(rev_j.get('strike_type')) if is_ippon_j else rev_j.get('strike_type')
-                        label_sj = f"🥊 Golpe #{idx_j+1}: {st_display_j} @ {strike_item['timestamp']} ({status_sym_j} - {strike_item['attacker_label']}){tag_inc}"
-                        jump_options.append(label_sj)
-                        jump_map[label_sj] = (max(0.0, strike_item["time_sec"] - 1.0), label_sj)
+                        has_init_jump = sonkyo_info.get("has_initial_sonkyo", False) and sonkyo_info.get("initial_sonkyo")
+                        init_edit_jump = sonkyo_edits.get("initial")
+                        if has_init_jump or init_edit_jump:
+                            ts_i = init_edit_jump.get("start_timestamp") if init_edit_jump else sonkyo_info.get("initial_sonkyo", {}).get("start_timestamp", "00:00.000")
+                            label_i = f"🥋 Sonkyō Inicial (Abertura) @ {ts_i}"
+                            jump_options.append(label_i)
+                            jump_map[label_i] = (max(0.0, parse_ts_to_seconds(ts_i) - 1.0), label_i)
 
-                    has_final_jump = sonkyo_info.get("has_final_sonkyo", False) and sonkyo_info.get("final_sonkyo")
-                    final_edit_jump = sonkyo_edits.get("final")
-                    if has_final_jump or final_edit_jump:
-                        ts_fj = final_edit_jump.get("start_timestamp") if final_edit_jump else sonkyo_info.get("final_sonkyo", {}).get("start_timestamp", "00:00.000")
-                        label_fj = f"🥋 Sonkyō Final (Encerramento) @ {ts_fj}"
-                        jump_options.append(label_fj)
-                        jump_map[label_fj] = (max(0.0, parse_ts_to_seconds(ts_fj) - 1.0), label_fj)
+                        for idx_j, strike_item in enumerate(combined_strikes):
+                            rev_j = strike_item["review"]
+                            is_ippon_j = rev_j.get("is_valid_ippon", rev_j.get("category") == "VALID_IPPON" or rev_j.get("label") == "TP")
+                            status_sym_j = "✅ Ippon" if is_ippon_j else "❌ Inválido"
+                            tag_inc = " [➕ Incluído]" if strike_item["source"] == "INCLUDED" else ""
+                            st_display_j = format_katakana_strike(rev_j.get('strike_type')) if is_ippon_j else rev_j.get('strike_type')
+                            label_sj = f"🥊 Golpe #{idx_j+1}: {st_display_j} @ {strike_item['timestamp']} ({status_sym_j} - {strike_item['attacker_label']}){tag_inc}"
+                            jump_options.append(label_sj)
+                            jump_map[label_sj] = (max(0.0, strike_item["time_sec"] - 1.0), label_sj)
 
-                    if len(jump_options) > 1:
-                        selected_jump = st.selectbox(
-                            "🎯 Navegação Rápida de Eventos no Vídeo:",
-                            options=jump_options,
-                            index=0,
-                            key="event_quick_jump_select",
-                            help="Selecione um evento para posicionar a reprodução do vídeo e facilitar a revisão."
-                        )
-                        if selected_jump in jump_map:
-                            target_sec, target_lbl = jump_map[selected_jump]
-                            if st.session_state.get("video_start_time") != target_sec or st.session_state.get("video_seek_label") != target_lbl:
-                                st.session_state["video_start_time"] = target_sec
-                                st.session_state["video_seek_label"] = target_lbl
-                                st.toast(f"🎥 Vídeo posicionado em {target_sec:.1f}s (1s antes)!", icon="🎬")
-                                st.rerun()
+                        has_final_jump = sonkyo_info.get("has_final_sonkyo", False) and sonkyo_info.get("final_sonkyo")
+                        final_edit_jump = sonkyo_edits.get("final")
+                        if has_final_jump or final_edit_jump:
+                            ts_fj = final_edit_jump.get("start_timestamp") if final_edit_jump else sonkyo_info.get("final_sonkyo", {}).get("start_timestamp", "00:00.000")
+                            label_fj = f"🥋 Sonkyō Final (Encerramento) @ {ts_fj}"
+                            jump_options.append(label_fj)
+                            jump_map[label_fj] = (max(0.0, parse_ts_to_seconds(ts_fj) - 1.0), label_fj)
 
-                    # Função interna para renderizar o inseridor inline de golpes entre eventos (+)
-                    def render_inline_strike_inserter(slot_id: str, prev_time_s: float, next_time_s: float, prev_desc: str, next_desc: str):
-                        if not enable_editing and app_mode != "training":
-                            return
-                        mid_s = max(0.0, (prev_time_s + next_time_s) / 2.0)
-                        suggested_ts = format_seconds_to_ts(mid_s)
+                        if len(jump_options) > 1:
+                            selected_jump = st.selectbox(
+                                "🎯 Navegação Rápida de Eventos no Vídeo:",
+                                options=jump_options,
+                                index=0,
+                                key="event_quick_jump_select",
+                                help="Selecione um evento para posicionar a reprodução do vídeo e facilitar a revisão."
+                            )
+                            if selected_jump in jump_map:
+                                target_sec, target_lbl = jump_map[selected_jump]
+                                if st.session_state.get("video_start_time") != target_sec or st.session_state.get("video_seek_label") != target_lbl:
+                                    st.session_state["video_start_time"] = target_sec
+                                    st.session_state["video_seek_label"] = target_lbl
+                                    st.toast(f"🎥 Vídeo posicionado em {target_sec:.1f}s (1s antes)!", icon="🎬")
+                                    st.rerun()
 
-                        with st.expander(f"➕ Inserir Golpe entre {prev_desc} e {next_desc} (~{suggested_ts})", expanded=False):
-                            c_in1, c_in2 = st.columns(2)
-                            with c_in1:
-                                ins_ts = st.text_input("Timestamp", value=suggested_ts, key=f"ins_ts_{slot_id}", help="Momento exato do golpe a ser inserido")
-                                ins_type = st.selectbox("Técnica", ["MEN", "KOTE", "DO", "TSUKI"], key=f"ins_type_{slot_id}")
-                            with c_in2:
-                                if is_inverted:
-                                    att_opts = [
-                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Esquerda)"),
-                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Direita)")
-                                    ]
-                                else:
-                                    att_opts = [
-                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Esquerda)"),
-                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Direita)")
-                                    ]
-                                att_labels = [o[1] for o in att_opts]
-                                ins_att_sel = st.selectbox("Lutador Atacante", att_labels, key=f"ins_att_{slot_id}")
-                                ins_att_id = att_opts[att_labels.index(ins_att_sel)][0]
-                                ins_att_name = "Kenshi Aka (Vermelho)" if ins_att_id == "KENSHI_AKA" else "Kenshi Shiro (Branco)"
+                        # Função interna para renderizar o inseridor inline de golpes entre eventos (+)
+                        def render_inline_strike_inserter(slot_id: str, prev_time_s: float, next_time_s: float, prev_desc: str, next_desc: str):
+                            if not enable_editing and app_mode != "training":
+                                return
+                            mid_s = max(0.0, (prev_time_s + next_time_s) / 2.0)
+                            suggested_ts = format_seconds_to_ts(mid_s)
 
-                                ins_val_opts = [
-                                    ("VALID_IPPON", "✅ Golpe Válido (Ippon)"),
-                                    ("INVALID_HIT", "❌ Golpe Inválido (Não foi Ippon)")
-                                ]
-                                ins_val_labels = [v[1] for v in ins_val_opts]
-                                ins_val_sel = st.radio("Validação do Golpe", ins_val_labels, horizontal=True, key=f"ins_val_{slot_id}")
-                                ins_val_code = ins_val_opts[ins_val_labels.index(ins_val_sel)][0]
-                                ins_is_ippon = (ins_val_code == "VALID_IPPON")
-
-                            ins_notes = st.text_input("Observação", value=f"Golpe inserido entre {prev_desc} e {next_desc}", key=f"ins_notes_{slot_id}")
-
-                            if st.button("💾 Adicionar Golpe Nesta Posição", key=f"btn_apply_ins_{slot_id}", type="secondary", width="stretch"):
-                                new_id = f"fn_{ins_ts.replace(':', '_').replace('.', '_')}_{ins_att_id.lower()}_{slot_id}"
-                                new_item = {
-                                    "event_id": new_id,
-                                    "label": "TP" if ins_is_ippon else "FP",
-                                    "category": ins_val_code,
-                                    "decision_category": ins_val_code,
-                                    "is_valid_ippon": ins_is_ippon,
-                                    "strike_type": ins_type,
-                                    "timestamp": ins_ts,
-                                    "attacker_id": ins_att_id,
-                                    "attacker_name": ins_att_name,
-                                    "total_score": 100.0 if ins_is_ippon else 0.0,
-                                    "sub_scores": {},
-                                    "is_included": True,
-                                    "is_confirmed": False,
-                                    "is_edited": True,
-                                    "notes": ins_notes
-                                }
-                                st.session_state["session_reviews"][new_id] = new_item
-                                feedback_mgr.save_feedback(
-                                    video_name=video_name_simple,
-                                    profile_key=profile_choice,
-                                    event_id=new_id,
-                                    label="TP" if ins_is_ippon else "FP",
-                                    strike_type=ins_type,
-                                    timestamp=ins_ts,
-                                    notes=ins_notes,
-                                    reviewer_dan=selected_dan,
-                                    is_included=True,
-                                    decision_category=ins_val_code
-                                )
-                                st.toast(f"✅ Golpe ({ins_type} de {ins_att_name} às {ins_ts}) inserido com sucesso na sequência!", icon="➕")
-                                st.rerun()
-
-                    with st.container(height=650):
-                        has_initial = sonkyo_info.get("has_initial_sonkyo", False) and sonkyo_info.get("initial_sonkyo")
-                        has_final = sonkyo_info.get("has_final_sonkyo", False) and sonkyo_info.get("final_sonkyo")
-                        has_strikes = bool(combined_strikes)
-
-                        if not has_initial and not has_final and not has_strikes and not sonkyo_edits:
-                            st.warning("Nenhum evento (Sonkyō ou Golpes) foi identificado no vídeo.")
-                        else:
-                            # 1. EVENTO DE SONKYŌ INICIAL (Abertura do Combate)
-                            initial_edit = sonkyo_edits.get("initial")
-                            curr_end_s = 0.0
-                            if has_initial or initial_edit:
-                                init_s = sonkyo_info.get("initial_sonkyo") or {}
-                                is_init_detected = init_s.get("is_detected", True)
-                                curr_start_ts = initial_edit.get("start_timestamp") if initial_edit else init_s.get("start_timestamp", "00:00.000")
-                                curr_end_ts = initial_edit.get("end_timestamp") if initial_edit else init_s.get("end_timestamp", "00:01.500")
-                                curr_end_s = parse_ts_to_seconds(curr_end_ts)
-
-                                if initial_edit:
-                                    title_status = "✏️ EDITADO"
-                                elif is_init_detected:
-                                    title_status = "🥋 INÍCIO OFICIAL"
-                                else:
-                                    title_status = "📌 INÍCIO DO VÍDEO"
-
-                                with st.expander(f"🥋 Sonkyō Inicial (Abertura) @ {curr_start_ts} – {curr_end_ts} • {title_status}", expanded=bool(initial_edit)):
-                                    c_info1, c_info2 = st.columns([3, 1])
-                                    with c_info1:
-                                        st.markdown(f"**Intervalo Ritual:** `{curr_start_ts}` a `{curr_end_ts}` &nbsp;|&nbsp; **Início da Luta:** `{curr_end_ts}` (`Frame #{sonkyo_info.get('match_start_frame', 0)}`)")
-                                        seek_init_s = max(0.0, parse_ts_to_seconds(curr_start_ts) - 1.0)
-                                        if st.button("🎬 Assistir no Vídeo", key="btn_seek_sonkyo_init", help="Reproduzir o vídeo no momento do Sonkyō Inicial"):
-                                            st.session_state["video_start_time"] = seek_init_s
-                                            st.session_state["video_seek_label"] = f"Sonkyō Inicial ({curr_start_ts})"
-                                            st.toast(f"🎥 Vídeo posicionado em {seek_init_s:.1f}s", icon="🎬")
-                                            st.rerun()
-                                    with c_info2:
-                                        if initial_edit:
-                                            st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6; margin:0;">✏️ EDITADO</div>', unsafe_allow_html=True)
-                                        elif is_init_detected:
-                                            st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1; margin:0;">🥋 DETECTADO</div>', unsafe_allow_html=True)
-                                        else:
-                                            st.markdown('<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF; margin:0;">📌 PADRÃO</div>', unsafe_allow_html=True)
-
-                                    if enable_editing:
-                                        st.markdown("---")
-                                        st.markdown(f"**✏️ Editar Intervalo ({dan_options.get(selected_dan, 'Dan')}):**")
-                                        ed_col1, ed_col2, ed_btn1, ed_btn2 = st.columns([1.2, 1.2, 1.2, 0.8])
-                                        new_init_start = ed_col1.text_input("Início", value=curr_start_ts, key="edit_init_start_input", label_visibility="collapsed")
-                                        new_init_end = ed_col2.text_input("Fim", value=curr_end_ts, key="edit_init_end_input", label_visibility="collapsed")
-                                        if ed_btn1.button("💾 Salvar", key="btn_apply_sonkyo_init_edit", width="stretch"):
-                                            if "sonkyo_edits" not in st.session_state:
-                                                st.session_state["sonkyo_edits"] = {}
-                                            st.session_state["sonkyo_edits"]["initial"] = {
-                                                "start_timestamp": new_init_start,
-                                                "end_timestamp": new_init_end
-                                            }
-                                            st.toast("✏️ Tempo do Sonkyō Inicial salvo!", icon="✏️")
-                                            st.rerun()
-                                        if initial_edit and ed_btn2.button("🔄", key="btn_restore_sonkyo_init", help="Restaurar", width="stretch"):
-                                            st.session_state["sonkyo_edits"].pop("initial", None)
-                                            st.toast("Sonkyō Inicial restaurado.", icon="🔄")
-                                            st.rerun()
-
-                            # Determinar tempo de início do Sonkyo Final para cálculo de intervalos
-                            final_edit_calc = sonkyo_edits.get("final")
-                            fin_s_calc = sonkyo_info.get("final_sonkyo") or {}
-                            fin_start_ts_calc = final_edit_calc.get("start_timestamp") if final_edit_calc else fin_s_calc.get("start_timestamp", f"{res['duration_seconds']}s")
-                            fin_start_s_calc = parse_ts_to_seconds(fin_start_ts_calc)
-
-                            # 2. GOLPES NA JANELA REGULAMENTAR DE COMBATE (ORDENADOS CRONOLOGICAMENTE)
-                            if not has_strikes:
-                                st.info("ℹ️ Nenhum golpe regulamentar registrado entre os momentos de Sonkyō.")
-                                render_inline_strike_inserter("slot_init_to_fin", curr_end_s, fin_start_s_calc, "Sonkyō Inicial", "Sonkyō Final")
-                            else:
-                                # Botão de + entre Sonkyō Inicial e Golpe #1
-                                first_strike_t = combined_strikes[0]["time_sec"]
-                                first_strike_ts_lbl = combined_strikes[0]["timestamp"]
-                                render_inline_strike_inserter("slot_0", curr_end_s, first_strike_t, "Sonkyō Inicial", f"Golpe #1 ({first_strike_ts_lbl})")
-
-                                for idx, strike_item in enumerate(combined_strikes):
-                                    strike_source = strike_item["source"]
-                                    event_id_str = strike_item["event_id"]
-                                    current_rev = strike_item["review"]
-                                    attacker_label = strike_item["attacker_label"]
-                                    attacker_id = strike_item["attacker_id"]
-                                    orig_is_valid = strike_item["orig_is_valid"]
-                                    eval_info = strike_item["raw_event"]["evaluation"] if strike_item["raw_event"] else {"total_score": 100.0 if orig_is_valid else 0.0, "min_required": 65.0, "sub_scores": {}}
-
-                                    is_this_ippon = False
-                                    if current_rev.get("is_included"):
-                                        inc_is_ippon = current_rev.get("is_valid_ippon", current_rev.get("category") == "VALID_IPPON")
-                                        is_this_ippon = inc_is_ippon
-                                        if inc_is_ippon:
-                                            status_badge = "➕ INCLUÍDO: IPPON"
-                                            badge_html = '<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6;">➕ INCLUÍDO: GOLPE VÁLIDO (IPPON)</div>'
-                                        else:
-                                            status_badge = "➕ INCLUÍDO: INVÁLIDO"
-                                            badge_html = '<div class="valid-badge" style="background-color:#7F1D1D; color:#FECACA; border: 1px solid #EF4444;">➕ INCLUÍDO: GOLPE INVÁLIDO (NÃO FOI IPPON)</div>'
-                                    elif current_rev.get("is_edited"):
-                                        cat = current_rev.get("category", "")
-                                        if cat == "VALID_IPPON":
-                                            is_this_ippon = True
-                                            status_badge = "✏️ EDITADO: IPPON"
-                                            badge_html = '<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6;">✏️ EDITADO: GOLPE VÁLIDO (IPPON)</div>'
-                                        elif cat == "INVALID_HIT":
-                                            status_badge = "✏️ EDITADO: INVÁLIDO"
-                                            badge_html = '<div class="valid-badge" style="background-color:#7F1D1D; color:#FECACA; border: 1px solid #EF4444;">✏️ EDITADO: GOLPE INVÁLIDO (NÃO FOI IPPON)</div>'
-                                        elif cat == "NO_STRIKE":
-                                            status_badge = "🚫 NÃO HOUVE GOLPE"
-                                            badge_html = '<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF;">🚫 EDITADO: NÃO HOUVE GOLPE (DETECÇÃO ERRADA)</div>'
-                                        else:
-                                            status_badge = f"✏️ EDITADO ({current_rev.get('label', 'EDIT')})"
-                                            badge_html = f'<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD;">✏️ EDITADO ({current_rev.get("label", "EDIT")})</div>'
-                                    elif current_rev.get("is_confirmed"):
-                                        is_this_ippon = orig_is_valid
-                                        status_badge = "✅ CONFIRMADO"
-                                        badge_html = f'<div class="valid-badge" style="background-color:#14532D; color:#86EFAC; border: 1px solid #22C55E;">✅ CONFIRMADO ({dan_options.get(selected_dan, "Dan")})</div>'
-                                    elif orig_is_valid:
-                                        is_this_ippon = True
-                                        status_badge = "✅ IPPON"
-                                        badge_html = '<div class="valid-badge">✅ PONTO VÁLIDO (IPPON)</div>'
+                            with st.expander(f"➕ Inserir Golpe entre {prev_desc} e {next_desc} (~{suggested_ts})", expanded=False):
+                                c_in1, c_in2 = st.columns(2)
+                                with c_in1:
+                                    ins_ts = st.text_input("Timestamp", value=suggested_ts, key=f"ins_ts_{slot_id}", help="Momento exato do golpe a ser inserido")
+                                    ins_type_sel = st.selectbox("Técnica", ["MEN", "KOTE", "DO", "TSUKI"], key=f"ins_type_{slot_id}")
+                                    ins_type: str = str(ins_type_sel or "MEN")
+                                with c_in2:
+                                    if is_inverted:
+                                        att_opts = [
+                                            ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Esquerda)"),
+                                            ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Direita)")
+                                        ]
                                     else:
-                                        is_this_ippon = False
-                                        status_badge = "❌ INVÁLIDO"
-                                        badge_html = '<div class="invalid-badge">❌ GOLPE INVÁLIDO</div>'
+                                        att_opts = [
+                                            ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Esquerda)"),
+                                            ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Direita)")
+                                        ]
+                                    att_labels = [o[1] for o in att_opts]
+                                    ins_att_sel = st.selectbox("Lutador Atacante", att_labels, key=f"ins_att_{slot_id}")
+                                    ins_att_sel_str = ins_att_sel or att_labels[0]
+                                    ins_att_id = att_opts[att_labels.index(ins_att_sel_str)][0]
+                                    ins_att_name = "Kenshi Aka (Vermelho)" if ins_att_id == "KENSHI_AKA" else "Kenshi Shiro (Branco)"
 
-                                    # Destaque do golpe responsável pela marcação (Katakana: メ MEN, コ KOTE, ド DO, ツ TSUKI)
-                                    display_strike_title = format_katakana_strike(current_rev['strike_type']) if is_this_ippon else current_rev['strike_type']
+                                    ins_val_opts = [
+                                        ("VALID_IPPON", "✅ Golpe Válido (Ippon)"),
+                                        ("INVALID_HIT", "❌ Golpe Inválido (Não foi Ippon)")
+                                    ]
+                                    ins_val_labels = [v[1] for v in ins_val_opts]
+                                    ins_val_sel = st.radio("Validação do Golpe", ins_val_labels, horizontal=True, key=f"ins_val_{slot_id}")
+                                    ins_val_sel_str = ins_val_sel or ins_val_labels[0]
+                                    ins_val_code = ins_val_opts[ins_val_labels.index(ins_val_sel_str)][0]
+                                    ins_is_ippon = (ins_val_code == "VALID_IPPON")
 
-                                    with st.expander(f"🥊 Golpe #{idx+1}: {display_strike_title} @ {current_rev['timestamp']} ({attacker_label}) - {status_badge}", expanded=True):
-                                        c_a, c_b = st.columns([1, 1.5])
-                                        with c_a:
-                                            seek_strike_s = max(0.0, parse_ts_to_seconds(current_rev['timestamp']) - 1.0)
-                                            if st.button("🎬 Assistir no Vídeo", key=f"btn_seek_strike_{idx}_{event_id_str}", width="stretch", help=f"Reproduzir o vídeo no momento deste golpe ({seek_strike_s:.1f}s)"):
-                                                st.session_state["video_start_time"] = seek_strike_s
-                                                st.session_state["video_seek_label"] = f"Golpe #{idx+1} {display_strike_title} @ {current_rev['timestamp']}"
-                                                st.toast(f"🎥 Vídeo posicionado em {seek_strike_s:.1f}s!", icon="🎬")
+                                ins_notes = st.text_input("Observação", value=f"Golpe inserido entre {prev_desc} e {next_desc}", key=f"ins_notes_{slot_id}")
+
+                                if st.button("💾 Adicionar Golpe Nesta Posição", key=f"btn_apply_ins_{slot_id}", type="secondary", width="stretch"):
+                                    new_id = f"fn_{ins_ts.replace(':', '_').replace('.', '_')}_{ins_att_id.lower()}_{slot_id}"
+                                    new_item = {
+                                        "event_id": new_id,
+                                        "label": "TP" if ins_is_ippon else "FP",
+                                        "category": ins_val_code,
+                                        "decision_category": ins_val_code,
+                                        "is_valid_ippon": ins_is_ippon,
+                                        "strike_type": ins_type,
+                                        "timestamp": ins_ts,
+                                        "attacker_id": ins_att_id,
+                                        "attacker_name": ins_att_name,
+                                        "total_score": 100.0 if ins_is_ippon else 0.0,
+                                        "sub_scores": {},
+                                        "is_included": True,
+                                        "is_confirmed": False,
+                                        "is_edited": True,
+                                        "notes": ins_notes
+                                    }
+                                    st.session_state["session_reviews"][new_id] = new_item
+                                    feedback_mgr.save_feedback(
+                                        video_name=video_name_simple,
+                                        profile_key=profile_choice,
+                                        event_id=new_id,
+                                        label="TP" if ins_is_ippon else "FP",
+                                        strike_type=ins_type,
+                                        timestamp=ins_ts,
+                                        notes=ins_notes,
+                                        reviewer_dan=selected_dan,
+                                        is_included=True,
+                                        decision_category=ins_val_code
+                                    )
+                                    st.toast(f"✅ Golpe ({ins_type} de {ins_att_name} às {ins_ts}) inserido com sucesso na sequência!", icon="➕")
+                                    st.rerun()
+
+                        with st.container(height=650):
+                            has_initial = sonkyo_info.get("has_initial_sonkyo", False) and sonkyo_info.get("initial_sonkyo")
+                            has_final = sonkyo_info.get("has_final_sonkyo", False) and sonkyo_info.get("final_sonkyo")
+                            has_strikes = bool(combined_strikes)
+
+                            if not has_initial and not has_final and not has_strikes and not sonkyo_edits:
+                                st.warning("Nenhum evento (Sonkyō ou Golpes) foi identificado no vídeo.")
+                            else:
+                                # 1. EVENTO DE SONKYŌ INICIAL (Abertura do Combate)
+                                initial_edit = sonkyo_edits.get("initial")
+                                curr_end_s = 0.0
+                                if has_initial or initial_edit:
+                                    init_s = sonkyo_info.get("initial_sonkyo") or {}
+                                    is_init_detected = init_s.get("is_detected", True)
+                                    curr_start_ts = initial_edit.get("start_timestamp") if initial_edit else init_s.get("start_timestamp", "00:00.000")
+                                    curr_end_ts = initial_edit.get("end_timestamp") if initial_edit else init_s.get("end_timestamp", "00:01.500")
+                                    curr_end_s = parse_ts_to_seconds(curr_end_ts)
+
+                                    if initial_edit:
+                                        title_status = "✏️ EDITADO"
+                                    elif is_init_detected:
+                                        title_status = "🥋 INÍCIO OFICIAL"
+                                    else:
+                                        title_status = "📌 INÍCIO DO VÍDEO"
+
+                                    with st.expander(f"🥋 Sonkyō Inicial (Abertura) @ {curr_start_ts} – {curr_end_ts} • {title_status}", expanded=bool(initial_edit)):
+                                        c_info1, c_info2 = st.columns([3, 1])
+                                        with c_info1:
+                                            st.markdown(f"**Intervalo Ritual:** `{curr_start_ts}` a `{curr_end_ts}` &nbsp;|&nbsp; **Início da Luta:** `{curr_end_ts}` (`Frame #{sonkyo_info.get('match_start_frame', 0)}`)")
+                                            seek_init_s = max(0.0, parse_ts_to_seconds(curr_start_ts) - 1.0)
+                                            if st.button("🎬 Assistir no Vídeo", key="btn_seek_sonkyo_init", help="Reproduzir o vídeo no momento do Sonkyō Inicial"):
+                                                st.session_state["video_start_time"] = seek_init_s
+                                                st.session_state["video_seek_label"] = f"Sonkyō Inicial ({curr_start_ts})"
+                                                st.toast(f"🎥 Vídeo posicionado em {seek_init_s:.1f}s", icon="🎬")
+                                                st.rerun()
+                                        with c_info2:
+                                            if initial_edit:
+                                                st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6; margin:0;">✏️ EDITADO</div>', unsafe_allow_html=True)
+                                            elif is_init_detected:
+                                                st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1; margin:0;">🥋 DETECTADO</div>', unsafe_allow_html=True)
+                                            else:
+                                                st.markdown('<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF; margin:0;">📌 PADRÃO</div>', unsafe_allow_html=True)
+
+                                        if enable_editing:
+                                            st.markdown("---")
+                                            st.markdown(f"**✏️ Editar Intervalo ({dan_options.get(selected_dan, 'Dan')}):**")
+                                            ed_col1, ed_col2, ed_btn1, ed_btn2 = st.columns([1.2, 1.2, 1.2, 0.8])
+                                            new_init_start = ed_col1.text_input("Início", value=curr_start_ts, key="edit_init_start_input", label_visibility="collapsed")
+                                            new_init_end = ed_col2.text_input("Fim", value=curr_end_ts, key="edit_init_end_input", label_visibility="collapsed")
+                                            if ed_btn1.button("💾 Salvar", key="btn_apply_sonkyo_init_edit", width="stretch"):
+                                                if "sonkyo_edits" not in st.session_state:
+                                                    st.session_state["sonkyo_edits"] = {}
+                                                st.session_state["sonkyo_edits"]["initial"] = {
+                                                    "start_timestamp": new_init_start,
+                                                    "end_timestamp": new_init_end
+                                                }
+                                                st.toast("✏️ Tempo do Sonkyō Inicial salvo!", icon="✏️")
+                                                st.rerun()
+                                            if initial_edit and ed_btn2.button("🔄", key="btn_restore_sonkyo_init", help="Restaurar", width="stretch"):
+                                                st.session_state["sonkyo_edits"].pop("initial", None)
+                                                st.toast("Sonkyō Inicial restaurado.", icon="🔄")
                                                 st.rerun()
 
-                                            if is_this_ippon:
-                                                katakana_name = format_katakana_strike(current_rev['strike_type'])
-                                                is_aka_attacker = (attacker_id == "KENSHI_AKA")
-                                                if not is_inverted:
-                                                    is_aka_actual = is_aka_attacker
-                                                else:
-                                                    is_aka_actual = not is_aka_attacker
+                                # Determinar tempo de início do Sonkyo Final para cálculo de intervalos
+                                final_edit_calc = sonkyo_edits.get("final")
+                                fin_s_calc = sonkyo_info.get("final_sonkyo") or {}
+                                fin_start_ts_calc = final_edit_calc.get("start_timestamp") if final_edit_calc else fin_s_calc.get("start_timestamp", f"{res['duration_seconds']}s")
+                                fin_start_s_calc = parse_ts_to_seconds(fin_start_ts_calc)
 
-                                                if is_aka_actual:
-                                                    st.markdown(
-                                                        f'<div style="background: rgba(239, 68, 68, 0.18); border: 1.5px solid #EF4444; border-radius: 6px; padding: 6px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">'
-                                                        f'<span style="color: #FCA5A5; font-weight: 800; font-size: 12px; letter-spacing: 0.5px;">🔴 MARCAÇÃO OFICIAL (AKA):</span>'
-                                                        f'<span style="background: #991B1B; color: #FEE2E2; font-weight: 900; font-size: 13px; padding: 2px 10px; border-radius: 4px;">{katakana_name}</span>'
-                                                        f'</div>',
-                                                        unsafe_allow_html=True
-                                                    )
-                                                else:
-                                                    st.markdown(
-                                                        f'<div style="background: rgba(148, 163, 184, 0.16); border: 1.5px solid #CBD5E1; border-radius: 6px; padding: 6px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">'
-                                                        f'<span style="color: #F1F5F9; font-weight: 800; font-size: 12px; letter-spacing: 0.5px;">⚪ MARCAÇÃO OFICIAL (SHIRO):</span>'
-                                                        f'<span style="background: #475569; color: #F8FAFC; font-weight: 900; font-size: 13px; padding: 2px 10px; border-radius: 4px;">{katakana_name}</span>'
-                                                        f'</div>',
-                                                        unsafe_allow_html=True
-                                                    )
-                                                st.markdown(f"**Técnica:** **`{katakana_name}`** 🥋 *(Golpe Pontuado no Placar)*")
+                                # 2. GOLPES NA JANELA REGULAMENTAR DE COMBATE (ORDENADOS CRONOLOGICAMENTE)
+                                if not has_strikes:
+                                    st.info("ℹ️ Nenhum golpe regulamentar registrado entre os momentos de Sonkyō.")
+                                    render_inline_strike_inserter("slot_init_to_fin", curr_end_s, fin_start_s_calc, "Sonkyō Inicial", "Sonkyō Final")
+                                else:
+                                    # Botão de + entre Sonkyō Inicial e Golpe #1
+                                    first_strike_t = combined_strikes[0]["time_sec"]
+                                    first_strike_ts_lbl = combined_strikes[0]["timestamp"]
+                                    render_inline_strike_inserter("slot_0", curr_end_s, first_strike_t, "Sonkyō Inicial", f"Golpe #1 ({first_strike_ts_lbl})")
+
+                                    for idx, strike_item in enumerate(combined_strikes):
+                                        strike_source = strike_item["source"]
+                                        event_id_str = strike_item["event_id"]
+                                        current_rev = strike_item["review"]
+                                        attacker_label = strike_item["attacker_label"]
+                                        attacker_id = strike_item["attacker_id"]
+                                        orig_is_valid = strike_item["orig_is_valid"]
+                                        eval_info = strike_item["raw_event"]["evaluation"] if strike_item["raw_event"] else {"total_score": 100.0 if orig_is_valid else 0.0, "min_required": 65.0, "sub_scores": {}}
+
+                                        is_this_ippon = False
+                                        if current_rev.get("is_included"):
+                                            inc_is_ippon = current_rev.get("is_valid_ippon", current_rev.get("category") == "VALID_IPPON")
+                                            is_this_ippon = inc_is_ippon
+                                            if inc_is_ippon:
+                                                status_badge = "➕ INCLUÍDO: IPPON"
+                                                badge_html = '<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6;">➕ INCLUÍDO: GOLPE VÁLIDO (IPPON)</div>'
                                             else:
-                                                st.markdown(f"**Técnica:** `{current_rev['strike_type']}`")
-                                            st.markdown(f"**Atacante:** `{attacker_label}`")
-                                            st.markdown(f"**Timestamp:** `{current_rev['timestamp']}`" + (f" (Frame {strike_item['impact_frame']})" if strike_item['impact_frame'] > 0 else ""))
-                                            if strike_source == "AI_DETECTED":
-                                                st.markdown(f"**Pontuação original:** `{eval_info['total_score']}%` (Exigido: `{eval_info['min_required']}%`)")
+                                                status_badge = "➕ INCLUÍDO: INVÁLIDO"
+                                                badge_html = '<div class="valid-badge" style="background-color:#7F1D1D; color:#FECACA; border: 1px solid #EF4444;">➕ INCLUÍDO: GOLPE INVÁLIDO (NÃO FOI IPPON)</div>'
+                                        elif current_rev.get("is_edited"):
+                                            cat = current_rev.get("category", "")
+                                            if cat == "VALID_IPPON":
+                                                is_this_ippon = True
+                                                status_badge = "✏️ EDITADO: IPPON"
+                                                badge_html = '<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6;">✏️ EDITADO: GOLPE VÁLIDO (IPPON)</div>'
+                                            elif cat == "INVALID_HIT":
+                                                status_badge = "✏️ EDITADO: INVÁLIDO"
+                                                badge_html = '<div class="valid-badge" style="background-color:#7F1D1D; color:#FECACA; border: 1px solid #EF4444;">✏️ EDITADO: GOLPE INVÁLIDO (NÃO FOI IPPON)</div>'
+                                            elif cat == "NO_STRIKE":
+                                                status_badge = "🚫 NÃO HOUVE GOLPE"
+                                                badge_html = '<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF;">🚫 EDITADO: NÃO HOUVE GOLPE (DETECÇÃO ERRADA)</div>'
+                                            else:
+                                                status_badge = f"✏️ EDITADO ({current_rev.get('label', 'EDIT')})"
+                                                badge_html = f'<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD;">✏️ EDITADO ({current_rev.get("label", "EDIT")})</div>'
+                                        elif current_rev.get("is_confirmed"):
+                                            is_this_ippon = orig_is_valid
+                                            status_badge = "✅ CONFIRMADO"
+                                            badge_html = f'<div class="valid-badge" style="background-color:#14532D; color:#86EFAC; border: 1px solid #22C55E;">✅ CONFIRMADO ({dan_options.get(selected_dan, "Dan")})</div>'
+                                        elif orig_is_valid:
+                                            is_this_ippon = True
+                                            status_badge = "✅ IPPON"
+                                            badge_html = '<div class="valid-badge">✅ PONTO VÁLIDO (IPPON)</div>'
+                                        else:
+                                            is_this_ippon = False
+                                            status_badge = "❌ INVÁLIDO"
+                                            badge_html = '<div class="invalid-badge">❌ GOLPE INVÁLIDO</div>'
 
-                                            st.markdown(badge_html, unsafe_allow_html=True)
-                                            if current_rev.get("notes"):
-                                                st.markdown(f"**Observações:** _{current_rev['notes']}_")
+                                        # Destaque do golpe responsável pela marcação (Katakana: メ MEN, コ KOTE, ド DO, ツ TSUKI)
+                                        display_strike_title = format_katakana_strike(current_rev['strike_type']) if is_this_ippon else current_rev['strike_type']
 
-                                            # Painel de Edição/Confirmação por Dan quando ativado
-                                            if enable_editing:
-                                                st.markdown("---")
-                                                if strike_source == "INCLUDED":
-                                                    st.markdown(f"**Ações para Golpe Incluído ({dan_options.get(selected_dan, 'Dan')}):**")
-                                                    if st.button("🗑️ Remover esta inclusão", key=f"btn_del_inc_slot_{idx}_{event_id_str}", width="stretch"):
-                                                        if event_id_str in st.session_state["session_reviews"]:
-                                                             del st.session_state["session_reviews"][event_id_str]
-                                                        st.toast(f"Golpe #{idx+1} incluído removido com sucesso!", icon="🗑️")
-                                                        st.rerun()
-                                                else:
-                                                    st.markdown(f"**Ações de Revisão ({dan_options[selected_dan]}):**")
-                                                    btn_col1, btn_col2 = st.columns(2)
-                                                    
-                                                    if btn_col1.button("✅ Confirmar", key=f"btn_cfm_{idx}_{event_id_str}"):
-                                                        current_rev["is_confirmed"] = True
-                                                        current_rev["is_edited"] = False
-                                                        if orig_is_valid:
-                                                            current_rev["label"] = "TP"
-                                                            current_rev["category"] = "VALID_IPPON"
-                                                            current_rev["is_valid_ippon"] = True
-                                                        else:
-                                                            current_rev["label"] = "FP"
-                                                            current_rev["category"] = "INVALID_HIT"
-                                                            current_rev["is_valid_ippon"] = False
-                                                        st.session_state["session_reviews"][event_id_str] = current_rev
-                                                        st.toast(f"Marcação #{idx+1} confirmada por {dan_options[selected_dan]}!", icon="✅")
-                                                        st.rerun()
+                                        with st.expander(f"🥊 Golpe #{idx+1}: {display_strike_title} @ {current_rev['timestamp']} ({attacker_label}) - {status_badge}", expanded=True):
+                                            c_a, c_b = st.columns([1, 1.5])
+                                            with c_a:
+                                                seek_strike_s = max(0.0, parse_ts_to_seconds(current_rev['timestamp']) - 1.0)
+                                                if st.button("🎬 Assistir no Vídeo", key=f"btn_seek_strike_{idx}_{event_id_str}", width="stretch", help=f"Reproduzir o vídeo no momento deste golpe ({seek_strike_s:.1f}s)"):
+                                                    st.session_state["video_start_time"] = seek_strike_s
+                                                    st.session_state["video_seek_label"] = f"Golpe #{idx+1} {display_strike_title} @ {current_rev['timestamp']}"
+                                                    st.toast(f"🎥 Vídeo posicionado em {seek_strike_s:.1f}s!", icon="🎬")
+                                                    st.rerun()
 
-                                                    with btn_col2:
-                                                        show_edit = st.checkbox("✏️ Editar", key=f"chk_edit_{idx}_{event_id_str}")
+                                                if is_this_ippon:
+                                                    katakana_name = format_katakana_strike(current_rev['strike_type'])
+                                                    is_aka_attacker = (attacker_id == "KENSHI_AKA")
+                                                    if not is_inverted:
+                                                        is_aka_actual = is_aka_attacker
+                                                    else:
+                                                        is_aka_actual = not is_aka_attacker
 
-                                                    if show_edit:
-                                                        curr_st = current_rev['strike_type']
-                                                        st_opts = ["MEN", "KOTE", "DO", "TSUKI"]
-                                                        st_idx = st_opts.index(curr_st) if curr_st in st_opts else 0
-                                                        new_type = st.selectbox("Editar Técnica", st_opts, index=st_idx, format_func=DiagnosticReporter.format_strike_name, key=f"sel_type_{idx}_{event_id_str}")
-                                                        new_ts = st.text_input("Editar Timestamp", value=current_rev['timestamp'], key=f"inp_ts_{idx}_{event_id_str}")
-                                                        
-                                                        # Estratégias de Revisão conforme diretrizes oficiais
-                                                        if orig_is_valid:
-                                                            strat_options = [
-                                                                ("VALID_IPPON", "✅ Golpe Válido (Manter Ippon)"),
-                                                                ("INVALID_HIT", "❌ Golpe Inválido (Houve golpe/acerto, mas não foi Ippon)"),
-                                                                ("NO_STRIKE", "🚫 Não Houve Golpe (Detecção errada / Não houve golpe)")
-                                                            ]
-                                                        else:
-                                                            strat_options = [
-                                                                ("INVALID_HIT", "❌ Golpe Inválido (Manter Não Ippon)"),
-                                                                ("VALID_IPPON", "✅ Golpe Válido (Foi Ippon)"),
-                                                                ("NO_STRIKE", "🚫 Não Houve Golpe (Detecção errada / Não houve golpe)")
-                                                            ]
-
-                                                        strat_codes = [c[0] for c in strat_options]
-                                                        strat_labels = [c[1] for c in strat_options]
-                                                        curr_cat = current_rev.get("category", "VALID_IPPON" if (current_rev.get("label") == "TP" and orig_is_valid) else "INVALID_HIT")
-                                                        default_strat_idx = strat_codes.index(curr_cat) if curr_cat in strat_codes else 0
-
-                                                        selected_strat_lbl = st.radio(
-                                                            "Classificação pelo Revisor:",
-                                                            options=strat_labels,
-                                                            index=default_strat_idx,
-                                                            key=f"rad_strat_{idx}_{event_id_str}"
+                                                    if is_aka_actual:
+                                                        st.markdown(
+                                                            f'<div style="background: rgba(239, 68, 68, 0.18); border: 1.5px solid #EF4444; border-radius: 6px; padding: 6px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">'
+                                                            f'<span style="color: #FCA5A5; font-weight: 800; font-size: 12px; letter-spacing: 0.5px;">🔴 MARCAÇÃO OFICIAL (AKA):</span>'
+                                                            f'<span style="background: #991B1B; color: #FEE2E2; font-weight: 900; font-size: 13px; padding: 2px 10px; border-radius: 4px;">{katakana_name}</span>'
+                                                            f'</div>',
+                                                            unsafe_allow_html=True
                                                         )
-                                                        selected_strat_code = strat_codes[strat_labels.index(selected_strat_lbl)]
-                                                        new_notes = st.text_input("Observações do Revisor", value=current_rev.get("notes", ""), key=f"inp_notes_{idx}_{event_id_str}")
+                                                    else:
+                                                        st.markdown(
+                                                            f'<div style="background: rgba(148, 163, 184, 0.16); border: 1.5px solid #CBD5E1; border-radius: 6px; padding: 6px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">'
+                                                            f'<span style="color: #F1F5F9; font-weight: 800; font-size: 12px; letter-spacing: 0.5px;">⚪ MARCAÇÃO OFICIAL (SHIRO):</span>'
+                                                            f'<span style="background: #475569; color: #F8FAFC; font-weight: 900; font-size: 13px; padding: 2px 10px; border-radius: 4px;">{katakana_name}</span>'
+                                                            f'</div>',
+                                                            unsafe_allow_html=True
+                                                        )
+                                                    st.markdown(f"**Técnica:** **`{katakana_name}`** 🥋 *(Golpe Pontuado no Placar)*")
+                                                else:
+                                                    st.markdown(f"**Técnica:** `{current_rev['strike_type']}`")
+                                                st.markdown(f"**Atacante:** `{attacker_label}`")
+                                                st.markdown(f"**Timestamp:** `{current_rev['timestamp']}`" + (f" (Frame {strike_item['impact_frame']})" if strike_item['impact_frame'] > 0 else ""))
+                                                if strike_source == "AI_DETECTED":
+                                                    st.markdown(f"**Pontuação original:** `{eval_info['total_score']}%` (Exigido: `{eval_info['min_required']}%`)")
 
-                                                        if st.button("💾 Aplicar Edição neste Golpe", key=f"btn_apply_edit_{idx}_{event_id_str}"):
-                                                            if selected_strat_code == "VALID_IPPON":
+                                                st.markdown(badge_html, unsafe_allow_html=True)
+                                                if current_rev.get("notes"):
+                                                    st.markdown(f"**Observações:** _{current_rev['notes']}_")
+
+                                                # Painel de Edição/Confirmação por Dan quando ativado
+                                                if enable_editing:
+                                                    st.markdown("---")
+                                                    if strike_source == "INCLUDED":
+                                                        st.markdown(f"**Ações para Golpe Incluído ({dan_options.get(selected_dan, 'Dan')}):**")
+                                                        if st.button("🗑️ Remover esta inclusão", key=f"btn_del_inc_slot_{idx}_{event_id_str}", width="stretch"):
+                                                            if event_id_str in st.session_state["session_reviews"]:
+                                                                 del st.session_state["session_reviews"][event_id_str]
+                                                            st.toast(f"Golpe #{idx+1} incluído removido com sucesso!", icon="🗑️")
+                                                            st.rerun()
+                                                    else:
+                                                        st.markdown(f"**Ações de Revisão ({dan_options[selected_dan]}):**")
+                                                        btn_col1, btn_col2 = st.columns(2)
+                                                    
+                                                        if btn_col1.button("✅ Confirmar", key=f"btn_cfm_{idx}_{event_id_str}"):
+                                                            current_rev["is_confirmed"] = True
+                                                            current_rev["is_edited"] = False
+                                                            if orig_is_valid:
                                                                 current_rev["label"] = "TP"
                                                                 current_rev["category"] = "VALID_IPPON"
                                                                 current_rev["is_valid_ippon"] = True
-                                                            elif selected_strat_code == "INVALID_HIT":
+                                                            else:
                                                                 current_rev["label"] = "FP"
                                                                 current_rev["category"] = "INVALID_HIT"
                                                                 current_rev["is_valid_ippon"] = False
-                                                            elif selected_strat_code == "NO_STRIKE":
-                                                                current_rev["label"] = "FP"
-                                                                current_rev["category"] = "NO_STRIKE"
-                                                                current_rev["is_valid_ippon"] = False
-
-                                                            current_rev["strike_type"] = new_type
-                                                            current_rev["timestamp"] = new_ts
-                                                            current_rev["notes"] = new_notes
-                                                            current_rev["is_edited"] = True
-                                                            current_rev["is_confirmed"] = False
                                                             st.session_state["session_reviews"][event_id_str] = current_rev
-                                                            st.toast(f"Marcação #{idx+1} atualizada com sucesso por {dan_options[selected_dan]}!", icon="✏️")
+                                                            st.toast(f"Marcação #{idx+1} confirmada por {dan_options[selected_dan]}!", icon="✅")
                                                             st.rerun()
 
-                                                    if current_rev.get("is_confirmed") or current_rev.get("is_edited"):
-                                                        if st.button("🔄 Resetar este golpe", key=f"btn_reset_single_{idx}_{event_id_str}"):
-                                                            if event_id_str in st.session_state["session_reviews"]:
-                                                                del st.session_state["session_reviews"][event_id_str]
-                                                            st.toast(f"Golpe #{idx+1} restaurado ao estado original!", icon="🔄")
-                                                            st.rerun()
+                                                        with btn_col2:
+                                                            show_edit = st.checkbox("✏️ Editar", key=f"chk_edit_{idx}_{event_id_str}")
 
-                                            elif app_mode == "training" and strike_source == "AI_DETECTED":
-                                                st.markdown("---")
-                                                st.markdown("**🎓 Anotação (Reforço):**")
-                                                btn_col1, btn_col2 = st.columns(2)
-                                                sub_scores_raw = eval_info.get("sub_scores")
-                                                sub_scores_val: Dict[str, Any] = sub_scores_raw if isinstance(sub_scores_raw, dict) else {}
-                                                total_score_raw = eval_info.get("total_score", 0.0)
-                                                total_score_val: float = float(total_score_raw) if isinstance(total_score_raw, (int, float, str)) else 0.0
+                                                        if show_edit:
+                                                            curr_st = current_rev['strike_type']
+                                                            st_opts = ["MEN", "KOTE", "DO", "TSUKI"]
+                                                            st_idx = st_opts.index(curr_st) if curr_st in st_opts else 0
+                                                            new_type_sel = st.selectbox("Editar Técnica", st_opts, index=st_idx, format_func=DiagnosticReporter.format_strike_name, key=f"sel_type_{idx}_{event_id_str}")
+                                                            new_type = new_type_sel or st_opts[0]
+                                                            new_ts = st.text_input("Editar Timestamp", value=current_rev['timestamp'], key=f"inp_ts_{idx}_{event_id_str}")
+                                                        
+                                                            # Estratégias de Revisão conforme diretrizes oficiais
+                                                            if orig_is_valid:
+                                                                strat_options = [
+                                                                    ("VALID_IPPON", "✅ Golpe Válido (Manter Ippon)"),
+                                                                    ("INVALID_HIT", "❌ Golpe Inválido (Houve golpe/acerto, mas não foi Ippon)"),
+                                                                    ("NO_STRIKE", "🚫 Não Houve Golpe (Detecção errada / Não houve golpe)")
+                                                                ]
+                                                            else:
+                                                                strat_options = [
+                                                                    ("INVALID_HIT", "❌ Golpe Inválido (Manter Não Ippon)"),
+                                                                    ("VALID_IPPON", "✅ Golpe Válido (Foi Ippon)"),
+                                                                    ("NO_STRIKE", "🚫 Não Houve Golpe (Detecção errada / Não houve golpe)")
+                                                                ]
 
-                                                if btn_col1.button("👍 Correto", key=f"btn_tp_{idx}_{event_id_str}"):
-                                                    feedback_mgr.save_feedback(
-                                                        video_name=video_name_simple, profile_key=profile_choice, event_id=event_id_str, label="TP",
-                                                        sub_scores=sub_scores_val, total_score=total_score_val,
-                                                        strike_type=current_rev['strike_type'], timestamp=current_rev['timestamp'], reviewer_dan=selected_dan,
-                                                        decision_category="VALID_IPPON" if orig_is_valid else "INVALID_HIT"
-                                                    )
-                                                    st.toast("✅ Anotado como Correto (TP)!", icon="👍")
-                                                if btn_col2.button("👎 Falso Positivo", key=f"btn_fp_{idx}_{event_id_str}"):
-                                                    feedback_mgr.save_feedback(
-                                                        video_name=video_name_simple, profile_key=profile_choice, event_id=event_id_str, label="FP",
-                                                        sub_scores=sub_scores_val, total_score=total_score_val,
-                                                        strike_type=current_rev['strike_type'], timestamp=current_rev['timestamp'], reviewer_dan=selected_dan,
-                                                        decision_category="INVALID_HIT" if orig_is_valid else "NO_STRIKE"
-                                                    )
-                                                    st.toast("❌ Anotado como Falso Positivo (FP)!", icon="👎")
+                                                            strat_codes = [c[0] for c in strat_options]
+                                                            strat_labels = [c[1] for c in strat_options]
+                                                            curr_cat = current_rev.get("category", "VALID_IPPON" if (current_rev.get("label") == "TP" and orig_is_valid) else "INVALID_HIT")
+                                                            default_strat_idx = strat_codes.index(curr_cat) if curr_cat in strat_codes else 0
 
-                                        with c_b:
-                                            if strike_item["diagnostic_report"]:
-                                                st.markdown(strike_item["diagnostic_report"])
-                                            else:
-                                                st.info("ℹ️ Este golpe foi inserido manualmente pelo revisor na sequência temporal do combate.")
+                                                            selected_strat_lbl = st.radio(
+                                                                "Classificação pelo Revisor:",
+                                                                options=strat_labels,
+                                                                index=default_strat_idx,
+                                                                key=f"rad_strat_{idx}_{event_id_str}"
+                                                            )
+                                                            selected_strat_lbl_str = selected_strat_lbl or strat_labels[0]
+                                                            selected_strat_code = strat_codes[strat_labels.index(selected_strat_lbl_str)]
+                                                            new_notes = st.text_input("Observações do Revisor", value=current_rev.get("notes", ""), key=f"inp_notes_{idx}_{event_id_str}")
 
-                                    # Inseridor inline de golpe (+) entre este golpe e o próximo (ou Sonkyō Final)
-                                    if idx < len(combined_strikes) - 1:
-                                        next_strike = combined_strikes[idx+1]
-                                        render_inline_strike_inserter(
-                                            f"slot_{idx}_{idx+1}",
-                                            strike_item["time_sec"],
-                                            next_strike["time_sec"],
-                                            f"Golpe #{idx+1} ({strike_item['timestamp']})",
-                                            f"Golpe #{idx+2} ({next_strike['timestamp']})"
-                                        )
-                                    else:
-                                        render_inline_strike_inserter(
-                                            "slot_last",
-                                            strike_item["time_sec"],
-                                            fin_start_s_calc,
-                                            f"Golpe #{idx+1} ({strike_item['timestamp']})",
-                                            f"Sonkyō Final ({fin_start_ts_calc})"
-                                        )
+                                                            if st.button("💾 Aplicar Edição neste Golpe", key=f"btn_apply_edit_{idx}_{event_id_str}"):
+                                                                if selected_strat_code == "VALID_IPPON":
+                                                                    current_rev["label"] = "TP"
+                                                                    current_rev["category"] = "VALID_IPPON"
+                                                                    current_rev["is_valid_ippon"] = True
+                                                                elif selected_strat_code == "INVALID_HIT":
+                                                                    current_rev["label"] = "FP"
+                                                                    current_rev["category"] = "INVALID_HIT"
+                                                                    current_rev["is_valid_ippon"] = False
+                                                                elif selected_strat_code == "NO_STRIKE":
+                                                                    current_rev["label"] = "FP"
+                                                                    current_rev["category"] = "NO_STRIKE"
+                                                                    current_rev["is_valid_ippon"] = False
 
-                            # 3. EVENTO DE SONKYŌ FINAL (Encerramento do Combate)
-                            final_edit = sonkyo_edits.get("final")
-                            if has_final or final_edit:
-                                fin_s = sonkyo_info.get("final_sonkyo") or {}
-                                is_fin_detected = fin_s.get("is_detected", True)
-                                curr_start_ts_fin = final_edit.get("start_timestamp") if final_edit else fin_s.get("start_timestamp", "00:04.000")
-                                curr_end_ts_fin = final_edit.get("end_timestamp") if final_edit else fin_s.get("end_timestamp", f"{res['duration_seconds']}s")
-                                
-                                if final_edit:
-                                    title_status_fin = "✏️ EDITADO"
-                                elif is_fin_detected:
-                                    title_status_fin = "🥋 ENCERRAMENTO OFICIAL"
-                                else:
-                                    title_status_fin = "📌 FIM DO VÍDEO"
+                                                                current_rev["strike_type"] = new_type
+                                                                current_rev["timestamp"] = new_ts
+                                                                current_rev["notes"] = new_notes
+                                                                current_rev["is_edited"] = True
+                                                                current_rev["is_confirmed"] = False
+                                                                st.session_state["session_reviews"][event_id_str] = current_rev
+                                                                st.toast(f"Marcação #{idx+1} atualizada com sucesso por {dan_options[selected_dan]}!", icon="✏️")
+                                                                st.rerun()
 
-                                with st.expander(f"🥋 Sonkyō Final (Encerramento) @ {curr_start_ts_fin} – {curr_end_ts_fin} • {title_status_fin}", expanded=bool(final_edit)):
-                                    c_finfo1, c_finfo2 = st.columns([3, 1])
-                                    with c_finfo1:
-                                        st.markdown(f"**Intervalo Ritual:** `{curr_start_ts_fin}` a `{curr_end_ts_fin}` &nbsp;|&nbsp; **Término da Luta:** `{curr_start_ts_fin}` (`Frame #{sonkyo_info.get('match_end_frame', 0)}`)")
-                                        seek_fin_s = max(0.0, parse_ts_to_seconds(curr_start_ts_fin) - 1.0)
-                                        if st.button("🎬 Assistir no Vídeo", key="btn_seek_sonkyo_fin", help="Reproduzir o vídeo no momento do Sonkyō Final"):
-                                            st.session_state["video_start_time"] = seek_fin_s
-                                            st.session_state["video_seek_label"] = f"Sonkyō Final ({curr_start_ts_fin})"
-                                            st.toast(f"🎥 Vídeo posicionado em {seek_fin_s:.1f}s", icon="🎬")
-                                            st.rerun()
-                                    with c_finfo2:
-                                        if final_edit:
-                                            st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6; margin:0;">✏️ EDITADO</div>', unsafe_allow_html=True)
-                                        elif is_fin_detected:
-                                            st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1; margin:0;">🥋 DETECTADO</div>', unsafe_allow_html=True)
+                                                        if current_rev.get("is_confirmed") or current_rev.get("is_edited"):
+                                                            if st.button("🔄 Resetar este golpe", key=f"btn_reset_single_{idx}_{event_id_str}"):
+                                                                if event_id_str in st.session_state["session_reviews"]:
+                                                                    del st.session_state["session_reviews"][event_id_str]
+                                                                st.toast(f"Golpe #{idx+1} restaurado ao estado original!", icon="🔄")
+                                                                st.rerun()
+
+                                                elif app_mode == "training" and strike_source == "AI_DETECTED":
+                                                    st.markdown("---")
+                                                    st.markdown("**🎓 Anotação (Reforço):**")
+                                                    btn_col1, btn_col2 = st.columns(2)
+                                                    sub_scores_raw = eval_info.get("sub_scores")
+                                                    sub_scores_val: Dict[str, Any] = sub_scores_raw if isinstance(sub_scores_raw, dict) else {}
+                                                    total_score_raw = eval_info.get("total_score", 0.0)
+                                                    total_score_val: float = float(total_score_raw) if isinstance(total_score_raw, (int, float, str)) else 0.0
+
+                                                    if btn_col1.button("👍 Correto", key=f"btn_tp_{idx}_{event_id_str}"):
+                                                        feedback_mgr.save_feedback(
+                                                            video_name=video_name_simple, profile_key=profile_choice, event_id=event_id_str, label="TP",
+                                                            sub_scores=sub_scores_val, total_score=total_score_val,
+                                                            strike_type=current_rev['strike_type'], timestamp=current_rev['timestamp'], reviewer_dan=selected_dan,
+                                                            decision_category="VALID_IPPON" if orig_is_valid else "INVALID_HIT"
+                                                        )
+                                                        st.toast("✅ Anotado como Correto (TP)!", icon="👍")
+                                                    if btn_col2.button("👎 Falso Positivo", key=f"btn_fp_{idx}_{event_id_str}"):
+                                                        feedback_mgr.save_feedback(
+                                                            video_name=video_name_simple, profile_key=profile_choice, event_id=event_id_str, label="FP",
+                                                            sub_scores=sub_scores_val, total_score=total_score_val,
+                                                            strike_type=current_rev['strike_type'], timestamp=current_rev['timestamp'], reviewer_dan=selected_dan,
+                                                            decision_category="INVALID_HIT" if orig_is_valid else "NO_STRIKE"
+                                                        )
+                                                        st.toast("❌ Anotado como Falso Positivo (FP)!", icon="👎")
+
+                                            with c_b:
+                                                if strike_item["diagnostic_report"]:
+                                                    st.markdown(strike_item["diagnostic_report"])
+                                                else:
+                                                    st.info("ℹ️ Este golpe foi inserido manualmente pelo revisor na sequência temporal do combate.")
+
+                                        # Inseridor inline de golpe (+) entre este golpe e o próximo (ou Sonkyō Final)
+                                        if idx < len(combined_strikes) - 1:
+                                            next_strike = combined_strikes[idx+1]
+                                            render_inline_strike_inserter(
+                                                f"slot_{idx}_{idx+1}",
+                                                strike_item["time_sec"],
+                                                next_strike["time_sec"],
+                                                f"Golpe #{idx+1} ({strike_item['timestamp']})",
+                                                f"Golpe #{idx+2} ({next_strike['timestamp']})"
+                                            )
                                         else:
-                                            st.markdown('<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF; margin:0;">📌 PADRÃO</div>', unsafe_allow_html=True)
+                                            render_inline_strike_inserter(
+                                                "slot_last",
+                                                strike_item["time_sec"],
+                                                fin_start_s_calc,
+                                                f"Golpe #{idx+1} ({strike_item['timestamp']})",
+                                                f"Sonkyō Final ({fin_start_ts_calc})"
+                                            )
 
-                                    if enable_editing:
-                                        st.markdown("---")
-                                        st.markdown(f"**✏️ Editar Intervalo ({dan_options.get(selected_dan, 'Dan')}):**")
-                                        ed_fcol1, ed_fcol2, ed_fbtn1, ed_fbtn2 = st.columns([1.2, 1.2, 1.2, 0.8])
-                                        new_fin_start = ed_fcol1.text_input("Início", value=curr_start_ts_fin, key="edit_fin_start_input", label_visibility="collapsed")
-                                        new_fin_end = ed_fcol2.text_input("Fim", value=curr_end_ts_fin, key="edit_fin_end_input", label_visibility="collapsed")
-                                        if ed_fbtn1.button("💾 Salvar", key="btn_apply_sonkyo_fin_edit", width="stretch"):
-                                            if "sonkyo_edits" not in st.session_state:
-                                                st.session_state["sonkyo_edits"] = {}
-                                            st.session_state["sonkyo_edits"]["final"] = {
-                                                "start_timestamp": new_fin_start,
-                                                "end_timestamp": new_fin_end
-                                            }
-                                            st.toast("✏️ Tempo do Sonkyō Final salvo!", icon="✏️")
-                                            st.rerun()
-                                        if final_edit and ed_fbtn2.button("🔄", key="btn_restore_sonkyo_fin", help="Restaurar", width="stretch"):
-                                            st.session_state["sonkyo_edits"].pop("final", None)
-                                            st.toast("Sonkyō Final restaurado.", icon="🔄")
-                                            st.rerun()
+                                # 3. EVENTO DE SONKYŌ FINAL (Encerramento do Combate)
+                                final_edit = sonkyo_edits.get("final")
+                                if has_final or final_edit:
+                                    fin_s = sonkyo_info.get("final_sonkyo") or {}
+                                    is_fin_detected = fin_s.get("is_detected", True)
+                                    curr_start_ts_fin = final_edit.get("start_timestamp") if final_edit else fin_s.get("start_timestamp", "00:04.000")
+                                    curr_end_ts_fin = final_edit.get("end_timestamp") if final_edit else fin_s.get("end_timestamp", f"{res['duration_seconds']}s")
+                                
+                                    if final_edit:
+                                        title_status_fin = "✏️ EDITADO"
+                                    elif is_fin_detected:
+                                        title_status_fin = "🥋 ENCERRAMENTO OFICIAL"
+                                    else:
+                                        title_status_fin = "📌 FIM DO VÍDEO"
 
-                        # Seção de Inclusão de Novo Golpe Perdido (FN / Adicional)
-                        if enable_editing or app_mode == "training":
-                            st.markdown("---")
-                            st.subheader("➕ Incluir Nova Marcação de Golpe (Golpe Perdido)")
+                                    with st.expander(f"🥋 Sonkyō Final (Encerramento) @ {curr_start_ts_fin} – {curr_end_ts_fin} • {title_status_fin}", expanded=bool(final_edit)):
+                                        c_finfo1, c_finfo2 = st.columns([3, 1])
+                                        with c_finfo1:
+                                            st.markdown(f"**Intervalo Ritual:** `{curr_start_ts_fin}` a `{curr_end_ts_fin}` &nbsp;|&nbsp; **Término da Luta:** `{curr_start_ts_fin}` (`Frame #{sonkyo_info.get('match_end_frame', 0)}`)")
+                                            seek_fin_s = max(0.0, parse_ts_to_seconds(curr_start_ts_fin) - 1.0)
+                                            if st.button("🎬 Assistir no Vídeo", key="btn_seek_sonkyo_fin", help="Reproduzir o vídeo no momento do Sonkyō Final"):
+                                                st.session_state["video_start_time"] = seek_fin_s
+                                                st.session_state["video_seek_label"] = f"Sonkyō Final ({curr_start_ts_fin})"
+                                                st.toast(f"🎥 Vídeo posicionado em {seek_fin_s:.1f}s", icon="🎬")
+                                                st.rerun()
+                                        with c_finfo2:
+                                            if final_edit:
+                                                st.markdown('<div class="valid-badge" style="background-color:#1E3A8A; color:#93C5FD; border: 1px solid #3B82F6; margin:0;">✏️ EDITADO</div>', unsafe_allow_html=True)
+                                            elif is_fin_detected:
+                                                st.markdown('<div class="valid-badge" style="background-color:#1E1B4B; color:#C4B5FD; border: 1px solid #6366F1; margin:0;">🥋 DETECTADO</div>', unsafe_allow_html=True)
+                                            else:
+                                                st.markdown('<div class="valid-badge" style="background-color:#374151; color:#F3F4F6; border: 1px solid #9CA3AF; margin:0;">📌 PADRÃO</div>', unsafe_allow_html=True)
+
+                                        if enable_editing:
+                                            st.markdown("---")
+                                            st.markdown(f"**✏️ Editar Intervalo ({dan_options.get(selected_dan, 'Dan')}):**")
+                                            ed_fcol1, ed_fcol2, ed_fbtn1, ed_fbtn2 = st.columns([1.2, 1.2, 1.2, 0.8])
+                                            new_fin_start = ed_fcol1.text_input("Início", value=curr_start_ts_fin, key="edit_fin_start_input", label_visibility="collapsed")
+                                            new_fin_end = ed_fcol2.text_input("Fim", value=curr_end_ts_fin, key="edit_fin_end_input", label_visibility="collapsed")
+                                            if ed_fbtn1.button("💾 Salvar", key="btn_apply_sonkyo_fin_edit", width="stretch"):
+                                                if "sonkyo_edits" not in st.session_state:
+                                                    st.session_state["sonkyo_edits"] = {}
+                                                st.session_state["sonkyo_edits"]["final"] = {
+                                                    "start_timestamp": new_fin_start,
+                                                    "end_timestamp": new_fin_end
+                                                }
+                                                st.toast("✏️ Tempo do Sonkyō Final salvo!", icon="✏️")
+                                                st.rerun()
+                                            if final_edit and ed_fbtn2.button("🔄", key="btn_restore_sonkyo_fin", help="Restaurar", width="stretch"):
+                                                st.session_state["sonkyo_edits"].pop("final", None)
+                                                st.toast("Sonkyō Final restaurado.", icon="🔄")
+                                                st.rerun()
+
+                            # Seção de Inclusão de Novo Golpe Perdido (FN / Adicional)
+                            if enable_editing or app_mode == "training":
+                                st.markdown("---")
+                                st.subheader("➕ Incluir Nova Marcação de Golpe (Golpe Perdido)")
                             
-                            fn_col1, fn_col2 = st.columns(2)
-                            with fn_col1:
-                                fn_timestamp = st.text_input("Timestamp (ex: 00:02.500)", value="00:00.000", key="fn_ts_input", help="Momento exato do golpe no vídeo")
-                                fn_strike_type = st.selectbox("Técnica Executada", ["MEN", "KOTE", "DO", "TSUKI"], key="fn_type_input")
+                                fn_col1, fn_col2 = st.columns(2)
+                                with fn_col1:
+                                    fn_timestamp = st.text_input("Timestamp (ex: 00:02.500)", value="00:00.000", key="fn_ts_input", help="Momento exato do golpe no vídeo")
+                                    fn_strike_type_sel = st.selectbox("Técnica Executada", ["MEN", "KOTE", "DO", "TSUKI"], key="fn_type_input")
+                                    fn_strike_type: str = str(fn_strike_type_sel or "MEN")
                             
-                            with fn_col2:
-                                # 1. Lutador Aka ou Shiro
-                                if is_inverted:
-                                    att_options = [
-                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Esquerda)"),
-                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Direita)")
+                                with fn_col2:
+                                    # 1. Lutador Aka ou Shiro
+                                    if is_inverted:
+                                        att_options = [
+                                            ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Esquerda)"),
+                                            ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Direita)")
+                                        ]
+                                    else:
+                                        att_options = [
+                                            ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Esquerda)"),
+                                            ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Direita)")
+                                        ]
+                                    att_labels = [opt[1] for opt in att_options]
+                                    fn_att_sel = st.selectbox("Lutador Atacante", att_labels, key="fn_attacker_input")
+                                    fn_att_sel_str = fn_att_sel or att_labels[0]
+                                    fn_att_id = att_options[att_labels.index(fn_att_sel_str)][0]
+                                    fn_att_name = "Kenshi Aka (Vermelho)" if fn_att_id == "KENSHI_AKA" else "Kenshi Shiro (Branco)"
+
+                                    # 2. Se foi Golpe Válido (Ippon) ou Golpe Inválido
+                                    fn_validity_options = [
+                                        ("VALID_IPPON", "✅ Golpe Válido (Ippon)"),
+                                        ("INVALID_HIT", "❌ Golpe Inválido (Não foi Ippon)")
                                     ]
-                                else:
-                                    att_options = [
-                                        ("KENSHI_SHIRO", "⚪ Kenshi Shiro (Branco - Esquerda)"),
-                                        ("KENSHI_AKA", "🔴 Kenshi Aka (Vermelho - Direita)")
-                                    ]
-                                att_labels = [opt[1] for opt in att_options]
-                                fn_att_sel = st.selectbox("Lutador Atacante", att_labels, key="fn_attacker_input")
-                                fn_att_id = att_options[att_labels.index(fn_att_sel)][0]
-                                fn_att_name = "Kenshi Aka (Vermelho)" if fn_att_id == "KENSHI_AKA" else "Kenshi Shiro (Branco)"
+                                    fn_val_labels = [v[1] for v in fn_validity_options]
+                                    fn_val_sel = st.radio("Validação do Golpe", fn_val_labels, horizontal=True, key="fn_validity_input")
+                                    fn_val_sel_str = fn_val_sel or fn_val_labels[0]
+                                    fn_val_code = fn_validity_options[fn_val_labels.index(fn_val_sel_str)][0]
+                                    fn_is_ippon = (fn_val_code == "VALID_IPPON")
 
-                                # 2. Se foi Golpe Válido (Ippon) ou Golpe Inválido
-                                fn_validity_options = [
-                                    ("VALID_IPPON", "✅ Golpe Válido (Ippon)"),
-                                    ("INVALID_HIT", "❌ Golpe Inválido (Não foi Ippon)")
-                                ]
-                                fn_val_labels = [v[1] for v in fn_validity_options]
-                                fn_val_sel = st.radio("Validação do Golpe", fn_val_labels, horizontal=True, key="fn_validity_input")
-                                fn_val_code = fn_validity_options[fn_val_labels.index(fn_val_sel)][0]
-                                fn_is_ippon = (fn_val_code == "VALID_IPPON")
+                                fn_notes = st.text_input("Observação do Revisor", value="Golpe não detectado pelo modelo", key="fn_notes_input")
 
-                            fn_notes = st.text_input("Observação do Revisor", value="Golpe não detectado pelo modelo", key="fn_notes_input")
+                                if st.button("➕ Incluir Marcação no Dataset", width="stretch"):
+                                    new_fn_id = f"fn_{fn_timestamp.replace(':', '_').replace('.', '_')}_{fn_att_id.lower()}_{len(st.session_state.get('session_reviews', {}))+1}"
+                                    new_fn_item = {
+                                        "event_id": new_fn_id,
+                                        "label": "TP" if fn_is_ippon else "FP",
+                                        "category": fn_val_code,
+                                        "decision_category": fn_val_code,
+                                        "is_valid_ippon": fn_is_ippon,
+                                        "strike_type": fn_strike_type,
+                                        "timestamp": fn_timestamp,
+                                        "attacker_id": fn_att_id,
+                                        "attacker_name": fn_att_name,
+                                        "total_score": 100.0 if fn_is_ippon else 0.0,
+                                        "sub_scores": {},
+                                        "is_included": True,
+                                        "is_confirmed": False,
+                                        "is_edited": True,
+                                        "notes": fn_notes
+                                    }
+                                    st.session_state["session_reviews"][new_fn_id] = new_fn_item
+                                    feedback_mgr.save_feedback(
+                                        video_name=video_name_simple,
+                                        profile_key=profile_choice,
+                                        event_id=new_fn_id,
+                                        label="TP" if fn_is_ippon else "FP",
+                                        strike_type=fn_strike_type,
+                                        timestamp=fn_timestamp,
+                                        notes=fn_notes,
+                                        reviewer_dan=selected_dan,
+                                        is_included=True,
+                                        decision_category=fn_val_code
+                                    )
+                                    st.toast(f"✅ Golpe Adicional ({fn_strike_type} de {fn_att_name} às {fn_timestamp}) incluído!", icon="➕")
+                                    st.rerun()
 
-                            if st.button("➕ Incluir Marcação no Dataset", width="stretch"):
-                                new_fn_id = f"fn_{fn_timestamp.replace(':', '_').replace('.', '_')}_{fn_att_id.lower()}_{len(st.session_state.get('session_reviews', {}))+1}"
-                                new_fn_item = {
-                                    "event_id": new_fn_id,
-                                    "label": "TP" if fn_is_ippon else "FP",
-                                    "category": fn_val_code,
-                                    "decision_category": fn_val_code,
-                                    "is_valid_ippon": fn_is_ippon,
-                                    "strike_type": fn_strike_type,
-                                    "timestamp": fn_timestamp,
-                                    "attacker_id": fn_att_id,
-                                    "attacker_name": fn_att_name,
-                                    "total_score": 100.0 if fn_is_ippon else 0.0,
-                                    "sub_scores": {},
-                                    "is_included": True,
-                                    "is_confirmed": False,
-                                    "is_edited": True,
-                                    "notes": fn_notes
-                                }
-                                st.session_state["session_reviews"][new_fn_id] = new_fn_item
-                                feedback_mgr.save_feedback(
-                                    video_name=video_name_simple,
-                                    profile_key=profile_choice,
-                                    event_id=new_fn_id,
-                                    label="TP" if fn_is_ippon else "FP",
-                                    strike_type=fn_strike_type,
-                                    timestamp=fn_timestamp,
-                                    notes=fn_notes,
-                                    reviewer_dan=selected_dan,
-                                    is_included=True,
-                                    decision_category=fn_val_code
-                                )
-                                st.toast(f"✅ Golpe Adicional ({fn_strike_type} de {fn_att_name} às {fn_timestamp}) incluído!", icon="➕")
-                                st.rerun()
+                            # Botão de Salvar Alterações e Retreinar Modelo ao Final
+                            if enable_editing:
+                                st.markdown("---")
+                                st.subheader("💾 Finalizar Revisão & Retreinar Modelo")
+                                st.caption(f"Salva todas as confirmações, edições e inclusões feitas sob a responsabilidade do revisor **{dan_options.get(selected_dan, 'Dan')}** e executa o retreinamento adaptativo.")
 
-                        # Botão de Salvar Alterações e Retreinar Modelo ao Final
-                        if enable_editing:
-                            st.markdown("---")
-                            st.subheader("💾 Finalizar Revisão & Retreinar Modelo")
-                            st.caption(f"Salva todas as confirmações, edições e inclusões feitas sob a responsabilidade do revisor **{dan_options.get(selected_dan, 'Dan')}** e executa o retreinamento adaptativo.")
+                                if st.button("💾 Salvar Alterações e Retreinar Modelo", type="primary", width="stretch"):
+                                    items_to_save = list(st.session_state["session_reviews"].values())
+                                    if not items_to_save:
+                                        # Se nenhuma alteração explícita foi feita, incluir todos os detectados padrão como confirmados
+                                        for idx, ev_data in enumerate(res["events"]):
+                                            ev = ev_data["event_info"]
+                                            eval_info = ev_data["evaluation"]
+                                            is_val = eval_info.get("is_valid", False)
+                                            items_to_save.append({
+                                                "event_id": f"event_{idx+1}_frame_{ev['impact_frame']}",
+                                                "label": "TP" if is_val else "FP",
+                                                "decision_category": "VALID_IPPON" if is_val else "INVALID_HIT",
+                                                "strike_type": ev['type'],
+                                                "timestamp": ev['timestamp'],
+                                                "total_score": eval_info.get('total_score', 0.0),
+                                                "sub_scores": eval_info.get('sub_scores', {}),
+                                                "is_confirmed": True
+                                            })
 
-                            if st.button("💾 Salvar Alterações e Retreinar Modelo", type="primary", width="stretch"):
-                                items_to_save = list(st.session_state["session_reviews"].values())
-                                if not items_to_save:
-                                    # Se nenhuma alteração explícita foi feita, incluir todos os detectados padrão como confirmados
-                                    for idx, ev_data in enumerate(res["events"]):
-                                        ev = ev_data["event_info"]
-                                        eval_info = ev_data["evaluation"]
-                                        is_val = eval_info.get("is_valid", False)
-                                        items_to_save.append({
-                                            "event_id": f"event_{idx+1}_frame_{ev['impact_frame']}",
-                                            "label": "TP" if is_val else "FP",
-                                            "decision_category": "VALID_IPPON" if is_val else "INVALID_HIT",
-                                            "strike_type": ev['type'],
-                                            "timestamp": ev['timestamp'],
-                                            "total_score": eval_info.get('total_score', 0.0),
-                                            "sub_scores": eval_info.get('sub_scores', {}),
-                                            "is_confirmed": True
-                                        })
-
-                                new_cfg, session_rec = feedback_mgr.save_review_session(
-                                    video_name=video_name_simple,
-                                    profile_key=profile_choice,
-                                    reviewer_dan=selected_dan,
-                                    review_items=items_to_save,
-                                    current_profile_config=current_p
-                                )
-                                # Atualizar o perfil ativo no calibrador
-                                pipeline_temp = SenpAIPipeline(calibration_profile=profile_choice)
-                                pipeline_temp.calibrator.update_and_save_profile(profile_choice, new_cfg)
-
-                                st.success(f"🎉 Revisão salva e modelo retreinado com sucesso! ({len(items_to_save)} marcações processadas por {dan_options.get(selected_dan)}).")
-                                if session_rec.get("optimization_summary", {}).get("changes"):
-                                    st.markdown("**Alterações da Calibração:**")
-                                    for chg in session_rec["optimization_summary"]["changes"]:
-                                        st.markdown(f"- {chg}")
-
-                        elif app_mode == "training":
-                            st.markdown("---")
-                            st.subheader(f"🧠 Painel de Otimização - Perfil '{profile_choice.upper()}'")
-                            stats = feedback_mgr.get_stats(profile_key=profile_choice)
-                            s1, s2, s3, s4 = st.columns(4)
-                            s1.metric("Anotações", stats["total_feedback"])
-                            s2.metric("Acertos (TP)", stats["true_positives"])
-                            s3.metric("Falsos Pos. (FP)", stats["false_positives"])
-                            s4.metric("Precisão", f"{stats['precision_pct']}%")
-
-                            if st.button("🚀 Treinar e Atualizar Perfil", type="primary", width="stretch"):
-                                updated_config, opt_summary = feedback_mgr.optimize_profile_config(profile_choice, current_p)
-                                if opt_summary["status"] == "no_data":
-                                    st.warning(opt_summary["message"])
-                                else:
+                                    new_cfg, session_rec = feedback_mgr.save_review_session(
+                                        video_name=video_name_simple,
+                                        profile_key=profile_choice,
+                                        reviewer_dan=selected_dan,
+                                        review_items=items_to_save,
+                                        current_profile_config=current_p
+                                    )
+                                    # Atualizar o perfil ativo no calibrador
                                     pipeline_temp = SenpAIPipeline(calibration_profile=profile_choice)
-                                    pipeline_temp.calibrator.update_and_save_profile(profile_choice, updated_config)
-                                    st.success(f"🎉 O perfil '{profile_choice}' foi recalibrado com sucesso!")
-                                    for chg in opt_summary["changes"]:
-                                        st.markdown(f"- {chg}")
+                                    pipeline_temp.calibrator.update_and_save_profile(profile_choice, new_cfg)
+
+                                    st.success(f"🎉 Revisão salva e modelo retreinado com sucesso! ({len(items_to_save)} marcações processadas por {dan_options.get(selected_dan)}).")
+                                    if session_rec.get("optimization_summary", {}).get("changes"):
+                                        st.markdown("**Alterações da Calibração:**")
+                                        for chg in session_rec["optimization_summary"]["changes"]:
+                                            st.markdown(f"- {chg}")
+
+
 

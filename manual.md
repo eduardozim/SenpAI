@@ -318,7 +318,7 @@ O projeto inclui suíte completa de testes automatizados em `unittest` com runne
 .\.venv\Scripts\python.exe -m unittest discover tests
 ```
 
-Também é possível disparar os testes diretamente no **Web Dashboard** acessando a aba **⚙️ Configurações > Seção 5 (Diagnóstico e Logs)** através do botão **`🔬 Rodar Testes (52)`** e baixar o relatório completo em **`📥 Baixar Log Testes (.log)`**.
+Também é possível disparar os testes diretamente no **Web Dashboard** acessando a aba **⚙️ Configurações > Seção 5 (Diagnóstico e Logs)** através do botão **`🔬 Rodar Testes (73)`** e baixar o relatório completo em **`📥 Baixar Log Testes (.log)`**.
 
 ### Relatório Descritivo e Política de Retenção de Logs
 
@@ -350,7 +350,36 @@ Total de **73 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
-### `[v1.7.0]` — 2026-08-20 *(Versão Atual)*
+### `[v1.7.1]` — 2026-08-30 *(Versão Atual)*
+
+- **Tipagem Estrita, Estabilidade de Execução e Correção de Linter/Pyright no Web Dashboard ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Estreitamento de Tipos em Widgets Streamlit (`Type Narrowing`)**:
+    - Aplicação de conversão defensiva e tipagem estrita garantindo que retornos de widgets (`st.selectbox`, `st.radio`, `st.number_input`) nunca repassem `None` para assinaturas e chamadas que exigem tipos estritos (`str`, `int`):
+      - `profile_choice: str`: Garantido como `str` (fallback `"normal"`), eliminando erros de tipo na inicialização do [SenpAIPipeline](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), no salvamento de revisões e no painel de otimização de sensibilidade.
+      - `num_cameras: int`: Garantido como `int` (fallback `1`), eliminando erros de indexação no `diagram_map`, iterações `range(num_cameras)` e comparações lógicas no modo Ao Vivo Multi-Câmeras.
+      - `selected_dan: int`: Garantido como `int` (fallback `3`), eliminando erros de indexação e consultas em `dan_options[selected_dan]` e `dan_options.get(selected_dan)`.
+      - `selected_quality: str`: Tipado estritamente como `str` para compatibilidade com `QUALITY_LABELS.get()` e [video_downloader.py](file:///d:/Projetos/SenpAI/Dev/src/utils/video_downloader.py).
+      - `selected_mod_key: str`: Tipado estritamente para indexação segura em `TRAINING_MODALITIES_METADATA`.
+      - `selected_hw_str`: Estreitamento na seleção de hardware para envio seguro a `set_processing_device`.
+  - **Correção da Lista de Frames em Tempo Real (`latest_drawn_frames`)**:
+    - Tipagem explícita `list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]` no [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) e atualização da assinatura em [multi_camera_fusion.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/multi_camera_fusion.py) (`latest_frames: Optional[List[Optional[np.ndarray]]] = None`), permitindo atribuição de imagens processadas e validação contínua de consenso multi-câmeras em background.
+  - **Limpeza Automática de Análise na Transição de Modos e Botão de Nova Análise**:
+    - Implementada a função `clear_previous_analysis()` que monitora a troca entre os 3 modos de operação (Tempo Real, Detecção Gravada e Treinamento & Aprendizado), interrompendo com segurança qualquer worker em execução e redefinindo completamente os resultados, revisões, uploads e buffers de sessão.
+    - Adicionado o botão `🧹 Nova Análise / Limpar` diretamente no topo do painel de resultados para redefinição manual instantânea.
+  - **Layout Ergonômico Lado a Lado no Modo de Treinamento & Aprendizado**:
+    - O painel pedagógico de avaliação de treinamento (10 Modalidades de Kendo, 3 Pilares biomecânicos — Movimentação, Precisão e Constância —, rastreamento/nomeação de Kendocas, pontos fortes, correções técnicas, prescrições de exercícios e exportações de relatórios .MD/.JSON) agora é exibido **diretamente ao lado do vídeo**, em duas colunas sincronizadas.
+    - No modo de treinamento, a Linha do Tempo e a Revisão de Golpes de Campeonato foram suprimidas, garantindo uma interface limpa, focada exclusivamente na evolução técnica dos praticantes do dojo.
+    - Adicionado suporte à inversão de identificação dos praticantes (`🔄 Inverter Lados dos Kendocas (Esquerda ⇄ Direita)`), atualizando a ordem dos cards pedagógicos em tempo real.
+  - **Blindagem de Renderização Condicional da Linha do Tempo & Prevenção de `NameError: name 'res'`**:
+    - Encapsulamento estrito de todos os componentes da Linha do Tempo, Formulários Dan e Botões de Retreinamento dentro do bloco condicional de existência de resultados (`analysis_result in st.session_state`), prevenindo tentativas de iteração sobre objetos de resultados antes da execução do pipeline ou após limpeza/reset de sessão.
+  - **Aceleração Nativa NVIDIA CUDA via Ultralytics (YOLOv8-Pose)**:
+    - Integração e homologação do pacote `ultralytics` nas rotinas de detecção de hardware ([hardware.py](file:///d:/Projetos/SenpAI/Dev/src/utils/hardware.py)), garantindo inicialização limpa em GPU (`use_gpu: True`) com fallback automático para CPU MediaPipe caso indisponível.
+- **Suíte Completa de Testes Automatizados**:
+  - **73 testes automatizados** em `unittest` executados e validados com 100% de aprovação.
+
+---
+
+### `[v1.7.0]` — 2026-08-20
 
 - **Consenso & Validação de Golpes por Conjunto Multi-Câmeras (`MultiCameraFusionEngine`)**:
   - Implementada a regra central: *"A definição de haver ou não o golpe deve ser tomado com base no conjunto das imagens das câmeras. Quanto mais câmeras, mais necessária a confirmação em imagens/frames da realização da técnica."*

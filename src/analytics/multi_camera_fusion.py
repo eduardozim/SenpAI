@@ -258,7 +258,7 @@ class MultiCameraFusionEngine:
         has_target_contact = target_score >= 0.40
         tech_matches = (detected_tech == target_technique or target_score >= 0.60)
 
-        is_confirmed = bool(has_motion and has_target_contact and tech_matches)
+        is_confirmed = (has_motion and has_target_contact and tech_matches)
 
         # Score individual de confiança (0 a 100)
         confidence = (
@@ -410,7 +410,7 @@ class MultiCameraFusionEngine:
         camera_configs: List[Dict[str, Any]],
         current_fps: float = 30.0,
         current_frame_idx: int = 0,
-        latest_frames: Optional[List[np.ndarray]] = None
+        latest_frames: Optional[List[Optional[np.ndarray]]] = None
     ) -> Optional[MultiCameraStrikeEvaluation]:
         """
         Passo de avaliação em tempo real (Modo Ao Vivo Multi-Câmeras).

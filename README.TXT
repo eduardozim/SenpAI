@@ -46,6 +46,7 @@ Guia de Instalação no Windows (Passo a Passo Oficial):
 
 5. (Opcional) Para habilitação de aceleração CUDA em GPU NVIDIA:
    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+   pip install ultralytics onnxruntime-gpu
 
 Nota de Compatibilidade Windows (Smart App Control / WDAC):
 O uso do Python 3.11 oficial assinado pela PSF garante total conformidade
@@ -67,7 +68,10 @@ interpretador oficial assinado do Python, evitando bloqueios do Smart App Contro
 do Windows sobre o wrapper executável streamlit.exe.
 
 Recursos da Interface Web:
-- Interface otimizada e dimensionada (escala visual 80%) para visualização integrada e ergonômica.
+- Interface otimizada e dimensionada (escala visual 90%) para visualização integrada e ergonômica.
+- Limpeza Automática de Análise na Transição de Modos: Ao alternar entre os Modos de Operação (Tempo Real, Detecção Gravada e Treinamento & Aprendizado), a análise anterior, revisões, arquivos carregados e workers em execução são limpos automaticamente para manter o ambiente pronto para uma nova análise.
+- Botão Manual de Limpeza e Nova Análise: Ação rápida "🧹 Nova Análise / Limpar" integrada no topo dos resultados gravados e de treinamento para reinicialização instantânea.
+- Calibração de Sensibilidade Inteligente: No Modo de Treinamento & Aprendizado, o perfil é definido por padrão automaticamente como Treino Geral / Keiko (Normal).
 - Validação e Consenso Multi-Câmeras (Tempo Real): A definição de haver ou não o golpe é tomada com base no conjunto das imagens das câmeras em background. Quanto mais câmeras ativas, maior a exigência de confirmação síncrona em frames (quórum escalonado de 1 a 4 câmeras), com descarte silencioso de movimentações sem consenso.
 - Placar Oficial Eletrônico (Sanbon-shobu) com contagem de Ippon para Aka (Vermelho) e Shiro (Branco), declaração regulamentar de resultado e marcação em caracteres Katakana oficiais (メ, コ, ド, ツ).
 - Destaque Visual na Linha do Tempo: golpes responsáveis pela marcação de Ippon são destacados com a nomenclatura oficial Katakana (メ MEN, コ KOTE, ド DO, ツ TSUKI), banner cromático por lutador e identificação no seletor de navegação rápida.
@@ -75,13 +79,13 @@ Recursos da Interface Web:
 - Navegação Interativa no Vídeo com Salto Temporal Calibrado: clique no evento (Sonkyō Inicial, Golpe ou Sonkyō Final) ou selecione no dropdown para posicionar o player 1 segundo antes (-1.0s) do início do evento para revisão detalhada.
 - Delimitação Temporal da Luta por Sonkyō: identificação automática da postura ritualística de Sonkyō de início e término do combate, com filtragem estrita de golpes na janela regulamentar.
 - Rastreamento dos 2 Kenshi Principais e Filtragem de Planos: descarte inteligente de elementos de fundo (outras lutas, arquibancadas) e oclusões de primeiro plano.
-- Menu de Configurações com seletor de Hardware (CPU vs GPU NVIDIA CUDA com Tensor Cores FP16) e painel de Governança de Treinamento.
+- Menu de Configurações com seletor de Hardware (CPU vs GPU NVIDIA CUDA com Tensor Cores FP16 / Ultralytics YOLOv8-Pose) e painel de Governança de Treinamento.
 - Painel de Diagnóstico, Alertas e Log de Debug do Sistema com monitoramento de eventos em tempo real (`senpai_debug.log`).
 - Edição de Golpes por Dan no Modo de Detecção Gravada (Shodan 1º Dan a Hachidan 8º Dan) com badges CONFIRMADO e EDITADO.
 - Botão de Reset Geral e Individual de revisão, regra de auditabilidade (sem exclusão de dados) e retreinamento contínuo.
 - Gestão de Pacotes de Treinamento: exportação e importação de arquivos JSON com registro por Dan e data.
 - Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de eventos com barra de rolagem à direita.
-- Alternador de exibição no player: Vídeo Anotado (Visão AI com HUD superior) vs Vídeo Original.
+- Conformidade Estrita de Tipagem e Estabilidade: Narrowing de tipos e tratamento defensivo em todos os widgets Streamlit (câmeras, Dan, perfis, qualidades e acelerador), além de blindagem de renderização condicional da Linha do Tempo prevenindo exceções de runtime em resets ou antes da execução da análise.
 
 --- B. LINHA DE COMANDO (CLI) ---
 Para processar vídeos diretamente no terminal:
@@ -150,6 +154,9 @@ Opções disponíveis:
 
 2. MODO DE TREINAMENTO & APRENDIZADO (training):
    Projetado para instrutores e atletas para refinamento técnico e preparação para exames.
+   - Layout Ergonômico Lado a Lado: O painel de avaliação pedagógica fica perfeitamente posicionado
+     ao lado do vídeo, sem a Linha do Tempo de arbitragem competitiva, oferecendo visualização direta e focada.
+   - Suporte a Inversão de Lados dos Kendocas: Botão de alternância instantânea da ordem de exibição dos atletas.
    - 14 Modalidades Oficiais de Treinamento com Kanjis:
      1. Ashi-sabaki (足捌き) — Deslocamentos fundamentais (okuri-ashi, ayumi-ashi, hiraki-ashi, tsugi-ashi).
      2. Suburi (素振り) — Golpes repetidos no ar (jōge-buri, naname-buri, shōmen-uchi, sayū-men).
@@ -170,7 +177,7 @@ Opções disponíveis:
      • Precisão (35%): Trajetória no alvo, sincronismo Ki-Ken-Tai-Ichi e controle de linha central.
      • Constância (30%): Regularidade do ritmo, resistência à fadiga e adequação à cadência.
    - Rastreamento Individual e Nomeação: Nomeação interativa por Kenshi com emissão de Relatório Individual em Markdown (.md) e dados da sessão em JSON.
-   - Feedback & Aprendizado por Reforço: Rotulação (TP, FP, FN) e calibração por nível Dan.
+   - Diagnósticos Pedagógicos: Pontos Fortes, Pontos de Atenção e Prescrições Práticas de Exercícios do Dojo.
 
 3. MODO DE DETECÇÃO EM TEMPO REAL (realtime):
    Processamento instantâneo via Webcam ou streams RTSP/RTCP de 1 a 4 câmeras IP simultâneas.
