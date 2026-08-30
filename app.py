@@ -130,11 +130,11 @@ def format_seconds_to_ts(seconds: float) -> str:
 def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
     """
     Renderiza o Painel Especializado de Treinamento & Aprendizado de Kendo:
-    - Identificação e metadados das 10 modalidades de treinamento.
-    - Avaliação minuciosa dos 3 Pilares (Forma, Precisão e Constância).
+    - Identificação e metadados das 14 modalidades de treinamento com Kanjis.
+    - Avaliação minuciosa dos 3 Pilares (Movimentação, Precisão e Constância).
     - Rastreamento e nomeação customizada de cada Kendoca no Shiaijo.
     - Diagnósticos pedagógicos (Pontos Fortes, Pontos de Melhoria e Prescrições Práticas).
-    - Exportação de relatório em JSON.
+    - Exportação de relatório individualizado (.MD) por Kendoca e relatório consolidado (.JSON).
     """
     train_data = res.get("training_analysis", {})
     if not train_data:
@@ -147,7 +147,8 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
     kendokas = train_data.get("kendokas", [])
     dur_sec = train_data.get("duration_seconds", res.get("duration_seconds", 0.0))
 
-    meta = TRAINING_MODALITIES_METADATA.get(mod_key, TRAINING_MODALITIES_METADATA["suburi"])
+    meta = TRAINING_MODALITIES_METADATA.get(mod_key, TRAINING_MODALITIES_METADATA.get("suburi", {}))
+    mod_display_name = meta.get("name", "Treinamento de Kendo")
 
     # 1. CABEÇALHO DA MODALIDADE DE TREINO
     st.markdown(
@@ -159,7 +160,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     <div>
                         <div style="color: #A5B4FC; font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">AVALIAÇÃO DE TREINAMENTO & APRENDIZADO DE KENDO</div>
                         <div style="color: #FFFFFF; font-size: 20px; font-weight: 900; font-family: monospace; line-height: 1.2;">
-                            {meta['name']} <span style="color: #818CF8; font-size: 16px; font-family: sans-serif;">({meta['japanese']})</span>
+                            {mod_display_name}
                         </div>
                     </div>
                 </div>
@@ -171,24 +172,24 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                 </div>
             </div>
             <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.06);">
-                <div style="color: #E2E8F0; font-size: 13px; margin-bottom: 3px;"><b>{meta['category']}:</b> {meta['description']}</div>
-                <div style="color: #94A3B8; font-size: 12px;">🎯 <b>Focos Principais de Avaliação:</b> {' • '.join(meta['focus_areas'])}</div>
+                <div style="color: #E2E8F0; font-size: 13px; margin-bottom: 3px;"><b>{meta.get('category', 'Modalidade')}:</b> {meta.get('description', '')}</div>
+                <div style="color: #94A3B8; font-size: 12px;">🎯 <b>Focos Principais de Avaliação:</b> {' • '.join(meta.get('focus_areas', []))}</div>
             </div>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    # 2. CONTROLES: NOMEAÇÃO E DOWNLOAD DO RELATÓRIO
+    # 2. CONTROLES: DOWNLOAD DO RELATÓRIO CONSOLIDADO
     top_c1, top_c2 = st.columns([3, 1])
     with top_c1:
-        st.caption("💡 *Os 3 Pilares avaliam a biomecânica da coluna e pés (Forma), sincronismo de corte Ki-Ken-Tai-Ichi (Precisão) e cadência com ritmo respiratório (Constância).*")
+        st.caption("💡 *Os 3 Pilares avaliam a biomecânica e trabalho de pés (Movimentação), sincronismo Ki-Ken-Tai-Ichi e alvo (Precisão) e cadência com ritmo respiratório (Constância).*")
     with top_c2:
         report_json_str = json.dumps(train_data, indent=2, ensure_ascii=False)
         st.download_button(
-            label="📥 Exportar Relatório (.JSON)",
+            label="📥 Exportar Sessão (.JSON)",
             data=report_json_str,
-            file_name=f"relatorio_treino_{mod_key}_{int(time.time())}.json",
+            file_name=f"sessao_treino_{mod_key}_{int(time.time())}.json",
             mime="application/json",
             width="stretch",
             key="btn_dl_train_report_json"
@@ -207,7 +208,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
         timeline = k_prof.get("repetition_timeline", [])
 
         overall = float(pillars.get("overall_score", 0.0))
-        forma = float(pillars.get("forma", 0.0))
+        mov = float(pillars.get("movimentacao", pillars.get("forma", 0.0)))
         prec = float(pillars.get("precisao", 0.0))
         const = float(pillars.get("constancia", 0.0))
         cadence_cpm = float(pillars.get("cadence_cpm", 0.0))
@@ -227,7 +228,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
             <div style="background: #0B1120; border: 1.5px solid #334155; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 8px; margin-bottom: 12px;">
                     <div>
-                        <span style="color: #F8FAFC; font-size: 16px; font-weight: 800;">🥋 {k_cust}</span>
+                        <span style="color: #F8FAFC; font-size: 17px; font-weight: 800;">🥋 {k_cust}</span>
                         <span style="color: #94A3B8; font-size: 12px; margin-left: 8px;">({k_def} • {k_role})</span>
                     </div>
                     <div style="background: {badge_perf[2]}; border: 1px solid {badge_perf[3]}; border-radius: 6px; padding: 4px 10px;">
@@ -239,10 +240,10 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
             unsafe_allow_html=True
         )
 
-        col_in_name, col_meta_k = st.columns([1.5, 2.5])
+        col_in_name, col_meta_k, col_dl_indiv = st.columns([1.5, 2.0, 1.2])
         with col_in_name:
             curr_name_input = st.text_input(
-                f"Nome / Identificação no Dojo ({k_def}):",
+                f"Nomear Kendoca ({k_def}):",
                 value=k_cust,
                 key=f"train_name_in_{k_id}_{idx_k}"
             )
@@ -251,36 +252,74 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     st.session_state["training_kendoka_names"] = {}
                 st.session_state["training_kendoka_names"][k_id] = curr_name_input
                 k_prof["custom_name"] = curr_name_input
+                k_cust = curr_name_input
         with col_meta_k:
             st.markdown(
                 f"""
                 <div style="background: rgba(30, 41, 59, 0.4); border-radius: 6px; padding: 8px 12px; margin-top: 14px; display: flex; justify-content: space-around; font-size: 12px;">
                     <span>⏱️ Cadência: <b style="color:#F8FAFC;">{cadence_cpm:.1f} CPM</b></span>
                     <span>🔁 Repetições: <b style="color:#F8FAFC;">{reps}</b></span>
-                    <span>📊 Desvio de Ritmo: <b style="color:#F8FAFC;">{pillars.get('cadence_std_dev_seconds', 0.0):.2f}s DP</b></span>
+                    <span>📊 Desvio: <b style="color:#F8FAFC;">{pillars.get('cadence_std_dev_seconds', 0.0):.2f}s DP</b></span>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
+        with col_dl_indiv:
+            # Gerar relatório individual em Markdown
+            k_obj = KendokaTrainingProfile(
+                kendoka_id=k_id,
+                default_name=k_def,
+                custom_name=k_cust,
+                role=k_role,
+                pillars=TrainingPillarMetrics(
+                    movimentacao_score=mov,
+                    precisao_score=prec,
+                    constancia_score=const,
+                    movimentacao_submetrics=pillars.get("movimentacao_submetrics", pillars.get("forma_submetrics", {})),
+                    precisao_submetrics=pillars.get("precisao_submetrics", {}),
+                    constancia_submetrics=pillars.get("constancia_submetrics", {}),
+                    cadence_cpm=cadence_cpm,
+                    cadence_std_dev_seconds=pillars.get("cadence_std_dev_seconds", 0.0),
+                    total_repetitions=reps
+                ),
+                strengths=strengths,
+                improvements=improvements,
+                recommended_exercises=exercises,
+                repetition_timeline=timeline
+            )
+            indiv_md = k_obj.generate_individual_report_markdown(meta)
+            safe_k_name = k_cust.replace(" ", "_").lower()
+            st.download_button(
+                label=f"📥 Relatório de {k_cust[:10]} (.MD)",
+                data=indiv_md,
+                file_name=f"relatorio_kenshi_{safe_k_name}_{int(time.time())}.md",
+                mime="text/markdown",
+                width="stretch",
+                key=f"btn_dl_indiv_md_{k_id}_{idx_k}"
+            )
 
-        # OS 3 PILARES
+        # OS 3 PILARES (MOVIMENTAÇÃO, PRECISÃO, CONSTÂNCIA)
         p_col1, p_col2, p_col3 = st.columns(3)
+        mov_sub = pillars.get('movimentacao_submetrics', pillars.get('forma_submetrics', {}))
+        prec_sub = pillars.get('precisao_submetrics', {})
+        const_sub = pillars.get('constancia_submetrics', {})
+
         with p_col1:
             st.markdown(
                 f"""
                 <div style="background: #0F172A; border: 1.5px solid #38BDF8; border-radius: 8px; padding: 12px; height: 100%;">
                     <div style="color: #38BDF8; font-size: 13px; font-weight: 800; display: flex; justify-content: space-between;">
-                        <span>📐 PILAR 1: FORMA</span>
-                        <span>{forma:.1f}%</span>
+                        <span>🥋 PILAR 1: MOVIMENTAÇÃO</span>
+                        <span>{mov:.1f}%</span>
                     </div>
                     <div style="background: #1E293B; border-radius: 4px; height: 8px; margin: 6px 0 10px 0; overflow: hidden;">
-                        <div style="background: #38BDF8; width: {forma}%; height: 100%;"></div>
+                        <div style="background: #38BDF8; width: {mov}%; height: 100%;"></div>
                     </div>
                     <div style="font-size: 11px; color: #94A3B8; line-height: 1.6;">
-                        • Verticalidade da Coluna: <b style="color:#F1F5F9;">{pillars.get('forma_submetrics', {}).get('verticalidade_coluna', 0):.1f}%</b><br>
-                        • Nivelamento de Ombros: <b style="color:#F1F5F9;">{pillars.get('forma_submetrics', {}).get('nivelamento_ombros', 0):.1f}%</b><br>
-                        • Base e Calcanhar Esquerdo: <b style="color:#F1F5F9;">{pillars.get('forma_submetrics', {}).get('alinhamento_base_pes', 0):.1f}%</b><br>
-                        • Amplitude Furikaburi: <b style="color:#F1F5F9;">{pillars.get('forma_submetrics', {}).get('amplitude_furikaburi', 0):.1f}%</b>
+                        • Verticalidade da Coluna (Shisei): <b style="color:#F1F5F9;">{mov_sub.get('verticalidade_coluna', 0):.1f}%</b><br>
+                        • Nivelamento de Ombros: <b style="color:#F1F5F9;">{mov_sub.get('nivelamento_ombros', 0):.1f}%</b><br>
+                        • Base e Calcanhar Esquerdo (Ashi): <b style="color:#F1F5F9;">{mov_sub.get('alinhamento_base_pes', 0):.1f}%</b><br>
+                        • Amplitude de Furikaburi: <b style="color:#F1F5F9;">{mov_sub.get('amplitude_furikaburi', 0):.1f}%</b>
                     </div>
                 </div>
                 """,
@@ -299,9 +338,9 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                         <div style="background: #A855F7; width: {prec}%; height: 100%;"></div>
                     </div>
                     <div style="font-size: 11px; color: #94A3B8; line-height: 1.6;">
-                        • Trajetória no Ponto Alvo: <b style="color:#F1F5F9;">{pillars.get('precisao_submetrics', {}).get('trajetoria_alvo', 0):.1f}%</b><br>
-                        • Sincronismo Ki-Ken-Tai: <b style="color:#F1F5F9;">{pillars.get('precisao_submetrics', {}).get('kikentai_sincronismo', 0):.1f}%</b><br>
-                        • Controle Linha de Centro: <b style="color:#F1F5F9;">{pillars.get('precisao_submetrics', {}).get('controle_linha_centro', 0):.1f}%</b>
+                        • Trajetória no Ponto Alvo: <b style="color:#F1F5F9;">{prec_sub.get('trajetoria_alvo', 0):.1f}%</b><br>
+                        • Sincronismo Ki-Ken-Tai-Ichi: <b style="color:#F1F5F9;">{prec_sub.get('kikentai_sincronismo', 0):.1f}%</b><br>
+                        • Controle da Linha Central: <b style="color:#F1F5F9;">{prec_sub.get('controle_linha_centro', 0):.1f}%</b>
                     </div>
                 </div>
                 """,
@@ -320,9 +359,9 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                         <div style="background: #F59E0B; width: {const}%; height: 100%;"></div>
                     </div>
                     <div style="font-size: 11px; color: #94A3B8; line-height: 1.6;">
-                        • Regularidade do Ritmo: <b style="color:#F1F5F9;">{pillars.get('constancia_submetrics', {}).get('regularidade_ritmo', 0):.1f}%</b><br>
-                        • Resistência à Fadiga: <b style="color:#F1F5F9;">{pillars.get('constancia_submetrics', {}).get('resistencia_fadiga', 0):.1f}%</b><br>
-                        • Adequação à Cadência: <b style="color:#F1F5F9;">{pillars.get('constancia_submetrics', {}).get('adequacao_cadencia', 0):.1f}%</b>
+                        • Regularidade do Ritmo: <b style="color:#F1F5F9;">{const_sub.get('regularidade_ritmo', 0):.1f}%</b><br>
+                        • Resistência à Fadiga (Stamina): <b style="color:#F1F5F9;">{const_sub.get('resistencia_fadiga', 0):.1f}%</b><br>
+                        • Adequação à Cadência da Modalidade: <b style="color:#F1F5F9;">{const_sub.get('adequacao_cadencia', 0):.1f}%</b>
                     </div>
                 </div>
                 """,
@@ -348,7 +387,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                 st.success("Nenhum vício biomecânico crítico detectado.")
 
         # Prescrição de Exercícios do Kendo
-        st.markdown("##### 🏋️ Exercícios Recomendados para Evolução Técnica")
+        st.markdown("##### 🏋️ Exercícios Recomendados para Evolução Técnica no Dojo")
         if exercises:
             for ex in exercises:
                 st.markdown(
@@ -1514,7 +1553,7 @@ else:
 
             with col_in2:
                 st.subheader("🥋 Executar Análise de Treinamento" if app_mode == "training" else "⚡ Executar Análise de Combate")
-                st.markdown("Inicie o rastreamento de pose, identificação da modalidade e avaliação dos 3 Pilares (Forma, Precisão, Constância):" if app_mode == "training" else "Inicie o rastreamento de pose, detecção de impactos e avaliação de Yuko-Datotsu:")
+                st.markdown("Inicie o rastreamento de pose, identificação da modalidade e avaliação dos 3 Pilares (Movimentação, Precisão, Constância):" if app_mode == "training" else "Inicie o rastreamento de pose, detecção de impactos e avaliação de Yuko-Datotsu:")
 
                 dev_pref = st.session_state.get("device_preference", get_processing_device())
                 effective_dev, dev_msg, dev_gpu = get_effective_device(dev_pref)
@@ -1524,12 +1563,12 @@ else:
                     st.markdown(f'<div style="background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.88rem; color: #cbd5e1;">💻 <b>Processamento por CPU:</b> MediaPipe Pose (TFLite CPU)</div>', unsafe_allow_html=True)
 
                 if app_mode == "training":
-                    st.markdown("##### 🥋 Modalidade de Treino & Aprendizado")
+                    st.markdown("##### 🥋 Modalidade de Treino & Aprendizado (14 Modalidades Oficiais)")
                     mod_keys = ["auto"] + list(TRAINING_MODALITIES_METADATA.keys())
                     selected_mod_key = st.selectbox(
                         "Tipo de Treinamento:",
                         options=mod_keys,
-                        format_func=lambda k: "🔍 Detecção Inteligente Automática pela IA" if k == "auto" else f"{TRAINING_MODALITIES_METADATA[k]['name']} [{TRAINING_MODALITIES_METADATA[k]['japanese']}]",
+                        format_func=lambda k: "🔍 Detecção Inteligente Automática pela IA" if k == "auto" else f"{TRAINING_MODALITIES_METADATA[k]['name']} — {TRAINING_MODALITIES_METADATA[k]['category']}",
                         index=0,
                         key="training_modality_select_pre"
                     )

@@ -9,10 +9,11 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
 2. **Modo de Detecção Gravada**
    
 3. **Modo de Treinamento & Aprendizado**
-   - **Análise Técnica e Exercícios**: Incluir modo de treino de Kendo onde a IA fornecerá dicas de melhorias nas técnicas e recomendará exercícios de desenvolvimento específicos para o Kenshi.
-   - **Avaliação de Exame de Graduação**: Módulo específico para simulação e avaliação diagnóstica de exames de graduação (Kyu / Dan), testando a conformidade com os exigentes critérios de cada nível.
+   - **As 14 Modalidades Oficiais de Treinamento (com Kanjis)**: Identificação e análise de Ashi-sabaki (足捌き), Suburi (素振り), Kihon (基本), Kirikaeshi (切り返し), Uchikomi-geiko (打込稽古), Kakari-geiko (掛稽古), Yakusoku-geiko (約束稽古), Waza-geiko (技稽古), Oji-waza (応じ技), Ji-geiko (地稽古), Shiai-geiko (試合稽古), Nihon Kendō Kata (日本剣道形), Bokutō ni yoru Kendō Kihon Waza Keiko Hō (木刀による剣道基本技稽古法) e Shinsa (審査).
+   - **Avaliação dos 3 Pilares Fundamentais**: Análise minuciosa de Movimentação (35% - Shisei, nivelamento de ombros, calcanhar esquerdo e amplitude), Precisão (35% - trajetória de alvo, Ki-Ken-Tai-Ichi e linha central) e Constância (30% - regularidade rítmica, stamina e cadência).
+   - **Rastreamento e Nomeação Individual de Kenshi**: Identificação isolada de cada praticante com nomeação interativa e emissão de Relatório Individual em Markdown (.md) com pontos fortes, pontos de atenção e prescrições de exercícios.
+   - **Avaliação de Exame de Graduação (Shinsa)**: Módulo específico para simulação e avaliação diagnóstica de exames de graduação (Kyu / Dan), testando a conformidade com os critérios de postura, técnica, etiqueta, kiai e zanshin.
    - **Seleção de Graduação (Dan) na Revisão por Reforço**: Seleção da graduação (Dan) do revisor no painel de feedback/aprendizagem por reforço para calibrar o grau de rigor e exigência dos treinamentos e diagnósticos.
-   - **Acompanhamento Biomecânico**: Avaliação detalhada de postura, sincronismo (*Fumikomi*) e *Zanshin*.
 
 ---
 

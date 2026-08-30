@@ -1,11 +1,12 @@
 """
 Testes Automatizados para o Módulo de Treinamento & Aprendizado de Kendo (SenpAI).
 Cobre:
-- Identificação e integridade das 10 modalidades oficiais de treinamento de Kendo.
+- Identificação e integridade das 14 modalidades oficiais de treinamento de Kendo (com Kanjis).
 - Classificação automática e override de modalidade.
-- Cálculo e coerência dos 3 Pilares Fundamentais (Forma, Precisão, Constância).
+- Cálculo e coerência dos 3 Pilares Fundamentais (Movimentação, Precisão, Constância).
 - Rastreamento e nomeação individual de Kendocas.
 - Geração de diagnósticos pedagógicos, pontos de melhoria e exercícios práticos recomendados.
+- Geração de relatório personalizado individual em Markdown (.md) por Kenshi.
 """
 
 import unittest
@@ -41,27 +42,33 @@ class TestTrainingModesAndPedagogy(unittest.TestCase):
             "RIGHT_ANKLE": {"x": 0.54, "y": 0.85, "z": 0.0, "visibility": 0.95}
         }
 
-    def test_metadata_and_10_modalities_integrity(self):
-        """Verifica a presença e consistência das 10 modalidades oficiais de treinamento de Kendo."""
+    def test_metadata_and_14_modalities_integrity(self):
+        """Verifica a presença e consistência das 14 modalidades oficiais de treinamento de Kendo com Kanjis."""
         expected_modalities = [
-            "ashi_sabaki",
-            "suburi",
-            "kihon",
-            "kirikaeshi",
-            "uchikomi_geiko",
-            "kakari_geiko",
-            "waza_geiko",
-            "oji_waza_geiko",
-            "ji_geiko",
-            "shiai_geiko"
+            ("ashi_sabaki", "足捌き"),
+            ("suburi", "素振り"),
+            ("kihon", "基本"),
+            ("kirikaeshi", "切り返し"),
+            ("uchikomi_geiko", "打込稽古"),
+            ("kakari_geiko", "掛稽古"),
+            ("yakusoku_geiko", "約束稽古"),
+            ("waza_geiko", "技稽古"),
+            ("oji_waza", "応じ技"),
+            ("ji_geiko", "地稽古"),
+            ("shiai_geiko", "試合稽古"),
+            ("nihon_kendo_kata", "日本剣道形"),
+            ("bokuto_kihon_waza", "木刀による剣道基本技稽古法"),
+            ("shinsa", "審査")
         ]
 
-        self.assertEqual(len(TRAINING_MODALITIES_METADATA), 10)
-        for mod_key in expected_modalities:
+        self.assertEqual(len(TRAINING_MODALITIES_METADATA), 14)
+        for mod_key, expected_kanji in expected_modalities:
             self.assertIn(mod_key, TRAINING_MODALITIES_METADATA)
             meta = TRAINING_MODALITIES_METADATA[mod_key]
             self.assertIn("name", meta)
             self.assertIn("japanese", meta)
+            self.assertEqual(meta["japanese"], expected_kanji)
+            self.assertIn(expected_kanji, meta["name"])
             self.assertIn("category", meta)
             self.assertIn("description", meta)
             self.assertIn("focus_areas", meta)
@@ -96,7 +103,7 @@ class TestTrainingModesAndPedagogy(unittest.TestCase):
         self.assertGreaterEqual(conf, 0.85)
 
     def test_pillar_metrics_calculation(self):
-        """Verifica a precisão dos cálculos numéricos dos 3 Pilares (Forma, Precisão, Constância)."""
+        """Verifica a precisão dos cálculos numéricos dos 3 Pilares (Movimentação, Precisão, Constância)."""
         pose_hist = [self._create_mock_pose(tilt=0.01, heel_diff=0.02) for _ in range(90)]
         strikes = [
             StrikeEvent(strike_type="MEN", start_frame=15, impact_frame=20, end_frame=25, fps=30.0, attacker_id="KENSHI_SHIRO"),
@@ -108,7 +115,9 @@ class TestTrainingModesAndPedagogy(unittest.TestCase):
 
         # Validação dos intervalos e estrutura
         self.assertIsInstance(pillars, TrainingPillarMetrics)
-        self.assertGreaterEqual(pillars.forma, 0.0)
+        self.assertGreaterEqual(pillars.movimentacao, 0.0)
+        self.assertLessEqual(pillars.movimentacao, 100.0)
+        self.assertGreaterEqual(pillars.forma, 0.0)  # Retrocompatibilidade alias
         self.assertLessEqual(pillars.forma, 100.0)
         self.assertGreaterEqual(pillars.precisao, 0.0)
         self.assertLessEqual(pillars.precisao, 100.0)
@@ -118,8 +127,8 @@ class TestTrainingModesAndPedagogy(unittest.TestCase):
         self.assertLessEqual(pillars.overall_score, 100.0)
 
         # Validação das sub-métricas
-        self.assertIn("verticalidade_coluna", pillars.forma_submetrics)
-        self.assertIn("alinhamento_base_pes", pillars.forma_submetrics)
+        self.assertIn("verticalidade_coluna", pillars.movimentacao_submetrics)
+        self.assertIn("alinhamento_base_pes", pillars.movimentacao_submetrics)
         self.assertIn("trajetoria_alvo", pillars.precisao_submetrics)
         self.assertIn("regularidade_ritmo", pillars.constancia_submetrics)
         self.assertEqual(pillars.total_repetitions, 3)
@@ -127,10 +136,10 @@ class TestTrainingModesAndPedagogy(unittest.TestCase):
     def test_pedagogical_feedback_and_exercises(self):
         """Valida que diagnósticos pedagógicos geram pontos fortes, correções e exercícios adequados."""
         pillars = TrainingPillarMetrics(
-            forma_score=88.0,
+            movimentacao_score=88.0,
             precisao_score=65.0,
             constancia_score=70.0,
-            forma_submetrics={"verticalidade_coluna": 85.0, "nivelamento_ombros": 85.0, "alinhamento_base_pes": 82.0, "amplitude_furikaburi": 80.0},
+            movimentacao_submetrics={"verticalidade_coluna": 85.0, "nivelamento_ombros": 85.0, "alinhamento_base_pes": 82.0, "amplitude_furikaburi": 80.0},
             precisao_submetrics={"trajetoria_alvo": 60.0, "kikentai_sincronismo": 62.0, "controle_linha_centro": 65.0},
             constancia_submetrics={"regularidade_ritmo": 72.0, "resistencia_fadiga": 68.0, "adequacao_cadencia": 75.0},
             cadence_cpm=40.0,
@@ -150,13 +159,24 @@ class TestTrainingModesAndPedagogy(unittest.TestCase):
         self.assertIn("target", first_ex)
         self.assertIn("prescription", first_ex)
 
-    def test_kendoka_profile_custom_naming(self):
-        """Valida rastreamento de perfil e suporte à nomeação interativa do Kendoca."""
+    def test_kendoka_profile_custom_naming_and_individual_report(self):
+        """Valida rastreamento de perfil, nomeação interativa e emissão de relatório personalizado em Markdown."""
         profile = KendokaTrainingProfile(
             kendoka_id="KENSHI_SHIRO",
             default_name="Kendoca Shiro (Esquerda)",
             custom_name="Eduardo Zimermann",
-            role="Kakarite"
+            role="Kakarite",
+            pillars=TrainingPillarMetrics(
+                movimentacao_score=92.0,
+                precisao_score=85.0,
+                constancia_score=88.0,
+                cadence_cpm=55.0,
+                cadence_std_dev_seconds=0.15,
+                total_repetitions=10
+            ),
+            strengths=["Excelente verticalidade de postura Shisei.", "Sincronismo Ki-Ken-Tai preciso."],
+            improvements=["Atenção ao calcanhar esquerdo na aterrissagem."],
+            recommended_exercises=[{"name": "Suburi com pausa", "target": "Base", "prescription": "50 repetições"}]
         )
 
         self.assertEqual(profile.custom_name, "Eduardo Zimermann")
@@ -165,6 +185,18 @@ class TestTrainingModesAndPedagogy(unittest.TestCase):
         # Teste de alteração de nome
         profile.set_custom_name("Sensei Tanaka")
         self.assertEqual(profile.custom_name, "Sensei Tanaka")
+
+        # Teste de geração de relatório individual
+        meta = TRAINING_MODALITIES_METADATA["suburi"]
+        report_md = profile.generate_individual_report_markdown(meta)
+        self.assertIn("# 🥋 Relatório de Avaliação Técnica Individual de Kendo — SenpAI", report_md)
+        self.assertIn("Sensei Tanaka", report_md)
+        self.assertIn("Suburi (素振り)", report_md)
+        self.assertIn("Pilar 1: Movimentação", report_md)
+        self.assertIn("Pilar 2: Precisão", report_md)
+        self.assertIn("Pilar 3: Constância", report_md)
+        self.assertIn("Pontos Fortes", report_md)
+        self.assertIn("Exercícios Recomendados", report_md)
 
     def test_full_session_analysis_and_serialization(self):
         """Valida a execução completa de analyze_session e serialização to_dict()."""
@@ -205,3 +237,4 @@ class TestTrainingModesAndPedagogy(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
