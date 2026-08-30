@@ -229,43 +229,60 @@ class FeedbackManager:
     def get_training_metrics(self) -> Dict[str, Any]:
         """
         Calcula as métricas de governança para o Menu de Configurações:
-        - Contador total de treinamentos realizados.
-        - Nível médio (Dan) dos treinamentos.
-        - Tabela de quantidade de treinamentos agrupada por Dan (1º a 8º Dan).
+        - Contador total de treinamentos realizados (Humanos + IA).
+        - Nível médio (Dan) dos treinamentos humanos (1º ao 8º Dan).
+        - Tabela de quantidade de treinamentos agrupada por Dan (1º a 8º Dan) + Treinamentos Automatizados por IA.
         """
         history = self.load_history()
         data = self.load_feedback()
 
         total_trainings = len(history)
 
-        # Se houver histórico de treinamentos, usar o Dan dos treinamentos.
-        # Caso haja apenas feedbacks diretos sem sessão explícita, agregar ambos.
         dan_counts = {dan: 0 for dan in range(1, 9)}
+        auto_trainings_count = 0
 
         dan_sum = 0
-        weight_count = 0
+        human_weight_count = 0
 
         if total_trainings > 0:
             for session in history:
-                dan = session.get("reviewer_dan", 1)
-                if 1 <= dan <= 8:
-                    dan_counts[dan] += 1
-                    dan_sum += dan
-                    weight_count += 1
+                is_auto = (
+                    session.get("is_auto_training", False) or
+                    session.get("reviewer_dan") == 0 or
+                    session.get("reviewer_dan_name") == "Treinamento Automático por IA (Web & Vídeo)" or
+                    session.get("reviewer_dan_name") == "Treinamento Automático por IA" or
+                    session.get("optimization_summary", {}).get("mode") == "auto_training_ai" or
+                    str(session.get("id", "")).startswith("auto_train_") or
+                    str(session.get("video_name", "")).startswith("AI_Auto_Trainer_")
+                )
+                if is_auto:
+                    auto_trainings_count += 1
+                else:
+                    dan = session.get("reviewer_dan", 1)
+                    if isinstance(dan, int) and 1 <= dan <= 8:
+                        dan_counts[dan] += 1
+                        dan_sum += dan
+                        human_weight_count += 1
         elif data:
             # Fallback para contar revisões se o histórico estiver vazio
             for item in data:
                 dan = item.get("reviewer_dan", 1)
-                if 1 <= dan <= 8:
+                if isinstance(dan, int) and 1 <= dan <= 8:
                     dan_counts[dan] += 1
                     dan_sum += dan
-                    weight_count += 1
-            total_trainings = weight_count
+                    human_weight_count += 1
+            total_trainings = human_weight_count
 
-        avg_dan = (dan_sum / weight_count) if weight_count > 0 else 0.0
+        avg_dan = (dan_sum / human_weight_count) if human_weight_count > 0 else 0.0
         avg_dan_round = round(avg_dan, 1)
         avg_dan_int = max(1, min(8, round(avg_dan))) if avg_dan > 0 else 1
-        avg_dan_label = f"{avg_dan_round}º Dan ({DAN_NAMES.get(avg_dan_int, '')})" if avg_dan > 0 else "Nenhum treinamento"
+
+        if human_weight_count > 0:
+            avg_dan_label = f"{avg_dan_round}º Dan ({DAN_NAMES.get(avg_dan_int, '')})"
+        elif auto_trainings_count > 0:
+            avg_dan_label = "Treinamento Automático por IA (Sem revisor humano)"
+        else:
+            avg_dan_label = "Nenhum treinamento"
 
         table_data = []
         for dan in range(1, 9):
@@ -278,8 +295,19 @@ class FeedbackManager:
                 "Percentual (%)": f"{pct}%"
             })
 
+        # Linha dedicada para Treinamentos Automatizados por IA
+        auto_pct = round((auto_trainings_count / total_trainings) * 100, 1) if total_trainings > 0 else 0.0
+        table_data.append({
+            "Dan": "🤖 IA",
+            "Nome Graduação": "Treinamentos Automatizados (IA / Web & Vídeo)",
+            "Quantidade Treinamentos": auto_trainings_count,
+            "Percentual (%)": f"{auto_pct}%"
+        })
+
         return {
             "total_trainings_count": total_trainings,
+            "human_trainings_count": human_weight_count,
+            "auto_trainings_count": auto_trainings_count,
             "average_dan_level": avg_dan_round,
             "average_dan_label": avg_dan_label,
             "total_review_items": len(data),

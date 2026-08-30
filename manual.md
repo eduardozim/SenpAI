@@ -287,17 +287,33 @@ Gerencia o ciclo completo de auditoria, revisão por Dan e otimização adaptati
   - A exclusão de marcações é **desabilitada por norma de auditabilidade**, preservando a integridade do conjunto de dados.
 - **Histórico de Treinamentos (`data/training_history.json`)**: Registra cada sessão de retreinamento executada, incluindo o Dan do aplicador, a contagem de itens revisados e o resumo das alterações de calibração.
 - **Métricas de Governança (`get_training_metrics()`)**:
-  - Contador total de treinamentos realizados.
-  - Nível médio (Dan) dos treinamentos (ex: `4.0º Dan (Yondan)`).
-  - Tabela de distribuição da quantidade de treinamentos e percentual por Dan (1º a 8º Dan).
+  - Contador total de treinamentos realizados (separando sessões de revisores humanos e treinamentos automatizados por IA).
+  - Nível médio (Dan) dos treinamentos humanos (1º ao 8º Dan), garantindo que os treinamentos automáticos de IA não sejam contabilizados como 8º Dan nem distorçam a média dos árbitros humanos.
+  - Tabela de distribuição da quantidade de treinamentos e percentual por Dan (1º a 8º Dan) + **linha dedicada para Treinamentos Automatizados (IA / Web & Vídeo)**.
 - **Pacotes de Treinamento (Exportação e Importação)**:
   - `export_training_package()`: Exporta um arquivo `.json` contendo todas as marcações com o Dan do revisor e as datas dos treinamentos realizados.
   - `import_training_package()`: Importa arquivos `.json` previamente baixados, mesclando dados e recalibrando o modelo automaticamente.
   - `reset_all_training_data()`: Apaga os dados de treinamento e restaura o sistema ao estágio inicial.
 
+### 4.5. Treinamento Automático por Inteligência Artificial ([auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py) & [ai_knowledge_base.json](file:///d:/Projetos/SenpAI/Dev/config/ai_knowledge_base.json))
+
+Motor de inteligência artificial autônomo para busca, ingestão técnica e recalibração automática de modelos:
+
+- **Diagnóstico Autônomo de Necessidade Mais Latente (`diagnose_latent_need`)**:
+  - Avalia dinamicamente desbalanceamentos entre Falsos Positivos e Falsos Negativos, lacunas de cobertura por modalidade e desvios de precisão nos perfis de calibração para selecionar automaticamente o foco mais crítico de aprendizado.
+- **Base de Conhecimento Estruturada de Kendo (`ai_knowledge_base.json`)**:
+  - Repositório de referências técnicas e manuais oficiais da Federação Internacional de Kendo (FIK), tratados de arbitragem da AJKF/ZNKR, artigos científicos de biomecânica desportiva e corpus cinemático de vídeos de alta velocidade.
+- **Execução com Duração Determinada (Tempo Controlado em Minutos)**:
+  - Processamento em loop temporal estrito respeitando o tempo especificado pelo usuário (1 min, 5 min, 10 min, 15 min, 30 min, 1h, 2h ou personalizado).
+  - Atualização progressiva da acurácia biomecânica, streaming de logs de mineração e suporte a cancelamento cooperativo (`request_stop()`).
+- **Suporte Multimodal de Aprendizado**:
+  - Calibração dos limiares de *Yuko-Datotsu*, *Ki-Ken-Tai-Ichi* e *Sonkyō* para Lutas Gravadas (Shiai).
+  - Otimização do quórum de consenso multi-câmeras e baixa latência para Detecção em Tempo Real.
+  - Ajuste dos 3 Pilares (*Movimentação, Precisão e Constância*) nas 14 Modalidades Pedagógicas de Treinamento.
+
 ---
 
-### 4.5. Relatórios e Pipeline ([reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py))
+### 4.6. Relatórios e Pipeline ([reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py))
 
 - **`DiagnosticReporter`** ([reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py)): Gera um texto explicativo em Português detalhando por que o golpe foi aprovado ou reprovado, apresentando os milissegundos do Fumikomi e dicas de correção técnica para o praticante.
 - **`SenpAIPipeline`** ([pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py)): Orquestra a execução frame-a-frame do vídeo, grava o vídeo anotado com esqueletos e alvos, e retorna o dicionário completo com métricas.
@@ -318,7 +334,7 @@ O projeto inclui suíte completa de testes automatizados em `unittest` com runne
 .\.venv\Scripts\python.exe -m unittest discover tests
 ```
 
-Também é possível disparar os testes diretamente no **Web Dashboard** acessando a aba **⚙️ Configurações > Seção 5 (Diagnóstico e Logs)** através do botão **`🔬 Rodar Testes (73)`** e baixar o relatório completo em **`📥 Baixar Log Testes (.log)`**.
+Também é possível disparar os testes diretamente no **Web Dashboard** acessando a aba **⚙️ Configurações > Seção 5 (Diagnóstico e Logs)** através do botão **`🔬 Rodar Testes (79)`** e baixar o relatório completo em **`📥 Baixar Log Testes (.log)`**.
 
 ### Relatório Descritivo e Política de Retenção de Logs
 
@@ -329,9 +345,10 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **Política de Retenção Única**:
   - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
 
-### Módulos de Testes Incluídos (73 Testes)
+### Módulos de Testes Incluídos (81 Testes)
 
-- **`test_dan_training_governance.py`**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador, média e tabela por Dan), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
+- **`test_auto_trainer.py`**: Valida a inicialização da base de conhecimento de Kendo, diagnóstico autônomo de necessidade mais latente, ciclo de auto-treinamento com tempo controlado, recalibração de perfis de arbitragem e das 14 modalidades pedagógicas, persistência em governança com identificação de IA e cancelamento cooperativo.
+- **`test_dan_training_governance.py`**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador humano vs IA, média de Dan humano e tabela por Dan com linha dedicada para IA), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
 - **`test_feedback_loop.py`**: Valida salvamento, persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
 - **`test_hardware_settings.py`**: Valida detecção de GPU NVIDIA, configurações globais e resolução de fallback transparente para CPU.
 - **`test_logger_manager.py`**: Valida sistema de logs, métricas em tempo real e diagnósticos automatizados.
@@ -339,10 +356,10 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_pipeline_cancellation.py`**: Valida cancelamento cooperativo, liberação de recursos de streaming e cronômetro em tempo real.
 - **`test_scoreboard_and_flag_detection.py`**: Valida o placar eletrônico Sanbon-shobu, detecção cromática de flag dorsal (Tasukuki) e inversão Aka ⇄ Shiro.
 - **`test_sonkyo_and_plane_filtering.py`**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes) e persistência de aprendizado de Sonkyō.
-- **`test_training_modes_pedagogy.py`**: Valida as 10 modalidades pedagógicas de treino, cálculo dos 3 Pilares (Forma, Precisão, Constância) e perfil do Kendoca.
+- **`test_training_modes.py`**: Valida as 14 modalidades pedagógicas de treino, cálculo dos 3 Pilares (Movimentação, Precisão, Constância) e perfil do Kendoca.
 - **`test_video_downloader.py`**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
 
-Total de **73 testes automatizados** executados e aprovados com 100% de sucesso.
+Total de **81 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -350,7 +367,34 @@ Total de **73 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
-### `[v1.7.1]` — 2026-08-30 *(Versão Atual)*
+### `[v1.8.0]` — 2026-08-30 *(Versão Atual)*
+
+- **Treinamento Automático por Inteligência Artificial (Web & Vídeo Knowledge Ingestion)**:
+  - **Motor Central Autônomo ([auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py))**:
+    - Implementação do motor de busca, mineração técnica e auto-calibração com duração controlada (tempo determinado em minutos) integrando conhecimento de manuais oficiais da Federação Internacional de Kendo (FIK), diretrizes práticas da AJKF/ZNKR, artigos de biomecânica desportiva e corpus cinemático de vídeos de alta velocidade.
+  - **Seleção Inteligente por Necessidade Mais Latente (`diagnose_latent_need`)**:
+    - Diagnóstico autônomo baseado no histórico de feedbacks, lacunas nos perfis de calibração e carência de dados, elegendo automaticamente o foco prioritário do treinamento (Lutas Shiai, Detecção em Tempo Real, 14 Modalidades Pedagógicas ou Geral).
+  - **Suporte Abrangente de Focos de Treinamento**:
+    - **Necessidade Mais Latente (Automático / Recomendado)**.
+    - **Treinamento Geral Unificado** (todos os modos e modalidades).
+    - **Avaliação de Lutas / Shiai (Modo de Detecção Gravada)** (Sonkyō, Yuko-Datotsu, Ki-Ken-Tai-Ichi e Zanshin).
+    - **Detecção em Tempo Real (Multi-Câmeras)** (quórum de consenso entre ângulos e baixa latência).
+    - **14 Modalidades Pedagógicas de Treinamento** (Ashi-sabaki, Suburi, Kihon, Kirikaeshi, Uchikomi-geiko, Kakari-geiko, Yakusoku-geiko, Waza-geiko, Oji-waza, Ji-geiko, Shiai-geiko, Nihon Kendo Kata, Bokuto Kihon e Shinsa).
+  - **Interface Interativa na Aba de Governança de Treinamento ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+    - Seleção amigável de tempo (`1 min`, `5 min`, `10 min`, `15 min`, `30 min`, `1h`, `2h` ou minutos personalizados).
+    - Monitoramento em tempo real com barra de progresso, cronômetro regressivo, acurácia biomecânica estimada e streaming dos logs de mineração da IA.
+    - Emissão e download de Relatório Executivo de Treinamento em Markdown (`.md`) e exportação da Base de Conhecimento de IA (`.json`).
+    - **Renderização de Alta Performance da Tabela de Evolução via `st.html`**: Substituição do `st.dataframe` por tabela nativa compacta em HTML/CSS, eliminando dependências de módulos dinâmicos do Vite e prevenindo erros de preload de CSS no navegador.
+- **Governança de Treinamento & Separação dos Treinamentos por IA ([feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py))**:
+  - **Linha Dedicada na Tabela de Governança**: A tabela de distribuição de treinamentos por Dan agora inclui uma 9ª linha exclusiva para **`🤖 IA | Treinamentos Automatizados (IA / Web & Vídeo)`** com sua respectiva contagem e percentual sobre o total.
+  - **Não Poluição da Média Dan Humana**: Os treinamentos automatizados por IA registram `reviewer_dan: 0` e `is_auto_training: True`, **não sendo mais computados como 8º Dan (Hachidan)** nem distorcendo a média ponderada dos avaliadores humanos.
+  - **Média Exclusiva de Dan Humano**: O cálculo de `average_dan_level` restringe-se estritamente aos Dan 1º ao 8º atribuídos por revisores humanos.
+- **Suíte Completa de Testes Automatizados**:
+  - **81 testes automatizados** em `unittest` validados com 100% de aprovação (incluindo `tests/test_auto_trainer.py` e `tests/test_dan_training_governance.py`).
+
+---
+
+### `[v1.7.1]` — 2026-08-30
 
 - **Tipagem Estrita, Estabilidade de Execução e Correção de Linter/Pyright no Web Dashboard ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - **Estreitamento de Tipos em Widgets Streamlit (`Type Narrowing`)**:
