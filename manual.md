@@ -18,7 +18,102 @@ O SenpAI traduz esses princípios marciais em algoritmos numéricos de alta prec
 
 ---
 
-## 2. Estrutura do Projeto e Módulos
+## 2. Requisitos de Sistema, Instalação e Guia de Execução
+
+### 2.1. Requisitos de Sistema
+- **Sistema Operacional**: Windows 10/11 (64-bit), Linux (Ubuntu 20.04+) ou macOS (Apple Silicon / Intel).
+- **Interpretador Python**: **Python 3.11** (Distribuição oficial da *Python Software Foundation* — versão ideal e necessária para compatibilidade estável com `mediapipe`, `opencv-python`, `ultralytics` e `streamlit`).
+- **Ambiente Virtual**: Ambiente isolado nativo (`.venv`) gerenciado pelo módulo `venv` do Python.
+- **Hardware Recomendado**:
+  - **CPU**: Processador Multi-core (Intel Core i5/i7/i9 ou AMD Ryzen 5/7/9).
+  - **Memória RAM**: 8 GB mínimo (16 GB recomendado para vídeos em 1080p/60fps).
+  - **Aceleração GPU (Opcional)**: GPU NVIDIA GeForce RTX/GTX com suporte a CUDA 12.1+ para inferência acelerada com FP16 Tensor Cores.
+
+---
+
+### 2.2. Guia de Instalação no Windows (Passo a Passo Oficial)
+
+Para assegurar compatibilidade absoluta com as políticas de integridade do sistema operacional Windows (**Controle de Aplicativo Inteligente / Smart App Control / WDAC**), recomenda-se a instalação oficial do Python 3.11 assinado digitalmente:
+
+#### 1. Instalar o Python 3.11 Oficial via Winget
+Execute no terminal (PowerShell ou Prompt de Comando):
+```powershell
+winget install Python.Python.3.11
+```
+*(Ou realize o download do instalador oficial de 64 bits em [python.org](https://www.python.org/downloads/release/python-3119/)).*
+
+#### 2. Criar o Ambiente Virtual (`.venv`)
+No diretório raiz do projeto (`Dev/`):
+```powershell
+# Criação do ambiente virtual com o interpretador oficial Python 3.11
+py -3.11 -m venv .venv
+```
+
+#### 3. Ativar o Ambiente Virtual
+```powershell
+# No PowerShell:
+.\.venv\Scripts\activate
+
+# No Prompt de Comando (CMD):
+.\.venv\Scripts\activate.bat
+```
+
+#### 4. Instalar as Dependências do Projeto
+```powershell
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+#### 5. Habilitar Aceleração por GPU NVIDIA (Opcional)
+Caso possua placa de vídeo dedicada NVIDIA com suporte a CUDA:
+```powershell
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+```
+
+---
+
+### 2.3. Instruções de Execução
+
+#### A. Interface Web Interativa (Streamlit — Recomendado)
+Com o ambiente virtual (`.venv`) ativado, execute o Streamlit através do módulo Python:
+```powershell
+# Execução recomendada (invoca o Streamlit via interpretador oficial assinado):
+python -m streamlit run app.py
+
+# Ou especificando o caminho completo do interpretador:
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+> [!NOTE]
+> **Por que usar `python -m streamlit` em vez de `streamlit.exe`?**
+> No Windows (especialmente no Windows 11 com *Smart App Control* ou políticas corporativas de segurança), o wrapper executável `streamlit.exe` gerado dinamicamente pelo `pip` na pasta `.venv\Scripts\` pode ser bloqueado por não possuir assinatura digital individualizada. Ao chamar `python -m streamlit`, o sistema executa diretamente o processo `python.exe` oficial da *Python Software Foundation*, garantindo execução segura e sem bloqueios.
+
+#### B. Linha de Comando (CLI)
+```powershell
+# Análise de vídeo com perfil normal padrão:
+python main.py --video "caminho/do/video.mp4"
+
+# Análise com aceleração de GPU NVIDIA CUDA:
+python main.py --video "caminho/do/video.mp4" --device gpu
+```
+
+#### C. Execução da Suíte de Testes Automatizados
+```powershell
+# Execução completa com relatório descritivo salvo em logs/senpai_test_report.log:
+python run_tests.py
+
+# Ou via runner padrão unittest:
+python -m unittest discover tests
+```
+
+---
+
+### 2.4. Nota de Segurança e Compatibilidade (Windows Smart App Control)
+O uso da distribuição oficial do Python 3.11 assinada digitalmente pela *Python Software Foundation* e a criação de ambiente com o módulo nativo `venv` evitam bloqueios de segurança do sistema operacional (como `ERROR_SYSTEM_INTEGRITY_POLICY_VIOLATION` / `os error 4551`), garantindo que o interpretador e seus executáveis rodem sem restrições em ambientes corporativos ou Windows 11 com *Smart App Control* ativado.
+
+---
+
+## 3. Estrutura do Projeto e Módulos
 
 A estrutura de arquivos do projeto está organizada de forma modular:
 
@@ -71,9 +166,9 @@ Dev/
 
 ---
 
-## 3. Detalhamento das Implementações Técnicas e Algoritmos
+## 4. Detalhamento das Implementações Técnicas e Algoritmos
 
-### 3.1. Visão Computacional (`src/vision/`)
+### 4.1. Visão Computacional (`src/vision/`)
 
 #### `PoseDetector` ([pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py))
 Utiliza o framework **MediaPipe Pose** para rastrear 33 pontos de articulação 3D (*landmarks*) em tempo real por frame. Extrai coordenadas normalizadas $(x, y, z)$ e pontos em pixels $(px, py)$ para pulso, cotovelo, ombro, quadril, joelho, tornozelo, pé, nariz e orelhas.
@@ -93,7 +188,7 @@ Responsável pela persistência e identificação contínua dos dois lutadores p
 
 ---
 
-### 3.2. Análise, Biomecânica e Rituais (`src/analytics/`)
+### 4.2. Análise, Biomecânica e Rituais (`src/analytics/`)
 
 #### `EventSpotter` ([event_spotter.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/event_spotter.py))
 Classificador temporal (*Action Spotter*) que analisa as séries temporais de velocidade e aceleração das mãos e da espada. Identifica:
@@ -130,9 +225,38 @@ Motor de **Consenso e Validação Cruzada Multi-Câmeras**. Implementa a regra f
 - **Extração de Evidências em Frames (`CameraFrameEvidence`)**: Mede aceleração do pulso, proximidade do alvo no ângulo visual e conformidade técnica para cada câmera individual.
 - **Decisão e Fusão Conjunta (`MultiCameraStrikeEvaluation`)**: Computa o score médio conjunto das visões confirmadas e classifica o golpe em `CONFIRMED_MULTICAM`, `REJECTED_SINGLE_ANGLE` ou `REJECTED_INSUFFICIENT_CONSENSUS`.
 
+#### `TrainingAnalyzer` ([training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py))
+Motor de Reconhecimento, Análise Biomecânica e Diagnóstico Pedagógico de Treinamento de Kendo:
+- **As 14 Modalidades Oficiais de Treinamento (com Kanjis Oficiais)**:
+  1. **Ashi-sabaki (足捌き)**: Deslocamentos fundamentais de pés (*okuri-ashi*, *ayumi-ashi*, *hiraki-ashi*, *tsugi-ashi*).
+  2. **Suburi (素振り)**: Golpes repetidos no ar (*jōge-buri*, *naname-buri*, *shōmen-uchi*, *sayū-men*).
+  3. **Kihon (基本)**: Fundamentos de postura (*shisei*), distância (*maai*), guarda (*kamae*), golpe e *zanshin*.
+  4. **Kirikaeshi (切り返し)**: Sequência contínua de golpes para desenvolvimento de ritmo, precisão, respiração e resistência.
+  5. **Uchikomi-geiko (打込稽古)**: Execução de golpes em oportunidades oferecidas pelo parceiro (*motodachi*).
+  6. **Kakari-geiko (掛稽古)**: Ataques contínuos e intensos em alta velocidade durante períodos curtos.
+  7. **Yakusoku-geiko (約束稽古)**: Exercícios combinados em duplas com ações e contra-ataques previamente definidos.
+  8. **Waza-geiko (技稽古)**: Prática sistemática de técnicas ofensivas e contra-ataques (*debana*, *nuki*, *kaeshi*, *suriage*, *hiki-waza*).
+  9. **Oji-waza (応じ技)**: Técnicas especializadas de resposta e recepção direta ao ataque do oponente.
+  10. **Ji-geiko (地稽古)**: Combate livre aplicando livremente todos os fundamentos e técnicas aprendidas.
+  11. **Shiai-geiko (試合稽古)**: Simulação formal de luta com regras oficiais da FIK, arbitragem e pontuação.
+  12. **Nihon Kendō Kata (日本剣道形)**: Formas tradicionais milenares praticadas em duplas com espada de madeira (*bokutō*).
+  13. **Bokutō ni yoru Kendō Kihon Waza Keiko Hō (木刀による剣道基本技稽古法)**: Fundamentos técnicos e pedagógicos praticados com espada de madeira.
+  14. **Shinsa (審査)**: Exame de graduação no qual são rigorosamente avaliados fundamentos, técnica, postura, etiqueta, kiai e zanshin.
+
+- **Avaliação dos 3 Pilares Fundamentais**:
+  - **Pilar 1: Movimentação (35%)**: Avalia a biomecânica postural do atleta — verticalidade da coluna (*Shisei*), nivelamento e simetria de ombros, alinhamento e calcanhar esquerdo na base (*Ashi-gamae*) e amplitude do movimento de elevação (*Furikaburi*).
+  - **Pilar 2: Precisão (35%)**: Avalia a assertividade e coordenação do golpe — trajetória direcionada no ponto anatômico alvo (*Datotsu-bui*), sincronismo unificado corpo-espada (*Ki-Ken-Tai-Ichi*) e preservação da linha central (*Chushin-sen*).
+  - **Pilar 3: Constância (30%)**: Avalia a resistência e cadência — regularidade métrica do intervalo entre repetições (desvio padrão em segundos), resistência à fadiga muscular (*Stamina*) ao longo do tempo e aderência à cadência esperada da modalidade.
+
+- **Rastreamento e Nomeação Individual de Kenshi**:
+  - Rastreamento isolado de cada praticante no Shiaijo (`KENSHI_SOLO`, `KENSHI_SHIRO`, `KENSHI_AKA`).
+  - Campo interativo na interface web permitindo renomear o Kendoca (ex: "Sensei Tanaka", "Eduardo Zimermann").
+  - **Exportação de Relatório Individual em Markdown (`.md`)**: Gera um dossiê técnico pedagógico contendo notas percentuais dos 3 Pilares, sub-métricas, pontos fortes observados, pontos de atenção biomecânica e plano prescritivo de exercícios do Kendo.
+  - **Exportação Consolidada da Sessão em JSON**: Estrutura completa de dados para integração com sistemas de dojo e gestão de atletas.
+
 ---
 
-### 3.3. Engine de Calibração ([calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py) & [calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))
+### 4.3. Engine de Calibração ([calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py) & [calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))
 
 O motor calcula a **Pontuação Total Ponderada**:
 
@@ -153,7 +277,7 @@ Para um golpe ser validado como **Yuko-Datotsu** (Ponto Válido / *Ippon*):
 
 ---
 
-### 3.4. Aprendizagem por Reforço, Governança por Dan e Gestão de Treinamento ([feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py))
+### 4.4. Aprendizagem por Reforço, Governança por Dan e Gestão de Treinamento ([feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py))
 
 Gerencia o ciclo completo de auditoria, revisão por Dan e otimização adaptativa dos modelos:
 
@@ -173,14 +297,14 @@ Gerencia o ciclo completo de auditoria, revisão por Dan e otimização adaptati
 
 ---
 
-### 3.5. Relatórios e Pipeline ([reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py))
+### 4.5. Relatórios e Pipeline ([reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py))
 
 - **`DiagnosticReporter`** ([reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py)): Gera um texto explicativo em Português detalhando por que o golpe foi aprovado ou reprovado, apresentando os milissegundos do Fumikomi e dicas de correção técnica para o praticante.
 - **`SenpAIPipeline`** ([pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py)): Orquestra a execução frame-a-frame do vídeo, grava o vídeo anotado com esqueletos e alvos, e retorna o dicionário completo com métricas.
 
 ---
 
-## 4. Suíte de Testes Automatizados e Relatório de Execução
+## 5. Suíte de Testes Automatizados e Relatório de Execução
 
 O projeto inclui suíte completa de testes automatizados em `unittest` com runner customizado ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py)) e script de execução dedicado ([run_tests.py](file:///d:/Projetos/SenpAI/Dev/run_tests.py)).
 
@@ -194,7 +318,7 @@ O projeto inclui suíte completa de testes automatizados em `unittest` com runne
 .\.venv\Scripts\python.exe -m unittest discover tests
 ```
 
-Também é possível disparar os testes diretamente no **Web Dashboard** acessando a aba **⚙️ Configurações > Seção 5 (Diagnóstico e Logs)** através do botão **`🔬 Rodar Testes (52)`** e baixar o relatório completo em **`📥 Baixar Log Testes (.log)`**.
+Também é possível disparar os testes diretamente no **Web Dashboard** acessando a aba **⚙️ Configurações > Seção 5 (Diagnóstico e Logs)** através do botão **`🔬 Rodar Testes (73)`** e baixar o relatório completo em **`📥 Baixar Log Testes (.log)`**.
 
 ### Relatório Descritivo e Política de Retenção de Logs
 
@@ -205,7 +329,7 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **Política de Retenção Única**:
   - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
 
-### Módulos de Testes Incluídos (52 Testes)
+### Módulos de Testes Incluídos (73 Testes)
 
 - **`test_dan_training_governance.py`**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador, média e tabela por Dan), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
 - **`test_feedback_loop.py`**: Valida salvamento, persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
@@ -215,46 +339,43 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_pipeline_cancellation.py`**: Valida cancelamento cooperativo, liberação de recursos de streaming e cronômetro em tempo real.
 - **`test_scoreboard_and_flag_detection.py`**: Valida o placar eletrônico Sanbon-shobu, detecção cromática de flag dorsal (Tasukuki) e inversão Aka ⇄ Shiro.
 - **`test_sonkyo_and_plane_filtering.py`**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes) e persistência de aprendizado de Sonkyō.
-- **`test_training_modes.py`**: Valida o motor de treinamento, reconhecimento das 10 modalidades de treino, cálculo dos 3 Pilares (Forma, Precisão, Constância), rastreamento e nomeação de Kendocas e diagnósticos pedagógicos.
-- **`test_video_downloader.py`**: Valida extração de streams do YouTube e streaming web, cache local de downloads, validação de URLs, formatação e seletor multi-resolução (Baixa, Média, Alta).
+- **`test_training_modes_pedagogy.py`**: Valida as 10 modalidades pedagógicas de treino, cálculo dos 3 Pilares (Forma, Precisão, Constância) e perfil do Kendoca.
+- **`test_video_downloader.py`**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
 
 Total de **73 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
-## 5. Registro de Mudanças e Histórico de Versões (Changelog)
+## 6. Registro de Mudanças e Histórico de Versões (Changelog)
 
 ---
 
-### `[v1.8.0]` — 2026-08-28 *(Versão Atual)*
+### `[v1.7.1]` — 2026-08-30 *(Versão Atual)*
 
-- **Modo Avançado de Treinamento & Aprendizado de Kendo (`TrainingAnalyzer`)**:
-  - Implementado motor analítico completo para avaliação e diagnóstico pedagógico de treinos de Kendo (*Keiko / Hitori-geiko*).
-  - Reconhecimento e suporte às **10 modalidades oficiais**:
-    - **Ashi-sabaki (足捌き)**: Deslocamentos fundamentais (*Okuri-ashi, Ayumi-ashi, Hiraki-ashi, Tsugi-ashi*).
-    - **Suburi (素振り)**: Cortes repetidos no ar (*Jōge-buri, Naname-buri, Shōmen-uchi, Sayū-men*).
-    - **Kihon (基本)**: Fundamentos de postura (*Shisei*), distância (*Maai*), guarda (*Chudan Kamae*) e *Zanshin*.
-    - **Kirikaeshi (切り返し)**: Sequência de ritmo, precisão e resistência (Shōmen + 9 cortes Sayū-men).
-    - **Uchikomi-geiko (打込稽古)**: Execução de golpes em oportunidades abertas pelo parceiro.
-    - **Kakari-geiko (掛稽古)**: Ataques contínuos de esforço máximo em blocos de tempo curtos.
-    - **Waza-geiko (技稽古)**: Prática de técnicas ofensivas (*Debana, Hiki, Renzoku*) e contra-ataques.
-    - **Oji-waza-geiko (応じ技稽古)**: Técnicas de resposta (*Nuki-waza, Kaeshi-waza, Suriage-waza, Uchiotoshi*).
-    - **Ji-geiko (地稽古)**: Combate livre aplicando fundamentos e pressão (*Seme*).
-    - **Shiai-geiko (試合稽古)**: Simulação de luta competitiva com arbitragem oficial *Sanbon-shobu*.
-  - Avaliação detalhada baseada nos **3 Pilares Fundamentais**:
-    - **Forma** (Verticalidade da coluna *Shisei*, nivelamento de ombros, calcanhar esquerdo e amplitude do *Furikaburi*).
-    - **Precisão** (Trajetória no alvo, sincronismo pé-mão *Ki-Ken-Tai-Ichi* e domínio da linha central *Chushin-sen*).
-    - **Constância** (Cadência em CPM, regularidade do ritmo, resistência à fadiga muscular e adequação temporal).
-  - **Rastreamento e Nomeação Individual de Kendocas**: Suporte a praticante solo ou dupla (*Kenshi Shiro*, *Kenshi Aka*), personalização de nomes reais no painel, geração de *Pontos Fortes*, *Pontos de Atenção* e prescrição de *Exercícios Tradicionais de Kendo* com séries e repetições recomendadas. Exportação de relatório em JSON formatado (`relatorio_treino_*.json`).
-- **Flexibilidade de Origem de Vídeo e Seletor Multi-Resolução**:
-  - Suporte completo no Modo de Treinamento e no Modo Gravado para **Upload de arquivo de vídeo local** (`.mp4`, `.avi`, `.mov`) ou **Link de streaming web / YouTube / Shorts**.
-  - Seletor de qualidade e resolução em 3 níveis:
-    - **Baixa Resolução**: Menor resolução disponível no stream, otimizando velocidade de download e economia de banda.
-    - **Média Resolução (Padrão)**: Resolução intermediária (até 720p) limitada a 30 FPS, balanceando nitidez e processamento.
-    - **Alta Resolução**: Maior resolução e taxa de quadros (FPS) originais disponíveis na transmissão.
-  - Regra de inversão de câmera oposta à mesa dos juízes aplicada universalmente (Shiro à esquerda, Aka à direita).
-- **Expansão da Suíte de Testes Automatizados**:
-  - Adicionados módulos `tests/test_training_modes.py` e `tests/test_video_downloader.py`. Total de **73 testes automatizados** aprovados com 100% de sucesso.
+- **Tipagem Estrita, Estabilidade de Execução e Correção de Linter/Pyright no Web Dashboard ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Estreitamento de Tipos em Widgets Streamlit (`Type Narrowing`)**:
+    - Aplicação de conversão defensiva e tipagem estrita garantindo que retornos de widgets (`st.selectbox`, `st.radio`, `st.number_input`) nunca repassem `None` para assinaturas e chamadas que exigem tipos estritos (`str`, `int`):
+      - `profile_choice: str`: Garantido como `str` (fallback `"normal"`), eliminando erros de tipo na inicialização do [SenpAIPipeline](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), no salvamento de revisões e no painel de otimização de sensibilidade.
+      - `num_cameras: int`: Garantido como `int` (fallback `1`), eliminando erros de indexação no `diagram_map`, iterações `range(num_cameras)` e comparações lógicas no modo Ao Vivo Multi-Câmeras.
+      - `selected_dan: int`: Garantido como `int` (fallback `3`), eliminando erros de indexação e consultas em `dan_options[selected_dan]` e `dan_options.get(selected_dan)`.
+      - `selected_quality: str`: Tipado estritamente como `str` para compatibilidade com `QUALITY_LABELS.get()` e [video_downloader.py](file:///d:/Projetos/SenpAI/Dev/src/utils/video_downloader.py).
+      - `selected_mod_key: str`: Tipado estritamente para indexação segura em `TRAINING_MODALITIES_METADATA`.
+      - `selected_hw_str`: Estreitamento na seleção de hardware para envio seguro a `set_processing_device`.
+  - **Correção da Lista de Frames em Tempo Real (`latest_drawn_frames`)**:
+    - Tipagem explícita `list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]` no [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) e atualização da assinatura em [multi_camera_fusion.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/multi_camera_fusion.py) (`latest_frames: Optional[List[Optional[np.ndarray]]] = None`), permitindo atribuição de imagens processadas e validação contínua de consenso multi-câmeras em background.
+  - **Limpeza Automática de Análise na Transição de Modos e Botão de Nova Análise**:
+    - Implementada a função `clear_previous_analysis()` que monitora a troca entre os 3 modos de operação (Tempo Real, Detecção Gravada e Treinamento & Aprendizado), interrompendo com segurança qualquer worker em execução e redefinindo completamente os resultados, revisões, uploads e buffers de sessão.
+    - Adicionado o botão `🧹 Nova Análise / Limpar` diretamente no topo do painel de resultados para redefinição manual instantânea.
+  - **Layout Ergonômico Lado a Lado no Modo de Treinamento & Aprendizado**:
+    - O painel pedagógico de avaliação de treinamento (10 Modalidades de Kendo, 3 Pilares biomecânicos — Movimentação, Precisão e Constância —, rastreamento/nomeação de Kendocas, pontos fortes, correções técnicas, prescrições de exercícios e exportações de relatórios .MD/.JSON) agora é exibido **diretamente ao lado do vídeo**, em duas colunas sincronizadas.
+    - No modo de treinamento, a Linha do Tempo e a Revisão de Golpes de Campeonato foram suprimidas, garantindo uma interface limpa, focada exclusivamente na evolução técnica dos praticantes do dojo.
+    - Adicionado suporte à inversão de identificação dos praticantes (`🔄 Inverter Lados dos Kendocas (Esquerda ⇄ Direita)`), atualizando a ordem dos cards pedagógicos em tempo real.
+  - **Blindagem de Renderização Condicional da Linha do Tempo & Prevenção de `NameError: name 'res'`**:
+    - Encapsulamento estrito de todos os componentes da Linha do Tempo, Formulários Dan e Botões de Retreinamento dentro do bloco condicional de existência de resultados (`analysis_result in st.session_state`), prevenindo tentativas de iteração sobre objetos de resultados antes da execução do pipeline ou após limpeza/reset de sessão.
+  - **Aceleração Nativa NVIDIA CUDA via Ultralytics (YOLOv8-Pose)**:
+    - Integração e homologação do pacote `ultralytics` nas rotinas de detecção de hardware ([hardware.py](file:///d:/Projetos/SenpAI/Dev/src/utils/hardware.py)), garantindo inicialização limpa em GPU (`use_gpu: True`) com fallback automático para CPU MediaPipe caso indisponível.
+- **Suíte Completa de Testes Automatizados**:
+  - **73 testes automatizados** em `unittest` executados e validados com 100% de aprovação.
 
 ---
 

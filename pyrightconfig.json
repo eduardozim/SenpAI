@@ -12,8 +12,12 @@
     ".venv"
   ],
   "extraPaths": [
-    "."
+    ".",
+    "src",
+    ".venv/Lib/site-packages"
   ],
   "venvPath": ".",
-  "venv": ".venv"
+  "venv": ".venv",
+  "reportMissingImports": "none",
+  "reportMissingTypeStubs": "none"
 }

@@ -8,7 +8,7 @@ Calcula métricas numéricas precisas para:
 """
 
 import numpy as np
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional, Sequence
 
 class BiomechanicsAnalyzer:
     @staticmethod
@@ -25,7 +25,7 @@ class BiomechanicsAnalyzer:
         cosine_angle = np.clip(cosine_angle, -1.0, 1.0)
         return float(np.degrees(np.arccos(cosine_angle)))
 
-    def evaluate_target_impact(self, strike_type: str, landmarks: Dict[str, Any]) -> float:
+    def evaluate_target_impact(self, strike_type: str, landmarks: Optional[Dict[str, Any]]) -> float:
         """
         Avalia o grau de precisão do impacto no alvo correto. Retorna um score entre 0.0 e 1.0.
         """
@@ -61,7 +61,7 @@ class BiomechanicsAnalyzer:
 
         return float(np.clip(score, 0.0, 1.0))
 
-    def evaluate_fumikomi_sync(self, pose_history: List[Dict[str, Any]], impact_frame: int) -> Tuple[float, float]:
+    def evaluate_fumikomi_sync(self, pose_history: Sequence[Optional[Dict[str, Any]]], impact_frame: int) -> Tuple[float, float]:
         """
         Avalia o Ki-Ken-Tai-Ichi: Sincronismo do impacto do pé direito (Fumikomi) com a batida das mãos.
         Retorna (score, offset_ms).
@@ -80,18 +80,22 @@ class BiomechanicsAnalyzer:
             if f == impact_frame - 5 or not pose_history[f - 1]:
                 foot_velocities.append(0.0)
             else:
-                prev_foot = np.array([pose_history[f-1]["RIGHT_FOOT_INDEX"]["x"], pose_history[f-1]["RIGHT_FOOT_INDEX"]["y"]])
-                foot_velocities.append(np.linalg.norm(r_foot - prev_foot))
+                prev_lm = pose_history[f - 1]
+                if not prev_lm:
+                    foot_velocities.append(0.0)
+                else:
+                    prev_foot = np.array([prev_lm["RIGHT_FOOT_INDEX"]["x"], prev_lm["RIGHT_FOOT_INDEX"]["y"]])
+                    foot_velocities.append(float(np.linalg.norm(r_foot - prev_foot)))
 
         # Encontrar instante do impacto do pé
-        peak_foot_offset = np.argmax(foot_velocities) - 5
-        offset_ms = peak_foot_offset * 33.3 # ~33ms por frame a 30fps
+        peak_foot_offset = int(np.argmax(foot_velocities) - 5)
+        offset_ms = float(peak_foot_offset * 33.3) # ~33ms por frame a 30fps
 
         # Sincronia perfeita é quando offset é próximo de 0 (pé e mão batem juntos)
         sync_score = max(0.0, 1.0 - (abs(offset_ms) / 150.0))
         return float(sync_score), float(offset_ms)
 
-    def evaluate_posture(self, landmarks: Dict[str, Any]) -> float:
+    def evaluate_posture(self, landmarks: Optional[Dict[str, Any]]) -> float:
         """
         Avalia a postura corporal (verticalidade da coluna, ombros nivelados).
         No Kendo, o tronco não deve inclinar demasiadamente para a frente nem colapsar.
@@ -107,7 +111,7 @@ class BiomechanicsAnalyzer:
         # Vetor vertical puro (0, -1)
         vertical_vec = np.array([0.0, -1.0])
         
-        norm_spine = np.linalg.norm(spine_vec)
+        norm_spine = float(np.linalg.norm(spine_vec))
         if norm_spine == 0:
             return 0.0
             
@@ -118,7 +122,7 @@ class BiomechanicsAnalyzer:
         score = 1.0 - max(0.0, (tilt_degrees - 10.0) / 25.0)
         return float(np.clip(score, 0.0, 1.0))
 
-    def evaluate_zanshin(self, pose_history: List[Dict[str, Any]], impact_frame: int, end_frame: int) -> float:
+    def evaluate_zanshin(self, pose_history: Sequence[Optional[Dict[str, Any]]], impact_frame: int, end_frame: int) -> float:
         """
         Avalia a manutenção de Zanshin (guarda e estabilidade corporal após o golpe).
         """
@@ -128,11 +132,12 @@ class BiomechanicsAnalyzer:
         # Analisar estabilidade da postura nos frames posteriores ao impacto
         posture_scores = []
         for f in range(impact_frame + 1, min(end_frame, len(pose_history))):
-            if pose_history[f]:
-                posture_scores.append(self.evaluate_posture(pose_history[f]))
+            curr_f = pose_history[f]
+            if curr_f:
+                posture_scores.append(self.evaluate_posture(curr_f))
 
         if not posture_scores:
             return 0.5
 
-        zanshin_score = np.mean(posture_scores)
+        zanshin_score = float(np.mean(posture_scores))
         return float(np.clip(zanshin_score, 0.0, 1.0))

@@ -1,133 +1,177 @@
 """
 Motor de Reconhecimento, Análise Biomecânica e Diagnóstico de Treinamento de Kendo (SenpAI).
-Analisa e classifica as 10 modalidades oficiais de treinamento de Kendo:
-1. Ashi-sabaki (Deslocamentos de pés)
-2. Suburi (Cortes repetidos no ar)
-3. Kihon (Fundamentos básicos de postura, maai e kamae)
-4. Kirikaeshi (Sequência contínua de cortes Sayu-men)
-5. Uchikomi-geiko (Ataques a alvos abertos pelo parceiro)
-6. Kakari-geiko (Ataques contínuos de alta intensidade e cadência)
-7. Waza-geiko (Prática de técnicas ofensivas e contra-ataques específicos)
-8. Oji-waza-geiko (Técnicas de resposta e interceptação ao ataque)
-9. Ji-geiko (Combate livre de desenvolvimento mútuo)
-10. Shiai-geiko (Simulação de luta competitiva com arbitragem)
+Analisa e classifica as 14 modalidades oficiais de treinamento de Kendo (com Kanjis):
+1. Ashi-sabaki (足捌き) - Deslocamentos de pés (okuri-ashi, ayumi-ashi, hiraki-ashi, tsugi-ashi)
+2. Suburi (素振り) - Cortes repetidos no ar (jōge-buri, naname-buri, shōmen-uchi, sayū-men)
+3. Kihon (基本) - Fundamentos de postura, distância (maai), guarda (kamae), golpe e zanshin
+4. Kirikaeshi (切り返し) - Sequência de golpes para desenvolver ritmo, precisão, respiração e resistência
+5. Uchikomi-geiko (打込稽古) - Execução de golpes em oportunidades oferecidas pelo parceiro (motodachi)
+6. Kakari-geiko (掛稽古) - Ataques contínuos e intensos durante períodos curtos
+7. Yakusoku-geiko (約束稽古) - Exercícios combinados com ações previamente definidas
+8. Waza-geiko (技稽古) - Prática de técnicas ofensivas e contra-ataques (debana, nuki, kaeshi, suriage, hiki-waza)
+9. Oji-waza (応じ技) - Técnicas de resposta ao ataque do oponente
+10. Ji-geiko (地稽古) - Combate livre aplicando os fundamentos e as técnicas
+11. Shiai-geiko (試合稽古) - Simulação de luta com regras, arbitragem e pontuação
+12. Nihon Kendō Kata (日本剣道形) - Formas tradicionais praticadas com bokutō
+13. Bokutō ni yoru Kendō Kihon Waza Keiko Hō (木刀による剣道基本技稽古法) - Fundamentos técnicos com espada de madeira
+14. Shinsa (審査) - Exame de graduação avaliando fundamentos, técnica, postura, etiqueta, kiai e zanshin
 
 Calcula com rigor os 3 Pilares Fundamentais:
-- Forma (Forma / Postura / Biomecânica da Coluna e Pés)
-- Precisão (Precisão / Trajetória / Ki-Ken-Tai-Ichi)
-- Constância (Constância / Cadência / Regularidade de Ritmo / Fadiga)
+- Movimentação (Postura / Biomecânica da Coluna / Deslocamentos / Calcanhar Esquerdo)
+- Precisão (Trajetória do Shinai / Centralização / Ki-Ken-Tai-Ichi)
+- Constância (Cadência / Regularidade de Ritmo / Fadiga e Resistência)
 
-Permite nomeação e rastreamento individual de Kendocas e prescreve correções e exercícios.
+Permite nomeação e rastreamento individual de cada Kenshi e prescreve correções e exercícios.
 """
 
 import math
 import numpy as np
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional, Tuple, Sequence
 
 
 # ==============================================================================
-# DICIONÁRIO E METADADOS DAS 10 MODALIDADES OFICIAIS DE TREINAMENTO
+# DICIONÁRIO E METADADOS DAS 14 MODALIDADES OFICIAIS DE TREINAMENTO (COM KANJI)
 # ==============================================================================
-TRAINING_MODALITIES_METADATA = {
+TRAINING_MODALITIES_METADATA: Dict[str, Dict[str, Any]] = {
     "ashi_sabaki": {
         "key": "ashi_sabaki",
-        "name": "Ashi-sabaki (Deslocamentos de Pés)",
+        "name": "Ashi-sabaki (足捌き)",
         "japanese": "足捌き",
-        "category": "Fundamentos de Base",
-        "description": "Treinamento focado no trabalho de pés: Okuri-ashi (deslizante), Ayumi-ashi (cruzado), Hiraki-ashi (esquiva lateral) e Tsugi-ashi (impulsão).",
-        "focus_areas": ["Alinhamento de pés", "Calcanhar esquerdo elevado", "Estabilidade do quadril", "Fluidez de movimento"],
+        "category": "Deslocamentos e Trabalho de Pés",
+        "description": "Deslocamentos fundamentais de pés: Okuri-ashi (deslizante), Ayumi-ashi (cruzado), Hiraki-ashi (esquiva lateral) e Tsugi-ashi (impulsão rápida).",
+        "focus_areas": ["Alinhamento de pés", "Calcanhar esquerdo elevado", "Estabilidade do quadril", "Fluidez de deslocamento"],
         "solo_or_pair": "solo_or_pair",
-        "expected_cadence_cpm": (30, 90) # ciclos por minuto
+        "expected_cadence_cpm": (30, 90)
     },
     "suburi": {
         "key": "suburi",
-        "name": "Suburi (Cortes Repetidos no Ar)",
+        "name": "Suburi (素振り)",
         "japanese": "素振り",
-        "category": "Desenvolvimento Técnico & Muscular",
-        "description": "Prática contínua de golpes no ar: Jōge-buri, Naname-buri, Shōmen-uchi e Sayū-men, refinando trajetória e pegada.",
-        "focus_areas": ["Amplitude de Furikaburi", "Verticalidade da coluna", "Parada firme na altura correta", "Simetria de braços (Tenouchi)"],
+        "category": "Golpes Repetidos no Ar",
+        "description": "Golpes repetidos no ar: Jōge-buri, Naname-buri, Shōmen-uchi e Sayū-men, refinando trajetória, empunhadura e postura.",
+        "focus_areas": ["Amplitude de Furikaburi", "Verticalidade da coluna", "Parada firme na altura do alvo", "Simetria de braços (Tenouchi)"],
         "solo_or_pair": "solo",
         "expected_cadence_cpm": (25, 60)
     },
     "kihon": {
         "key": "kihon",
-        "name": "Kihon (Fundamentos Básicos)",
+        "name": "Kihon (基本)",
         "japanese": "基本",
-        "category": "Fundamentos Gerais",
-        "description": "Prática estruturada dos pilares: Postura (Shisei), Distância (Maai), Guarda (Chudan Kamae), Golpe e Manutenção de Alerta (Zanshin).",
+        "category": "Fundamentos de Base",
+        "description": "Fundamentos essenciais: Postura (Shisei), Distância regulamentar (Maai), Guarda (Chudan Kamae), Golpe e Prontidão (Zanshin).",
         "focus_areas": ["Estrutura da guarda Kamae", "Manutenção de Maai", "Sincronismo no golpe", "Qualidade do Zanshin"],
-        "solo_or_pair": "pair",
+        "solo_or_pair": "solo_or_pair",
         "expected_cadence_cpm": (10, 30)
     },
     "kirikaeshi": {
         "key": "kirikaeshi",
-        "name": "Kirikaeshi (Sequência Contínua de Sayu-men)",
+        "name": "Kirikaeshi (切り返し)",
         "japanese": "切り返し",
-        "category": "Resistência, Ritmo & Precisão",
-        "description": "Exercício clássico: Shōmen inicial seguido de 9 cortes Sayū-men contínuos (4 avançando, 5 recuando), Taiatari e Shōmen final.",
-        "focus_areas": ["Ângulo correto de 45° no Sayu-men", "Ritmo ininterrupto", "Controle de respiração", "Potência e flexibilidade de ombros"],
+        "category": "Ritmo, Precisão e Resistência",
+        "description": "Sequência clássica de golpes contínuos: Shōmen inicial, cortes Sayū-men alternados (avançando e recuando), Taiatari e Shōmen final.",
+        "focus_areas": ["Ângulo de 45° no Sayu-men", "Ritmo ininterrupto", "Controle de respiração", "Potência e flexibilidade de ombros"],
         "solo_or_pair": "pair",
         "expected_cadence_cpm": (45, 90)
     },
     "uchikomi_geiko": {
         "key": "uchikomi_geiko",
-        "name": "Uchikomi-geiko (Ataques a Alvos Abertos)",
+        "name": "Uchikomi-geiko (打込稽古)",
         "japanese": "打込稽古",
-        "category": "Aplicação de Oportunidades",
-        "description": "Prática de ataques dinâmicos em que o Motodachi abre oportunidades sucessivas de Men, Kote, Do e Tsuki para o Kakarite golpear.",
+        "category": "Execução em Oportunidades Oferecidas",
+        "description": "Execução de ataques dinâmicos em oportunidades deliberadamente abertas pelo parceiro receptor (Motodachi).",
         "focus_areas": ["Velocidade de reação na abertura", "Aceleração e Fumikomi", "Passagem rápida (Nuke)", "Retorno imediato em Kamae"],
         "solo_or_pair": "pair",
         "expected_cadence_cpm": (20, 50)
     },
     "kakari_geiko": {
         "key": "kakari_geiko",
-        "name": "Kakari-geiko (Ataques Contínuos de Alta Intensidade)",
+        "name": "Kakari-geiko (掛稽古)",
         "japanese": "掛稽古",
-        "category": "Intensidade & Espírito (Kiai)",
-        "description": "Série ininterrupta de ataques com velocidade e esforço máximos em períodos curtos (20s a 60s), testando o espírito e resistência física.",
+        "category": "Ataques Contínuos e Intensos",
+        "description": "Ataques contínuos e de intensidade máxima durante períodos curtos (20s a 60s), testando o espírito (Kiai) e resistência física sob estresse.",
         "focus_areas": ["Cadência máxima e espírito inquebrantável", "Ataque contínuo sem hesitação", "Preservação da postura sob exaustão", "Fumikomi potente"],
         "solo_or_pair": "pair",
         "expected_cadence_cpm": (35, 75)
     },
+    "yakusoku_geiko": {
+        "key": "yakusoku_geiko",
+        "name": "Yakusoku-geiko (約束稽古)",
+        "japanese": "約束稽古",
+        "category": "Exercícios Combinados Predefinidos",
+        "description": "Exercícios combinados e coreografados com ações e alvos previamente combinados e definidos entre os praticantes.",
+        "focus_areas": ["Sincronismo entre os parceiros", "Precisão na execução combinada", "Controle de distância (Maai)", "Postura correta na transição"],
+        "solo_or_pair": "pair",
+        "expected_cadence_cpm": (12, 35)
+    },
     "waza_geiko": {
         "key": "waza_geiko",
-        "name": "Waza-geiko (Prática de Técnicas Específicas)",
+        "name": "Waza-geiko (技稽古)",
         "japanese": "技稽古",
-        "category": "Refinamento Técnico",
-        "description": "Treinamento repetitivo de técnicas ofensivas (Debana, Hiki, Renzoku) e defensivas para automatização motora e precisão angular.",
+        "category": "Técnicas Ofensivas e Contra-Ataques",
+        "description": "Prática de técnicas ofensivas e contra-ataques específicos para automatização motora: Debana, Nuki, Kaeshi, Suriage e Hiki-waza.",
         "focus_areas": ["Timing do gatilho de ataque", "Mecanismo biomecânico do golpe", "Precisão do ponto de impacto", "Fluidez na execução"],
         "solo_or_pair": "pair",
         "expected_cadence_cpm": (12, 35)
     },
-    "oji_waza_geiko": {
-        "key": "oji_waza_geiko",
-        "name": "Oji-waza-geiko (Técnicas de Resposta e Contra-Golpe)",
-        "japanese": "応じ技稽古",
-        "category": "Técnicas de Contra-Ataque",
-        "description": "Treino específico de interceptação e resposta: Nuki-waza (esquiva), Kaeshi-waza (deflexão e corte), Suriage-waza (deslize) e Uchiotoshi.",
+    "oji_waza": {
+        "key": "oji_waza",
+        "name": "Oji-waza (応じ技)",
+        "japanese": "応じ技",
+        "category": "Técnicas de Resposta ao Ataque",
+        "description": "Técnicas de resposta e contra-ataque ao golpe do oponente: Nuki-waza (esquiva), Kaeshi-waza (deflexão), Suriage-waza (deslize) e Uchiotoshi-waza.",
         "focus_areas": ["Tempo de antecipação e leitura de corte", "Movimento mínimo e preciso no desvio", "Contra-golpe instantâneo sem perda de centro", "Zanshin seguro"],
         "solo_or_pair": "pair",
         "expected_cadence_cpm": (10, 30)
     },
     "ji_geiko": {
         "key": "ji_geiko",
-        "name": "Ji-geiko (Combate Livre de Desenvolvimento)",
+        "name": "Ji-geiko (地稽古)",
         "japanese": "地稽古",
-        "category": "Combate Livre",
-        "description": "Luta livre orientada ao aprendizado mútuo, sem arbitragem rígida de pontos, aplicando pressão (Seme), oportunidade e fundamentos.",
+        "category": "Combate Livre de Desenvolvimento",
+        "description": "Combate livre aplicando todos os fundamentos e técnicas para desenvolvimento técnico, mental e espiritual mútuo, sem foco em placar.",
         "focus_areas": ["Construção de oportunidade com Seme", "Manutenção da compostura e centro", "Variedade técnica inteligente", "Postura digna sob pressão"],
         "solo_or_pair": "pair",
         "expected_cadence_cpm": (8, 25)
     },
     "shiai_geiko": {
         "key": "shiai_geiko",
-        "name": "Shiai-geiko (Simulação de Luta Competitiva)",
+        "name": "Shiai-geiko (試合稽古)",
         "japanese": "試合稽古",
-        "category": "Simulação de Competição",
-        "description": "Simulação completa de luta com regras oficiais, avaliação estrita de Yuko-Datotsu (Ippon), cronômetro e penalidades (Hansoku).",
+        "category": "Simulação de Luta Competitiva",
+        "description": "Simulação de luta com regras oficiais, arbitragem regulamentar de Yuko-Datotsu (Ippon), cronômetro e penalidades.",
         "focus_areas": ["Decisão rápida e eficácia de Ippon", "Domínio de Maai em situação real", "Prevenção de faltas", "Zanshin impecável"],
         "solo_or_pair": "pair",
         "expected_cadence_cpm": (6, 20)
+    },
+    "nihon_kendo_kata": {
+        "key": "nihon_kendo_kata",
+        "name": "Nihon Kendō Kata (日本剣道形)",
+        "japanese": "日本剣道形",
+        "category": "Formas Tradicionais com Bokutō",
+        "description": "Formas tradicionais do Kendo (Katas 1 a 10) praticadas com Bokutō, executadas entre Uchidachi e Shidachi com rigor estrito de etiqueta e postura.",
+        "focus_areas": ["Etiqueta e compostura (Reigi)", "Precisão dos passos e distância ritual", "Timing perfeito de corte sem contato desordenado", "Zanshin e presença espiritual"],
+        "solo_or_pair": "pair",
+        "expected_cadence_cpm": (4, 15)
+    },
+    "bokuto_kihon_waza": {
+        "key": "bokuto_kihon_waza",
+        "name": "Bokutō ni yoru Kendō Kihon Waza Keiko Hō (木刀による剣道基本技稽古法)",
+        "japanese": "木刀による剣道基本技稽古法",
+        "category": "Fundamentos Técnicos com Bokutō",
+        "description": "Fundamentos técnicos estruturados (Kihon 1 a 9) praticados com espada de madeira para fixação da mecânica correta de corte (Hasuji) e distância.",
+        "focus_areas": ["Ângulo correto da lâmina (Hasuji)", "Coordenação de pés e postura", "Compreensão da técnica básica com Bokutō", "Sincronismo de comando"],
+        "solo_or_pair": "pair",
+        "expected_cadence_cpm": (6, 20)
+    },
+    "shinsa": {
+        "key": "shinsa",
+        "name": "Shinsa (審査)",
+        "japanese": "審査",
+        "category": "Exame de Graduação Oficial",
+        "description": "Exame de graduação em que são avaliados os fundamentos básicos, técnica, postura corporal, etiqueta marcial (Reigi), Kiai e Zanshin.",
+        "focus_areas": ["Postura impecável (Shisei)", "Etiqueta e respeito marcial (Reigi)", "Kiai forte e confiante", "Técnica limpa e Zanshin decisivo"],
+        "solo_or_pair": "pair",
+        "expected_cadence_cpm": (6, 22)
     }
 }
 
@@ -136,28 +180,42 @@ TRAINING_MODALITIES_METADATA = {
 # CLASSES DE DADOS PARA MÉTRICAS E RESULTADOS DE TREINAMENTO
 # ==============================================================================
 class TrainingPillarMetrics:
-    """Estrutura que armazena os 3 Pilares e suas sub-métricas detalhadas."""
+    """
+    Estrutura que armazena os 3 Pilares Fundamentais:
+    1. Movimentação (Postura, Deslocamentos, Coluna, Calcanhar Esquerdo)
+    2. Precisão (Trajetória, Alvo, Ki-Ken-Tai-Ichi, Linha de Centro)
+    3. Constância (Ritmo, Cadência, Regularidade, Fadiga)
+    """
     def __init__(
         self,
-        forma_score: float,
-        precisao_score: float,
-        constancia_score: float,
-        forma_submetrics: Dict[str, float],
-        precisao_submetrics: Dict[str, float],
-        constancia_submetrics: Dict[str, float],
-        cadence_cpm: float,
-        cadence_std_dev_seconds: float,
-        total_repetitions: int
+        movimentacao_score: float = 0.0,
+        precisao_score: float = 0.0,
+        constancia_score: float = 0.0,
+        movimentacao_submetrics: Optional[Dict[str, float]] = None,
+        precisao_submetrics: Optional[Dict[str, float]] = None,
+        constancia_submetrics: Optional[Dict[str, float]] = None,
+        cadence_cpm: float = 0.0,
+        cadence_std_dev_seconds: float = 0.0,
+        total_repetitions: int = 0,
+        forma_score: Optional[float] = None,
+        forma_submetrics: Optional[Dict[str, float]] = None
     ):
-        self.forma = round(float(np.clip(forma_score, 0.0, 100.0)), 1)
+        # Suporte bidirecional para movimentacao / forma (retrocompatibilidade)
+        mov_val = movimentacao_score if (movimentacao_score is not None and movimentacao_score > 0) else (forma_score if forma_score is not None else 0.0)
+        self.movimentacao = round(float(np.clip(mov_val, 0.0, 100.0)), 1)
+        self.forma = self.movimentacao  # Alias
+
         self.precisao = round(float(np.clip(precisao_score, 0.0, 100.0)), 1)
         self.constancia = round(float(np.clip(constancia_score, 0.0, 100.0)), 1)
-        self.overall_score = round((self.forma * 0.35) + (self.precisao * 0.35) + (self.constancia * 0.30), 1)
-        
-        self.forma_submetrics = forma_submetrics
-        self.precisao_submetrics = precisao_submetrics
-        self.constancia_submetrics = constancia_submetrics
-        
+        self.overall_score = round((self.movimentacao * 0.35) + (self.precisao * 0.35) + (self.constancia * 0.30), 1)
+
+        mov_subs = movimentacao_submetrics or forma_submetrics or {}
+        self.movimentacao_submetrics = mov_subs
+        self.forma_submetrics = mov_subs  # Alias
+
+        self.precisao_submetrics = precisao_submetrics or {}
+        self.constancia_submetrics = constancia_submetrics or {}
+
         self.cadence_cpm = round(float(cadence_cpm), 1)
         self.cadence_std_dev_seconds = round(float(cadence_std_dev_seconds), 3)
         self.total_repetitions = int(total_repetitions)
@@ -165,9 +223,11 @@ class TrainingPillarMetrics:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "overall_score": self.overall_score,
+            "movimentacao": self.movimentacao,
             "forma": self.forma,
             "precisao": self.precisao,
             "constancia": self.constancia,
+            "movimentacao_submetrics": self.movimentacao_submetrics,
             "forma_submetrics": self.forma_submetrics,
             "precisao_submetrics": self.precisao_submetrics,
             "constancia_submetrics": self.constancia_submetrics,
@@ -191,10 +251,10 @@ class KendokaTrainingProfile:
         recommended_exercises: Optional[List[Dict[str, str]]] = None,
         repetition_timeline: Optional[List[Dict[str, Any]]] = None
     ):
-        self.kendoka_id = kendoka_id # "KENSHI_SHIRO", "KENSHI_AKA" ou "KENSHI_SOLO"
+        self.kendoka_id = kendoka_id  # "KENSHI_SHIRO", "KENSHI_AKA" ou "KENSHI_SOLO"
         self.default_name = default_name
         self.custom_name = custom_name or default_name
-        self.role = role # "Kakarite (Atacante)", "Motodachi (Receptor)" ou "Praticante Individual"
+        self.role = role
         self.pillars = pillars or TrainingPillarMetrics(0, 0, 0, {}, {}, {}, 0, 0, 0)
         self.strengths = strengths or []
         self.improvements = improvements or []
@@ -210,6 +270,88 @@ class KendokaTrainingProfile:
         if self.custom_name and self.custom_name != self.default_name:
             return f"{self.custom_name} ({self.default_name})"
         return self.default_name
+
+    def generate_individual_report_markdown(self, modality_meta: Optional[Dict[str, Any]] = None) -> str:
+        """Gera um relatório formatado em Markdown personalizado para este Kenshi."""
+        meta = modality_meta or {}
+        mod_name = meta.get("name", "Treinamento de Kendo")
+        mod_cat = meta.get("category", "Geral")
+
+        p = self.pillars
+        ov = p.overall_score
+        if ov >= 85:
+            perf_label = "🏆 EXCELENTE (NÍVEL AVANÇADO)"
+        elif ov >= 70:
+            perf_label = "🥇 MUITO BOM (NÍVEL INTERMEDIÁRIO)"
+        elif ov >= 55:
+            perf_label = "🥈 SATISFATÓRIO (EM DESENVOLVIMENTO)"
+        else:
+            perf_label = "⚠️ NECESSITA AJUSTES DE FUNDAMENTO"
+
+        md_lines = [
+            f"# 🥋 Relatório de Avaliação Técnica Individual de Kendo — SenpAI",
+            f"",
+            f"**Kendoca:** {self.custom_name}  ",
+            f"**Identificador no Dojo:** {self.default_name} ({self.role})  ",
+            f"**Modalidade Avaliada:** {mod_name} — *{mod_cat}*  ",
+            f"**Desempenho Global:** {perf_label} (**{ov:.1f}/100**)  ",
+            f"**Repetições / Golpes Detectados:** {p.total_repetitions}  ",
+            f"**Cadência de Treino:** {p.cadence_cpm:.1f} repetições/minuto (Desvio Padrão: {p.cadence_std_dev_seconds:.2f}s)  ",
+            f"",
+            f"---",
+            f"",
+            f"## 1. Avaliação dos 3 Pilares Fundamentais",
+            f"",
+            f"### 🥋 Pilar 1: Movimentação ({p.movimentacao:.1f}%)",
+            f"- **Verticalidade da Coluna (Shisei):** {p.movimentacao_submetrics.get('verticalidade_coluna', 0):.1f}%",
+            f"- **Nivelamento de Ombros:** {p.movimentacao_submetrics.get('nivelamento_ombros', 0):.1f}%",
+            f"- **Base e Calcanhar Esquerdo (Ashi-gamae):** {p.movimentacao_submetrics.get('alinhamento_base_pes', 0):.1f}%",
+            f"- **Amplitude de Furikaburi:** {p.movimentacao_submetrics.get('amplitude_furikaburi', 0):.1f}%",
+            f"",
+            f"### 🎯 Pilar 2: Precisão ({p.precisao:.1f}%)",
+            f"- **Trajetória no Alvo (Datotsu-bui):** {p.precisao_submetrics.get('trajetoria_alvo', 0):.1f}%",
+            f"- **Sincronismo Ki-Ken-Tai-Ichi:** {p.precisao_submetrics.get('kikentai_sincronismo', 0):.1f}%",
+            f"- **Controle da Linha Central (Chushin-sen):** {p.precisao_submetrics.get('controle_linha_centro', 0):.1f}%",
+            f"",
+            f"### ⏱️ Pilar 3: Constância ({p.constancia:.1f}%)",
+            f"- **Regularidade de Ritmo:** {p.constancia_submetrics.get('regularidade_ritmo', 0):.1f}%",
+            f"- **Resistência à Fadiga (Stamina):** {p.constancia_submetrics.get('resistencia_fadiga', 0):.1f}%",
+            f"- **Adequação à Cadência da Modalidade:** {p.constancia_submetrics.get('adequacao_cadencia', 0):.1f}%",
+            f"",
+            f"---",
+            f"",
+            f"## 2. Diagnóstico Técnico Pedagógico",
+            f"",
+            f"### 🌟 Pontos Fortes Observados",
+        ]
+
+        if self.strengths:
+            for s in self.strengths:
+                md_lines.append(f"- ✅ {s}")
+        else:
+            md_lines.append("- *Padrão em consolidação.*")
+
+        md_lines.append(f"")
+        md_lines.append(f"### ⚠️ Pontos de Atenção & Correção Técnica")
+        if self.improvements:
+            for imp in self.improvements:
+                md_lines.append(f"- ⚠️ {imp}")
+        else:
+            md_lines.append("- *Nenhum vício biomecânico crítico detectado.*")
+
+        md_lines.append(f"")
+        md_lines.append(f"### 🏋️ Exercícios Recomendados para Evolução no Dojo")
+        if self.recommended_exercises:
+            for ex in self.recommended_exercises:
+                md_lines.append(f"#### 🥋 {ex.get('name', 'Exercício')} *(Foco: {ex.get('target', 'Fundamentos')})*")
+                md_lines.append(f"- **Prescrição:** {ex.get('prescription', '')}")
+                md_lines.append(f"")
+        else:
+            md_lines.append("- *Manter rotina padrão de Suburi e Kihon diário.*")
+
+        md_lines.append(f"---")
+        md_lines.append(f"*Relatório gerado automaticamente pelo SenpAI (Sistema de Avaliação Biomecânica de Kendo com IA).*")
+        return "\n".join(md_lines)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -243,7 +385,7 @@ class TrainingSessionResult:
         self.modality_key = modality_key
         self.modality_name = modality_name
         self.detection_confidence = round(float(detection_confidence), 2)
-        self.detection_method = detection_method # "AUTO_DETECTED" ou "MANUAL_SELECT"
+        self.detection_method = detection_method  # "AUTO_DETECTED" ou "MANUAL_SELECT"
         self.is_manual_override = is_manual_override
         self.duration_seconds = round(float(duration_seconds), 2)
         self.total_frames_analyzed = int(total_frames_analyzed)
@@ -269,7 +411,7 @@ class TrainingSessionResult:
 # ==============================================================================
 class TrainingAnalyzer:
     """
-    Motor analítico para identificação e diagnóstico de treinos de Kendo.
+    Motor analítico para identificação das 14 modalidades e diagnóstico de treinos de Kendo.
     """
     def __init__(self):
         pass
@@ -279,8 +421,8 @@ class TrainingAnalyzer:
     # --------------------------------------------------------------------------
     def detect_training_modality(
         self,
-        primary_history: List[Optional[Dict[str, Any]]],
-        secondary_history: Optional[List[Optional[Dict[str, Any]]]] = None,
+        primary_history: Sequence[Optional[Dict[str, Any]]],
+        secondary_history: Optional[Sequence[Optional[Dict[str, Any]]]] = None,
         detected_strikes: Optional[List[Any]] = None,
         fps: float = 30.0
     ) -> Tuple[str, float, str]:
@@ -327,37 +469,36 @@ class TrainingAnalyzer:
         if 18 <= strikes_per_minute < 32:
             return "uchikomi_geiko", 0.82, f"Cadência ritmada de ataques sobre aberturas sucessivas de alvo pelo parceiro ({strikes_per_minute:.1f} CPM)."
 
-        # Kihon / Waza-geiko: Poucos golpes estruturados, pausas para retorno em Kamae
+        # Kihon / Waza-geiko / Yakusoku-geiko: Poucos golpes estruturados, pausas para retorno em Kamae
         if 8 <= strikes_per_minute < 18:
-            # Verificar se há tempo de guarda estático (Kihon) ou técnica específica
             return "kihon", 0.80, f"Estrutura pausada com foco na execução correta dos fundamentos, postura e Zanshin."
 
         # Combate Livre / Simulação (Ji-geiko ou Shiai-geiko)
         if num_strikes > 0:
             return "ji_geiko", 0.78, f"Dois praticantes em dinâmica de combate livre, disputando centro e oportunidade (Ji-geiko)."
-        
+
         # Padrão default quando movimentação é contínua mas sem golpes declarados
         return "ashi_sabaki", 0.70, f"Dois praticantes em trabalho de deslocamento e manutenção de distância (Maai)."
 
     # --------------------------------------------------------------------------
-    # 2. CÁLCULO DOS TRÊS PILARES (FORMA, PRECISÃO, CONSTÂNCIA)
+    # 2. CÁLCULO DOS TRÊS PILARES (MOVIMENTAÇÃO, PRECISÃO, CONSTÂNCIA)
     # --------------------------------------------------------------------------
     def calculate_pillar_metrics(
         self,
-        pose_history: List[Optional[Dict[str, Any]]],
+        pose_history: Sequence[Optional[Dict[str, Any]]],
         strikes: List[Any],
         modality_key: str,
         fps: float = 30.0
     ) -> TrainingPillarMetrics:
         """
-        Calcula os scores numéricos de 0 a 100 para Forma, Precisão e Constância.
+        Calcula os scores numéricos de 0 a 100 para Movimentação, Precisão e Constância.
         """
         valid_poses = [p for p in pose_history if p]
         if not valid_poses:
             return TrainingPillarMetrics(50, 50, 50, {}, {}, {}, 0, 0, 0)
 
         # ----------------------------------------------------------------------
-        # PILAR 1: FORMA (Postura da Coluna, Ombros, Elevação de Braços e Pés)
+        # PILAR 1: MOVIMENTAÇÃO (Postura da Coluna, Ombros, Pés e Elevação)
         # ----------------------------------------------------------------------
         posture_scores = []
         shoulder_level_scores = []
@@ -365,7 +506,7 @@ class TrainingAnalyzer:
         furikaburi_amplitude_scores = []
 
         for lm in valid_poses:
-            # 1.1 Verticalidade do Tronco
+            # 1.1 Verticalidade do Tronco (Shisei)
             if "LEFT_SHOULDER" in lm and "LEFT_HIP" in lm:
                 p_sh = lm["LEFT_SHOULDER"]
                 p_hip = lm["LEFT_HIP"]
@@ -397,8 +538,8 @@ class TrainingAnalyzer:
         score_pes_base = float(np.mean(heel_elevation_scores)) * 100.0 if heel_elevation_scores else 78.0
         score_amplitude = float(np.mean(furikaburi_amplitude_scores)) * 100.0 if furikaburi_amplitude_scores else 72.0
 
-        forma_final = (score_postura * 0.35) + (score_ombros * 0.25) + (score_pes_base * 0.20) + (score_amplitude * 0.20)
-        forma_sub = {
+        movimentacao_final = (score_postura * 0.35) + (score_ombros * 0.25) + (score_pes_base * 0.20) + (score_amplitude * 0.20)
+        movimentacao_sub = {
             "verticalidade_coluna": round(score_postura, 1),
             "nivelamento_ombros": round(score_ombros, 1),
             "alinhamento_base_pes": round(score_pes_base, 1),
@@ -454,7 +595,7 @@ class TrainingAnalyzer:
                 f_curr = getattr(strikes[i], "impact_frame", 0)
                 f_prev = getattr(strikes[i - 1], "impact_frame", 0)
                 intervals_frames.append(abs(f_curr - f_prev))
-            
+
             intervals_sec = [f / fps for f in intervals_frames]
             std_dev_sec = float(np.std(intervals_sec))
             mean_int = float(np.mean(intervals_sec))
@@ -489,10 +630,10 @@ class TrainingAnalyzer:
         }
 
         return TrainingPillarMetrics(
-            forma_score=forma_final,
+            movimentacao_score=movimentacao_final,
             precisao_score=precisao_final,
             constancia_score=constancia_final,
-            forma_submetrics=forma_sub,
+            movimentacao_submetrics=movimentacao_sub,
             precisao_submetrics=precisao_sub,
             constancia_submetrics=constancia_sub,
             cadence_cpm=cadence_cpm,
@@ -516,32 +657,32 @@ class TrainingAnalyzer:
         improvements: List[str] = []
         exercises: List[Dict[str, str]] = []
 
-        forma_sub = pillars.forma_submetrics
+        mov_sub = pillars.movimentacao_submetrics
         prec_sub = pillars.precisao_submetrics
         const_sub = pillars.constancia_submetrics
 
-        # Avaliação de Forma
-        if forma_sub.get("verticalidade_coluna", 0) >= 80:
-            strengths.append("Excelente postura ereta (Shisei) com alinhamento vertical da coluna preservado.")
+        # Avaliação de Movimentação (Postura e Pés)
+        if mov_sub.get("verticalidade_coluna", 0) >= 80:
+            strengths.append(f"Excelente postura ereta (Shisei) de {kendoka_name} com alinhamento vertical da coluna preservado.")
         else:
-            improvements.append("Inclinação excessiva do tronco à frente no momento do golpe, comprometendo o equilíbrio.")
+            improvements.append("Inclinação excessiva do tronco à frente no momento do golpe, comprometendo o centro de gravidade.")
             exercises.append({
                 "name": "Kagami Suburi (Suburi diante do espelho)",
                 "target": "Postura e Verticalidade da Coluna",
                 "prescription": "3 séries de 30 cortes Shomen-uchi lentos olhando para o reflexo no espelho, mantendo o queixo recolhido e a coluna ereta."
             })
 
-        if forma_sub.get("alinhamento_base_pes", 0) >= 80:
-            strengths.append("Base de pés (Ashi-gamae) firme e estável com calcanhar esquerdo na altura regulamentar.")
+        if mov_sub.get("alinhamento_base_pes", 0) >= 80:
+            strengths.append("Base de pés (Ashi-gamae) firme e estável com calcanhar esquerdo na altura regulamentar para impulsão.")
         else:
-            improvements.append("Calcanhar esquerdo excessivamente baixo ou colapsado no solo, diminuindo a impulsão instantânea.")
+            improvements.append("Calcanhar esquerdo excessivamente baixo ou colapsado no solo, diminuindo a explosão do Fumikomi.")
             exercises.append({
                 "name": "Okuri-ashi sobre Linha Guia",
                 "target": "Trabalho de Pés e Calcanhar Esquerdo",
                 "prescription": "5 minutos de Okuri-ashi contínuo seguindo uma linha no chão, mantendo a ponta do pé esquerdo alinhada com o calcanhar direito."
             })
 
-        if forma_sub.get("amplitude_furikaburi", 0) >= 75:
+        if mov_sub.get("amplitude_furikaburi", 0) >= 75:
             strengths.append("Amplitude ampla e fluida na elevação do Shinai (Furikaburi), utilizando a força elástica das costas.")
         else:
             improvements.append("Elevação curta ou travada nos cotovelos, sobrecarregando o braço direito no movimento.")
@@ -553,7 +694,7 @@ class TrainingAnalyzer:
 
         # Avaliação de Precisão
         if prec_sub.get("controle_linha_centro", 0) >= 78:
-            strengths.append("Excelente controle da Linha Central (Chushin-sen), com ponta da espada dominando o centro.")
+            strengths.append("Excelente controle da Linha Central (Chushin-sen), com ponta da espada dominando o centro do alvo.")
         else:
             improvements.append("Desvio lateral da espada durante a descida do corte, abrindo a guarda desnecessariamente.")
             exercises.append({
@@ -563,9 +704,9 @@ class TrainingAnalyzer:
             })
 
         if prec_sub.get("kikentai_sincronismo", 0) >= 80:
-            strengths.append("Sincronismo Ki-Ken-Tai-Ichi bem coordenado entre aterrissagem do pé direito (Fumikomi) e impacto.")
+            strengths.append("Sincronismo Ki-Ken-Tai-Ichi bem coordenado entre aterrissagem do pé direito (Fumikomi) e impacto da espada.")
         else:
-            improvements.append("Descompasso temporal entre o impacto das mãos e o Fumikomi do pé direito.")
+            improvements.append("Descompasso temporal entre o impacto das mãos e a batida do Fumikomi do pé direito.")
             exercises.append({
                 "name": "Fumikomi-ashi Lento com Batida de Palma",
                 "target": "Sincronismo Pé-Mão (Ki-Ken-Tai)",
@@ -574,7 +715,7 @@ class TrainingAnalyzer:
 
         # Avaliação de Constância
         if const_sub.get("regularidade_ritmo", 0) >= 78:
-            strengths.append(f"Cadência altamente consistente e rítmica ao longo de todo o exercício ({pillars.cadence_cpm} repetições/minuto).")
+            strengths.append(f"Cadência altamente consistente e rítmica ao longo do treinamento ({pillars.cadence_cpm} repetições/minuto).")
         else:
             improvements.append("Variação oscilatória no ritmo das repetições, com acelerações descompassadas seguidas de pausas.")
             exercises.append({
@@ -584,11 +725,25 @@ class TrainingAnalyzer:
             })
 
         if const_sub.get("resistencia_fadiga", 0) < 75:
-            improvements.append("Queda perceptível na qualidade técnica e altura de guarda no terço final do treinamento por fadiga muscular.")
+            improvements.append("Queda perceptível na qualidade técnica e altura de guarda no terço final da sessão por fadiga muscular.")
             exercises.append({
                 "name": "Kirikaeshi em Bloco Progressivo",
                 "target": "Resistência Muscular e Fôlego",
                 "prescription": "Executar 3 sequências de Kirikaeshi completas com intervalo de 30 segundos entre blocos para ganho de endurance."
+            })
+
+        # Prescrições específicas para modalidades tradicionais
+        if modality_key in ["nihon_kendo_kata", "bokuto_kihon_waza"]:
+            exercises.append({
+                "name": "Treinamento Lento de Kata com Foco em Hasuji",
+                "target": "Alinhamento de Lâmina e Maai de Bokuto",
+                "prescription": "Executar as sequências com Bokutō em velocidade de 50%, verificando o ângulo de corte e o Maai exato a cada passo."
+            })
+        elif modality_key == "shinsa":
+            exercises.append({
+                "name": "Simulação de Exame com Sonkyō e Kiai Contínuo",
+                "target": "Compostura, Reigi e Presença de Exame",
+                "prescription": "Executar entrada formal, Sonkyō solene, 2 ataques decisivos com Kiai pleno e saída regulamentar."
             })
 
         if not exercises:
@@ -605,8 +760,8 @@ class TrainingAnalyzer:
     # --------------------------------------------------------------------------
     def analyze_session(
         self,
-        primary_history: List[Optional[Dict[str, Any]]],
-        secondary_history: Optional[List[Optional[Dict[str, Any]]]] = None,
+        primary_history: Sequence[Optional[Dict[str, Any]]],
+        secondary_history: Optional[Sequence[Optional[Dict[str, Any]]]] = None,
         detected_strikes: Optional[List[Any]] = None,
         modality_override: Optional[str] = None,
         fps: float = 30.0,
@@ -660,10 +815,10 @@ class TrainingAnalyzer:
             k_id = "KENSHI_SOLO"
             def_name = "Kendoca Principal"
             c_name = custom_names.get(k_id, custom_names.get("KENSHI_SHIRO", def_name))
-            
+
             pillars_k1 = self.calculate_pillar_metrics(primary_history, strikes_k1, modality_key, fps=fps)
             str_k1, imp_k1, exe_k1 = self.generate_pedagogical_feedback(pillars_k1, modality_key, c_name)
-            
+
             rep_timeline = [
                 {"repetition": i + 1, "timestamp": getattr(s, "timestamp_impact", getattr(s, "timestamp", f"{i*2}s")), "technique": getattr(s, "type", "MEN")}
                 for i, s in enumerate(strikes_k1)
@@ -681,7 +836,21 @@ class TrainingAnalyzer:
                 repetition_timeline=rep_timeline
             ))
         else:
-            # 2 Kendocas em Treino (ex: Kirikaeshi, Uchikomi, Kakari, Ji-geiko)
+            # 2 Kendocas em Treino (ex: Kirikaeshi, Uchikomi, Kakari, Kata, Shinsa, Ji-geiko)
+            # Definir papéis conforme a modalidade
+            if modality_key in ["nihon_kendo_kata", "bokuto_kihon_waza"]:
+                role_k1 = "Uchidachi (Professor / Líder)"
+                role_k2 = "Shidachi (Aluno / Resposta)"
+            elif modality_key in ["uchikomi_geiko", "kakari_geiko"]:
+                role_k1 = "Kakarite (Atacante)"
+                role_k2 = "Motodachi (Receptor)"
+            elif modality_key == "shinsa":
+                role_k1 = "Candidato 1 (Exame)"
+                role_k2 = "Candidato 2 (Exame)"
+            else:
+                role_k1 = "Praticante 1 (Shiro)"
+                role_k2 = "Praticante 2 (Aka)"
+
             # Kendoca 1 (Shiro / Esquerda)
             k1_id = "KENSHI_SHIRO"
             k1_def_name = "Kendoca Shiro (Esquerda)"
@@ -696,7 +865,7 @@ class TrainingAnalyzer:
                 kendoka_id=k1_id,
                 default_name=k1_def_name,
                 custom_name=k1_c_name,
-                role="Kakarite / Praticante 1",
+                role=role_k1,
                 pillars=pillars_k1,
                 strengths=str_k1,
                 improvements=imp_k1,
@@ -718,7 +887,7 @@ class TrainingAnalyzer:
                 kendoka_id=k2_id,
                 default_name=k2_def_name,
                 custom_name=k2_c_name,
-                role="Motodachi / Praticante 2",
+                role=role_k2,
                 pillars=pillars_k2,
                 strengths=str_k2,
                 improvements=imp_k2,
@@ -730,7 +899,7 @@ class TrainingAnalyzer:
         summary = (
             f"Sessão de treinamento de Kendo classificada como '{modality_name}' "
             f"(Duração: {duration_sec:.1f}s, Praticantes Rastreáveis: {len(kendokas_list)}). "
-            f"Avaliação baseada nos 3 Pilares (Forma, Precisão e Constância) com prescrição pedagógica personalizada."
+            f"Avaliação baseada nos 3 Pilares (Movimentação, Precisão e Constância) com diagnóstico pedagógico e prescrição de exercícios individualizada."
         )
 
         return TrainingSessionResult(
@@ -752,7 +921,7 @@ class TrainingAnalyzer:
         """Calcula a energia cinética média (deslocamento frame a frame) dos pontos corporais informados."""
         if len(poses) < 2:
             return 0.0
-        
+
         displacements = []
         for i in range(1, len(poses)):
             p_prev = poses[i - 1]
@@ -764,5 +933,5 @@ class TrainingAnalyzer:
                     dx = p_curr[kp]["x"] - p_prev[kp]["x"]
                     dy = p_curr[kp]["y"] - p_prev[kp]["y"]
                     displacements.append(math.sqrt(dx*dx + dy*dy))
-        
+
         return float(np.mean(displacements) * 100.0) if displacements else 0.0

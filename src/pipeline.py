@@ -57,7 +57,7 @@ class SenpAIPipeline:
         3. Detecção e verificação dos momentos de Sonkyō (Abertura e Encerramento) ou aplicação de ajustes manuais com aprendizado contínuo.
         4. Delimitação estrita do início (match_start_frame) e fim (match_end_frame) da luta.
         5. Detecção e avaliação biomecânica exclusiva dos golpes dentro da janela de Sonkyō.
-        6. Análise especializada de Treinamento & Aprendizado (10 modalidades, 3 pilares, diagnósticos pedagógicos).
+        6. Análise especializada de Treinamento & Aprendizado (14 modalidades oficiais com Kanji, 3 pilares, diagnósticos pedagógicos).
         7. Controle de pontuação (Placar Oficial de Ippon) e renderização de vídeo anotado.
         """
         if not os.path.exists(video_path):
@@ -321,7 +321,7 @@ class SenpAIPipeline:
         init_sonkyo_str = f"Detectado (Início: {sonkyo_analysis.get('match_start_timestamp', '00:00.000')})" if sonkyo_analysis["has_initial_sonkyo"] else "Não detectado"
         final_sonkyo_str = f"Detectado (Fim: {sonkyo_analysis.get('match_end_timestamp', f'{round(total_frames / fps, 2)}s')})" if sonkyo_analysis["has_final_sonkyo"] else "Não detectado"
         
-        # 7. Análise de Treinamento & Aprendizado (10 Modalidades Oficiais e 3 Pilares)
+        # 7. Análise de Treinamento & Aprendizado (14 Modalidades Oficiais com Kanji e 3 Pilares)
         training_analysis = self.training_analyzer.analyze_session(
             primary_history=primary_history,
             secondary_history=secondary_history,

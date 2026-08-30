@@ -12,8 +12,9 @@ e o princípio do Ki-Ken-Tai-Ichi (Espírito, Espada e Corpo em um só).
 -------------------------------------------------------------------------------
 
 Requisitos de Sistema:
-- Python 3.10 ou 3.11
-- Ambiente Virtual (.venv recomendado)
+- Python 3.11 (Recomendado: distribuição oficial da Python Software Foundation)
+- Ambiente Virtual (.venv)
+- Windows 10/11, Linux ou macOS
 - Opcional para Modo GPU: Placa aceleradora NVIDIA (GeForce RTX/GTX) com drivers CUDA.
 
 Dependências principais:
@@ -24,25 +25,53 @@ Dependências principais:
 - fastdtw
 - streamlit (para a interface web)
 
-Instalação das dependências:
-   pip install -r requirements.txt
-   (ou usando uv: uv pip install -r requirements.txt)
+Guia de Instalação no Windows (Passo a Passo Oficial):
 
-Para habilitação opcional de aceleração CUDA em GPU NVIDIA:
+1. Instalar o Python 3.11 Oficial (assinado digitalmente pela PSF via Winget):
+   winget install Python.Python.3.11
+
+   (ou baixe o instalador oficial de 64 bits em https://www.python.org/downloads/)
+
+2. Criar o ambiente virtual (.venv):
+   py -3.11 -m venv .venv
+
+3. Ativar o ambiente virtual:
+   - No PowerShell:
+     .\.venv\Scripts\activate
+   - No Prompt de Comando (CMD):
+     .\.venv\Scripts\activate.bat
+
+4. Instalar as dependências do projeto:
+   pip install -r requirements.txt
+
+5. (Opcional) Para habilitação de aceleração CUDA em GPU NVIDIA:
    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+   pip install ultralytics onnxruntime-gpu
+
+Nota de Compatibilidade Windows (Smart App Control / WDAC):
+O uso do Python 3.11 oficial assinado pela PSF garante total conformidade
+com as políticas de segurança do Windows (evitando bloqueios como os error 4551
+/ ERROR_SYSTEM_INTEGRITY_POLICY_VIOLATION comuns em executáveis não assinados).
 
 -------------------------------------------------------------------------------
 2. INSTRUÇÕES DE USO (COMO EXECUTAR)
 -------------------------------------------------------------------------------
 
 --- A. INTERFACE WEB INTERATIVA (STREAMLIT - RECOMENDADO) ---
-Para iniciar o dashboard web com reprodutor de vídeo, gráficos e sliders:
+Para iniciar o dashboard web com o ambiente virtual (.venv) ativo:
 
-   streamlit run app.py
-   (ou no Windows: .\.venv\Scripts\streamlit.exe run app.py)
+   python -m streamlit run app.py
+   (ou: .\.venv\Scripts\python.exe -m streamlit run app.py)
+
+Nota: Usar "python -m streamlit" executa o Streamlit diretamente pelo
+interpretador oficial assinado do Python, evitando bloqueios do Smart App Control
+do Windows sobre o wrapper executável streamlit.exe.
 
 Recursos da Interface Web:
-- Interface otimizada e dimensionada (escala visual 80%) para visualização integrada e ergonômica.
+- Interface otimizada e dimensionada (escala visual 90%) para visualização integrada e ergonômica.
+- Limpeza Automática de Análise na Transição de Modos: Ao alternar entre os Modos de Operação (Tempo Real, Detecção Gravada e Treinamento & Aprendizado), a análise anterior, revisões, arquivos carregados e workers em execução são limpos automaticamente para manter o ambiente pronto para uma nova análise.
+- Botão Manual de Limpeza e Nova Análise: Ação rápida "🧹 Nova Análise / Limpar" integrada no topo dos resultados gravados e de treinamento para reinicialização instantânea.
+- Calibração de Sensibilidade Inteligente: No Modo de Treinamento & Aprendizado, o perfil é definido por padrão automaticamente como Treino Geral / Keiko (Normal).
 - Validação e Consenso Multi-Câmeras (Tempo Real): A definição de haver ou não o golpe é tomada com base no conjunto das imagens das câmeras em background. Quanto mais câmeras ativas, maior a exigência de confirmação síncrona em frames (quórum escalonado de 1 a 4 câmeras), com descarte silencioso de movimentações sem consenso.
 - Placar Oficial Eletrônico (Sanbon-shobu) com contagem de Ippon para Aka (Vermelho) e Shiro (Branco), declaração regulamentar de resultado e marcação em caracteres Katakana oficiais (メ, コ, ド, ツ).
 - Destaque Visual na Linha do Tempo: golpes responsáveis pela marcação de Ippon são destacados com a nomenclatura oficial Katakana (メ MEN, コ KOTE, ド DO, ツ TSUKI), banner cromático por lutador e identificação no seletor de navegação rápida.
@@ -50,13 +79,13 @@ Recursos da Interface Web:
 - Navegação Interativa no Vídeo com Salto Temporal Calibrado: clique no evento (Sonkyō Inicial, Golpe ou Sonkyō Final) ou selecione no dropdown para posicionar o player 1 segundo antes (-1.0s) do início do evento para revisão detalhada.
 - Delimitação Temporal da Luta por Sonkyō: identificação automática da postura ritualística de Sonkyō de início e término do combate, com filtragem estrita de golpes na janela regulamentar.
 - Rastreamento dos 2 Kenshi Principais e Filtragem de Planos: descarte inteligente de elementos de fundo (outras lutas, arquibancadas) e oclusões de primeiro plano.
-- Menu de Configurações com seletor de Hardware (CPU vs GPU NVIDIA CUDA com Tensor Cores FP16) e painel de Governança de Treinamento.
+- Menu de Configurações com seletor de Hardware (CPU vs GPU NVIDIA CUDA com Tensor Cores FP16 / Ultralytics YOLOv8-Pose) e painel de Governança de Treinamento.
 - Painel de Diagnóstico, Alertas e Log de Debug do Sistema com monitoramento de eventos em tempo real (`senpai_debug.log`).
 - Edição de Golpes por Dan no Modo de Detecção Gravada (Shodan 1º Dan a Hachidan 8º Dan) com badges CONFIRMADO e EDITADO.
 - Botão de Reset Geral e Individual de revisão, regra de auditabilidade (sem exclusão de dados) e retreinamento contínuo.
 - Gestão de Pacotes de Treinamento: exportação e importação de arquivos JSON com registro por Dan e data.
 - Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de eventos com barra de rolagem à direita.
-- Alternador de exibição no player: Vídeo Anotado (Visão AI com HUD superior) vs Vídeo Original.
+- Conformidade Estrita de Tipagem e Estabilidade: Narrowing de tipos e tratamento defensivo em todos os widgets Streamlit (câmeras, Dan, perfis, qualidades e acelerador), além de blindagem de renderização condicional da Linha do Tempo prevenindo exceções de runtime em resets ou antes da execução da análise.
 
 --- B. LINHA DE COMANDO (CLI) ---
 Para processar vídeos diretamente no terminal:
@@ -76,10 +105,10 @@ Para processar vídeos diretamente no terminal:
 - Otimizar perfil com base no dataset de feedback gravado:
    python main.py --profile normal --optimize-profile
 
-- Executar suíte completa de testes automatizados (64 testes) com relatório descritivo salvo em logs/:
+- Executar suíte completa de testes automatizados (73 testes) com relatório descritivo salvo em logs/:
    python run_tests.py
    (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
-   * Executa a suíte de 64 testes automatizados com 100% de aprovação
+   * Executa a suíte de 73 testes automatizados com 100% de aprovação
    * Gera o arquivo descritivo logs/senpai_test_report.log com detalhes de cada teste
    * Mantém estritamente apenas o último log de testes executado na pasta logs/
 
@@ -124,8 +153,31 @@ Opções disponíveis:
    diagnósticos de combate.
 
 2. MODO DE TREINAMENTO & APRENDIZADO (training):
-   Projetado para instrutores e atletas. Permite rotular resultados (TP, FP, FN),
-   calibrar a exigência por nível Dan e recalibrar adaptativamente os limiares.
+   Projetado para instrutores e atletas para refinamento técnico e preparação para exames.
+   - Layout Ergonômico Lado a Lado: O painel de avaliação pedagógica fica perfeitamente posicionado
+     ao lado do vídeo, sem a Linha do Tempo de arbitragem competitiva, oferecendo visualização direta e focada.
+   - Suporte a Inversão de Lados dos Kendocas: Botão de alternância instantânea da ordem de exibição dos atletas.
+   - 14 Modalidades Oficiais de Treinamento com Kanjis:
+     1. Ashi-sabaki (足捌き) — Deslocamentos fundamentais (okuri-ashi, ayumi-ashi, hiraki-ashi, tsugi-ashi).
+     2. Suburi (素振り) — Golpes repetidos no ar (jōge-buri, naname-buri, shōmen-uchi, sayū-men).
+     3. Kihon (基本) — Fundamentos de postura (shisei), distância (maai), guarda (kamae), golpe e zanshin.
+     4. Kirikaeshi (切り返し) — Sequência de golpes para ritmo, precisão, respiração e resistência.
+     5. Uchikomi-geiko (打込稽古) — Execução de golpes em oportunidades oferecidas pelo motodachi.
+     6. Kakari-geiko (掛稽古) — Ataques contínuos e intensos durante períodos curtos.
+     7. Yakusoku-geiko (約束稽古) — Exercícios combinados com ações previamente definidas.
+     8. Waza-geiko (技稽古) — Técnicas ofensivas e contra-ataques (debana, nuki, kaeshi, suriage, hiki-waza).
+     9. Oji-waza (応じ技) — Técnicas de resposta direta ao ataque do oponente.
+     10. Ji-geiko (地稽古) — Combate livre aplicando fundamentos e técnicas.
+     11. Shiai-geiko (試合稽古) — Simulação de luta com regras, arbitragem e pontuação.
+     12. Nihon Kendō Kata (日本剣道形) — Formas tradicionais praticadas com bokutō.
+     13. Bokutō ni yoru Kendō Kihon Waza Keiko Hō (木刀による剣道基本技稽古法) — Fundamentos técnicos com espada de madeira.
+     14. Shinsa (審査) — Avaliação para exame de graduação (postura, técnica, etiqueta, kiai e zanshin).
+   - Avaliação dos 3 Pilares:
+     • Movimentação (35%): Postura (Shisei), nivelamento de ombros, base de pés (Ashi) e amplitude.
+     • Precisão (35%): Trajetória no alvo, sincronismo Ki-Ken-Tai-Ichi e controle de linha central.
+     • Constância (30%): Regularidade do ritmo, resistência à fadiga e adequação à cadência.
+   - Rastreamento Individual e Nomeação: Nomeação interativa por Kenshi com emissão de Relatório Individual em Markdown (.md) e dados da sessão em JSON.
+   - Diagnósticos Pedagógicos: Pontos Fortes, Pontos de Atenção e Prescrições Práticas de Exercícios do Dojo.
 
 3. MODO DE DETECÇÃO EM TEMPO REAL (realtime):
    Processamento instantâneo via Webcam ou streams RTSP/RTCP de 1 a 4 câmeras IP simultâneas.

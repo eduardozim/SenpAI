@@ -103,11 +103,14 @@ def check_cuda_framework_support() -> Dict[str, Any]:
     torch_device_name = ""
     onnx_cuda = False
 
+    ultralytics_ready = False
     try:
         import torch
+        from ultralytics import YOLO
         torch_cuda = torch.cuda.is_available()
         if torch_cuda:
             torch_device_name = torch.cuda.get_device_name(0)
+            ultralytics_ready = True
     except ImportError:
         pass
 
@@ -118,23 +121,26 @@ def check_cuda_framework_support() -> Dict[str, Any]:
         pass
 
     return {
-        "torch_cuda": torch_cuda,
+        "torch_cuda": torch_cuda and ultralytics_ready,
         "torch_device_name": torch_device_name,
         "onnx_cuda": onnx_cuda,
+        "ultralytics_ready": ultralytics_ready,
         "mediapipe_cpu_only_win": True
     }
 
 def install_cuda_packages() -> Tuple[bool, str]:
     """
-    Executa a instalação dos pacotes PyTorch com suporte CUDA no ambiente Python atual.
+    Executa a instalação dos pacotes PyTorch com suporte CUDA e Ultralytics no ambiente Python atual.
     """
     import sys
-    logger.info("[Hardware] Iniciando instalação automática de dependências CUDA (PyTorch CUDA)...")
+    logger.info("[Hardware] Iniciando instalação automática de dependências CUDA (PyTorch CUDA e Ultralytics)...")
     try:
-        cmd = [sys.executable, "-m", "pip", "install", "torch", "torchvision", "--index-url", "https://download.pytorch.org/whl/cu121"]
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT, timeout=600, text=True)
-        logger.info(f"[Hardware] Instalação CUDA concluída com sucesso.")
-        return True, "Instalação das dependências PyTorch CUDA concluída com sucesso!"
+        cmd1 = [sys.executable, "-m", "pip", "install", "torch", "torchvision", "--index-url", "https://download.pytorch.org/whl/cu121"]
+        output1 = subprocess.check_output(cmd1, stderr=subprocess.STDOUT, timeout=600, text=True)
+        cmd2 = [sys.executable, "-m", "pip", "install", "ultralytics"]
+        output2 = subprocess.check_output(cmd2, stderr=subprocess.STDOUT, timeout=600, text=True)
+        logger.info(f"[Hardware] Instalação CUDA e Ultralytics concluída com sucesso.")
+        return True, "Instalação das dependências PyTorch CUDA e Ultralytics concluída com sucesso!"
     except Exception as e:
         err_msg = f"Falha ao executar instalação de pacotes CUDA: {e}"
         logger.error(err_msg)
