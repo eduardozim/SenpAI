@@ -20,7 +20,7 @@ from src.analytics.multi_camera_fusion import MultiCameraFusionEngine, MultiCame
 from src.analytics.training_analyzer import TrainingAnalyzer
 from src.engine.calibrator import CalibrationEngine
 from src.engine.reporter import DiagnosticReporter
-from src.utils.hardware import get_effective_device
+from src.utils.hardware import get_effective_device, ensure_browser_compatible_video
 from src.utils.logger_manager import log_event
 
 class SenpAIPipeline:
@@ -219,8 +219,26 @@ class SenpAIPipeline:
                 "diagnostic_report": report_text
             })
 
-        # 6. Gravação do Vídeo Anotado com HUD de Sonkyō e Filtragem de Planos (Streaming em 2ª Passada sem consumo de RAM)
+        # 6. Gravação do Vídeo Anotado com HUD de Sonkyō, Rastreamento dos Kenshis e Marcação de Golpes
         if output_video_path and total_frames > 0:
+            # Mapear eventos de golpe por frame para anotação visual síncrona
+            strike_events_by_frame: Dict[int, List[Dict[str, Any]]] = {}
+            for ev in analyzed_events:
+                ev_info = ev.get("event_info", {})
+                impact_f = ev_info.get("impact_frame", 0)
+                start_f = ev_info.get("start_frame", max(0, impact_f - 8))
+                end_f = ev_info.get("end_frame", min(total_frames - 1, impact_f + 12))
+
+                w_start = max(0, start_f - 4)
+                w_end = min(total_frames - 1, end_f + 10)
+                for f in range(w_start, w_end + 1):
+                    if f not in strike_events_by_frame:
+                        strike_events_by_frame[f] = []
+                    strike_events_by_frame[f].append(ev)
+
+            aka_custom = (custom_kendoka_names or {}).get("KENSHI_AKA")
+            shiro_custom = (custom_kendoka_names or {}).get("KENSHI_SHIRO")
+
             cap_render = cv2.VideoCapture(video_path)
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')
             writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
@@ -240,6 +258,7 @@ class SenpAIPipeline:
                     aka_p = aka_history[f_idx] if f_idx < len(aka_history) else None
                     shiro_p = shiro_history[f_idx] if f_idx < len(shiro_history) else None
                     disc_p = discarded_per_frame[f_idx] if f_idx < len(discarded_per_frame) else None
+                    active_stk = strike_events_by_frame.get(f_idx, [])
 
                     # Determinar status visual de Sonkyō / Combate
                     if sonkyo_analysis["has_initial_sonkyo"] and f_idx < match_start_f:
@@ -262,7 +281,11 @@ class SenpAIPipeline:
                         shiro_landmarks=shiro_p,
                         discarded_items=disc_p,
                         sonkyo_status=hud_status,
-                        match_timer_str=timer_txt
+                        match_timer_str=timer_txt,
+                        active_strikes=active_stk,
+                        current_frame_idx=f_idx,
+                        aka_label=aka_custom,
+                        shiro_label=shiro_custom
                     )
                     writer.write(annotated_f)
                     f_idx += 1
@@ -272,6 +295,12 @@ class SenpAIPipeline:
             finally:
                 cap_render.release()
                 writer.release()
+
+            # Transcodifica para H.264/AVC1 YUV420p com +faststart garantindo renderização no HTML5 dos navegadores
+            try:
+                ensure_browser_compatible_video(output_video_path)
+            except Exception as e_transcode:
+                log_event("WARNING", f"Transcodificação para H.264 do navegador não pôde ser completada: {e_transcode}", "pipeline")
 
         if progress_callback:
             progress_callback(1.0)

@@ -107,20 +107,34 @@ class EventSpotter:
         if not valid_vels:
             return []
             
-        mean_vel = np.mean(valid_vels)
-        std_vel = np.std(valid_vels)
-        max_vel = np.max(valid_vels)
-        # Limiar adaptativo robusto
-        dynamic_threshold = min(max(0.005, mean_vel + 0.8 * std_vel), max(0.02, max_vel * 0.60))
+        mean_vel = float(np.mean(valid_vels))
+        std_vel = float(np.std(valid_vels))
+        max_vel = float(np.max(valid_vels))
+
+        # Se a movimentação máxima for inferior ao limiar físico de golpe,
+        # trata-se de postura estática / ruído de câmera e descarta imediatamente.
+        if max_vel < self.velocity_threshold:
+            return []
+
+        # Limiar adaptativo robusto ancorado no limiar físico mínimo (não colapsa com repouso)
+        dynamic_threshold = max(
+            self.velocity_threshold,
+            min(mean_vel + 1.0 * std_vel, max_vel * 0.65)
+        )
 
         i = 5
         while i < n_frames - 10:
             # Buscar início de aceleração brusca
-            if velocities[i] > dynamic_threshold:
+            if velocities[i] >= dynamic_threshold * 0.85:
                 # Encontrar o pico local de velocidade (momento do impacto)
                 window_end = min(i + 15, n_frames - 1)
                 peak_idx = i + int(np.argmax(velocities[i:window_end]))
                 
+                # O pico deve satisfazer estritamente o limiar de velocidade física de golpe
+                if velocities[peak_idx] < self.velocity_threshold:
+                    i += 1
+                    continue
+
                 # Definir janela do golpe: ~10 frames antes do pico até ~25 frames depois
                 start_f = max(0, peak_idx - 10)
                 end_f = min(n_frames - 1, peak_idx + 25)

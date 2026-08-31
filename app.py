@@ -1727,11 +1727,65 @@ else:
                             latest_frames=latest_drawn_frames
                         )
 
-                        if multicam_eval and multicam_eval.is_strike_confirmed:
+                        if multicam_eval:
                             ts_str = multicam_eval.timestamp_ref
-                            strike_alert_box.error(f"🚨 GOLPE DETECTADO: **{multicam_eval.technique}** (Timestamp: `{ts_str}`)")
+                            yuko = multicam_eval.yuko_datotsu_analysis or {}
+                            is_ippon = yuko.get("is_valid", False)
+                            tot_sc = yuko.get("total_score", multicam_eval.joint_score)
+                            tech_mark = DiagnosticReporter.format_strike_name(multicam_eval.technique)
+                            sub = yuko.get("sub_scores", {})
+                            atk_name = multicam_eval.attacker_name or "Kenshi"
+
+                            # Banner superior de notificação imediata
+                            if is_ippon:
+                                strike_alert_box.success(
+                                    f"🎉 **IPPON OFICIAL VÁLIDO ({tot_sc:.0f}%)**: {tech_mark} às `{ts_str}` — "
+                                    f"Quórum: {multicam_eval.num_confirming_cameras}/{multicam_eval.num_active_cameras} câmeras ({atk_name})"
+                                )
+                            else:
+                                failed_str = ", ".join(yuko.get("failed_subcriteria", [])) or "Abaixo da pontuação mínima"
+                                strike_alert_box.warning(
+                                    f"⚠️ **GOLPE EXECUTADO / SEM IPPON ({tot_sc:.0f}%)**: {tech_mark} às `{ts_str}` — "
+                                    f"Motivo: {failed_str} ({atk_name})"
+                                )
+
+                            # Renderizar o card rico de Yuko-Datotsu no container de histórico
+                            card_border = "#22c55e" if is_ippon else "#eab308"
+                            status_badge = (
+                                '<span style="background: #166534; color: #4ade80; padding: 3px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px;">✅ IPPON VÁLIDO</span>'
+                                if is_ippon else
+                                '<span style="background: #991b1b; color: #fca5a5; padding: 3px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px;">⚠️ GOLPE INVÁLIDO</span>'
+                            )
+
+                            offset_ms = yuko.get("fumikomi_offset_ms", 0.0)
+                            offset_str = f"{offset_ms:+.0f}ms"
+
+                            card_html = f"""
+                            <div style="background: #1E293B; border: 1px solid {card_border}; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                    <div style="font-weight: 700; font-size: 0.96rem; color: #F8FAFC;">
+                                        🥊 {tech_mark} <span style="font-size: 0.78rem; color: #94A3B8; font-weight: 400;">({ts_str}) — {atk_name}</span>
+                                    </div>
+                                    <div>{status_badge}</div>
+                                </div>
+                                <div style="font-size: 0.82rem; color: #CBD5E1; margin-bottom: 6px;">
+                                    <b>Pontuação Ki-Ken-Tai-Ichi:</b> <span style="color: {'#4ADE80' if is_ippon else '#FBBF24'}; font-weight: 800;">{tot_sc:.1f}%</span> 
+                                    &nbsp;|&nbsp; <b>Quórum:</b> {multicam_eval.num_confirming_cameras}/{multicam_eval.num_active_cameras} câmeras
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.76rem; background: rgba(15,23,42,0.6); padding: 6px 8px; border-radius: 4px; margin-bottom: 6px;">
+                                    <div>🎯 <b>Alvo (Ken):</b> {sub.get('target_impact', 0.0):.0f}%</div>
+                                    <div>🦶 <b>Fumikomi (Tai):</b> {sub.get('fumikomi_sync', 0.0):.0f}% ({offset_str})</div>
+                                    <div>🧍 <b>Postura (Tai):</b> {sub.get('posture', 0.0):.0f}%</div>
+                                    <div>⚡ <b>Zanshin (Ki):</b> {sub.get('zanshin', 0.0):.0f}%</div>
+                                </div>
+                            </div>
+                            """
                             with live_events_container:
-                                st.markdown(f"🥊 **{multicam_eval.technique}** no tempo `{ts_str}` (Frame #{frame_count})")
+                                st.markdown(card_html, unsafe_allow_html=True)
+                                diag_txt = yuko.get("diagnostic_report", "")
+                                if diag_txt:
+                                    with st.expander(f"📜 Detalhamento Yūko-Datotsu: {tech_mark} ({ts_str})", expanded=False):
+                                        st.markdown(diag_txt)
 
                     frame_count += 1
                     elapsed = time.time() - start_time
@@ -2420,7 +2474,13 @@ else:
                 
                 has_annotated = "annotated_output" in st.session_state and os.path.exists(st.session_state.get("annotated_output", ""))
                 if has_annotated:
-                    video_type = st.radio("Exibição do Vídeo:", ["📹 Vídeo Original", "🎥 Vídeo Anotado (Pose & Tracking)"], horizontal=True)
+                    video_type = st.radio(
+                        "Exibição do Vídeo:",
+                        ["📹 Vídeo Original", "🎥 Vídeo Anotado (Pose, Tracking & Golpes)"],
+                        index=0,
+                        horizontal=True,
+                        key="video_display_type_selector"
+                    )
                     selected_video = video_file_path if (video_type and "Original" in video_type) else st.session_state["annotated_output"]
                 else:
                     selected_video = video_file_path

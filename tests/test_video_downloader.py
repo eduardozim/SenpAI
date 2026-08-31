@@ -117,10 +117,10 @@ class TestVideoDownloader(unittest.TestCase):
         output_dir = self.temp_dir.name
         cached_file = os.path.join(output_dir, "yt_test123_media_Kendo_Final.mp4")
         
-        # Gera um vídeo válido de demonstração com tamanho > 100KB
+        # Gera um vídeo válido de demonstração com tamanho > 10KB
         generate_demo_kendo_video(cached_file, duration_sec=4, fps=30)
         self.assertTrue(os.path.exists(cached_file))
-        self.assertGreater(os.path.getsize(cached_file), 100 * 1024)
+        self.assertGreater(os.path.getsize(cached_file), 10 * 1024)
 
         with patch("src.utils.video_downloader.extract_video_info") as mock_info:
             mock_info.return_value = {

@@ -7,6 +7,8 @@ import cv2
 import numpy as np
 import os
 
+from src.utils.hardware import ensure_browser_compatible_video
+
 def generate_demo_kendo_video(output_path: str = "demo_kendo_match.mp4", duration_sec: int = 4, fps: int = 30) -> str:
     """
     Cria um vídeo sintético simulando um praticante realizando um golpe de Men.
@@ -72,4 +74,8 @@ def generate_demo_kendo_video(output_path: str = "demo_kendo_match.mp4", duratio
         out.write(frame)
 
     out.release()
+    try:
+        ensure_browser_compatible_video(output_path)
+    except Exception:
+        pass
     return output_path

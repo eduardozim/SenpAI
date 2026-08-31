@@ -93,7 +93,7 @@ class TestMultiCameraFusion(unittest.TestCase):
         self.assertTrue(q1 <= q2 <= q3 <= q4)
 
     def test_single_camera_evaluation(self):
-        """Valida a avaliação monocular com 1 câmera."""
+        """Valida a avaliação monocular com 1 câmera quando há golpe ativo com boa biomecânica."""
         history_cam1 = generate_strike_history(impact_frame=25, total_frames=40, is_active_strike=True)
         eval_res = self.engine_normal.evaluate_multi_camera_strike(
             camera_histories=[history_cam1],
@@ -108,6 +108,24 @@ class TestMultiCameraFusion(unittest.TestCase):
         self.assertEqual(eval_res.required_quorum, 1)
         self.assertTrue(eval_res.is_strike_confirmed)
         self.assertEqual(eval_res.decision_status, "CONFIRMED_MULTICAM")
+
+    def test_single_camera_rejects_stationary_idle(self):
+        """Valida que com 1 câmera, sem movimentação detectada (repouso), o golpe é estritamente rejeitado."""
+        history_cam1_stationary = generate_strike_history(impact_frame=25, total_frames=40, is_active_strike=False)
+        eval_res = self.engine_normal.evaluate_multi_camera_strike(
+            camera_histories=[history_cam1_stationary],
+            camera_labels=["Câmera Lateral"],
+            reference_cam_idx=0,
+            impact_frame=25,
+            technique="MEN",
+            fps=30.0
+        )
+        self.assertEqual(eval_res.num_active_cameras, 1)
+        self.assertEqual(eval_res.num_confirming_cameras, 0)
+        self.assertEqual(eval_res.required_quorum, 1)
+        self.assertFalse(eval_res.is_strike_confirmed)
+        self.assertEqual(eval_res.decision_status, "REJECTED_NO_MOTION_OR_INVALID")
+        self.assertIn("REJEITADO (CÂMERA ÚNICA)", eval_res.summary_text)
 
     def test_two_cameras_rejects_single_angle_false_positive(self):
         """Valida que com 2 câmeras, um golpe visto em apenas 1 ângulo é rejeitado por falta de confirmação cruzada."""
@@ -256,6 +274,51 @@ class TestMultiCameraFusion(unittest.TestCase):
         self.assertIn("consensus_pct", d)
         self.assertEqual(len(d["camera_evidences"]), 2)
         self.assertTrue(d["camera_evidences"][0]["is_confirmed"])
+        self.assertIn("yuko_datotsu_analysis", d)
+        self.assertTrue(d["yuko_datotsu_analysis"]["is_valid"])
+
+    def test_yuko_datotsu_analysis_present_for_both_ippon_and_non_ippon(self):
+        """Valida que a análise completa de Yūko-Datotsu (Ki-Ken-Tai-Ichi) acompanha cada marcação de golpe, seja Ippon ou não."""
+        # 1. Caso de Ippon Válido
+        h_valid1 = generate_strike_history(impact_frame=25, is_active_strike=True)
+        eval_ippon = self.engine_normal.evaluate_multi_camera_strike(
+            camera_histories=[h_valid1],
+            camera_labels=["Cam 1"],
+            reference_cam_idx=0,
+            impact_frame=25,
+            technique="MEN",
+            fps=30.0
+        )
+        self.assertIsNotNone(eval_ippon.yuko_datotsu_analysis)
+        yuko_valid = eval_ippon.yuko_datotsu_analysis
+        self.assertTrue(yuko_valid["is_valid"])
+        self.assertGreater(yuko_valid["total_score"], 50.0)
+        self.assertIn("target_impact", yuko_valid["sub_scores"])
+        self.assertIn("fumikomi_sync", yuko_valid["sub_scores"])
+        self.assertIn("posture", yuko_valid["sub_scores"])
+        self.assertIn("zanshin", yuko_valid["sub_scores"])
+        self.assertIn("diagnostic_report", yuko_valid)
+        self.assertIn("GOLPE VÁLIDO", yuko_valid["diagnostic_report"])
+
+        # 2. Caso de Golpe Não-Ippon (Repouso / Sem Aceleração / Fora do Alvo)
+        h_invalid1 = generate_strike_history(impact_frame=25, is_active_strike=False)
+        eval_non_ippon = self.engine_normal.evaluate_multi_camera_strike(
+            camera_histories=[h_invalid1],
+            camera_labels=["Cam 1"],
+            reference_cam_idx=0,
+            impact_frame=25,
+            technique="MEN",
+            fps=30.0
+        )
+        self.assertIsNotNone(eval_non_ippon.yuko_datotsu_analysis)
+        yuko_invalid = eval_non_ippon.yuko_datotsu_analysis
+        self.assertFalse(yuko_invalid["is_valid"])
+        self.assertIn("target_impact", yuko_invalid["sub_scores"])
+        self.assertIn("fumikomi_sync", yuko_invalid["sub_scores"])
+        self.assertIn("posture", yuko_invalid["sub_scores"])
+        self.assertIn("zanshin", yuko_invalid["sub_scores"])
+        self.assertIn("diagnostic_report", yuko_invalid)
+        self.assertIn("GOLPE INVÁLIDO", yuko_invalid["diagnostic_report"])
 
 
 if __name__ == "__main__":

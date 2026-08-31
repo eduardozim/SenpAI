@@ -182,7 +182,10 @@ A espada (*Shinai*) é estimada como uma extensão vetorial a partir do eixo for
 - **TSUKI**: Região da garganta/esterno superior.
 
 #### `CombatantTracker` ([combatant_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/combatant_tracker.py))
-Responsável pela persistência e identificação contínua dos dois lutadores principais no Shiaijo:
+Responsável pela persistência, discriminação de papéis e identificação contínua dos dois lutadores principais no Shiaijo:
+- **Discriminação de Árbitros (Shinpans) e Seleção Ótima da Dupla de Kenshis (`select_best_combatant_pair`)**:
+  - Avalia múltiplos candidatos a esqueletos no frame e calcula a probabilidade postural de ser um Kenshi (`compute_kenshi_feature_score`): empunhadura bimanual do cabo do Shinai no abdômen/Kamae ($\Delta_{\text{wrists}} < 0.18 \times H$) vs mãos abertas segurando bandeiras nas laterais, centralidade no Shiaijo ($x \in [0.20, 0.80]$), elevação para corte (*Furikaburi*) e flexão/agachamento de *Sonkyō*.
+  - Isola com alta precisão os 2 Kenshis mesmo quando árbitros (Shinpans) estão em primeiro plano (próximos à câmera), aplicando compatibilidade de escala mútua no plano da quadra e descartando os árbitros como `FOREGROUND_OCCLUDER` ou `BACKGROUND`.
 - **Detecção Cromática de Flag Dorsal (Tasukuki)**: Segmentação em espaço de cor HSV (`detect_red_flag_score`) no dorso dos atletas para identificação inequívoca de **Kenshi Aka (Vermelho)** e **Kenshi Shiro (Branco)**, mesmo com keikogi azul escuro, branco ou preto.
 - **Filtragem Geométrica de Plano de Combate**: Calibra a escala espacial média dos kenshi e descarta automaticamente pessoas e movimentações em segundo plano (outras lutas, arquibancadas) ou oclusões em primeiro plano (transeuntes passando em frente à câmera).
 
@@ -212,18 +215,21 @@ Módulo biomecânico que monitora e reconhece o ritual sagrado de **Sonkyō** (a
 - **Aprendizado Biomecânico Adaptativo**: Permite edição interativa de intervalos na UI e recalibra os limiares de Sonkyō, persistindo o aprendizado em `config/sonkyo_learned_profile.json`.
 
 #### `MultiCameraFusionEngine` ([multi_camera_fusion.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/multi_camera_fusion.py))
-Motor de **Consenso e Validação Cruzada Multi-Câmeras**. Implementa a regra fundamental de arbitragem:
-> **"A definição de haver ou não o golpe deve ser tomada com base no conjunto das imagens das câmeras. Quanto mais câmeras disponíveis, mais necessária e rigorosa é a confirmação em imagens/frames da realização da técnica."**
+Motor de **Consenso, Calibração e Validação Cruzada Multi-Câmeras**. Implementa a regra fundamental de arbitragem e ancoragem biomecânica:
+> **"A definição de haver ou não o golpe deve ser tomada com base no conjunto das imagens das câmeras e validada estritamente pelo modelo de calibração. Com 1 câmera, o golpe só é marcado se houver movimentação física real acima do limiar cinemático e conformidade aos critérios de Ki-Ken-Tai-Ichi. Com múltiplas câmeras, escalona-se o quórum de confirmação entre os ângulos de visão."**
 
+- **Integração Estrita com o Modelo de Treinamento e Calibração (`CalibrationEngine`)**:
+  - Toda avaliação em tempo real (1 a 4 câmeras) passa diretamente pelos pesos e sub-limiares regulamentares de **Ki-Ken-Tai-Ichi** (*Target Impact*, *Fumikomi Sync*, *Posture*, *Zanshin*).
+  - **Limiar Cinemático Mínimo de Movimentação**: Elimina ruído estático e micro-vibrações de keypoints quando o praticante está em postura estática (Kamae/Sonkyō), descartando sumariamente candidatos com velocidade inferior ao limiar do perfil ativo (Permissivo: $0.018$, Normal: $0.025$, Rígido: $0.032$).
 - **Escalonamento do Quórum de Confirmação**:
   À medida que o número de câmeras $N$ aumenta, o sistema eleva a exigência de quórum de câmeras ativas com evidência visual síncrona nos quadros:
-  - **1 Câmera**: Quórum de **1/1** (100% monocular).
+  - **1 Câmera**: Quórum de **1/1** (100% monocular, condicionado à validação biomecânica completa e movimentação real).
   - **2 Câmeras**: Quórum de **2/2** (100% de confirmação cruzada obrigatória — elimina artefatos de perspectiva ou oclusões unilaterais).
   - **3 Câmeras**: Quórum de **2/3** ($\ge 66.7\%$ no modo Normal) ou **3/3** (100% no modo Rígido).
   - **4 Câmeras**: Quórum de **3/4** ($\ge 75\%$ no modo Normal) ou **4/4** (100% no modo Rígido).
 - **Alinhamento Temporal Síncrono ($\Delta t$)**: Janela de busca cruzada ($\pm 10$ frames / $\approx 350\text{ ms}$) entre as séries temporais de aceleração de pulso e trajetória das câmeras.
-- **Extração de Evidências em Frames (`CameraFrameEvidence`)**: Mede aceleração do pulso, proximidade do alvo no ângulo visual e conformidade técnica para cada câmera individual.
-- **Decisão e Fusão Conjunta (`MultiCameraStrikeEvaluation`)**: Computa o score médio conjunto das visões confirmadas e classifica o golpe em `CONFIRMED_MULTICAM`, `REJECTED_SINGLE_ANGLE` ou `REJECTED_INSUFFICIENT_CONSENSUS`.
+- **Extração de Evidências em Frames (`CameraFrameEvidence`)**: Mede velocidade do pulso, proximidade do alvo, postura e validação de calibração para cada câmera individual.
+- **Decisão e Fusão Conjunta (`MultiCameraStrikeEvaluation`)**: Computa o score médio conjunto das visões confirmadas e classifica o golpe em `CONFIRMED_MULTICAM`, `REJECTED_NO_MOTION_OR_INVALID`, `REJECTED_SINGLE_ANGLE` ou `REJECTED_INSUFFICIENT_CONSENSUS`.
 
 #### `TrainingAnalyzer` ([training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py))
 Motor de Reconhecimento, Análise Biomecânica e Diagnóstico Pedagógico de Treinamento de Kendo:
@@ -345,21 +351,21 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **Política de Retenção Única**:
   - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
 
-### Módulos de Testes Incluídos (81 Testes)
+### Módulos de Testes Incluídos (84 Testes)
 
 - **`test_auto_trainer.py`**: Valida a inicialização da base de conhecimento de Kendo, diagnóstico autônomo de necessidade mais latente, ciclo de auto-treinamento com tempo controlado, recalibração de perfis de arbitragem e das 14 modalidades pedagógicas, persistência em governança com identificação de IA e cancelamento cooperativo.
 - **`test_dan_training_governance.py`**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador humano vs IA, média de Dan humano e tabela por Dan com linha dedicada para IA), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
 - **`test_feedback_loop.py`**: Valida salvamento, persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
 - **`test_hardware_settings.py`**: Valida detecção de GPU NVIDIA, configurações globais e resolução de fallback transparente para CPU.
 - **`test_logger_manager.py`**: Valida sistema de logs, métricas em tempo real e diagnósticos automatizados.
-- **`test_multi_camera_fusion.py`**: Valida o motor de consenso e fusão multi-câmeras, escalonamento de quórum por quantidade de câmeras ($N=1$ a $4$), rejeição de falsos positivos unilaterais, alinhamento temporal e fusão de scores.
+- **`test_multi_camera_fusion.py`**: Valida o motor de consenso e fusão multi-câmeras, escalonamento de quórum por quantidade de câmeras ($N=1$ a $4$), rejeição de falsos positivos unilaterais, alinhamento temporal, fusão de scores e a presença da análise completa de Yūko-Datotsu (Ki-Ken-Tai-Ichi) para golpes Ippon e não-Ippon.
 - **`test_pipeline_cancellation.py`**: Valida cancelamento cooperativo, liberação de recursos de streaming e cronômetro em tempo real.
 - **`test_scoreboard_and_flag_detection.py`**: Valida o placar eletrônico Sanbon-shobu, detecção cromática de flag dorsal (Tasukuki) e inversão Aka ⇄ Shiro.
-- **`test_sonkyo_and_plane_filtering.py`**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes) e persistência de aprendizado de Sonkyō.
+- **`test_sonkyo_and_plane_filtering.py`**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes/árbitros em primeiro plano) e persistência de aprendizado de Sonkyō.
 - **`test_training_modes.py`**: Valida as 14 modalidades pedagógicas de treino, cálculo dos 3 Pilares (Movimentação, Precisão, Constância) e perfil do Kendoca.
 - **`test_video_downloader.py`**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
 
-Total de **81 testes automatizados** executados e aprovados com 100% de sucesso.
+Total de **84 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -367,7 +373,41 @@ Total de **81 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
-### `[v1.8.0]` — 2026-08-30 *(Versão Atual)*
+### `[v1.9.0]` — 2026-08-31 *(Versão Atual)*
+
+- **Análise Integral de Yūko-Datotsu em Tempo Real para Golpes Ippon e Não-Ippon ([multi_camera_fusion.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/multi_camera_fusion.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Acompanhamento Biomecânico de Cada Marcação de Golpe**:
+    - No Modo de Detecção em Tempo Real (monocular ou multi-câmeras $N=1\dots 4$), **cada golpe detectado** — independentemente de ter sido homologado como Ippon válido ou reprovado — é acompanhado pela análise discriminativa completa dos 4 pilares de *Ki-Ken-Tai-Ichi*:
+      1. 🎯 **Alvo (Ken)**: Proximidade geométrica e precisão no alvo anatômico (*Men, Kote, Do, Tsuki*).
+      2. 🦶 **Fumikomi (Tai)**: Sincronismo do pisar firme com o instante do corte e defasagem exata em milissegundos ($\Delta t_{\text{fumikomi}}$).
+      3. 🧍 **Postura (Tai)**: Estabilidade do tronco, alinhamento vertical da coluna e equilíbrio no impacto.
+      4. ⚡ **Zanshin (Ki)**: Prontidão e manutenção da atitude de alerta imediata pós-corte.
+  - **Cards Ricos e Painel de Métricas ao Vivo**:
+    - Exibição de cards visuais para cada evento com status de homologação (`✅ IPPON VÁLIDO` vs `⚠️ GOLPE INVÁLIDO`), pontuação percentual consolidada, quórum de confirmação entre as câmeras e grade dos 4 sub-scores de Ki-Ken-Tai-Ichi.
+    - Relatório pedagógico e diagnóstico descritivo colapsável (`st.expander`) detalhando os pontos fortes e o motivo da aprovação ou recusa do golpe.
+  - **Suíte de Testes Automatizados Expandida**: Adicionado teste unitário `test_yuko_datotsu_analysis_present_for_both_ippon_and_non_ippon` totalizando **84 testes aprovados com 100% de sucesso**.
+
+---
+
+### `[v1.8.1]` — 2026-08-31
+
+- **Discriminação de Árbitros (Shinpans) & Seleção Ótima de Dupla de Kenshis ([combatant_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/combatant_tracker.py))**:
+  - **Score de Características de Kenshi (`compute_kenshi_feature_score`)**:
+    - Reconhece a postura exclusiva de combate do Kendo: empunhadura bimanual de *Chūdan-no-kamae* (distância entre pulsos $\Delta_{\text{wrists}} < 0.18 \times H$), centralidade no *Shiaijo* ($x \in [0.20, 0.80]$), elevação para corte (*Furikaburi*) e agachamento de *Sonkyō*.
+    - Discrimina e penaliza a postura de árbitros (*Shinpans*), que se posicionam nas bordas e mantêm as mãos afastadas segurando as bandeiras vermelha e branca (*Kohaku*).
+  - **Seleção Ótima da Dupla de Combate (`select_best_combatant_pair`)**:
+    - Avalia combinatória de pares candidatos e seleciona a dupla que maximiza a afinidade de Kenshi, compatibilidade de escala de profundidade na quadra, alinhamento da linha de solo dos pés e distância de combate (*Maai*).
+    - Isola com precisão os 2 Kenshis mesmo quando árbitros estão em primeiro plano (mais próximos da câmera), descartando-os automaticamente como `FOREGROUND_OCCLUDER` ou `BACKGROUND`.
+- **Renderização Dinâmica do Vídeo Anotado ([pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py) & [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py))**:
+  - **Identificação Visual dos Kenshis**: Badges `🔴 KENSHI AKA` e `⚪ KENSHI SHIRO` com caixas e esqueletos coloridos de alto contraste.
+  - **Vetor do Shinai**: Traçado da espada com ponto brilhante no *Kensen* acompanhando a trajetória e os cortes.
+  - **Marcação Visual de Golpes**: Destaque neon no atacante (`[⚡ ATAQUE]`), mira/crosshair anatômica no defensor (*Men*, *Kote*, *Do*, *Tsuki*) e banner de diagnóstico com resultado oficial de *Ippon*.
+  - **Transcodificação H.264/AVC1 Universal**: Conversão automática com FFmpeg (`yuv420p` + `faststart`), garantindo reprodução instantânea em navegadores web.
+- **Suíte de Testes Expandida**: 83 testes automatizados validados com 100% de sucesso.
+
+---
+
+### `[v1.8.0]` — 2026-08-30
 
 - **Treinamento Automático por Inteligência Artificial (Web & Vídeo Knowledge Ingestion)**:
   - **Motor Central Autônomo ([auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py))**:

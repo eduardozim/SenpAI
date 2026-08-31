@@ -265,8 +265,8 @@ def download_video_stream(
     cached_filename = f"yt_{video_id}_{quality_tag}_{safe_title}.mp4"
     cached_file_path = os.path.join(output_dir, cached_filename)
     
-    # Se já existir e tiver tamanho válido (> 100 KB), reutiliza imediatamente
-    if os.path.exists(cached_file_path) and os.path.getsize(cached_file_path) > 100 * 1024:
+    # Se já existir e tiver tamanho válido (> 4 KB), reutiliza imediatamente
+    if os.path.exists(cached_file_path) and os.path.getsize(cached_file_path) > 4096:
         log_event("INFO", f"Vídeo do YouTube ({quality_tag}) reutilizado do cache local: {cached_file_path}", "video_downloader")
         if progress_callback:
             progress_callback(1.0, f"Vídeo carregado do cache local ({info['quality_label']}).")

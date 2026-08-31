@@ -85,7 +85,9 @@ class BiomechanicsAnalyzer:
                     foot_velocities.append(0.0)
                 else:
                     prev_foot = np.array([prev_lm["RIGHT_FOOT_INDEX"]["x"], prev_lm["RIGHT_FOOT_INDEX"]["y"]])
-                    foot_velocities.append(float(np.linalg.norm(r_foot - prev_foot)))
+        if not foot_velocities or max(foot_velocities) < 0.005:
+            # Sem rastreamento de pés ou pés em repouso: atribui escore regulamentar neutro
+            return 0.75, 0.0
 
         # Encontrar instante do impacto do pé
         peak_foot_offset = int(np.argmax(foot_velocities) - 5)

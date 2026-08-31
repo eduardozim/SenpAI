@@ -287,3 +287,42 @@ def detect_connected_cameras() -> List[Dict[str, Any]]:
 
     return cameras
 
+
+def ensure_browser_compatible_video(video_path: str) -> bool:
+    """
+    Garante que o arquivo de vídeo MP4 gerado pelo OpenCV (originalmente em codec MPEG-4 / mp4v)
+    seja transcodificado de forma síncrona e ultrarrápida para H.264 (AVC1 com pixel format YUV420p
+    e flag +faststart), permitindo reprodução direta, instantânea e compatível em todos os navegadores web
+    modernos (Chrome, Edge, Firefox, Safari) dentro do player HTML5 do Streamlit.
+    """
+    if not video_path or not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
+        return False
+
+    tmp_converted = video_path + ".browser_h264.mp4"
+    encoders = ["h264_mf", "libopenh264", "libx264", "h264"]
+
+    for enc in encoders:
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", video_path,
+            "-vcodec", enc,
+            "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart",
+            tmp_converted
+        ]
+        try:
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            if res.returncode == 0 and os.path.exists(tmp_converted) and os.path.getsize(tmp_converted) > 0:
+                os.replace(tmp_converted, video_path)
+                return True
+        except Exception:
+            continue
+
+    if os.path.exists(tmp_converted):
+        try:
+            os.remove(tmp_converted)
+        except Exception:
+            pass
+
+    return False
+

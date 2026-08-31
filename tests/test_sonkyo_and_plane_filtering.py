@@ -165,6 +165,48 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertEqual(len(disc), 1)
         self.assertEqual(disc[0]["plane_type"], "BACKGROUND")
 
+    def test_shinpan_foreground_discrimination_and_kenshi_isolation(self):
+        """Valida que árbitros (Shinpans) em primeiro plano nas bordas da câmera são descartados e os Kenshis no plano central são selecionados."""
+        kenshi_shiro = self._create_synthetic_standing_pose(center_x=0.38)
+        kenshi_aka = self._create_synthetic_standing_pose(center_x=0.62)
+
+        # Árbitro 1 em 1º plano na lateral esquerda (escala 1.4x, mãos afastadas segurando bandeiras)
+        shinpan_fg_1 = {
+            "NOSE": {"x": 0.12, "y": 0.15, "z": 0.0, "visibility": 0.9, "px": int(0.12*640), "py": int(0.15*480)},
+            "RIGHT_SHOULDER": {"x": 0.18, "y": 0.30, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_SHOULDER": {"x": 0.06, "y": 0.30, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_HIP": {"x": 0.16, "y": 0.60, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_HIP": {"x": 0.08, "y": 0.60, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_ANKLE": {"x": 0.16, "y": 0.98, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_ANKLE": {"x": 0.08, "y": 0.98, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            # Mãos bem afastadas (segurando bandeiras)
+            "RIGHT_WRIST": {"x": 0.26, "y": 0.50, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_WRIST": {"x": 0.01, "y": 0.50, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100}
+        }
+
+        # Árbitro 2 em 1º plano na lateral direita (escala 1.35x, mãos afastadas)
+        shinpan_fg_2 = {
+            "NOSE": {"x": 0.88, "y": 0.18, "z": 0.0, "visibility": 0.9, "px": int(0.88*640), "py": int(0.18*480)},
+            "RIGHT_SHOULDER": {"x": 0.94, "y": 0.32, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_SHOULDER": {"x": 0.82, "y": 0.32, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_HIP": {"x": 0.92, "y": 0.62, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_HIP": {"x": 0.84, "y": 0.62, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_ANKLE": {"x": 0.92, "y": 0.98, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_ANKLE": {"x": 0.84, "y": 0.98, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_WRIST": {"x": 0.98, "y": 0.52, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_WRIST": {"x": 0.76, "y": 0.52, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100}
+        }
+
+        # Submeter os 4 esqueletos com os árbitros vindo primeiro ou na ordem da detecção
+        aka_res, shiro_res, disc = self.tracker.associate_and_filter([shinpan_fg_1, kenshi_shiro, kenshi_aka, shinpan_fg_2])
+
+        self.assertEqual(aka_res, kenshi_aka, "Kenshi Aka no plano central deve ser selecionado.")
+        self.assertEqual(shiro_res, kenshi_shiro, "Kenshi Shiro no plano central deve ser selecionado.")
+        self.assertEqual(len(disc), 2, "Os dois árbitros devem ser descartados.")
+        for d in disc:
+            self.assertIn(d["plane_type"], ["FOREGROUND_OCCLUDER", "BACKGROUND"])
+            self.assertIn("Árbitro", d["reason"])
+
     def test_sonkyo_with_hakama_occlusions(self):
         """Testa resiliência da detecção de Sonkyō mesmo quando os joelhos/tornozelos estão oclusos pelo Hakama."""
         occluded_sonkyo = self._create_synthetic_sonkyo_pose()
