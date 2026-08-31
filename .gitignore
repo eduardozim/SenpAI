@@ -1,37 +1,3 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
-env.bak/
-venv.bak/
-
-# Testing & Coverage
-.pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-.tox/
-.nox/
-nosetests.xml
-coverage.xml
-
-# IDEs and Editors
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Operating System Files
-.DS_Store
-Thumbs.db
-
 # Media Files / Videos
 *.mp4
 *.avi

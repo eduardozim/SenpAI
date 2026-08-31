@@ -1,7 +1,0 @@
-[server]
-maxUploadSize = 10240
-enableCORS = true
-enableXsrfProtection = true
-
-[browser]
-gatherUsageStats = false
