@@ -1,28 +1,74 @@
-# Media Files / Videos
+# ==============================================================================
+# MÍDIAS E VÍDEOS DE TESTE / PROCESSADOS
+# ==============================================================================
 *.mp4
 *.avi
 *.mov
+*.mkv
+*.webm
+output_annotated.mp4
+output_annotated_*.mp4
 
-# Task & Log files
+# ==============================================================================
+# ARQUIVOS DE LOG E DEPURAÇÃO
+# ==============================================================================
 *.log
+logs/*.log
+*.tfevents.*
 
-# Byte-compiled / optimized / DLL files
+# ==============================================================================
+# ARQUIVOS COMPILADOS PYTHON & AMBIENTE VIRTUAL
+# ==============================================================================
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-
-# C extensions
 *.pyd
-
-# Pytest / Cache
 .pytest_cache/
-
-# Virtual environments
+.coverage
+htmlcov/
 .venv/
 env/
 venv/
 ENV/
+env.bak/
+venv.bak/
 
-# Output annotated videos
-output_annotated.mp4
+# ==============================================================================
+# ARQUIVOS GERADOS PELO TREINAMENTO DE VISÃO COMPUTACIONAL (USUÁRIO)
+# ==============================================================================
+# Execuções de treinamento e pesos gerados pelo YOLO / Ultralytics
+runs/
+weights/
+.ultralytics/
+
+# Checkpoints e modelos customizados gerados durante o treino
+models/checkpoints/
+models/trained/
+models/custom/
+models/*_trained.pt
+models/best.pt
+models/last.pt
+
+# Motores compilados no hardware local do usuário (ex: TensorRT CUDA)
+*.engine
+
+# Logs de experimentos e tracking de treino
+wandb/
+.wandb/
+lightning_logs/
+tensorboard/
+
+# Caches de labels/dataset gerados durante o processamento do treino
+*.cache
+*.cache.npy
+
+# Sessões temporárias e execuções de treino geradas pelo usuário
+data/training_runs/
+data/checkpoints/
+data/test_*.json
+
+# Serializações e dumps temporários de treino
+*.joblib
+
+
