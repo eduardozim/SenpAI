@@ -50,9 +50,11 @@ from src.utils.video_downloader import (
     validate_video_url, extract_video_info, download_video_stream,
     format_video_duration, VideoDownloadError, QUALITY_LABELS
 )
+from src.utils.environment import get_virtual_environment_info, is_in_virtual_environment
 
 # Inicializa o logger central do sistema
 setup_system_logger()
+
 
 st.set_page_config(
     page_title="SenpAI - AI Kendo Referee & Analysis System",
@@ -678,8 +680,51 @@ st.markdown("""
 st.markdown('<div class="main-title">⚔️ SenpAI (先輩 AI)</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Sistema de Visão Computacional para Análise de Lutas de Kendo, Detecção de Golpes e Avaliação de Yuko-Datotsu</div>', unsafe_allow_html=True)
 
+# Verificação e Alerta de Ambiente Virtual Python
+venv_status = get_virtual_environment_info()
+if not venv_status["is_virtual_env"]:
+    st.error(
+        f"""
+        ### 🚨 Erro: Ambiente Virtual Python Não Identificado!
+        O **SenpAI** está sendo executado no interpretador global do sistema:
+        `{venv_status['executable']}`
+        
+        Para garantir o correto isolamento de pacotes, estabilidade e evitar conflitos de dependências, utilize o ambiente virtual isolado (`.venv`):
+        
+        **Como ativar o ambiente virtual no Windows:**
+        ```powershell
+        # 1. Ativar no PowerShell:
+        .\\.venv\\Scripts\\activate
+        
+        # 2. Ou iniciar diretamente através do interpretador do .venv:
+        .\\.venv\\Scripts\\python.exe -m streamlit run app.py
+        ```
+        """
+    )
+
 # --- SIDEBAR: NAVEGAÇÃO PRINCIPAL ---
 st.sidebar.markdown("## 📌 Navegação")
+
+# Indicador de Status do Ambiente Virtual na Barra Lateral
+if venv_status["is_virtual_env"]:
+    st.sidebar.markdown(
+        f"""
+        <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px;">
+            <div style="font-size: 0.76rem; color: #4ade80; font-weight: 600;">🐍 Ambiente Virtual: Ativo ({venv_status['env_type']})</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    st.sidebar.markdown(
+        """
+        <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #ef4444; border-radius: 6px; padding: 6px 10px; margin-bottom: 8px;">
+            <div style="font-weight: 700; color: #f87171; font-size: 0.78rem;">🚨 Venv Não Identificado (Global)</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
 nav_page = st.sidebar.radio(
     "Selecione a Página",
     options=["analysis", "settings"],
@@ -690,6 +735,7 @@ nav_page = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
+
 
 # ==============================================================================
 # PÁGINA 1: MENU DE CONFIGURAÇÕES (LAYOUT EM GUIAS / TABS)
@@ -930,14 +976,27 @@ if nav_page == "settings":
                     pct = data.get("percent", 0)
                     progress_bar.progress(pct)
                     stage_lbl = data.get("current_stage", "")
+                    subtask_lbl = data.get("current_subtask", "")
                     rem_s = data.get("remaining_seconds", 0.0)
                     elap_s = data.get("elapsed_seconds", 0.0)
                     acc_val = data.get("current_accuracy", 75.0)
+                    samples = data.get("samples_processed", 0)
+
+                    # Formatação de tempo decorrido e restante
+                    def _fmt_sec(s_val: float) -> str:
+                        if s_val >= 60:
+                            m = int(s_val // 60)
+                            s = int(s_val % 60)
+                            return f"{m}m {s:02d}s"
+                        return f"{s_val:.1f}s"
 
                     status_placeholder.markdown(
-                        f"**Status da IA:** `{stage_lbl}` &nbsp;|&nbsp; "
-                        f"⏱️ **Decorrido:** `{elap_s:.1f}s` &nbsp;|&nbsp; "
-                        f"⏳ **Restante:** `{rem_s:.1f}s`"
+                        f"**Etapa Atual:** `{stage_lbl}`\n\n"
+                        f"🥋 **Aprendizado Ativo:** *{subtask_lbl}*\n\n"
+                        f"⏱️ **Decorrido:** `{_fmt_sec(elap_s)}` &nbsp;|&nbsp; "
+                        f"⏳ **Restante:** `{_fmt_sec(rem_s)}` &nbsp;|&nbsp; "
+                        f"📊 **Progresso:** `{pct}%` &nbsp;|&nbsp; "
+                        f"🔬 **Amostras Biomecânicas:** `{samples:,}`"
                     )
                     metrics_placeholder.metric("🎯 Acurácia Biomecânica Estimada", f"{acc_val:.1f}%", f"+{acc_val - 75.0:.1f}%")
                     
@@ -1259,7 +1318,34 @@ if nav_page == "settings":
         l_col3.metric("Alertas & Avisos", log_summary["warnings_count"], delta_color="inverse")
         l_col4.metric("Informações de Execução", log_summary["info_count"])
 
+        # Status do Ambiente Virtual Python
+        env_d = get_virtual_environment_info()
+        if env_d["is_virtual_env"]:
+            st.markdown(
+                f"""
+                <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 10px 14px; margin: 12px 0;">
+                    <span style="font-weight: 700; color: #4ade80;">🟢 Ambiente Virtual Identificado:</span>
+                    <span style="color: #e2e8f0; font-size: 0.88rem; margin-left: 6px;">Ativo ({env_d['env_type']}) — Python {env_d['python_version']}</span>
+                    <div style="font-size: 0.76rem; color: #94a3b8; margin-top: 4px; word-break: break-all;"><b>Executável:</b> <code>{env_d['executable']}</code></div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                f"""
+                <div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid #ef4444; border-radius: 8px; padding: 10px 14px; margin: 12px 0;">
+                    <div style="font-weight: 700; color: #f87171; font-size: 0.92rem;">🚨 Ambiente Virtual Python Não Identificado!</div>
+                    <div style="color: #fca5a5; font-size: 0.84rem; margin-top: 4px;">O sistema está rodando no interpretador global do sistema operacional:</div>
+                    <div style="font-size: 0.76rem; color: #cbd5e1; margin-top: 4px; word-break: break-all;"><code>{env_d['executable']}</code></div>
+                    <div style="font-size: 0.80rem; color: #fecaca; margin-top: 6px;"><b>Recomendação:</b> Crie e ative o ambiente virtual <code>.venv</code> (<code>.\\.venv\\Scripts\\activate</code>) para isolamento de pacotes.</div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
         st.markdown("#### 🛠️ Ferramentas de Diagnóstico e Rastreamento:")
+
         dbg_col1, dbg_col2, dbg_col3, dbg_col4 = st.columns(4)
 
         with dbg_col1:

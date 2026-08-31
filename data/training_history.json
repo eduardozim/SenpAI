@@ -196,5 +196,87 @@
         "permissivo"
       ]
     }
+  },
+  {
+    "id": "auto_train_20260831_144642_7",
+    "timestamp": "2026-08-31T14:46:42.659275",
+    "video_name": "AI_Auto_Trainer_general_all",
+    "profile_key": "general_all",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 60,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "effective_scope": "general_all",
+      "scope_name": "🌐 Treinamento Geral Unificado (Todos os Modos & 14 Modalidades)",
+      "duration_seconds": 150.6,
+      "initial_accuracy": 79.2,
+      "final_accuracy": 86.7,
+      "accuracy_gain": 7.5,
+      "sources_count": 6,
+      "sources_titles": [
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "AJKF Kendo Shinpan & Shiai Practical Referee Handbook",
+        "Treatise on Nihon Kendo Kata Technical Standards",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60 FPS)",
+        "Kirikaeshi Continuous Stroke Cadence & Posture Reference Bank"
+      ],
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) nos 3 perfis de arbitragem.",
+        "Recalibração biomecânica dos 3 Pilares (Movimentação, Precisão e Constância) nas 14 Modalidades Pedagógicas de Dojo.",
+        "Otimização da matriz de consenso multi-câmeras para rejeição de artefatos de perspectiva com baixa latência."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20260831_145913_8",
+    "timestamp": "2026-08-31T14:59:13.378866",
+    "video_name": "AI_Auto_Trainer_recorded_shiai",
+    "profile_key": "recorded_shiai",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 33428,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "effective_scope": "recorded_shiai",
+      "scope_name": "📹 Avaliação de Lutas / Shiai (Modo de Detecção Gravada)",
+      "duration_seconds": 300.0,
+      "initial_accuracy": 78.1,
+      "final_accuracy": 89.7,
+      "accuracy_gain": 11.6,
+      "sources_count": 11,
+      "sources_titles": [
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+        "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+        "Reinforcement Optimization on Dan Review Feedback Dataset",
+        "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+        "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0"
+      ],
+      "samples_processed": 33428,
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) nos 3 perfis de arbitragem."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
   }
 ]

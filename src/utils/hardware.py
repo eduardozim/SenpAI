@@ -131,20 +131,64 @@ def check_cuda_framework_support() -> Dict[str, Any]:
 def install_cuda_packages() -> Tuple[bool, str]:
     """
     Executa a instalação dos pacotes PyTorch com suporte CUDA e Ultralytics no ambiente Python atual.
+    Testa dinamicamente múltiplos índices de release do PyTorch (cu126, cu124, cu121) para garantir
+    compatibilidade com a versão instalada do Python (Python 3.10 a 3.14+).
     """
     import sys
-    logger.info("[Hardware] Iniciando instalação automática de dependências CUDA (PyTorch CUDA e Ultralytics)...")
-    try:
-        cmd1 = [sys.executable, "-m", "pip", "install", "torch", "torchvision", "--index-url", "https://download.pytorch.org/whl/cu121"]
-        output1 = subprocess.check_output(cmd1, stderr=subprocess.STDOUT, timeout=600, text=True)
-        cmd2 = [sys.executable, "-m", "pip", "install", "ultralytics"]
-        output2 = subprocess.check_output(cmd2, stderr=subprocess.STDOUT, timeout=600, text=True)
-        logger.info(f"[Hardware] Instalação CUDA e Ultralytics concluída com sucesso.")
-        return True, "Instalação das dependências PyTorch CUDA e Ultralytics concluída com sucesso!"
-    except Exception as e:
-        err_msg = f"Falha ao executar instalação de pacotes CUDA: {e}"
+    logger.info("[Hardware] Iniciando instalação de dependências CUDA (PyTorch CUDA e Ultralytics)...")
+    
+    cuda_indices = [
+        "https://download.pytorch.org/whl/cu126",
+        "https://download.pytorch.org/whl/cu124",
+        "https://download.pytorch.org/whl/cu121",
+        None  # Fallback: PyPI padrão
+    ]
+    
+    torch_installed = False
+    last_torch_err = ""
+    
+    for index_url in cuda_indices:
+        try:
+            if index_url:
+                cmd = [sys.executable, "-m", "pip", "install", "torch", "torchvision", "--index-url", index_url]
+                logger.info(f"[Hardware] Tentando instalar PyTorch CUDA via {index_url}...")
+            else:
+                cmd = [sys.executable, "-m", "pip", "install", "torch", "torchvision"]
+                logger.info("[Hardware] Tentando instalar PyTorch via PyPI padrão...")
+                
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+            if res.returncode == 0:
+                torch_installed = True
+                logger.info(f"[Hardware] PyTorch instalado com sucesso ({index_url or 'PyPI'}).")
+                break
+            else:
+                last_torch_err = res.stderr.strip() or res.stdout.strip()
+                logger.debug(f"[Hardware] Tentativa com {index_url} falhou: {last_torch_err}")
+        except Exception as ex:
+            last_torch_err = str(ex)
+            logger.debug(f"[Hardware] Exceção na tentativa {index_url}: {ex}")
+
+    if not torch_installed:
+        err_msg = f"Falha ao instalar PyTorch com suporte CUDA: {last_torch_err}"
         logger.error(err_msg)
         return False, err_msg
+
+    # Instala o Ultralytics para suporte a modelos YOLOv8-Pose
+    try:
+        logger.info("[Hardware] Instalando Ultralytics...")
+        cmd_yolo = [sys.executable, "-m", "pip", "install", "ultralytics"]
+        res_yolo = subprocess.run(cmd_yolo, capture_output=True, text=True, timeout=600)
+        if res_yolo.returncode != 0:
+            err_yolo = res_yolo.stderr.strip() or res_yolo.stdout.strip()
+            return False, f"PyTorch instalado, mas falhou ao instalar Ultralytics: {err_yolo}"
+            
+        logger.info("[Hardware] Instalação CUDA e Ultralytics concluída com sucesso.")
+        return True, "Instalação das dependências PyTorch CUDA e Ultralytics concluída com sucesso!"
+    except Exception as ex:
+        err_msg = f"Erro ao instalar Ultralytics: {str(ex)}"
+        logger.error(err_msg)
+        return False, err_msg
+
 
 def validate_and_setup_gpu_requirements(auto_install: bool = True) -> Dict[str, Any]:
     """

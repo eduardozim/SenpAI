@@ -45,7 +45,7 @@ Guia de Instalação no Windows (Passo a Passo Oficial):
    pip install -r requirements.txt
 
 5. (Opcional) Para habilitação de aceleração CUDA em GPU NVIDIA:
-   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
    pip install ultralytics onnxruntime-gpu
 
 Nota de Compatibilidade Windows (Smart App Control / WDAC):

@@ -25,9 +25,27 @@ from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager
 from src.utils.settings_manager import get_processing_device
 from src.utils.hardware import validate_and_setup_gpu_requirements
+from src.utils.environment import validate_virtual_environment, get_virtual_environment_info
 
 def main():
+    # 1. Validação de Ambiente Virtual
+    is_venv, venv_msg = validate_virtual_environment(log_warning=True)
+    if not is_venv:
+        print("\n" + "=" * 76)
+        print("🚨 ERRO: AMBIENTE VIRTUAL PYTHON NÃO IDENTIFICADO!")
+        print("=" * 76)
+        print(f"O SenpAI está sendo executado no interpretador global do sistema:")
+        print(f"  > {sys.executable}\n")
+        print("Para garantir o isolamento e estabilidade, ative o ambiente virtual (.venv):")
+        print("  • No Windows (PowerShell) : .\\.venv\\Scripts\\activate")
+        print("  • No Windows (CMD)        : .\\.venv\\Scripts\\activate.bat")
+        print("  • Execução Direta         : .\\.venv\\Scripts\\python.exe main.py")
+        print("=" * 76 + "\n")
+    else:
+        print(f"[SenpAI - Ambiente] {venv_msg}")
+
     default_device = get_processing_device()
+
     parser = argparse.ArgumentParser(description="SenpAI - AI Kendo Match Analysis System")
     parser.add_argument("--video", type=str, help="Caminho para o arquivo de vídeo de luta (.mp4, .avi)")
     parser.add_argument("--output", type=str, default="output_annotated.mp4", help="Caminho para salvar o vídeo anotado")

@@ -11,13 +11,20 @@ import tempfile
 from typing import Any, Callable, Dict, Optional, Tuple
 
 import cv2
-import yt_dlp
+try:
+    import yt_dlp
+    _YT_DLP_AVAILABLE = True
+except ImportError:
+    yt_dlp = None
+    _YT_DLP_AVAILABLE = False
+
 from src.utils.logger_manager import log_event
 
 
 class VideoDownloadError(Exception):
     """Exceção personalizada para falhas no download ou extração de stream de vídeo."""
     pass
+
 
 
 def _enrich_with_actual_file_info(file_path: str, info: Dict[str, Any], quality_tag: str) -> Dict[str, Any]:

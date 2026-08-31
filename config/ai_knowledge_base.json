@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
-  "last_updated": "2026-08-30T13:39:58.080672",
-  "total_web_sources_indexed": 28,
+  "last_updated": "2026-08-31T14:59:13.378866",
+  "total_web_sources_indexed": 45,
   "sources": {
     "fik_regulations": {
       "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
@@ -189,6 +189,6 @@
       }
     }
   },
-  "training_sessions_completed": 6,
-  "last_retrained_at": "2026-08-30T13:39:58.080672"
+  "training_sessions_completed": 8,
+  "last_retrained_at": "2026-08-31T14:59:13.378866"
 }

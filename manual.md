@@ -67,7 +67,8 @@ pip install -r requirements.txt
 #### 5. Habilitar Aceleração por GPU NVIDIA (Opcional)
 Caso possua placa de vídeo dedicada NVIDIA com suporte a CUDA:
 ```powershell
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+pip install ultralytics
 ```
 
 ---

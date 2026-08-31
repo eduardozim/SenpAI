@@ -247,5 +247,30 @@ def run_system_diagnostic_check() -> Dict[str, Any]:
             diagnostic_report["checks"][f"lib_{lib_name}"] = {"status": "ERROR", "message": str(ex)}
             logger.error(f"DIAGNOSTIC ERROR: Falha na biblioteca '{lib_name}': {ex}")
 
+    # 4. Checar Ambiente Virtual Python
+    try:
+        from src.utils.environment import get_virtual_environment_info
+        env_info = get_virtual_environment_info()
+        if env_info["is_virtual_env"]:
+            diagnostic_report["checks"]["virtual_environment"] = {
+                "status": "OK",
+                "is_virtual_env": True,
+                "env_type": env_info["env_type"],
+                "executable": env_info["executable"]
+            }
+            logger.info(f"DIAGNOSTIC: Ambiente Virtual ativo ({env_info['env_type']}): {env_info['executable']}")
+        else:
+            diagnostic_report["checks"]["virtual_environment"] = {
+                "status": "WARNING",
+                "is_virtual_env": False,
+                "env_type": "system_global",
+                "executable": env_info["executable"]
+            }
+            logger.warning(f"DIAGNOSTIC WARNING: Ambiente Virtual não identificado! Rodando no interpretador global: {env_info['executable']}")
+    except Exception as ex:
+        diagnostic_report["checks"]["virtual_environment"] = {"status": "ERROR", "message": str(ex)}
+        logger.error(f"DIAGNOSTIC ERROR: Erro na checagem de ambiente virtual: {ex}")
+
     logger.info("=== DIAGNÓSTICO DO SISTEMA CONCLUÍDO ===")
     return diagnostic_report
+
