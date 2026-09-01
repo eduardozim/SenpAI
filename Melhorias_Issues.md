@@ -92,14 +92,15 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
   - Vazamento de memória (memory leak) durante o processamento de vídeos longos ou transmissões ao vivo.
   - Configuração de limpeza de arquivos temporários
 - **Processamento em tempo real**:
-  - Delay na recepção de vídeo via RTSP causando falha de sincronização com cameras locais (webcam)
+  - ~~Delay na recepção de vídeo via RTSP causando falha de sincronização com cameras locais (webcam)~~ *(Resolvido via `ThreadedVideoStream` com buffer size 1 e descarte de frames defasados)*
 - **Vídeo, Marcações e Sincronização**:
   - Dessincronização entre o vídeo original, as marcações e os clipes gerados.
   - Divergência entre os timestamps no frontend e os números de frames analisados no backend.
   - Tratamento insuficiente de vídeos com FPS variável, rotações de orientação ou codecs diversos.
-  - Erros na captura e aquisição de imagens em tempo real via webcam e transmissões RTSP.
-  - Perda de conexão e dessincronização em transmissões de múltiplas câmeras via RTSP.
+  - ~~Erros na captura e aquisição de imagens em tempo real via webcam e transmissões RTSP.~~ *(Resolvido com otimização FFmpeg TCP, `probe_stream_connection` e leitor assíncrono)*
+  - ~~Perda de conexão e dessincronização em transmissões de múltiplas câmeras via RTSP.~~ *(Resolvido com reconexão resiliente e threads assíncronas dedicadas)*
 - **Rastreamento de Atletas & Plano de Fundo**:
+
   - Falha na persistência ou troca acidental de identidade entre os Kenshi Aka e Shiro durante a luta.
 
 ---

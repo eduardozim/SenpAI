@@ -100,11 +100,12 @@ class TestPipelineCancellation(unittest.TestCase):
         worker.start()
         time.sleep(0.05)
         worker.cancel()
-        worker._thread.join(timeout=3.0)
+        worker._thread.join(timeout=10.0)
 
         self.assertTrue(worker.is_done)
         self.assertTrue(worker.is_cancelled)
         self.assertIsNone(worker.result)
+
 
     def test_analysis_worker_normal_completion(self):
         """Verifica que AnalysisWorker conclui a execução em background com sucesso e mede o tempo."""

@@ -51,9 +51,13 @@ from src.utils.video_downloader import (
     format_video_duration, VideoDownloadError, QUALITY_LABELS
 )
 from src.utils.environment import get_virtual_environment_info, is_in_virtual_environment
+from src.utils.stream_capture import (
+    ThreadedVideoStream, probe_stream_connection, normalize_stream_source, apply_ffmpeg_network_optimizations
+)
 
 # Inicializa o logger central do sistema
 setup_system_logger()
+
 
 
 st.set_page_config(
@@ -1650,21 +1654,42 @@ else:
                                 key=f"rt_manual_idx_row_{k}",
                                 label_visibility="collapsed"
                             )
-                            cam_val = cam_idx_val
+                            cam_val = int(cam_idx_val)
                             cam_name_display = f"Webcam (Índice {cam_val})"
                         else:
                             found_cam = next((c for c in detected_cams if c["label"] == selected_cam_label), None)
                             cam_val = found_cam["index"] if found_cam else k
                             cam_name_display = found_cam["name"] if found_cam else f"Webcam {k}"
                     else:
-                        rtsp_val = st.text_input(
-                            f"Endereço Stream RTSP/RTCP (Câmera {k + 1}):",
-                            value=f"rtsp://192.168.1.{100 + k}:554/live.sdp",
-                            key=f"rt_rtsp_url_row_{k}",
-                            label_visibility="collapsed"
-                        )
-                        cam_val = rtsp_val.strip()
+                        col_rtsp_txt, col_rtsp_test = st.columns([2.3, 1.2])
+                        with col_rtsp_txt:
+                            rtsp_val = st.text_input(
+                                f"Endereço Stream RTSP/RTCP (Câmera {k + 1}):",
+                                value=f"rtsp://192.168.1.{100 + k}:554/live.sdp",
+                                key=f"rt_rtsp_url_row_{k}",
+                                placeholder="rtsp://192.168.1.100:554/live.sdp ou http://192.168.1.50:8080/video",
+                                label_visibility="collapsed"
+                            )
+                        with col_rtsp_test:
+                            test_btn = st.button("🔍 Testar", key=f"btn_test_rtsp_cam_{k}", use_container_width=True)
+
+                        cam_val = normalize_stream_source(rtsp_val)
                         cam_name_display = f"RTSP (Cam {k + 1})"
+
+                        if test_btn:
+                            with st.spinner(f"📡 Testando conexão com Câmera {k + 1}..."):
+                                diag = probe_stream_connection(cam_val, timeout_seconds=3.5)
+                                if diag["success"]:
+                                    st.success(f"✅ {diag['message']}")
+                                    if diag["frame_rgb"] is not None:
+                                        st.image(
+                                            diag["frame_rgb"],
+                                            caption=f"📷 Amostra Capturada (Câmera {k + 1}) — {diag['resolution'][0]}x{diag['resolution'][1]}",
+                                            width=260
+                                        )
+                                else:
+                                    st.error(f"❌ {diag['message']}")
+                                    st.info("💡 **Dicas de Conexão RTSP/IP:**\n- **Smartphone (IP Webcam / DroidCam)**: `http://192.168.X.X:8080/video`\n- **Câmera IP RTSP**: `rtsp://192.168.X.X:554/live.sdp`\n- **RTSP com Autenticação**: `rtsp://admin:senha@192.168.X.X:554/stream1`\n- Certifique-se de que a câmera e o computador estão na mesma rede Wi-Fi/Ethernet.")
 
                     cam_configs.append({
                         "id": k + 1,
@@ -1739,19 +1764,40 @@ else:
                     r2_c1, r2_c2 = st.columns(2)
                     frame_placeholders.extend([r1_c1.empty(), r1_c2.empty(), r2_c1.empty(), r2_c2.empty()])
 
-            # Abrir conexões de captura de vídeo para cada câmera
-            caps = []
+            # Inicializar leitores de streams de vídeo assíncronos (ThreadedVideoStream com buffer zero)
+            streams = []
             for cfg in cam_configs:
                 src = cfg["source"]
-                if isinstance(src, int) and hasattr(cv2, "CAP_DSHOW"):
-                    cap = cv2.VideoCapture(src, cv2.CAP_DSHOW)
-                else:
-                    cap = cv2.VideoCapture(src)
-                caps.append(cap)
+                stream = ThreadedVideoStream(
+                    src=src,
+                    name=f"Cam{cfg['id']}-{cfg['label']}",
+                    max_reconnect_attempts=5,
+                    reconnect_delay=1.5,
+                    auto_start=True
+                )
+                streams.append(stream)
 
-            open_indices = [i for i, c in enumerate(caps) if c.isOpened()]
+            # Aguardar conexão inicial de forma resiliente com feedback visual (até 5.0 segundos)
+            with st.spinner("📡 Estabelecendo conexão com as fontes de vídeo (Webcam / RTSP / Câmeras IP)..."):
+                deadline = time.time() + 5.0
+                while time.time() < deadline:
+                    if any(s.is_connected() for s in streams):
+                        break
+                    time.sleep(0.1)
+
+            open_indices = [i for i, s in enumerate(streams) if s.is_connected()]
             if not open_indices:
-                st.error("❌ Não foi possível conectar a nenhuma das câmeras configuradas. Verifique conexões e permissões.")
+                err_details = []
+                for i, s in enumerate(streams):
+                    msg = s.error_message or "Não respondeu no tempo limite de conexão (5s)."
+                    err_details.append(f"- **Câmera {i + 1} ({cam_configs[i]['label']})**: {msg}")
+                err_text = "\n".join(err_details)
+                st.error(f"❌ Não foi possível conectar a nenhuma das câmeras configuradas:\n{err_text}\n\n*Dica: Utilize o botão 'Testar' em cada câmera para verificar a URL ou dispositivo antes de iniciar a transmissão.*")
+                for s in streams:
+                    try:
+                        s.stop()
+                    except Exception:
+                        pass
             else:
                 live_pose_histories = [[] for _ in range(num_cameras)]
                 latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
@@ -1763,12 +1809,29 @@ else:
                     any_frame_read = False
 
                     for k in range(num_cameras):
-                        cap = caps[k]
-                        if not cap.isOpened():
+                        stream = streams[k]
+                        ret, frame = stream.read(copy=False)
+                        if not ret or frame is None:
+                            # Se ainda está conectando ou reconectando, exibir status informativo
+                            if stream.status in ["INITIALIZING", "RECONNECTING"]:
+                                status_icon = "🟡"
+                                status_msg = "Reconectando..." if stream.status == "RECONNECTING" else "Conectando stream..."
+                            else:
+                                status_icon = "🔴"
+                                status_msg = "Sem sinal"
+                            
+                            if latest_drawn_frames[k] is not None:
+                                frame_rgb = cv2.cvtColor(latest_drawn_frames[k], cv2.COLOR_BGR2RGB)
+                                frame_placeholders[k].image(
+                                    frame_rgb,
+                                    caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {status_msg})",
+                                    channels="RGB",
+                                    width="stretch"
+                                )
+                            else:
+                                frame_placeholders[k].info(f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {status_msg})")
                             continue
-                        ret, frame = cap.read()
-                        if not ret:
-                            continue
+                        
                         any_frame_read = True
 
                         # Processar Pose Tracking na câmera k
@@ -1790,18 +1853,26 @@ else:
                             live_pose_histories[k].append(landmarks)
                             latest_drawn_frames[k] = drawn_frame
 
-                        # Exibir frame anotado
+                        # Exibir frame anotado com badge de status do stream
                         frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
+                        cam_stats = stream.get_stats()
+                        stream_fps_val = cam_stats.get("fps", 30.0)
+                        status_icon = "🟢" if stream.is_connected() else ("🟡" if stream.status == "RECONNECTING" else "🔴")
                         frame_placeholders[k].image(
                             frame_rgb,
-                            caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']}",
+                            caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {stream_fps_val:.1f} FPS)",
                             channels="RGB",
                             width="stretch"
                         )
 
                     if not any_frame_read:
-                        st.warning("⚠️ Nenhuma transmissão ativa ou sinal de vídeo interrompido.")
-                        break
+                        time.sleep(0.01)
+                        # Se todas as conexões caíram definitivamente
+                        if all(s.status == "DISCONNECTED" for s in streams):
+                            st.warning("⚠️ Transmissão interrompida. Todas as conexões de câmera foram perdidas.")
+                            break
+                        continue
+
 
                     # Avaliação conjunta do golpe pelo conjunto de imagens das câmeras (processado em background)
                     if frame_count % 3 == 0 and any(len(h) >= 15 for h in live_pose_histories):
@@ -1875,17 +1946,18 @@ else:
 
                     frame_count += 1
                     elapsed = time.time() - start_time
-                    current_fps = (frame_count * len(open_indices)) / elapsed if elapsed > 0 else 0.0
+                    active_cams_now = sum(1 for s in streams if s.is_connected())
+                    current_fps = (frame_count * max(1, active_cams_now)) / elapsed if elapsed > 0 else 0.0
                     fps_metric.metric(
                         "Desempenho Multi-Câmeras Ao Vivo",
                         f"{current_fps:.1f} FPS",
-                        f"Câmeras Ativas: {len(open_indices)}/{num_cameras}"
+                        f"Câmeras Ativas: {active_cams_now}/{num_cameras}"
                     )
 
-            # Liberar todas as câmeras ao finalizar
-            for cap in caps:
+            # Liberar todas as threads e conexões de captura ao finalizar
+            for s in streams:
                 try:
-                    cap.release()
+                    s.stop()
                 except Exception:
                     pass
 
