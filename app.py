@@ -11,6 +11,7 @@ import tempfile
 import os
 import datetime
 import warnings
+import html
 
 # Suprime aviso benigno interno de depreciação do protobuf com mediapipe
 warnings.filterwarnings("ignore", category=UserWarning, module="google.protobuf")
@@ -1857,6 +1858,34 @@ else:
     # MODO 3: DETECÇÃO EM TEMPO REAL MULTI-CÂMERAS (1 A 4 CÂMERAS)
     # ==========================================================================
     if app_mode == "realtime":
+        def render_live_score_html(score_shiro: int, score_aka: int, total_shiro: int, total_aka: int) -> str:
+            total_strikes = total_shiro + total_aka
+            total_ippon = score_shiro + score_aka
+            shiro_sub = f"{score_shiro} Ippon{'s' if score_shiro != 1 else ''} / {total_shiro} Golpe{'s' if total_shiro != 1 else ''}"
+            aka_sub = f"{score_aka} Ippon{'s' if score_aka != 1 else ''} / {total_aka} Golpe{'s' if total_aka != 1 else ''}"
+            return (
+                f'<div style="background: #090D16; border: 1.5px solid #334155; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.35);">'
+                f'<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 6px; margin-bottom: 10px;">'
+                f'<span style="color: #94A3B8; font-size: 11px; font-weight: 800; letter-spacing: 0.6px;">🥋 CONTADOR DE PONTOS (AO VIVO)</span>'
+                f'<span style="color: #38BDF8; font-size: 11px; font-weight: 700; background: rgba(56,189,248,0.12); padding: 2px 8px; border-radius: 9999px;">'
+                f'Total: {total_strikes} Golpe{"s" if total_strikes != 1 else ""} ({total_ippon} Ippon{"s" if total_ippon != 1 else ""})'
+                f'</span>'
+                f'</div>'
+                f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">'
+                f'<div style="background: rgba(255, 255, 255, 0.05); border: 1.5px solid #94A3B8; border-radius: 8px; padding: 8px 10px; text-align: center;">'
+                f'<div style="color: #F1F5F9; font-size: 11px; font-weight: 800; letter-spacing: 0.5px;">⚪ SHIRO (BRANCO)</div>'
+                f'<div style="color: #FFFFFF; font-size: 32px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 3px 0;">{score_shiro}</div>'
+                f'<div style="color: #94A3B8; font-size: 10px; font-weight: 600;">{shiro_sub}</div>'
+                f'</div>'
+                f'<div style="background: rgba(239, 68, 68, 0.12); border: 1.5px solid #EF4444; border-radius: 8px; padding: 8px 10px; text-align: center;">'
+                f'<div style="color: #FCA5A5; font-size: 11px; font-weight: 800; letter-spacing: 0.5px;">🔴 AKA (VERMELHO)</div>'
+                f'<div style="color: #EF4444; font-size: 32px; font-weight: 900; font-family: monospace; line-height: 1.1; margin: 3px 0;">{score_aka}</div>'
+                f'<div style="color: #FCA5A5; font-size: 10px; font-weight: 600;">{aka_sub}</div>'
+                f'</div>'
+                f'</div>'
+                f'</div>'
+            )
+
         st.subheader("🔴 Detecção em Tempo Real Multi-Câmeras (1 a 4 Câmeras)")
 
         # Obter lista de câmeras detectadas no sistema
@@ -1994,8 +2023,12 @@ else:
                 st.markdown("##### 📊 Feed de Golpes & Painel de Métricas")
                 fps_metric = st.empty()
                 strike_alert_box = st.empty()
+                live_score_placeholder = st.empty()
                 st.markdown("**Histórico de Golpes Detectados na Sessão:**")
                 live_events_container = st.container(height=420)
+                with live_events_container:
+                    live_events_placeholder = st.empty()
+                    live_events_placeholder.caption("🥋 *Aguardando detecção de golpes em tempo real...*")
 
             with col_live_cams:
                 st.markdown(f"##### 🎥 Feeds de Vídeo ({num_cameras} Câmera{'s' if num_cameras > 1 else ''})")
@@ -2059,9 +2092,16 @@ else:
             else:
                 live_pose_histories = [[] for _ in range(num_cameras)]
                 latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
+                live_strike_history: list[str] = []
+                score_shiro = 0
+                score_aka = 0
+                total_shiro_strikes = 0
+                total_aka_strikes = 0
                 frame_count = 0
                 start_time = time.time()
                 current_fps = 30.0
+
+                live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes))
 
                 while run_live_detection:
                     any_frame_read = False
@@ -2078,8 +2118,9 @@ else:
                                 status_icon = "🔴"
                                 status_msg = "Sem sinal"
                             
-                            if latest_drawn_frames[k] is not None:
-                                frame_rgb = cv2.cvtColor(latest_drawn_frames[k], cv2.COLOR_BGR2RGB)
+                            prev_frame = latest_drawn_frames[k]
+                            if prev_frame is not None:
+                                frame_rgb = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2RGB)
                                 frame_placeholders[k].image(
                                     frame_rgb,
                                     caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {status_msg})",
@@ -2150,6 +2191,19 @@ else:
                             tech_mark = DiagnosticReporter.format_strike_name(multicam_eval.technique)
                             sub = yuko.get("sub_scores", {})
                             atk_name = multicam_eval.attacker_name or "Kenshi"
+                            atk_id_val = str(getattr(multicam_eval, "attacker_id", "") or yuko.get("attacker_id", "KENSHI_AKA")).upper()
+
+                            # Atualizar contador de pontos da sessão em tempo real
+                            if "SHIRO" in atk_id_val or "BRANCO" in str(atk_name).upper():
+                                total_shiro_strikes += 1
+                                if is_ippon:
+                                    score_shiro += 1
+                            else:
+                                total_aka_strikes += 1
+                                if is_ippon:
+                                    score_aka += 1
+
+                            live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes))
 
                             # Banner superior de notificação imediata
                             if is_ippon:
@@ -2175,32 +2229,45 @@ else:
                             offset_ms = yuko.get("fumikomi_offset_ms", 0.0)
                             offset_str = f"{offset_ms:+.0f}ms"
 
-                            card_html = f"""
-                            <div style="background: #1E293B; border: 1px solid {card_border}; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                    <div style="font-weight: 700; font-size: 0.96rem; color: #F8FAFC;">
-                                        🥊 {tech_mark} <span style="font-size: 0.78rem; color: #94A3B8; font-weight: 400;">({ts_str}) — {atk_name}</span>
-                                    </div>
-                                    <div>{status_badge}</div>
-                                </div>
-                                <div style="font-size: 0.82rem; color: #CBD5E1; margin-bottom: 6px;">
-                                    <b>Pontuação Ki-Ken-Tai-Ichi:</b> <span style="color: {'#4ADE80' if is_ippon else '#FBBF24'}; font-weight: 800;">{tot_sc:.1f}%</span> 
-                                    &nbsp;|&nbsp; <b>Quórum:</b> {multicam_eval.num_confirming_cameras}/{multicam_eval.num_active_cameras} câmeras
-                                </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.76rem; background: rgba(15,23,42,0.6); padding: 6px 8px; border-radius: 4px; margin-bottom: 6px;">
-                                    <div>🎯 <b>Alvo (Ken):</b> {sub.get('target_impact', 0.0):.0f}%</div>
-                                    <div>🦶 <b>Fumikomi (Tai):</b> {sub.get('fumikomi_sync', 0.0):.0f}% ({offset_str})</div>
-                                    <div>🧍 <b>Postura (Tai):</b> {sub.get('posture', 0.0):.0f}%</div>
-                                    <div>⚡ <b>Zanshin (Ki):</b> {sub.get('zanshin', 0.0):.0f}%</div>
-                                </div>
-                            </div>
-                            """
-                            with live_events_container:
-                                st.markdown(card_html, unsafe_allow_html=True)
-                                diag_txt = yuko.get("diagnostic_report", "")
-                                if diag_txt:
-                                    with st.expander(f"📜 Detalhamento Yūko-Datotsu: {tech_mark} ({ts_str})", expanded=False):
-                                        st.markdown(diag_txt)
+                            diag_txt = yuko.get("diagnostic_report", "")
+                            details_html = ""
+                            if diag_txt:
+                                diag_escaped = html.escape(diag_txt.strip())
+                                details_html = (
+                                    f'<details style="margin-top: 8px; background: rgba(15,23,42,0.7); border: 1px solid rgba(148,163,184,0.25); border-radius: 6px; padding: 6px 10px; font-size: 0.8rem;">'
+                                    f'<summary style="cursor: pointer; font-weight: 600; color: #38BDF8; user-select: none;">'
+                                    f'📜 Detalhamento Yūko-Datotsu: {tech_mark} ({ts_str})'
+                                    f'</summary>'
+                                    f'<pre style="margin: 0; margin-top: 8px; color: #CBD5E1; font-size: 0.78rem; line-height: 1.45; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">{diag_escaped}</pre>'
+                                    f'</details>'
+                                )
+
+                            card_color = "#4ADE80" if is_ippon else "#FBBF24"
+                            card_html = (
+                                f'<div style="background: #1E293B; border: 1px solid {card_border}; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;">'
+                                f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">'
+                                f'<div style="font-weight: 700; font-size: 0.96rem; color: #F8FAFC;">'
+                                f'🥊 {tech_mark} <span style="font-size: 0.78rem; color: #94A3B8; font-weight: 400;">({ts_str}) — {atk_name}</span>'
+                                f'</div>'
+                                f'<div>{status_badge}</div>'
+                                f'</div>'
+                                f'<div style="font-size: 0.82rem; color: #CBD5E1; margin-bottom: 6px;">'
+                                f'<b>Pontuação Ki-Ken-Tai-Ichi:</b> <span style="color: {card_color}; font-weight: 800;">{tot_sc:.1f}%</span> '
+                                f'&nbsp;|&nbsp; <b>Quórum:</b> {multicam_eval.num_confirming_cameras}/{multicam_eval.num_active_cameras} câmeras'
+                                f'</div>'
+                                f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.76rem; background: rgba(15,23,42,0.6); padding: 6px 8px; border-radius: 4px; margin-bottom: 6px;">'
+                                f'<div>🎯 <b>Alvo (Ken):</b> {sub.get("target_impact", 0.0):.0f}%</div>'
+                                f'<div>🦶 <b>Fumikomi (Tai):</b> {sub.get("fumikomi_sync", 0.0):.0f}% ({offset_str})</div>'
+                                f'<div>🧍 <b>Postura (Tai):</b> {sub.get("posture", 0.0):.0f}%</div>'
+                                f'<div>⚡ <b>Zanshin (Ki):</b> {sub.get("zanshin", 0.0):.0f}%</div>'
+                                f'</div>'
+                                f'{details_html}'
+                                f'</div>'
+                            )
+
+                            # Inserir no início da lista para que os golpes mais recentes fiquem sempre no topo
+                            live_strike_history.insert(0, card_html)
+                            live_events_placeholder.html("".join(live_strike_history))
 
                     frame_count += 1
                     elapsed = time.time() - start_time

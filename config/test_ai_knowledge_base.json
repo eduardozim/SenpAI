@@ -1,0 +1,235 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2026-09-02T19:44:04.110562",
+  "total_web_sources_indexed": 3,
+  "sources": {
+    "fik_regulations": {
+      "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+      "type": "official_manual",
+      "url": "https://www.kendo-fik.org/regulations",
+      "key_concepts": [
+        "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+        "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+        "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+        "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai)."
+      ],
+      "biomechanical_thresholds": {
+        "men_strike_height_ratio": [
+          0.85,
+          1.05
+        ],
+        "kote_strike_wrist_angle": [
+          145.0,
+          180.0
+        ],
+        "do_strike_body_angle": [
+          35.0,
+          55.0
+        ],
+        "tsuki_thrust_collinear_tolerance": 0.08,
+        "fumikomi_sync_max_delay_ms": 70.0,
+        "zanshin_duration_min_sec": 0.8
+      }
+    },
+    "znkr_shinpan_handbook": {
+      "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+      "type": "official_manual",
+      "url": "https://www.kendo.or.jp/knowledge/rules/",
+      "key_concepts": [
+        "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+        "Hasuji: Blade angle alignment preventing flat slapping hits.",
+        "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+        "Chushin-sen: Dominance and defense of the central line."
+      ],
+      "biomechanical_thresholds": {
+        "spine_upright_max_tilt_deg": 10.0,
+        "left_heel_elevation_min_cm": 2.5,
+        "shoulder_symmetry_tolerance": 0.05,
+        "elbow_extension_furikaburi_deg": [
+          115.0,
+          140.0
+        ]
+      }
+    },
+    "biomechanics_kendo_strikes": {
+      "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+      "type": "scientific_study",
+      "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi",
+      "key_concepts": [
+        "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms.",
+        "Forward impulse transfer: Left foot spring drive (Hiki-tsuke) generates horizontal acceleration.",
+        "Suburi fatigue degradation: Progressive posture collapse manifests in excessive forward pelvic tilt."
+      ],
+      "biomechanical_thresholds": {
+        "fumikomi_knee_flexion_deg": [
+          95.0,
+          120.0
+        ],
+        "suburi_cadence_optimal_cpm": [
+          35.0,
+          60.0
+        ],
+        "kirikaeshi_cadence_optimal_cpm": [
+          55.0,
+          85.0
+        ],
+        "stamina_retention_ratio_target": 0.88
+      }
+    }
+  },
+  "learned_parameters": {
+    "shiai_scoring": {
+      "optimal_weights": {
+        "target_impact": 0.42,
+        "fumikomi_sync": 0.26,
+        "posture": 0.18,
+        "zanshin": 0.14
+      },
+      "sonkyo_robustness_factor": 0.92,
+      "multi_camera_consensus_weight": 0.85
+    },
+    "training_modalities": {
+      "ashi_sabaki": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 90.5,
+        "current_accuracy": 90.5,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "suburi": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 93.2,
+        "current_accuracy": 93.2,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "kihon": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 92.5,
+        "current_accuracy": 92.5,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "kirikaeshi": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 89.8,
+        "current_accuracy": 89.8,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "uchikomi_geiko": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 89.2,
+        "current_accuracy": 89.2,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "kakari_geiko": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 86.8,
+        "current_accuracy": 86.8,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "yakusoku_geiko": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 89.0,
+        "current_accuracy": 89.0,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "waza_geiko": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 88.5,
+        "current_accuracy": 88.5,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "oji_waza": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 88.0,
+        "current_accuracy": 88.0,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "ji_geiko": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 86.2,
+        "current_accuracy": 86.2,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "shiai_geiko": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 87.5,
+        "current_accuracy": 87.5,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "nihon_kendo_kata": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 93.0,
+        "current_accuracy": 93.0,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "bokuto_kihon_waza": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 91.8,
+        "current_accuracy": 91.8,
+        "last_calibrated": "Inicial Calibrado"
+      },
+      "shinsa": {
+        "movement_weight": 0.35,
+        "precision_weight": 0.35,
+        "constancy_weight": 0.3,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
+        "initial_accuracy": 88.2,
+        "current_accuracy": 88.2,
+        "last_calibrated": "Inicial Calibrado"
+      }
+    }
+  },
+  "training_sessions_completed": 0
+}
