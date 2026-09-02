@@ -108,6 +108,20 @@ TIMELINE_KATAKANA_STRIKES = {
     "ツ": "ツ TSUKI",
 }
 
+@st.cache_data
+def get_documentation_content(filename: str) -> str:
+    """Carrega o conteúdo de arquivos de documentação (markdown/texto) com tratamento seguro de encoding."""
+    doc_path = os.path.join(os.path.dirname(__file__), filename)
+    if not os.path.exists(doc_path):
+        doc_path = filename
+    if os.path.exists(doc_path):
+        try:
+            with open(doc_path, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+        except Exception as e:
+            return f"Erro ao ler arquivo de documentação '{filename}': {e}"
+    return f"Arquivo de documentação '{filename}' não encontrado no diretório do projeto."
+
 def format_katakana_strike(strike_type: str) -> str:
     """Formata a nomenclatura do golpe com prefixo Katakana oficial (ex: 'メ MEN', 'コ KOTE', 'ド DO', 'ツ TSUKI')."""
     if not strike_type:
@@ -738,6 +752,29 @@ nav_page = st.sidebar.radio(
     }[x]
 )
 
+if nav_page == "settings":
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📚 Documentação Rápida")
+    st.sidebar.caption("Baixe ou consulte os manuais oficiais:")
+    sb_man_str = get_documentation_content("manual.md")
+    sb_rdm_str = get_documentation_content("README.TXT")
+    st.sidebar.download_button(
+        "📖 Baixar Manual (manual.md)",
+        data=sb_man_str,
+        file_name="manual.md",
+        mime="text/markdown",
+        width="stretch",
+        key="sb_dl_manual"
+    )
+    st.sidebar.download_button(
+        "📄 Baixar README (README.TXT)",
+        data=sb_rdm_str,
+        file_name="README.TXT",
+        mime="text/plain",
+        width="stretch",
+        key="sb_dl_readme"
+    )
+
 st.sidebar.markdown("---")
 
 
@@ -746,16 +783,54 @@ st.sidebar.markdown("---")
 # ==============================================================================
 if nav_page == "settings":
     st.header("⚙️ Configurações Gerais do Sistema")
-    st.markdown("Gerencie os parâmetros de aceleração de hardware, governança de modelos, perfis de calibração e ferramentas de diagnóstico.")
+    st.markdown("Gerencie os parâmetros de aceleração de hardware, governança de modelos, perfis de calibração, ferramentas de diagnóstico e consulte a documentação oficial.")
+
+    # Barra Superior de Acesso Rápido a Documentações (Hyperlinks & Downloads)
+    doc_top_c1, doc_top_c2, doc_top_c3 = st.columns([2, 1, 1])
+    with doc_top_c1:
+        st.markdown(
+            """
+            <div style="background: rgba(30, 41, 59, 0.75); border: 1px solid #334155; border-radius: 8px; padding: 8px 12px;">
+                <div style="font-weight: 700; color: #F8FAFC; font-size: 0.88rem; display: flex; align-items: center; gap: 6px;">
+                    <span>📚</span> Documentações Oficiais Disponíveis
+                </div>
+                <div style="color: #94A3B8; font-size: 0.78rem; margin-top: 2px;">
+                    Acesse a aba <b>📚 Documentação & Manuais</b> abaixo para leitura formatada ou use os downloads rápidos ao lado.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    with doc_top_c2:
+        top_man_data = get_documentation_content("manual.md")
+        st.download_button(
+            "📖 Baixar Manual (.md)",
+            data=top_man_data,
+            file_name="manual.md",
+            mime="text/markdown",
+            width="stretch",
+            key="top_btn_dl_manual"
+        )
+    with doc_top_c3:
+        top_rdm_data = get_documentation_content("README.TXT")
+        st.download_button(
+            "📄 Baixar README (.txt)",
+            data=top_rdm_data,
+            file_name="README.TXT",
+            mime="text/plain",
+            width="stretch",
+            key="top_btn_dl_readme"
+        )
 
     saved_sys_settings = load_settings()
     default_device_pref = st.session_state.get("device_preference", saved_sys_settings.get("processing_device", "cpu"))
 
-    tab_hw, tab_train, tab_calib, tab_diag = st.tabs([
+    tab_hw, tab_train, tab_calib, tab_diag, tab_docs = st.tabs([
         "🖥️ Processamento & Hardware",
         "🎓 Governança de Treinamento",
         "🎛️ Perfis de Calibração",
-        "🐛 Diagnóstico, Alertas & Logs"
+        "🐛 Diagnóstico, Alertas & Logs",
+        "📚 Documentação & Manuais"
     ])
 
     # --------------------------------------------------------------------------
@@ -1558,6 +1633,62 @@ if nav_page == "settings":
                         st.caption(f"⚙️ `[{timestamp_str}]` **[{mod_str}]** {msg_str}")
                     else:
                         st.markdown(f"🔵 `[{timestamp_str}]` **[{mod_str}]** {msg_str}")
+
+    # --------------------------------------------------------------------------
+    # GUIA 5: DOCUMENTAÇÃO, MANUAIS & GUIAS DO SISTEMA
+    # --------------------------------------------------------------------------
+    with tab_docs:
+        st.markdown("### 📚 Central de Documentação Técnica & Manuais do SenpAI")
+        st.caption("Consulte na íntegra a documentação técnica oficial, manual do usuário, guias de arbitragem, requisitos de instalação e notas de versão do sistema.")
+
+        doc_choice = st.radio(
+            "Selecione o documento que deseja consultar:",
+            options=["manual", "readme"],
+            horizontal=True,
+            format_func=lambda x: {
+                "manual": "📖 Manual do Usuário & Técnico (manual.md)",
+                "readme": "📄 README & Guia Rápido (README.TXT)"
+            }[x],
+            key="rad_doc_selector"
+        )
+
+        if doc_choice == "manual":
+            st.markdown("#### 📖 Manual do Usuário e Técnico do SenpAI (`manual.md`)")
+            doc_c1, doc_c2 = st.columns([3, 1])
+            with doc_c1:
+                st.caption("Guia abrangente cobrindo instalação, aceleração GPU/CPU, 3 modos de operação (Gravado, Tempo Real e Treino), 14 modalidades pedagógicas e governança de IA.")
+            with doc_c2:
+                m_content = get_documentation_content("manual.md")
+                st.download_button(
+                    "📥 Baixar manual.md",
+                    data=m_content,
+                    file_name="manual.md",
+                    mime="text/markdown",
+                    width="stretch",
+                    key="btn_dl_manual_tab"
+                )
+            
+            with st.container(height=650):
+                st.markdown(m_content, unsafe_allow_html=True)
+
+        elif doc_choice == "readme":
+            st.markdown("#### 📄 README Oficial do Projeto (`README.TXT`)")
+            doc_c1, doc_c2 = st.columns([3, 1])
+            with doc_c1:
+                st.caption("Descrição geral do sistema, requisitos de hardware, estrutura de diretórios e comandos rápidos de execução.")
+            with doc_c2:
+                r_content = get_documentation_content("README.TXT")
+                st.download_button(
+                    "📥 Baixar README.TXT",
+                    data=r_content,
+                    file_name="README.TXT",
+                    mime="text/plain",
+                    width="stretch",
+                    key="btn_dl_readme_tab"
+                )
+            
+            with st.container(height=650):
+                st.text(r_content)
 
     st.markdown("---")
     st.info("💡 **Dica:** Para alterar os parâmetros de hardware ou perfis, selecione as abas acima. Para iniciar a análise de lutas, navegue no menu lateral até **'⚔️ Análise de Lutas'**.")
