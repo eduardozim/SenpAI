@@ -73,6 +73,8 @@ Recursos da Interface Web:
 - Botão Manual de Limpeza e Nova Análise: Ação rápida "🧹 Nova Análise / Limpar" integrada no topo dos resultados gravados e de treinamento para reinicialização instantânea.
 - Calibração de Sensibilidade Inteligente: No Modo de Treinamento & Aprendizado, o perfil é definido por padrão automaticamente como Treino Geral / Keiko (Normal).
 - Validação e Consenso Multi-Câmeras (Tempo Real): A definição de haver ou não o golpe é tomada com base no conjunto das imagens das câmeras em background. Quanto mais câmeras ativas, maior a exigência de confirmação síncrona em frames (quórum escalonado de 1 a 4 câmeras), com descarte silencioso de movimentações sem consenso.
+- Placar e Contador de Pontos em Tempo Real: No topo da lista de golpes ao vivo, monitora os Ippons e total de tentativas para Kenshi Shiro (Branco) e Kenshi Aka (Vermelho), com total consolidado e atualização instantânea a cada golpe avaliado.
+- Feed de Golpes em Ordem Invertida (Tempo Real): Conforme os golpes ocorrem na transmissão ao vivo, os eventos mais recentes são exibidos diretamente no topo do histórico com diagnóstico expansível em HTML nativo de alta performance.
 - Placar Oficial Eletrônico (Sanbon-shobu) com contagem de Ippon para Aka (Vermelho) e Shiro (Branco), declaração regulamentar de resultado e marcação em caracteres Katakana oficiais (メ, コ, ド, ツ).
 - Destaque Visual na Linha do Tempo: golpes responsáveis pela marcação de Ippon são destacados com a nomenclatura oficial Katakana (メ MEN, コ KOTE, ド DO, ツ TSUKI), banner cromático por lutador e identificação no seletor de navegação rápida.
 - Seleção de Origem do Vídeo no Modo de Detecção Gravada: suporte completo tanto para Upload de Arquivo Local (.mp4, .avi, .mov) quanto para inclusão e download direto de Links do YouTube / Streaming Web com extração de metadados, miniatura e cache inteligente.
@@ -183,8 +185,12 @@ Opções disponíveis:
 
 3. MODO DE DETECÇÃO EM TEMPO REAL (realtime):
    Processamento instantâneo via Webcam ou streams RTSP/RTCP de 1 a 4 câmeras IP simultâneas.
-   Conta com validação de consenso multi-câmeras em background baseada no conjunto
-   de imagens/frames (com quórum escalonado e descarte silencioso de falsos positivos).
+   - Conta com validação de consenso multi-câmeras em background baseada no conjunto
+     de imagens/frames (com quórum escalonado e descarte silencioso de falsos positivos).
+   - Painel do Contador de Pontos no topo da lista: placar dinâmico com contagem de Ippons
+     e total de golpes para Shiro (⚪) e Aka (🔴), além do total consolidado da sessão.
+   - Lista de golpes em ordem invertida: os golpes mais recentes aparecem sempre no topo,
+     com cards detalhados dos 4 pilares de Ki-Ken-Tai-Ichi e relatório técnico expansível em HTML.
 
 -------------------------------------------------------------------------------
 5. PERFIS DE CALIBRAÇÃO (SENSIBILIDADE)

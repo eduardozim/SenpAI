@@ -231,6 +231,10 @@ Motor de **Consenso, Calibração e Validação Cruzada Multi-Câmeras**. Implem
 - **Alinhamento Temporal Síncrono ($\Delta t$)**: Janela de busca cruzada ($\pm 10$ frames / $\approx 350\text{ ms}$) entre as séries temporais de aceleração de pulso e trajetória das câmeras.
 - **Extração de Evidências em Frames (`CameraFrameEvidence`)**: Mede velocidade do pulso, proximidade do alvo, postura e validação de calibração para cada câmera individual.
 - **Decisão e Fusão Conjunta (`MultiCameraStrikeEvaluation`)**: Computa o score médio conjunto das visões confirmadas e classifica o golpe em `CONFIRMED_MULTICAM`, `REJECTED_NO_MOTION_OR_INVALID`, `REJECTED_SINGLE_ANGLE` ou `REJECTED_INSUFFICIENT_CONSENSUS`.
+- **Painel de Feed e Placar ao Vivo na Interface ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Contador de Pontos**: No topo da coluna de feed, um painel consolidado monitora em tempo real o placar de Ippons e total de golpes para **⚪ Kenshi Shiro** e **🔴 Kenshi Aka**, além da métrica total consolidada da sessão.
+  - **Ordem Decrescente / Mais Recentes no Topo**: A lista de histórico renderiza os eventos do mais recente para o mais antigo, mantendo a ação recém-executada sempre visível no topo sem necessidade de rolagem.
+  - **Componentes Nativos `<details><summary>`**: Os relatórios técnicos descritivos são embutidos como accordions HTML leves com escape de caracteres (`html.escape`), garantindo expansão instantânea no navegador sem interferir na cadência de processamento de vídeo do servidor ou gerar colisões de chave no Streamlit.
 
 #### `TrainingAnalyzer` ([training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py))
 Motor de Reconhecimento, Análise Biomecânica e Diagnóstico Pedagógico de Treinamento de Kendo:
@@ -374,7 +378,22 @@ Total de **84 testes automatizados** executados e aprovados com 100% de sucesso.
 
 ---
 
-### `[v1.9.0]` — 2026-08-31 *(Versão Atual)*
+### `[v1.9.1]` — 2026-09-02 *(Versão Atual)*
+
+- **Contador de Pontos e Placar ao Vivo no Modo Realtime ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - Inclusão do painel de **Contador de Pontos & Placar (Ippon ao Vivo)** posicionado no topo da lista de golpes no Modo de Detecção em Tempo Real.
+  - Exibe a pontuação de Ippons válidos e a contagem total de golpes/tentativas para **⚪ Kenshi Shiro (Branco)** e **🔴 Kenshi Aka (Vermelho)**.
+  - Badge no topo do painel consolidando a soma geral de golpes analisados e Ippons confirmados na sessão.
+  - Atualização instantânea e atômica a cada disparo do motor de fusão multi-câmeras.
+- **Inversão da Ordem do Histórico de Golpes em Tempo Real (Mais Recentes no Topo)**:
+  - No Modo de Detecção em Tempo Real, a lista de golpes identificados agora exibe os eventos mais recentes sempre no topo (`live_strike_history.insert(0, ...)`), garantindo que o árbitro ou treinador visualize a ação atual sem a necessidade de rolagem para o final da página.
+- **Renderização Rápida e Isolamento de Estado via HTML Nativo (`<details><summary>`)**:
+  - Eliminação de problemas de conflito de chaves (`StreamlitDuplicateElementKey`) em execuções contínuas de streaming via substituição de widgets stateful por elementos semânticos HTML `<details>` e `<summary>`.
+  - Tratamento de escape de caracteres com `html.escape` e injeção direta no DOM com `.html()`, permitindo abrir e fechar diagnósticos biomecânicos instantaneamente sem overhead no servidor Streamlit.
+
+---
+
+### `[v1.9.0]` — 2026-08-31
 
 - **Análise Integral de Yūko-Datotsu em Tempo Real para Golpes Ippon e Não-Ippon ([multi_camera_fusion.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/multi_camera_fusion.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - **Acompanhamento Biomecânico de Cada Marcação de Golpe**:
