@@ -7,8 +7,10 @@ Detector de Poses com suporte Dual-Backend de Alta Performance:
 import os
 import warnings
 
-# Suprime aviso benigno interno de depreciação do protobuf com mediapipe
+# Suprime avisos benignos internos
 warnings.filterwarnings("ignore", category=UserWarning, module="google.protobuf")
+warnings.filterwarnings("ignore", message=".*'half' is deprecated.*")
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 import cv2
 import numpy as np
@@ -21,6 +23,9 @@ except ImportError:
 from typing import Dict, List, Optional, Tuple, Any
 
 logger = logging.getLogger(__name__)
+
+# Suprime logs de avisos benignos do Ultralytics
+logging.getLogger("ultralytics").setLevel(logging.ERROR)
 
 # Mapeamento oficial dos 17 keypoints COCO para o padrão de nomenclatura SenpAI / MediaPipe
 COCO_INDEX_TO_LANDMARK = {
@@ -69,6 +74,13 @@ class PoseDetector:
                     self.torch_device = "cuda:0"
                     self.torch = torch
                     
+                    # Ativar otimizações de kernel cuDNN e inferência
+                    torch.backends.cudnn.benchmark = True
+                    try:
+                        torch.set_grad_enabled(False)
+                    except Exception:
+                        pass
+
                     # Localizar modelo YOLOv8-pose
                     model_path = os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n-pose.pt")
                     if not os.path.exists(model_path):
@@ -76,13 +88,18 @@ class PoseDetector:
                     
                     self.yolo_model = YOLO(model_path)
                     self.yolo_model.to("cuda:0")
+                    if hasattr(self.yolo_model.model, "half"):
+                        try:
+                            self.yolo_model.model.half()
+                        except Exception:
+                            pass
                     
                     # Aquecimento de inferência (warmup)
                     dummy = np.zeros((480, 640, 3), dtype=np.uint8)
                     _ = self.yolo_model(dummy, device="cuda:0", verbose=False)
                     
                     gpu_name = torch.cuda.get_device_name(0)
-                    logger.info(f"[PoseDetector] 🚀 Aceleração Nativa NVIDIA CUDA ativada com sucesso: {gpu_name} (YOLOv8-Pose)")
+                    logger.info(f"[PoseDetector] 🚀 Aceleração Nativa NVIDIA CUDA ativada com sucesso: {gpu_name} (YOLOv8-Pose FP16 + cuDNN Benchmark)")
                 else:
                     logger.warning("[PoseDetector] GPU solicitada, mas PyTorch CUDA não está disponível. Fallback para CPU.")
             except Exception as e:
@@ -111,13 +128,12 @@ class PoseDetector:
                 except Exception as e:
                     logger.warning(f"[PoseDetector] Fallback YOLO em CPU indisponível: {e}")
 
-    def _yolo_results_to_landmarks_list(self, yolo_res, w: int, h: int) -> List[Dict[str, Any]]:
-        """Converte as predições de múltiplos esqueletos do YOLOv8-Pose para o formato de landmarks do SenpAI."""
+    def _single_yolo_result_to_landmarks(self, res, w: int, h: int) -> List[Dict[str, Any]]:
+        """Converte as predições de múltiplos esqueletos de um resultado YOLOv8-Pose para o formato de landmarks do SenpAI."""
         candidates = []
-        if not yolo_res or len(yolo_res) == 0:
+        if res is None:
             return candidates
 
-        res = yolo_res[0]
         if res.keypoints is None or res.keypoints.data is None:
             return candidates
 
@@ -159,6 +175,12 @@ class PoseDetector:
                 candidates.append(lm_dict)
 
         return candidates
+
+    def _yolo_results_to_landmarks_list(self, yolo_res, w: int, h: int) -> List[Dict[str, Any]]:
+        """Converte as predições de múltiplos esqueletos do YOLOv8-Pose para o formato de landmarks do SenpAI (retrocompatibilidade)."""
+        if not yolo_res or len(yolo_res) == 0:
+            return []
+        return self._single_yolo_result_to_landmarks(yolo_res[0], w, h)
 
     def process_frame(self, frame: np.ndarray) -> Tuple[Optional[Dict[str, Any]], np.ndarray]:
         """
@@ -209,6 +231,40 @@ class PoseDetector:
             return landmarks_dict, annotated_frame
 
         return None, annotated_frame
+
+    def process_frame_candidates_batch(self, frames: List[np.ndarray]) -> List[List[Dict[str, Any]]]:
+        """
+        Processa um lote de múltiplos frames simultaneamente em busca de praticantes (Kenshi Aka e Shiro).
+        Retorna uma lista de listas de dicionários de landmarks (uma lista de candidatos por frame).
+        """
+        if not frames:
+            return []
+
+        h, w = frames[0].shape[:2]
+
+        if self.yolo_model is not None:
+            # --- INFERÊNCIA PARALELA EM LOTE (BATCH INFERENCE) NA GPU OU CPU ---
+            dev = "cuda:0" if self.use_gpu else "cpu"
+            results = self.yolo_model(
+                frames,
+                device=dev,
+                batch=len(frames),
+                verbose=False,
+                conf=0.25,
+                imgsz=640
+            )
+            batch_candidates = []
+            for res in results:
+                cands = self._single_yolo_result_to_landmarks(res, w, h)
+                batch_candidates.append(cands)
+            return batch_candidates
+
+        # --- MODO CPU (MEDIAPIPE): PROCESSAMENTO SEQUENCIAL TRANSPARENTE ---
+        batch_candidates = []
+        for frame in frames:
+            cands, _ = self.process_frame_candidates(frame)
+            batch_candidates.append(cands)
+        return batch_candidates
 
     def process_frame_candidates(self, frame: np.ndarray) -> Tuple[List[Dict[str, Any]], np.ndarray]:
         """

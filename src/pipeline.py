@@ -6,6 +6,7 @@ Orquestra Leitura de Vídeo -> Pose Tracking -> Action Spotting -> Avaliação B
 import cv2
 import os
 import time
+import queue
 import threading
 import numpy as np
 from typing import Dict, Any, List, Callable, Optional
@@ -20,13 +21,98 @@ from src.analytics.multi_camera_fusion import MultiCameraFusionEngine, MultiCame
 from src.analytics.training_analyzer import TrainingAnalyzer
 from src.engine.calibrator import CalibrationEngine
 from src.engine.reporter import DiagnosticReporter
-from src.utils.hardware import get_effective_device, ensure_browser_compatible_video
+from src.utils.hardware import get_effective_device, ensure_browser_compatible_video, get_optimal_batch_size
 from src.utils.logger_manager import log_event
 
+
+class AsyncVideoBatchReader:
+    """
+    Leitor assíncrono de vídeo com prefetching em thread dedicada de CPU.
+    Desacopla a decodificação de frames de disco do pipeline de inferência da GPU,
+    mantendo uma fila em memória RAM para que a GPU opere em saturação contínua.
+    """
+    def __init__(self, video_path: str, batch_size: int = 64, max_queue: int = 4):
+        self.video_path = video_path
+        self.batch_size = max(1, batch_size)
+        self.queue: queue.Queue = queue.Queue(maxsize=max_queue)
+        self.stopped = False
+        self.error: Optional[Exception] = None
+
+        self.cap = cv2.VideoCapture(video_path)
+        self.fps = float(self.cap.get(cv2.CAP_PROP_FPS) or 30.0)
+        self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT) or 1)
+        self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 640)
+        self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 480)
+
+        self.thread = threading.Thread(target=self._worker, daemon=True, name="AsyncVideoBatchReader")
+        self.thread.start()
+
+    def _worker(self):
+        try:
+            while not self.stopped and self.cap.isOpened():
+                batch = []
+                for _ in range(self.batch_size):
+                    if self.stopped:
+                        break
+                    ret, frame = self.cap.read()
+                    if not ret or frame is None:
+                        break
+                    batch.append(frame)
+
+                if not batch:
+                    break
+
+                # Enfileirar o lote de frames na fila com timeout
+                while not self.stopped:
+                    try:
+                        self.queue.put(batch, timeout=0.05)
+                        break
+                    except queue.Full:
+                        continue
+        except Exception as e:
+            self.error = e
+        finally:
+            try:
+                self.queue.put(None, timeout=0.5)
+            except Exception:
+                pass
+            if self.cap.isOpened():
+                self.cap.release()
+
+    def read_batch(self) -> Optional[List[np.ndarray]]:
+        """Retorna o próximo lote de frames decodificados ou None ao atingir o fim do vídeo."""
+        if self.stopped:
+            return None
+        while True:
+            try:
+                item = self.queue.get(timeout=0.05)
+                return item
+            except queue.Empty:
+                if not self.thread.is_alive():
+                    return None
+                continue
+
+    def stop(self):
+        """Interrompe a thread de leitura e libera buffers."""
+        self.stopped = True
+        try:
+            while not self.queue.empty():
+                _ = self.queue.get_nowait()
+        except Exception:
+            pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.stop()
+
+
 class SenpAIPipeline:
-    def __init__(self, calibration_profile: str = "normal", device_preference: str = "cpu"):
+    def __init__(self, calibration_profile: str = "normal", device_preference: str = "cpu", custom_batch_size: Optional[int] = None):
         self.device_preference = device_preference
         self.effective_device, self.device_status_message, self.gpu_info = get_effective_device(device_preference)
+        self.batch_size = get_optimal_batch_size(self.effective_device, custom_batch_size)
         
         self.pose_detector = PoseDetector(device=self.effective_device)
         self.shinai_tracker = ShinaiTracker()
@@ -68,70 +154,82 @@ class SenpAIPipeline:
         # Resetar o rastreador para uma nova análise de vídeo com configuração de inversão
         self.combatant_tracker = CombatantTracker(invert_assignment=invert_combatants)
 
-        cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 1
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) or 640
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) or 480
-
         # Coleta de histórico dos combatentes
         aka_history: List[Optional[Dict[str, Any]]] = []
         shiro_history: List[Optional[Dict[str, Any]]] = []
         discarded_per_frame: List[List[Dict[str, Any]]] = []
 
+        batch_size = self.batch_size if (self.effective_device == "gpu" and self.pose_detector.use_gpu) else 1
         frame_idx = 0
-        try:
-            while cap.isOpened():
-                if is_cancelled and is_cancelled():
-                    elapsed_cancel = time.time() - start_time
-                    log_event("WARNING", f"Processamento de vídeo cancelado pelo usuário no frame {frame_idx}/{total_frames} (Tempo decorrido: {elapsed_cancel:.2f}s).", "pipeline")
-                    return None
 
-                ret, frame = cap.read()
-                if not ret or frame is None:
-                    break
+        # Passo 1: Extração Paralela com Prefetching Assíncrono em Thread
+        with AsyncVideoBatchReader(video_path, batch_size=batch_size, max_queue=4) as reader:
+            fps = reader.fps
+            total_frames = reader.total_frames
+            width = reader.width
+            height = reader.height
 
-                # 1. Extração de candidatos a praticantes (Inferência de Alta Velocidade)
-                candidates, _ = self.pose_detector.process_frame_candidates(frame)
+            try:
+                while True:
+                    if is_cancelled and is_cancelled():
+                        elapsed_cancel = time.time() - start_time
+                        log_event("WARNING", f"Processamento de vídeo cancelado pelo usuário no frame {frame_idx}/{total_frames} (Tempo decorrido: {elapsed_cancel:.2f}s).", "pipeline")
+                        reader.stop()
+                        return None
 
-                # Fallback sintético para modo demo (se for vídeo esquemático 2D)
-                if (not candidates or len(candidates) == 0) and "demo" in video_path.lower():
-                    # Simular Sonkyō de abertura nos primeiros 25 frames, seguido de corte aos 48 frames
-                    is_sonkyo_frame = (frame_idx < 25)
-                    hand_y = 0.65 if is_sonkyo_frame else (0.50 if frame_idx < 35 else (0.25 if frame_idx < 48 else 0.60))
-                    foot_x = 0.50 if frame_idx < 45 else 0.58
-                    hip_y_val = 0.80 if is_sonkyo_frame else 0.65 # Quadril desce no Sonkyō
+                    batch_frames = reader.read_batch()
+                    if not batch_frames:
+                        break
 
-                    synthetic_lm = {
-                        "RIGHT_WRIST": {"x": 0.52, "y": float(hand_y), "z": 0.0, "visibility": 0.9, "px": int(0.52*width), "py": int(hand_y*height)},
-                        "LEFT_WRIST": {"x": 0.48, "y": float(hand_y + 0.02), "z": 0.0, "visibility": 0.9, "px": int(0.48*width), "py": int(hand_y*height)},
-                        "RIGHT_ELBOW": {"x": 0.55, "y": float(hand_y + 0.12), "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int((hand_y+0.12)*height)},
-                        "RIGHT_SHOULDER": {"x": 0.55, "y": 0.45 if is_sonkyo_frame else 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int(0.40*height)},
-                        "LEFT_SHOULDER": {"x": 0.45, "y": 0.45 if is_sonkyo_frame else 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.45*width), "py": int(0.40*height)},
-                        "RIGHT_HIP": {"x": 0.53, "y": float(hip_y_val), "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(hip_y_val*height)},
-                        "LEFT_HIP": {"x": 0.47, "y": float(hip_y_val), "z": 0.0, "visibility": 0.9, "px": int(0.47*width), "py": int(hip_y_val*height)},
-                        "RIGHT_KNEE": {"x": 0.54, "y": float(hip_y_val + 0.08), "z": 0.0, "visibility": 0.9, "px": int(0.54*width), "py": int((hip_y_val+0.08)*height)},
-                        "LEFT_KNEE": {"x": 0.46, "y": float(hip_y_val + 0.08), "z": 0.0, "visibility": 0.9, "px": int(0.46*width), "py": int((hip_y_val+0.08)*height)},
-                        "NOSE": {"x": 0.50, "y": 0.35 if is_sonkyo_frame else 0.25, "z": 0.0, "visibility": 0.9, "px": int(0.50*width), "py": int(0.25*height)},
-                        "RIGHT_EAR": {"x": 0.53, "y": 0.34 if is_sonkyo_frame else 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(0.24*height)},
-                        "LEFT_EAR": {"x": 0.47, "y": 0.34 if is_sonkyo_frame else 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.47*width), "py": int(0.24*height)},
-                        "RIGHT_ANKLE": {"x": float(foot_x), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int(foot_x*width), "py": int(0.90*height)},
-                        "LEFT_ANKLE": {"x": float(foot_x - 0.04), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int((foot_x-0.04)*width), "py": int(0.90*height)},
-                        "RIGHT_FOOT_INDEX": {"x": float(foot_x), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int(foot_x*width), "py": int(0.90*height)}
-                    }
-                    candidates = [synthetic_lm]
+                    # 1. Extração de candidatos a praticantes (Inferência Paralela em Lote na GPU / Fallback CPU)
+                    batch_candidates = self.pose_detector.process_frame_candidates_batch(batch_frames)
 
-                # 2. Filtragem de Planos, Detecção de Flag (Tasukuki) e Associação dos 2 Combatentes
-                aka_lm, shiro_lm, discarded = self.combatant_tracker.associate_and_filter(candidates, frame=frame)
-                aka_history.append(aka_lm)
-                shiro_history.append(shiro_lm)
-                discarded_per_frame.append(discarded)
+                    for frame_in_batch, candidates in zip(batch_frames, batch_candidates):
+                        # Fallback sintético para modo demo (se for vídeo esquemático 2D)
+                        if (not candidates or len(candidates) == 0) and "demo" in video_path.lower():
+                            # Simular Sonkyō de abertura nos primeiros 25 frames, seguido de corte aos 48 frames
+                            is_sonkyo_frame = (frame_idx < 25)
+                            hand_y = 0.65 if is_sonkyo_frame else (0.50 if frame_idx < 35 else (0.25 if frame_idx < 48 else 0.60))
+                            foot_x = 0.50 if frame_idx < 45 else 0.58
+                            hip_y_val = 0.80 if is_sonkyo_frame else 0.65 # Quadril desce no Sonkyō
 
-                frame_idx += 1
-                if progress_callback and frame_idx % 10 == 0:
-                    progress_callback((frame_idx / total_frames) * 0.60) # 60% para extração de poses
-        finally:
-            cap.release()
+                            synthetic_lm = {
+                                "RIGHT_WRIST": {"x": 0.52, "y": float(hand_y), "z": 0.0, "visibility": 0.9, "px": int(0.52*width), "py": int(hand_y*height)},
+                                "LEFT_WRIST": {"x": 0.48, "y": float(hand_y + 0.02), "z": 0.0, "visibility": 0.9, "px": int(0.48*width), "py": int(hand_y*height)},
+                                "RIGHT_ELBOW": {"x": 0.55, "y": float(hand_y + 0.12), "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int((hand_y+0.12)*height)},
+                                "RIGHT_SHOULDER": {"x": 0.55, "y": 0.45 if is_sonkyo_frame else 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.55*width), "py": int(0.40*height)},
+                                "LEFT_SHOULDER": {"x": 0.45, "y": 0.45 if is_sonkyo_frame else 0.40, "z": 0.0, "visibility": 0.9, "px": int(0.45*width), "py": int(0.40*height)},
+                                "RIGHT_HIP": {"x": 0.53, "y": float(hip_y_val), "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(hip_y_val*height)},
+                                "LEFT_HIP": {"x": 0.47, "y": float(hip_y_val), "z": 0.0, "visibility": 0.9, "px": int(0.47*width), "py": int(hip_y_val*height)},
+                                "RIGHT_KNEE": {"x": 0.54, "y": float(hip_y_val + 0.08), "z": 0.0, "visibility": 0.9, "px": int(0.54*width), "py": int((hip_y_val+0.08)*height)},
+                                "LEFT_KNEE": {"x": 0.46, "y": float(hip_y_val + 0.08), "z": 0.0, "visibility": 0.9, "px": int(0.46*width), "py": int((hip_y_val+0.08)*height)},
+                                "NOSE": {"x": 0.50, "y": 0.35 if is_sonkyo_frame else 0.25, "z": 0.0, "visibility": 0.9, "px": int(0.50*width), "py": int(0.25*height)},
+                                "RIGHT_EAR": {"x": 0.53, "y": 0.34 if is_sonkyo_frame else 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.53*width), "py": int(0.24*height)},
+                                "LEFT_EAR": {"x": 0.47, "y": 0.34 if is_sonkyo_frame else 0.24, "z": 0.0, "visibility": 0.9, "px": int(0.47*width), "py": int(0.24*height)},
+                                "RIGHT_ANKLE": {"x": float(foot_x), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int(foot_x*width), "py": int(0.90*height)},
+                                "LEFT_ANKLE": {"x": float(foot_x - 0.04), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int((foot_x-0.04)*width), "py": int(0.90*height)},
+                                "RIGHT_FOOT_INDEX": {"x": float(foot_x), "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int(foot_x*width), "py": int(0.90*height)}
+                            }
+                            candidates = [synthetic_lm]
+
+                        # 2. Filtragem de Planos, Detecção de Flag (Tasukuki) e Associação dos 2 Combatentes
+                        aka_lm, shiro_lm, discarded = self.combatant_tracker.associate_and_filter(candidates, frame=frame_in_batch)
+                        aka_history.append(aka_lm)
+                        shiro_history.append(shiro_lm)
+                        discarded_per_frame.append(discarded)
+
+                        frame_idx += 1
+
+                    if progress_callback:
+                        progress_callback(min(0.60, (frame_idx / total_frames) * 0.60)) # 60% para extração de poses
+            finally:
+                if self.effective_device == "gpu":
+                    try:
+                        import torch
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                    except Exception:
+                        pass
 
         # Checagem de cancelamento antes de processamento dos eventos
         if is_cancelled and is_cancelled():

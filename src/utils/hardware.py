@@ -5,7 +5,7 @@ Módulo de detecção e gerenciamento de aceleração por hardware (CPU e GPU NV
 import os
 import subprocess
 import logging
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Tuple, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +263,26 @@ def get_effective_device(preference: str = "cpu") -> Tuple[str, str, Dict[str, A
             msg = "💻 Modo CPU ativado (Processamento padrão via CPU)."
 
     return effective, msg, gpu_info
- 
+
+def get_optimal_batch_size(device: str = "cpu", custom_batch_size: Optional[int] = None) -> int:
+    """
+    Determina o tamanho de lote ideal para inferência de visão computacional.
+    
+    Args:
+        device: "cpu" ou "gpu"
+        custom_batch_size: Valor customizado opcional definido pelo usuário
+        
+    Returns:
+        int: Tamanho de lote recomendado (ex: 32 para GPU, 1 para CPU)
+    """
+    if custom_batch_size is not None and isinstance(custom_batch_size, int) and custom_batch_size > 0:
+        return max(1, min(128, custom_batch_size))
+
+    clean_device = (device or "cpu").lower().strip()
+    if clean_device == "gpu":
+        return 64
+    return 1
+
 def detect_connected_cameras() -> List[Dict[str, Any]]:
     """
     Detecta e lista as webcams e dispositivos de captura de vídeo conectados ao sistema,
@@ -343,7 +362,7 @@ def ensure_browser_compatible_video(video_path: str) -> bool:
         return False
 
     tmp_converted = video_path + ".browser_h264.mp4"
-    encoders = ["h264_mf", "libopenh264", "libx264", "h264"]
+    encoders = ["h264_nvenc", "h264_mf", "libopenh264", "libx264", "h264"]
 
     for enc in encoders:
         cmd = [

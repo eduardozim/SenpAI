@@ -144,6 +144,33 @@ class TestAutoTrainer(unittest.TestCase):
         self.assertEqual(result["scope_key"], "all_14_modalities")
         self.assertTrue(any("14 Modalidades" in imp for imp in result["improvements_summary"]))
 
+    def test_modalities_accuracy_summary(self):
+        """Valida a geração do sumário de acurácia para todas as 14 modalidades de aprendizado de Kendo."""
+        summary = self.engine.get_modalities_accuracy_summary()
+        self.assertEqual(len(summary), 14)
+        
+        # Validar estrutura de cada modalidade
+        for mod in summary:
+            self.assertIn("key", mod)
+            self.assertIn("name", mod)
+            self.assertIn("japanese", mod)
+            self.assertIn("category", mod)
+            self.assertGreaterEqual(mod["current_accuracy"], 70.0)
+            self.assertLessEqual(mod["current_accuracy"], 100.0)
+            self.assertIn("gain_formatted", mod)
+            self.assertIn(mod["status"], ["Excelente", "Calibrado", "Otimizado"])
+            self.assertIn("pillar_movement_pct", mod)
+            self.assertIn("pillar_precision_pct", mod)
+            self.assertIn("pillar_constancy_pct", mod)
+            self.assertIn("cadence_optimal", mod)
+
+        # Validar que get_evolution_statistics inclui o sumário e média
+        stats = self.engine.get_evolution_statistics()
+        self.assertIn("modalities_accuracy_summary", stats)
+        self.assertEqual(len(stats["modalities_accuracy_summary"]), 14)
+        self.assertIn("average_modality_accuracy_pct", stats)
+        self.assertGreaterEqual(stats["average_modality_accuracy_pct"], 80.0)
+
     def test_auto_training_cooperative_stop(self):
         """Valida a parada graciosa e salvamento parcial do treinamento sob interrupção manual."""
         self.engine._stop_requested = True
