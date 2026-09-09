@@ -95,6 +95,8 @@ Recursos da Interface Web:
 - Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de eventos com barra de rolagem à direita.
 - Treinamento Automático por IA (Web & Vídeo Knowledge Ingestion): Na aba de Governança de Treinamento, permite disparar o motor autônomo de busca e mineração de conhecimento técnico (FIK, AJKF/ZNKR, biomecânica e corpus de vídeos) com duração determinada (em minutos) para aprender e recalibrar as 14 modalidades pedagógicas ou lutas (Shiai), conforme a necessidade mais latente, com tabela de evolução em HTML de alta performance.
 - Conformidade Estrita de Tipagem e Estabilidade: Narrowing de tipos e tratamento defensivo em todos os widgets Streamlit (câmeras, Dan, perfis, qualidades e acelerador), além de blindagem de renderização condicional da Linha do Tempo prevenindo exceções de runtime em resets ou antes da execução da análise.
+- Controles Interativos de Reprodução de Vídeo & Mesa VAR: Painel de controle acoplado diretamente abaixo do vídeo na Detecção Gravada, permitindo Play, Pause, Reinício, saltos rápidos (±1s, ±5s, ±10s), 7 taxas de velocidade (0.1x ultra-lenta a 2.0x rápida), volume e tela cheia via manipulação direta do `<video>` no DOM (executado via `streamlit.components.v1.html`). Sincronização automática com a Linha do Tempo sem dependência do parâmetro 'key' de `st.video`.
+- Gestão e Retreinamento por Planilha Excel (.xlsx): Exportação da telemetria completa dos golpes detectados para planilha Excel, geração de template vazio para preenchimento manual e importação de planilhas revisadas por árbitros (1º a 8º Dan) com retreinamento adaptativo imediato da IA.
 
 --- B. LINHA DE COMANDO (CLI) ---
 Para processar vídeos diretamente no terminal:
@@ -114,10 +116,10 @@ Para processar vídeos diretamente no terminal:
 - Otimizar perfil com base no dataset de feedback gravado:
    python main.py --profile normal --optimize-profile
 
-- Executar suíte completa de testes automatizados (116 testes) com relatório descritivo salvo em logs/:
+- Executar suíte completa de testes automatizados (126 testes) com relatório descritivo salvo em logs/:
    python run_tests.py
    (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
-   * Executa a suíte de 116 testes automatizados com 100% de aprovação
+   * Executa a suíte de 126 testes automatizados distribuídos em 16 módulos com 100% de aprovação
    * Gera o arquivo descritivo logs/senpai_test_report.log com detalhes de cada teste
    * Mantém estritamente apenas o último log de testes executado na pasta logs/
 
@@ -169,8 +171,11 @@ Opções disponíveis:
    validação geométrica de contato (Maai), eliminação de falsos positivos via NMS,
    placar eletrônico oficial (Aka vs Shiro com caracteres Katakana: メ, コ, ド, ツ),
    destaque de golpes pontuados na Linha do Tempo (メ MEN, コ KOTE, ド DO, ツ TSUKI),
-   navegação interativa com salto calibrado de 1 segundo antes do evento, edição de
-   golpes por Dan (Shodan a Hachidan), corte automático de clipes e relatórios
+   mesa de corte e controles interativos VAR (Play/Pause, saltos finos de ±1s/±5s/±10s,
+   velocidades de 0.1x a 2.0x e seek direto no DOM sincronizado com a Linha do Tempo),
+   gestão de golpes via planilha Excel (exportação detalhada em .xlsx, template em
+   branco e importação com retreinamento adaptativo da IA por Dan), edição de golpes
+   por Dan na interface (Shodan a Hachidan), corte automático de clipes e relatórios
    diagnósticos de combate.
 
 2. MODO DE TREINAMENTO & APRENDIZADO (training):

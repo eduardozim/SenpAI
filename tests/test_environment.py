@@ -29,6 +29,8 @@ class TestEnvironmentVerification(unittest.TestCase):
 
     @patch("sys.prefix", "C:\\Python311")
     @patch("sys.base_prefix", "C:\\Python311")
+    @patch("sys.exec_prefix", "C:\\Python311")
+    @patch("sys.base_exec_prefix", "C:\\Python311")
     @patch.dict(os.environ, {}, clear=True)
     def test_is_in_virtual_environment_false_when_global(self):
         """Valida que retorna False quando executando no interpretador global sem variáveis de ambiente."""

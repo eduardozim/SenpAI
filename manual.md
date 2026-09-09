@@ -149,12 +149,14 @@ Dev/
 │   ├── utils/
 │   │   ├── demo_generator.py       # Gerador sintético de vídeos de teste de Kendo
 │   │   ├── environment.py          # Detecção e status de isolamento de ambiente virtual (.venv)
+│   │   ├── excel_strikes_manager.py # Exportação e importação de golpes via planilha Excel (.xlsx)
 │   │   ├── hardware.py             # Detecção de GPU NVIDIA CUDA e resolução de fallback CPU
 │   │   ├── logger_manager.py       # Gerenciador central de logs, alertas e diagnósticos de debug
 │   │   ├── settings_manager.py     # Gerenciamento e persistência das configurações do sistema
 │   │   ├── stream_capture.py       # Captura assíncrona otimizada para câmeras IP / RTSP / Webcams
 │   │   ├── test_runner.py          # Runner de testes automatizados com emissão de log descritivo
-│   │   └── video_downloader.py     # Download, extração de metadados e streaming do YouTube/Web
+│   │   ├── video_downloader.py     # Download, extração de metadados e streaming do YouTube/Web
+│   │   └── video_player_controls.py # Controles interativos de reprodução e VAR via HTML/JS injetado
 │   ├── vision/
 │   │   ├── combatant_tracker.py    # Rastreamento dos 2 Kenshi (Aka/Shiro), flag dorsal e planos
 │   │   ├── pose_detector.py        # Rastreamento de esqueleto 3D via YOLOv8-Pose / MediaPipe
@@ -164,6 +166,7 @@ Dev/
 │   ├── test_auto_trainer.py        # Testes de auto-treinamento, baselines < 50% e tolerância a falhas
 │   ├── test_dan_training_governance.py # Testes da governança por Dan, pacotes e retreinamento
 │   ├── test_environment.py         # Testes de detecção de ambiente virtual
+│   ├── test_excel_strikes_io.py    # Testes de exportação/importação Excel e retreinamento
 │   ├── test_feedback_loop.py       # Testes unitários para a malha de feedback e RL
 │   ├── test_hardware_settings.py   # Testes automatizados de hardware e configurações
 │   ├── test_logger_manager.py      # Testes automatizados do sistema de logs e diagnóstico
@@ -174,7 +177,8 @@ Dev/
 │   ├── test_sonkyo_and_plane_filtering.py # Testes de Sonkyō, limites da luta e filtragem de planos
 │   ├── test_stream_capture.py      # Testes de captura e normalização de streams
 │   ├── test_training_modes.py      # Testes das 14 modalidades de treino e 3 pilares
-│   └── test_video_downloader.py    # Testes unitários e de integração do downloader de YouTube
+│   ├── test_video_downloader.py    # Testes unitários e de integração do downloader de YouTube
+│   └── test_video_player_controls.py # Testes dos controles interativos de vídeo e seek DOM
 ├── app.py                          # Dashboard Web Interativo Streamlit (Home, Análise e Configurações)
 ├── main.py                         # Interface de Linha de Comando (CLI com flags completas)
 ├── run_tests.py                    # Script raiz para execução descritiva dos testes automatizados
@@ -389,6 +393,45 @@ A interface web conta com uma arquitetura de navegação com visibilidade estrit
 
 ---
 
+### 4.8. Controles Interativos de Reprodução de Vídeo e VAR ([video_player_controls.py](file:///d:/Projetos/SenpAI/Dev/src/utils/video_player_controls.py))
+
+O módulo de controle de reprodução atua como uma mesa de corte e **VAR (*Video Assistant Referee*)** interativo acoplada ao player de vídeo da Detecção Gravada:
+
+- **Isolamento e Execução Segura de JavaScript (`streamlit.components.v1.html`)**:
+  - A API nativa `st.html()` do Streamlit bloqueia ativamente tags `<script>` por motivos de sanitização interna. Para contornar essa restrição sem comprometer a segurança, o módulo renderiza um iframe isolado via `streamlit.components.v1.html`.
+  - Como o iframe compartilha a mesma origem (origin) do aplicativo Streamlit, o script tem acesso seguro e direto ao documento pai através de `window.parent.document`.
+- **Comunicação Direta com o Elemento `<video>` no DOM**:
+  - Localiza o elemento de vídeo no DOM pai via `parentDoc.querySelectorAll('video')` ou `parentDoc.getElementById(containerId)`.
+  - Permite controle em tempo real de `currentTime`, `playbackRate`, `play()`, `pause()`, volume e tela cheia sem recarregar ou causar re-execução do script Python no servidor Streamlit.
+- **Botões e Ferramentas do Painel VAR**:
+  - **Transporte Básico**: `▶️ Play`, `⏸️ Pause`, `⏪ Reiniciar`.
+  - **Salto Temporal Fino / Scrubbing**: Saltos incrementais rápidos de `⏪ -10s`, `◀️ -5s`, `⏮️ -1s`, `⏭️ +1s`, `▶️ +5s`, `⏩ +10s` para análise quadro a quadro de cortes milimétricos.
+  - **Câmera Lenta e Velocidade Variável**: Seletor de velocidade instantânea com 7 taxas: `0.1x` (ultra-slow-motion), `0.25x`, `0.5x`, `0.75x`, `1.0x` (velocidade normal), `1.5x` e `2.0x`.
+  - **Controle de Visualização**: Alternador de Tela Cheia (`⛶`) e controle de áudio/mudo (`🔊`/`🔇`).
+  - **Display de Tempo**: Exibição de timestamp decorrido e duração total (`MM:SS / MM:SS`).
+- **Resolução de Incompatibilidade de Seek no Streamlit (`st.video`)**:
+  - No Streamlit, o método `st.video()` não suporta o parâmetro `key` em diversas versões, gerando a exceção fatal `TypeError: MediaMixin.video() got an unexpected keyword argument 'key'`.
+  - A sincronização temporal automática com os eventos selecionados na Linha do Tempo (Sonkyō e Golpes) é agora resolvida diretamente pelo componente via `target_start_time`: a função JavaScript `applyInitialSeek()` posiciona o vídeo exatamente no instante pretendido assim que os metadados do vídeo são carregados no navegador (`loadedmetadata` / `canplay`), dispensando parâmetros stateful no backend.
+
+---
+
+### 4.9. Gestão e Retreinamento Bidirecional de Golpes via Planilha Excel ([excel_strikes_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/excel_strikes_manager.py))
+
+Permite a auditoria, anotação offline e retreinamento do modelo de IA através de planilhas eletrônicas padronizadas em formato Microsoft Excel (`.xlsx`):
+
+- **Exportação Formatada de Golpes (`export_strikes_to_excel`)**:
+  - Converte a lista de golpes detectados pela IA em um arquivo Excel (.xlsx) estruturado com OpenPyXL / Pandas.
+  - Gera colunas completas de telemetria: `ID_Golpe`, `Timestamp_Segundos`, `Timestamp_Formatado (MM:SS.s)`, `Alvo_Detectado (MEN, KOTE, DO, TSUKI)`, `Atacante (Aka/Shiro)`, `Ippon_Valido (Sim/Não)`, `Score_Geral (%)`, `Score_Alvo_Ken (%)`, `Score_Fumikomi_Tai (%)`, `Score_Postura_Tai (%)`, `Score_Zanshin_Ki (%)`, `Fumikomi_Offset_ms`, `Dentro_Janela_Sonkyo (Sim/Não)` e `Status_Revisao`.
+  - Inclui campos dedicados para anotação humana: `Acao_Revisao (CONFIRMAR / EDITAR / DESCARTAR)`, `Novo_Alvo_Corrigido`, `Novo_Timestamp_Corrigido`, `Dan_Anotador (1 a 8)` e `Observacoes_Tecnicas`.
+- **Template em Branco para Anotações Manuais (`generate_empty_template_excel`)**:
+  - Cria um arquivo modelo pré-estruturado para registro de novas lutas ou anotações a partir do zero por equipes de arbitragem.
+- **Importação, Validação e Retreinamento Automático (`import_strikes_from_excel`)**:
+  - Validação estrita de integridade e sanitização de schema contra arquivos corrompidos ou colunas faltantes.
+  - Processa as correções registradas por árbitros graduados (Shodan 1º Dan a Hachidan 8º Dan) e as converte automaticamente em amostras de feedback (Verdadeiros Positivos, Falsos Positivos e Falsos Negativos).
+  - Atualiza atomicamente a base de governança (`data/feedback_dataset.json`) e aciona imediatamente o retreinamento adaptativo do modelo via `DanTrainingGovernance`, refinando os limiares de Ki-Ken-Tai-Ichi sem intervenção manual.
+
+---
+
 ## 5. Suíte de Testes Automatizados e Relatório de Execução
 
 O projeto inclui suíte completa de testes automatizados em `unittest` com runner customizado ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py)) e script de execução dedicado ([run_tests.py](file:///d:/Projetos/SenpAI/Dev/run_tests.py)).
@@ -414,11 +457,12 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **Política de Retenção Única**:
   - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
 
-### Módulos de Testes Incluídos (116 Testes)
+### Módulos de Testes Incluídos (126 Testes)
 
 - **`test_auto_trainer.py` (14 testes)**: Valida a inicialização da base de conhecimento de Kendo, diagnóstico autônomo de necessidade mais latente, ciclo de auto-treinamento com tempo controlado, baselines preliminares realistas (< 50%), recalibração de perfis de arbitragem e das 14 modalidades pedagógicas, persistência incremental em governança e checkpoints de tolerância a falhas.
 - **`test_dan_training_governance.py` (12 testes)**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador humano vs IA, média de Dan humano e tabela por Dan com linha dedicada para IA), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
 - **`test_environment.py` (4 testes)**: Valida detecção e integridade do ambiente virtual Python (`.venv`).
+- **`test_excel_strikes_io.py` (6 testes)**: Valida exportação de golpes detectados para planilha Excel (.xlsx), geração de template vazio, importação com sanitização e validação de schema, integração com a base de governança de Dan e acionamento de retreinamento do modelo.
 - **`test_feedback_loop.py` (4 testes)**: Valida salvamento, persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
 - **`test_hardware_settings.py` (8 testes)**: Valida detecção de GPU NVIDIA CUDA, configurações globais e resolução de fallback transparente para CPU.
 - **`test_logger_manager.py` (6 testes)**: Valida sistema de logs, métricas em tempo real e diagnósticos automatizados.
@@ -430,8 +474,9 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_stream_capture.py` (6 testes)**: Valida a captura assíncrona com threading, reconexão automática e otimizações de rede para câmeras IP / RTSP / Webcams.
 - **`test_training_modes.py` (8 testes)**: Valida as 14 modalidades pedagógicas de treino, cálculo dos 3 Pilares (Movimentação, Precisão, Constância) e perfil do Kendoca.
 - **`test_video_downloader.py` (12 testes)**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
+- **`test_video_player_controls.py` (4 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
 
-Total de **116 testes automatizados** executados e aprovados com 100% de sucesso.
+Total de **126 testes automatizados** distribuídos em 16 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -439,7 +484,28 @@ Total de **116 testes automatizados** executados e aprovados com 100% de sucesso
 
 ---
 
-### `[v2.0.0]` — 2026-09-08 *(Versão Atual)*
+### `[v2.1.0]` — 2026-09-09 *(Versão Atual)*
+
+- **Controles Interativos de Reprodução de Vídeo & VAR ([video_player_controls.py](file:///d:/Projetos/SenpAI/Dev/src/utils/video_player_controls.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - Implementado componente interativo de reprodução de vídeo integrado diretamente abaixo do player no Modo de Detecção Gravada via `render_video_playback_controls()`.
+  - **Mesa de Controle VAR**: Botoeiras de transporte (`Play`, `Pause`, `Reiniciar`), botões de salto fino no tempo (`-10s`, `-5s`, `-1s`, `+1s`, `+5s`, `+10s`), seletor de velocidade instantânea (`0.1x`, `0.25x`, `0.5x`, `0.75x`, `1.0x`, `1.5x`, `2.0x`), alternador de tela cheia, controle de volume e mostrador de tempo decorrido.
+  - **Execução Segura em Iframe Isolado (`streamlit.components.v1.html`)**: Superação da limitação nativa do `st.html()`, que bloqueia tags `<script>`, permitindo execução segura de JavaScript no iframe filho com manipulação direta do `<video>` no documento pai (`window.parent.document`).
+- **Resolução de Incompatibilidade de Seek no Streamlit (`st.video`)**:
+  - Corrigido o erro fatal `TypeError: MediaMixin.video() got an unexpected keyword argument 'key'` ao invocar `st.video()`.
+  - O salto temporal automático para os eventos da Linha do Tempo agora é executado diretamente a nível de DOM pelo script auxiliar através de `target_start_time` e `applyInitialSeek()`, sem necessidade de reinicializar o elemento de mídia no servidor.
+- **Gestão e Retreinamento por Planilha Excel ([excel_strikes_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/excel_strikes_manager.py))**:
+  - Módulo completo de exportação e importação de golpes em planilhas Microsoft Excel (`.xlsx`).
+  - **Exportação Detalhada**: Converte os eventos detectados com telemetria de Ki-Ken-Tai-Ichi, tempos, alvos e colunas dedicadas de revisão humana (`Acao_Revisao`, `Novo_Alvo`, `Dan_Anotador`, `Observacoes`).
+  - **Importação com Retreinamento**: Processa planilhas anotadas offline por árbitros (1º ao 8º Dan), valida o schema, sincroniza com `feedback_dataset.json` e dispara o retreinamento adaptativo do modelo via `DanTrainingGovernance`.
+  - **Template em Branco**: Permite gerar planilhas modelo limpas para anotações manuais em novos campeonatos.
+- **Expansão da Suíte de Testes para 126 Testes Automatizados**:
+  - Criado [test_excel_strikes_io.py](file:///d:/Projetos/SenpAI/Dev/tests/test_excel_strikes_io.py) (6 testes) cobrindo exportação, importação, validação de schema e retreinamento.
+  - Criado [test_video_player_controls.py](file:///d:/Projetos/SenpAI/Dev/tests/test_video_player_controls.py) (4 testes) cobrindo geração de HTML/JS, botões de transporte, scripts de seek e compatibilidade unificada `unittest` + `pytest`.
+  - Total de **126 testes automatizados** aprovados com 100% de sucesso.
+
+---
+
+### `[v2.0.0]` — 2026-09-08
 
 - **Página Inicial de Boas-Vindas (Home) e Regra de Visibilidade Estrita ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - Implementada a tela de abertura padrão do sistema através da função `render_welcome_home_page()`, carregada automaticamente ao inicializar o SenpAI (`st.session_state["nav_page_selection"] = "home"`).
