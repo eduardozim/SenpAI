@@ -1,30 +1,30 @@
 {
   "status": "completed_consolidated",
-  "session_id": "auto_train_20260908_233541",
+  "session_id": "auto_train_20260909_192300",
   "scope_key": "all_14_modalities",
   "scope_name": "🎯 Necessidade Mais Latente (🎓 14 Modalidades Pedagógicas de Treinamento (Dojo & Exames))",
-  "samples_processed": 198305,
-  "final_accuracy": 98.2,
+  "samples_processed": 199252,
+  "final_accuracy": 65.3,
   "sources_consulted": [
     {
       "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
       "type": "Manual de Arbitragem AJKF"
     },
     {
-      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
-      "type": "Tratado Técnico Kata"
-    },
-    {
       "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
       "type": "Manual Oficial FIK"
     },
     {
-      "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
-      "type": "Corpus de Vídeo HD"
+      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+      "type": "Tratado Técnico Kata"
     },
     {
       "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
       "type": "Corpus de Vídeo Dojo"
+    },
+    {
+      "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+      "type": "Corpus de Vídeo HD"
     },
     {
       "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
@@ -39,12 +39,12 @@
       "type": "Currículo Pedagógico"
     },
     {
-      "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
-      "type": "Modelo Neural"
-    },
-    {
       "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
       "type": "Dataset de Calibração"
+    },
+    {
+      "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+      "type": "Modelo Neural"
     },
     {
       "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
@@ -52,7 +52,7 @@
     }
   ],
   "duration_seconds": 1800.0,
-  "last_updated": "2026-09-09T00:05:41.514539",
+  "last_updated": "2026-09-09T19:53:00.772189",
   "consolidated": true,
-  "last_checkpoint_timestamp": "2026-09-09T00:05:41.514539"
+  "last_checkpoint_timestamp": "2026-09-09T19:53:00.773187"
 }

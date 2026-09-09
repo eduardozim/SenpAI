@@ -22,6 +22,7 @@ warnings.filterwarnings("ignore", category=UserWarning, module="google.protobuf"
 
 import cv2
 import numpy as np
+import pandas as pd
 import json
 import time
 from typing import Any, Dict, List, Optional
@@ -30,6 +31,12 @@ from src.pipeline import SenpAIPipeline, AnalysisWorker
 from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager
 from src.engine.auto_trainer import auto_trainer, AUTO_TRAINING_SCOPES, KENDO_KNOWLEDGE_RESOURCES
+from src.utils.excel_strikes_manager import (
+    export_strikes_to_excel,
+    import_strikes_from_excel,
+    apply_imported_strikes_to_session_reviews,
+    execute_training_from_imported_strikes
+)
 from src.engine.reporter import DiagnosticReporter
 from src.analytics.sonkyo_detector import SonkyoDetector
 from src.analytics.training_analyzer import (
@@ -59,6 +66,7 @@ from src.utils.environment import get_virtual_environment_info, is_in_virtual_en
 from src.utils.stream_capture import (
     ThreadedVideoStream, probe_stream_connection, normalize_stream_source, apply_ffmpeg_network_optimizations
 )
+from src.utils.video_player_controls import render_video_playback_controls
 
 # Inicializa o logger central do sistema
 setup_system_logger()
@@ -1467,17 +1475,18 @@ elif nav_page == "settings":
                 logs_placeholder = st.empty()
 
                 def update_progress_ui(data: Dict[str, Any]):
-                    pct = data.get("percent", 0)
+                    pct = int(data.get("percent") or 0)
                     progress_bar.progress(pct)
-                    stage_lbl = data.get("current_stage", "")
-                    subtask_lbl = data.get("current_subtask", "")
-                    rem_s = data.get("remaining_seconds", 0.0)
-                    elap_s = data.get("elapsed_seconds", 0.0)
-                    acc_val = data.get("current_accuracy", 75.0)
-                    init_acc_val = data.get("initial_accuracy", 75.0)
-                    acc_gain = data.get("accuracy_gain", round(acc_val - init_acc_val, 1))
+                    stage_lbl = str(data.get("current_stage") or "")
+                    subtask_lbl = str(data.get("current_subtask") or "")
+                    rem_s = float(data.get("remaining_seconds") or 0.0)
+                    elap_s = float(data.get("elapsed_seconds") or 0.0)
+                    acc_val = float(data.get("current_accuracy") or 75.0)
+                    init_acc_val = float(data.get("initial_accuracy") or 75.0)
+                    raw_gain = data.get("accuracy_gain")
+                    acc_gain: float = float(raw_gain) if raw_gain is not None else round(acc_val - init_acc_val, 1)
                     gain_signal = f"+{acc_gain:.1f}%" if acc_gain >= 0 else f"{acc_gain:.1f}%"
-                    samples = data.get("samples_processed", 0)
+                    samples = int(data.get("samples_processed") or 0)
 
                     # Formatação de tempo decorrido e restante
                     def _fmt_sec(s_val: float) -> str:
@@ -3311,8 +3320,6 @@ elif nav_page == "analysis":
                         """,
                         unsafe_allow_html=True
                     )
-                    with st.expander("🎓 Diagnóstico Pedagógico de Treinamento & 3 Pilares", expanded=False):
-                        render_training_analysis_view(res, is_inverted)
 
                 # BARRA DE CONTROLES: INVERSÃO DE LUTADORES, HABILITAR EDIÇÃO & PAINEL DAN
                 col_ctrl1, col_ctrl2 = st.columns([1.6, 2.4])
@@ -3445,13 +3452,24 @@ elif nav_page == "analysis":
                             if st.button("✖️ Início", key="btn_reset_seek_video", width="stretch", help="Voltar a reprodução para o início"):
                                 st.session_state.pop("video_start_time", None)
                                 st.session_state.pop("video_seek_label", None)
+                                st.session_state["video_seek_key"] = st.session_state.get("video_seek_key", 0) + 1
                                 st.rerun()
 
-                    active_start_time = int(round(st.session_state.get("video_start_time", 0.0)))
+                    active_start_time = float(st.session_state.get("video_start_time", 0.0))
                     st.video(
                         selected_video,
                         start_time=active_start_time,
                         autoplay=("video_start_time" in st.session_state and st.session_state["video_start_time"] > 0)
+                    )
+
+                    # Painel Interativo de Controles de Vídeo (Câmera Lenta, Quadro a Quadro, ±0.5s e Atalhos)
+                    current_res = st.session_state.get("analysis_result", {})
+                    render_video_playback_controls(
+                        events=current_res.get("events"),
+                        sonkyo_info=current_res.get("sonkyo_analysis"),
+                        sonkyo_edits=st.session_state.get("sonkyo_edits"),
+                        default_fps=float(current_res.get("fps", 30.0) or 30.0),
+                        target_start_time=active_start_time
                     )
                 else:
                     st.info("Nenhum vídeo disponível para reprodução.")
@@ -3675,8 +3693,207 @@ elif nav_page == "analysis":
                                 if st.session_state.get("video_start_time") != target_sec or st.session_state.get("video_seek_label") != target_lbl:
                                     st.session_state["video_start_time"] = target_sec
                                     st.session_state["video_seek_label"] = target_lbl
+                                    st.session_state["video_seek_key"] = st.session_state.get("video_seek_key", 0) + 1
                                     st.toast(f"🎥 Vídeo posicionado em {target_sec:.1f}s (1s antes)!", icon="🎬")
                                     st.rerun()
+
+                        # ----------------------------------------------------------------------
+                        # EXPORTAÇÃO E IMPORTAÇÃO DE GOLPES VIA EXCEL (.XLSX) PARA TREINAMENTO
+                        # ----------------------------------------------------------------------
+                        is_streaming_video = (
+                            st.session_state.get("video_source_type") == "youtube"
+                            and bool(str(st.session_state.get("youtube_url", "")).strip())
+                        )
+                        active_streaming_url = str(st.session_state.get("youtube_url", "")).strip() if is_streaming_video else ""
+
+                        with st.expander("📊 Planilha Excel de Golpes: Exportar Detecções & Importar para Treinamento", expanded=False):
+                            if not is_streaming_video:
+                                st.warning(
+                                    "🔒 **Exportação e Importação via Excel Indisponíveis**\n\n"
+                                    "A exportação e importação de golpes via planilha Excel está disponível **exclusivamente para análises realizadas a partir de um link de streaming** (YouTube / Web Stream).\n\n"
+                                    "Como a análise atual foi carregada a partir de um arquivo local (Upload), a revisão e o retreinamento adaptativo do modelo devem ser realizados diretamente através dos botões e controles na linha do tempo."
+                                )
+                            else:
+                                tab_exp, tab_imp = st.tabs(["📥 Exportar Golpes para Excel", "📤 Importar Planilha Editada & Treinar"])
+
+                                with tab_exp:
+                                    st.markdown("##### 📥 Exportar Lista de Golpes Detectados")
+                                    st.caption("Gera um arquivo Excel estruturado com todos os golpes detectados pela IA e incluídos manualmente, pontuações Ki-Ken-Tai-Ichi, link de streaming e chancela do revisor Dan.")
+
+                                    # Identificação do Streaming e Dan do Revisor
+                                    c_meta1, c_meta2 = st.columns([2.2, 1.2])
+                                    with c_meta1:
+                                        st.text_input(
+                                            "🌐 Link de Streaming (Gravado na Planilha):",
+                                            value=active_streaming_url,
+                                            disabled=True,
+                                            help="Link de streaming da partida que será incluído de forma rastreável no arquivo Excel.",
+                                            key="txt_export_active_streaming_url"
+                                        )
+                                    with c_meta2:
+                                        exp_dan_default = selected_dan if selected_dan in dan_options else 3
+                                        exp_dan_sel = st.selectbox(
+                                            "🥋 Dan do Revisor:",
+                                            options=list(dan_options.keys()),
+                                            index=list(dan_options.keys()).index(exp_dan_default),
+                                            format_func=lambda d: dan_options.get(d, f"{d}º Dan"),
+                                            help="Graduação Dan do árbitro (Shinpan) ou revisor que constará no arquivo de exportação.",
+                                            key="sel_dan_excel_export"
+                                        )
+                                        exp_dan: int = exp_dan_sel if exp_dan_sel is not None else exp_dan_default
+
+                                    c_m1, c_m2, c_m3 = st.columns(3)
+                                    total_comb = len(combined_strikes)
+                                    val_comb = sum(1 for s in combined_strikes if s.get("review", {}).get("is_valid_ippon", s.get("orig_is_valid", False)))
+                                    c_m1.metric("Total de Golpes", total_comb)
+                                    c_m2.metric("Golpes Válidos (Ippon)", val_comb)
+                                    c_m3.metric("Golpes Inválidos", total_comb - val_comb)
+
+                                    if total_comb > 0:
+                                        excel_data_bytes = export_strikes_to_excel(
+                                            strikes_data=combined_strikes,
+                                            video_name=video_name_simple,
+                                            streaming_url=active_streaming_url,
+                                            reviewer_dan=exp_dan
+                                        )
+                                        safe_vname = os.path.splitext(os.path.basename(video_name_simple))[0]
+                                        now_tag = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                                        st.download_button(
+                                            label=f"📥 Baixar Planilha Excel de Golpes (.xlsx) • {dan_options.get(exp_dan, f'{exp_dan}º Dan')}",
+                                            data=excel_data_bytes,
+                                            file_name=f"golpes_detectados_{safe_vname}_{now_tag}.xlsx",
+                                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                            type="primary",
+                                            use_container_width=True,
+                                            key="btn_download_strikes_excel"
+                                        )
+                                        st.info(f"💡 **Dica de Edição:** A planilha exportada possui três abas: *'Golpes Detectados'*, *'Metadados & Vídeo'* e *'Instruções & Dicionário'*. O arquivo contém o link de streaming e a graduação Dan ({dan_options.get(exp_dan)}).")
+                                    else:
+                                        st.warning("Nenhum golpe disponível para exportação.")
+
+                                with tab_imp:
+                                    st.markdown("##### 📤 Importar Planilha Editada & Treinamento dos Golpes")
+                                    st.caption("Envie a planilha `.xlsx` editada para carregar as correções na linha do tempo ou executar o retreinamento adaptativo do modelo.")
+
+                                    uploaded_file = st.file_uploader(
+                                        "Selecione o arquivo Excel editado (.xlsx ou .xls):",
+                                        type=["xlsx", "xls"],
+                                        key="uploader_excel_strikes_review"
+                                    )
+
+                                    if uploaded_file is not None:
+                                        try:
+                                            imported_list, imp_summary = import_strikes_from_excel(
+                                                file_content_or_path=uploaded_file,
+                                                existing_events=combined_strikes
+                                            )
+
+                                            # Identificação de Metadados extraídos
+                                            imported_stream_url = imp_summary.get("streaming_url", "")
+                                            imported_dan = imp_summary.get("reviewer_dan")
+                                            imported_dan_name = imp_summary.get("reviewer_dan_name")
+
+                                            if imported_stream_url:
+                                                if active_streaming_url and imported_stream_url != active_streaming_url:
+                                                    st.warning(f"⚠️ **Atenção:** O link de streaming da planilha (`{imported_stream_url}`) difere do vídeo atualmente em reprodução (`{active_streaming_url}`).")
+                                                else:
+                                                    st.success(f"🌐 **Link de Streaming Confirmado na Planilha:** `{imported_stream_url}`")
+                                            else:
+                                                st.info("ℹ️ Nenhum link de streaming identificado no arquivo Excel importado.")
+
+                                            # Métricas de importação
+                                            i_c1, i_c2, i_c3, i_c4 = st.columns(4)
+                                            i_c1.metric("Golpes Lidos", imp_summary["total_rows"])
+                                            i_c2.metric("Ippons Válidos", imp_summary["valid_ippons"])
+                                            i_c3.metric("Golpes Inválidos", imp_summary["invalid_hits"])
+                                            i_c4.metric("Novos Golpes Incluídos", imp_summary["new_strikes_count"])
+
+                                            if imp_summary.get("warnings"):
+                                                for w in imp_summary["warnings"][:3]:
+                                                    st.warning(f"⚠️ {w}")
+
+                                            # Tabela de pré-visualização formatada
+                                            preview_rows = []
+                                            for itm in imported_list:
+                                                preview_rows.append({
+                                                    "ID": itm["event_id"],
+                                                    "Timestamp": itm["timestamp"],
+                                                    "Golpe": itm["strike_type"],
+                                                    "Atacante": itm["attacker_name"],
+                                                    "Ippon Válido?": "✅ SIM" if itm["is_valid_ippon"] else "❌ NÃO",
+                                                    "Rótulo": itm["label"],
+                                                    "Pontuação": f"{itm['total_score']:.1f}%",
+                                                    "Origem": "➕ Novo (Planilha)" if itm.get("is_included") else "✏️ Editado",
+                                                    "Notas": itm["notes"]
+                                                })
+                                            if preview_rows:
+                                                st.markdown("**Prévia dos Golpes Importados:**")
+                                                st.dataframe(pd.DataFrame(preview_rows), use_container_width=True, height=200)
+
+                                            # Opções de Governança e Ação
+                                            st.markdown("---")
+                                            g_c1, g_c2 = st.columns(2)
+                                            with g_c1:
+                                                suggested_dan = imported_dan if (imported_dan and imported_dan in dan_options) else selected_dan
+                                                suggested_idx = list(dan_options.keys()).index(suggested_dan) if suggested_dan in dan_options else 2
+                                                imp_dan_sel = st.selectbox(
+                                                    "Graduação Dan do Revisor Responsável:",
+                                                    options=list(dan_options.keys()),
+                                                    index=suggested_idx,
+                                                    format_func=lambda d: dan_options.get(d, f"{d}º Dan"),
+                                                    key="sel_dan_excel_import",
+                                                    help=f"Chancela Dan sugerida: {imported_dan_name or dan_options.get(suggested_dan)}."
+                                                )
+                                                imp_dan: int = imp_dan_sel if imp_dan_sel is not None else suggested_dan
+                                            with g_c2:
+                                                imp_profile_sel = st.selectbox(
+                                                    "Perfil de Calibração Alvo:",
+                                                    options=["normal", "permissivo", "rigido"],
+                                                    index=["normal", "permissivo", "rigido"].index(profile_choice) if profile_choice in ["normal", "permissivo", "rigido"] else 0,
+                                                    key="sel_profile_excel_import"
+                                                )
+                                                imp_profile: str = imp_profile_sel if imp_profile_sel is not None else profile_choice
+
+                                            btn_col1, btn_col2 = st.columns(2)
+                                            with btn_col1:
+                                                if st.button("📥 Aplicar à Sessão Atual (Atualizar Linha do Tempo & Placar)", use_container_width=True, key="btn_apply_excel_session"):
+                                                    st.session_state["session_reviews"] = apply_imported_strikes_to_session_reviews(
+                                                        imported_strikes=imported_list,
+                                                        current_session_reviews=st.session_state.get("session_reviews", {})
+                                                    )
+                                                    st.toast(f"✅ {len(imported_list)} golpes carregados na sessão atual!", icon="📥")
+                                                    st.rerun()
+
+                                            with btn_col2:
+                                                if st.button("🎯 Executar Treinamento do Modelo com a Planilha", type="primary", use_container_width=True, key="btn_train_excel_model"):
+                                                    # Atualiza a sessão
+                                                    st.session_state["session_reviews"] = apply_imported_strikes_to_session_reviews(
+                                                        imported_strikes=imported_list,
+                                                        current_session_reviews=st.session_state.get("session_reviews", {})
+                                                    )
+
+                                                    train_res = execute_training_from_imported_strikes(
+                                                        imported_strikes=imported_list,
+                                                        video_name=video_name_simple,
+                                                        profile_key=imp_profile,
+                                                        reviewer_dan=imp_dan,
+                                                        current_profile_config=current_p,
+                                                        feedback_mgr=feedback_mgr,
+                                                        auto_trainer_instance=auto_trainer
+                                                    )
+
+                                                    st.success(f"🎉 Treinamento concluído com sucesso! {train_res['items_count']} golpes registrados sob governança de {train_res['reviewer_dan_name']}.")
+
+                                                    opt_summary = train_res.get("optimization_summary", {})
+                                                    if opt_summary.get("changes"):
+                                                        st.markdown("**Otimizações e Ajustes Biomecânicos Aplicados:**")
+                                                        for chg in opt_summary["changes"]:
+                                                            st.markdown(f"- {chg}")
+
+                                                    st.toast("🎉 Modelo retreinado e calibrado com sucesso a partir do Excel!", icon="🎯")
+
+                                        except Exception as e:
+                                            st.error(f"❌ Erro ao processar arquivo Excel: {str(e)}")
 
                         # Função interna para renderizar o inseridor inline de golpes entre eventos (+)
                         def render_inline_strike_inserter(slot_id: str, prev_time_s: float, next_time_s: float, prev_desc: str, next_desc: str):
@@ -3788,6 +4005,7 @@ elif nav_page == "analysis":
                                             if st.button("🎬 Assistir no Vídeo", key="btn_seek_sonkyo_init", help="Reproduzir o vídeo no momento do Sonkyō Inicial"):
                                                 st.session_state["video_start_time"] = seek_init_s
                                                 st.session_state["video_seek_label"] = f"Sonkyō Inicial ({curr_start_ts})"
+                                                st.session_state["video_seek_key"] = st.session_state.get("video_seek_key", 0) + 1
                                                 st.toast(f"🎥 Vídeo posicionado em {seek_init_s:.1f}s", icon="🎬")
                                                 st.rerun()
                                         with c_info2:
@@ -3891,6 +4109,7 @@ elif nav_page == "analysis":
                                                 if st.button("🎬 Assistir no Vídeo", key=f"btn_seek_strike_{idx}_{event_id_str}", width="stretch", help=f"Reproduzir o vídeo no momento deste golpe ({seek_strike_s:.1f}s)"):
                                                     st.session_state["video_start_time"] = seek_strike_s
                                                     st.session_state["video_seek_label"] = f"Golpe #{idx+1} {display_strike_title} @ {current_rev['timestamp']}"
+                                                    st.session_state["video_seek_key"] = st.session_state.get("video_seek_key", 0) + 1
                                                     st.toast(f"🎥 Vídeo posicionado em {seek_strike_s:.1f}s!", icon="🎬")
                                                     st.rerun()
 
@@ -4103,6 +4322,7 @@ elif nav_page == "analysis":
                                             if st.button("🎬 Assistir no Vídeo", key="btn_seek_sonkyo_fin", help="Reproduzir o vídeo no momento do Sonkyō Final"):
                                                 st.session_state["video_start_time"] = seek_fin_s
                                                 st.session_state["video_seek_label"] = f"Sonkyō Final ({curr_start_ts_fin})"
+                                                st.session_state["video_seek_key"] = st.session_state.get("video_seek_key", 0) + 1
                                                 st.toast(f"🎥 Vídeo posicionado em {seek_fin_s:.1f}s", icon="🎬")
                                                 st.rerun()
                                         with c_finfo2:

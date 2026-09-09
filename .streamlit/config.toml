@@ -1,4 +1,6 @@
 [server]
+address = "127.0.0.1"
+port = 8501
 # Remoção da restrição de tamanho de arquivo de upload no SenpAI (permite vídeos de alta resolução de até 50 GB)
 maxUploadSize = 51200
 maxMessageSize = 51200

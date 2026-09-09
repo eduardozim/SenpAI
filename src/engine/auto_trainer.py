@@ -11,7 +11,7 @@ import time
 import math
 import random
 import datetime
-from typing import Dict, List, Any, Optional, Tuple, Callable
+from typing import Dict, List, Any, Optional, Tuple, Callable, TypedDict
 
 from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA
 from src.engine.feedback_manager import FeedbackManager, DEFAULT_CALIBRATION_PROFILES
@@ -130,6 +130,13 @@ MODALITY_BASE_ACCURACIES: Dict[str, float] = {
     "kakari_geiko": 33.5,
     "ji_geiko": 32.0,
 }
+
+
+class BiomechanicalModule(TypedDict):
+    stage: str
+    threshold: float
+    sources: List[Dict[str, str]]
+    subtasks: List[str]
 
 
 class AutoTrainingEngine:
@@ -323,7 +330,10 @@ class AutoTrainingEngine:
 
         # Consolidar acurácia na modalidade ou parâmetros
         scope_key = ckpt.get("scope_key", "")
-        final_acc = float(ckpt.get("final_accuracy", ckpt.get("current_accuracy", 0.0)))
+        raw_final = ckpt.get("final_accuracy")
+        if raw_final is None:
+            raw_final = ckpt.get("current_accuracy", 0.0)
+        final_acc = float(raw_final) if raw_final is not None else 0.0
         if final_acc > 0:
             learned_mods = kb.get("learned_parameters", {}).get("training_modalities", {})
             if scope_key.startswith("modality_"):
@@ -540,7 +550,7 @@ class AutoTrainingEngine:
         self._is_running = True
         self._stop_requested = False
         start_time = time.time()
-        target_duration_sec = max(2.5, float(duration_minutes) * 60.0)
+        target_duration_sec = max(2.5, duration_minutes * 60.0)
         session_id = f"auto_train_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
         # 1. Resolução do Escopo Efetivo
@@ -593,7 +603,7 @@ class AutoTrainingEngine:
         samples_processed = 0
 
         # Módulos Temáticos de Aprendizado Biomecânico de Kendo
-        biomechanical_learning_modules = [
+        biomechanical_learning_modules: List[BiomechanicalModule] = [
             # Fase 1: Manuais e Diretrizes Regulamentares Oficiais (0.0 - 0.20)
             {
                 "stage": "🔍 Consulta a Manuais Oficiais FIK / AJKF & Diretrizes de Arbitragem",
@@ -712,7 +722,7 @@ class AutoTrainingEngine:
                 current_subtask = random.choice(current_module["subtasks"])
 
                 # Ingestão de fontes técnicas da etapa
-                if current_module.get("sources"):
+                if current_module["sources"]:
                     chosen_src = random.choice(current_module["sources"])
                     if not any(s["title"] == chosen_src["title"] for s in sources_consulted):
                         sources_consulted.append(chosen_src)
