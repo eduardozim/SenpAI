@@ -2588,7 +2588,11 @@ elif nav_page == "analysis":
                         # Processar Pose Tracking na câmera k
                         if num_cameras == 1:
                             candidates, _ = pipeline.pose_detector.process_frame_candidates(frame)
-                            aka_lm, shiro_lm, disc = pipeline.combatant_tracker.associate_and_filter(candidates, frame=frame)
+                            aka_lm, shiro_lm, disc = pipeline.combatant_tracker.associate_and_filter(
+                                candidates,
+                                frame=frame,
+                                return_persisted=True
+                            )
                             drawn_frame = pipeline.pose_detector.draw_combatants_overlay(
                                 frame,
                                 aka_landmarks=aka_lm,

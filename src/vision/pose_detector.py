@@ -148,6 +148,10 @@ class PoseDetector:
                 if not name:
                     continue
 
+                # Rejeitar keypoints não detectados pelo YOLO (confiança baixa ou ponto nulo 0,0)
+                if float(conf) < 0.20 or (px <= 3 and py <= 3):
+                    continue
+
                 x_norm = float(np.clip(px / max(1, w), 0.0, 1.0))
                 y_norm = float(np.clip(py / max(1, h), 0.0, 1.0))
 
@@ -161,12 +165,42 @@ class PoseDetector:
                 }
 
             # Sintetizar pés/calcanhares para compatibilidade total com os módulos biomecânicos
+            if "RIGHT_ANKLE" not in lm_dict and "LEFT_ANKLE" in lm_dict:
+                lm_dict["RIGHT_ANKLE"] = dict(lm_dict["LEFT_ANKLE"])
+            elif "LEFT_ANKLE" not in lm_dict and "RIGHT_ANKLE" in lm_dict:
+                lm_dict["LEFT_ANKLE"] = dict(lm_dict["RIGHT_ANKLE"])
+            elif "RIGHT_ANKLE" not in lm_dict and "RIGHT_HIP" in lm_dict:
+                r_hip = lm_dict["RIGHT_HIP"]
+                lm_dict["RIGHT_ANKLE"] = {
+                    "x": r_hip["x"],
+                    "y": min(1.0, r_hip["y"] + 0.35),
+                    "z": 0.0,
+                    "visibility": 0.5,
+                    "px": r_hip.get("px", 0),
+                    "py": min(h - 1, int(r_hip.get("py", 0) + 0.35 * h))
+                }
+                lm_dict["LEFT_ANKLE"] = dict(lm_dict["RIGHT_ANKLE"])
+
             if "RIGHT_ANKLE" in lm_dict:
                 lm_dict["RIGHT_FOOT_INDEX"] = dict(lm_dict["RIGHT_ANKLE"])
                 lm_dict["RIGHT_HEEL"] = dict(lm_dict["RIGHT_ANKLE"])
             if "LEFT_ANKLE" in lm_dict:
                 lm_dict["LEFT_FOOT_INDEX"] = dict(lm_dict["LEFT_ANKLE"])
                 lm_dict["LEFT_HEEL"] = dict(lm_dict["LEFT_ANKLE"])
+
+            # Sintetizar continuidade bimanual para empunhadura do cabo do Shinai (Tsuka)
+            r_wrist = lm_dict.get("RIGHT_WRIST")
+            l_wrist = lm_dict.get("LEFT_WRIST")
+            if r_wrist and not l_wrist:
+                syn_l = dict(r_wrist)
+                syn_l["x"] = float(np.clip(r_wrist["x"] - 0.02, 0.0, 1.0))
+                syn_l["px"] = max(0, r_wrist.get("px", 0) - 10)
+                lm_dict["LEFT_WRIST"] = syn_l
+            elif l_wrist and not r_wrist:
+                syn_r = dict(l_wrist)
+                syn_r["x"] = float(np.clip(l_wrist["x"] + 0.02, 0.0, 1.0))
+                syn_r["px"] = min(w - 1, l_wrist.get("px", 0) + 10)
+                lm_dict["RIGHT_WRIST"] = syn_r
 
             # Validar se o esqueleto contém pontos suficientes (ombros e quadris)
             has_shoulders = "RIGHT_SHOULDER" in lm_dict and "LEFT_SHOULDER" in lm_dict
@@ -363,7 +397,8 @@ class PoseDetector:
         active_strikes: Optional[List[Dict[str, Any]]] = None,
         current_frame_idx: int = 0,
         aka_label: Optional[str] = None,
-        shiro_label: Optional[str] = None
+        shiro_label: Optional[str] = None,
+        show_discarded: bool = False
     ) -> np.ndarray:
         """
         Renderiza anotações gráficas ricas diferenciando Kenshi Aka (Vermelho), Kenshi Shiro (Branco/Ciano),
@@ -407,8 +442,8 @@ class PoseDetector:
             )
             CombatantVisualizer.draw_shinai(out, shiro_landmarks, is_striking=shiro_is_striking)
 
-        # 3. Desenhar elementos de segundo plano descartados
-        if discarded_items:
+        # 3. Desenhar elementos de segundo plano descartados apenas se explicitamente solicitado
+        if show_discarded and discarded_items:
             for item in discarded_items:
                 lm = item.get("landmarks")
                 p_type = item.get("plane_type", "BACKGROUND")
@@ -453,10 +488,20 @@ class CombatantVisualizer:
         """Extrai coordenadas em pixels de um landmark com fallback seguro para coordenadas normalizadas."""
         if not isinstance(pt_data, dict):
             return None
+        vis = pt_data.get("visibility", 1.0)
+        if vis is not None and float(vis) < 0.15:
+            return None
         if "px" in pt_data and "py" in pt_data and pt_data["px"] is not None and pt_data["py"] is not None:
-            return int(pt_data["px"]), int(pt_data["py"])
+            px, py = int(pt_data["px"]), int(pt_data["py"])
+            if px <= 3 and py <= 3:
+                return None
+            return px, py
         if "x" in pt_data and "y" in pt_data and pt_data["x"] is not None and pt_data["y"] is not None:
-            return int(np.clip(pt_data["x"] * w, 0, w - 1)), int(np.clip(pt_data["y"] * h, 0, h - 1))
+            px = int(np.clip(pt_data["x"] * w, 0, w - 1))
+            py = int(np.clip(pt_data["y"] * h, 0, h - 1))
+            if px <= 3 and py <= 3:
+                return None
+            return px, py
         return None
 
     @staticmethod
@@ -513,29 +558,42 @@ class CombatantVisualizer:
         for pt in pts_map.values():
             cv2.circle(frame, pt, 3 if not is_striking else 4, (255, 255, 255), -1, cv2.LINE_AA)
 
+        # Destaque de Mãos / Empunhadura (Kote / Tsuka) garantindo que as mãos fiquem visualmente evidentes e persistentes
+        r_w = pts_map.get("RIGHT_WRIST")
+        l_w = pts_map.get("LEFT_WRIST")
+        for hand_pt in [r_w, l_w]:
+            if hand_pt:
+                cv2.circle(frame, hand_pt, 5 if not is_striking else 7, (255, 255, 255), -1, cv2.LINE_AA)
+                cv2.circle(frame, hand_pt, 7 if not is_striking else 9, (0, 215, 255) if not is_striking else (0, 69, 255), 2, cv2.LINE_AA)
+
     @staticmethod
     def draw_shinai(frame: np.ndarray, landmarks: Dict[str, Any], is_striking: bool = False):
         """Desenha a espada Shinai projetada a partir dos pulsos ao longo do eixo do antebraço."""
         h, w, _ = frame.shape
         r_wrist = CombatantVisualizer._extract_pt(landmarks.get("RIGHT_WRIST"), w, h)
-        r_elbow = CombatantVisualizer._extract_pt(landmarks.get("RIGHT_ELBOW"), w, h)
+        l_wrist = CombatantVisualizer._extract_pt(landmarks.get("LEFT_WRIST"), w, h)
+        hand_pt = r_wrist if r_wrist is not None else l_wrist
 
-        if not r_wrist:
+        r_elbow = CombatantVisualizer._extract_pt(landmarks.get("RIGHT_ELBOW"), w, h)
+        l_elbow = CombatantVisualizer._extract_pt(landmarks.get("LEFT_ELBOW"), w, h)
+        elbow_pt = r_elbow if r_elbow is not None else l_elbow
+
+        if not hand_pt:
             return
 
-        if r_elbow:
-            dx = float(r_wrist[0] - r_elbow[0])
-            dy = float(r_wrist[1] - r_elbow[1])
+        if elbow_pt:
+            dx = float(hand_pt[0] - elbow_pt[0])
+            dy = float(hand_pt[1] - elbow_pt[1])
             norm = np.hypot(dx, dy)
             if norm > 5:
                 # Projeta o comprimento da lâmina do Shinai
                 shinai_len = max(38, int(norm * 1.40))
-                tip_x = int(r_wrist[0] + (dx / norm) * shinai_len)
-                tip_y = int(r_wrist[1] + (dy / norm) * shinai_len)
+                tip_x = int(hand_pt[0] + (dx / norm) * shinai_len)
+                tip_y = int(hand_pt[1] + (dy / norm) * shinai_len)
             else:
-                tip_x, tip_y = r_wrist[0] + 30, r_wrist[1] - 45
+                tip_x, tip_y = hand_pt[0] + 30, hand_pt[1] - 45
         else:
-            tip_x, tip_y = r_wrist[0] + 30, r_wrist[1] - 45
+            tip_x, tip_y = hand_pt[0] + 30, hand_pt[1] - 45
 
         tip_x = int(np.clip(tip_x, 0, w - 1))
         tip_y = int(np.clip(tip_y, 0, h - 1))
@@ -544,7 +602,7 @@ class CombatantVisualizer:
         thickness = 3 if not is_striking else 5
 
         # Haste do Shinai
-        cv2.line(frame, r_wrist, (tip_x, tip_y), sword_color, thickness, cv2.LINE_AA)
+        cv2.line(frame, hand_pt, (tip_x, tip_y), sword_color, thickness, cv2.LINE_AA)
         # Kensen (Ponta da espada)
         cv2.circle(frame, (tip_x, tip_y), 4 if not is_striking else 6, (255, 255, 255), -1, cv2.LINE_AA)
         cv2.circle(frame, (tip_x, tip_y), 6 if not is_striking else 9, sword_color, 2, cv2.LINE_AA)

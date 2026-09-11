@@ -194,7 +194,9 @@ Dev/
 ### 4.1. Visão Computacional (`src/vision/`)
 
 #### `PoseDetector` ([pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py))
-Utiliza o framework **MediaPipe Pose** para rastrear 33 pontos de articulação 3D (*landmarks*) em tempo real por frame. Extrai coordenadas normalizadas $(x, y, z)$ e pontos em pixels $(px, py)$ para pulso, cotovelo, ombro, quadril, joelho, tornozelo, pé, nariz e orelhas.
+Utiliza os frameworks **YOLOv8-Pose (PyTorch CUDA FP16)** e **MediaPipe Pose** para rastreamento de pontos de articulação 3D (*landmarks*) em tempo real.
+- **Reconstrução Cinemática e Interpolação Anatômica**: Em situações de alta velocidade de corte ou oclusão por Hakama/Men, realiza a síntese e interpolação de pulsos (`RIGHT_WRIST`/`LEFT_WRIST`) e pés (`RIGHT_FOOT_INDEX`/`LEFT_FOOT_INDEX`) baseando-se na cinemática dos cotovelos, ombros e tornozelos.
+- **Renderização Limpa do Vídeo Anotado (`draw_combatants_overlay`)**: Parâmetro `show_discarded: bool = False` por padrão. Elementos descartados (árbitros, público, mesas e fundo) não recebem poluição de retângulos cinzas no vídeo final. Apenas os dois Kendocas oficiais (`🔴 AKA` e `⚪ SHIRO`) e seus respectivos Shinai são desenhados.
 
 #### `ShinaiTracker` ([shinai_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/shinai_tracker.py))
 A espada (*Shinai*) é estimada como uma extensão vetorial a partir do eixo formado pelos pulsos (`RIGHT_WRIST` e `LEFT_WRIST`). O algoritmo projeta a trajetória do **Kensen** (ponta da espada) e define as zonas anatômicas de ataque em 3D/2D:
@@ -206,9 +208,17 @@ A espada (*Shinai*) é estimada como uma extensão vetorial a partir do eixo for
 
 #### `CombatantTracker` ([combatant_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/combatant_tracker.py))
 Responsável pela persistência, discriminação de papéis e identificação contínua dos dois lutadores principais no Shiaijo:
+- **Delimitação de Quadra (Shiai-jo ROI) & Margens de Segurança**:
+  - Aceita máscara poligonal 2D (`shiaijo_polygon`) delimitando a área de piso regulamentar.
+  - Caso nenhuma máscara manual seja informada pelo usuário, aplica margens automáticas seguras ($0.12 \le ground\_x \le 0.88$ e $0.20 \le ground\_y \le 0.98$), excluindo automaticamente árbitros laterais, mesários e público nas bordas externas do enquadramento.
 - **Discriminação de Árbitros (Shinpans) e Seleção Ótima da Dupla de Kenshis (`select_best_combatant_pair`)**:
   - Avalia múltiplos candidatos a esqueletos no frame e calcula a probabilidade postural de ser um Kenshi (`compute_kenshi_feature_score`): empunhadura bimanual do cabo do Shinai no abdômen/Kamae ($\Delta_{\text{wrists}} < 0.18 \times H$) vs mãos abertas segurando bandeiras nas laterais, centralidade no Shiaijo ($x \in [0.20, 0.80]$), elevação para corte (*Furikaburi*) e flexão/agachamento de *Sonkyō*.
   - Isola com alta precisão os 2 Kenshis mesmo quando árbitros (Shinpans) estão em primeiro plano (próximos à câmera), aplicando compatibilidade de escala mútua no plano da quadra e descartando os árbitros como `FOREGROUND_OCCLUDER` ou `BACKGROUND`.
+- **Calibração Dinâmica de Escala em Tomadas Abertas (Wide-Angle)**:
+  - `calibrate_main_plane` adapta dinamicamente a escala de referência à altura média real dos combatentes filmados (`max(0.20, avg_height)`), evitando que atletas reais em planos abertos sejam indevidamente descartados como segundo plano.
+- **Travamento de IDs (K=2) e Persistência Inercial (`return_persisted=True`)**:
+  - Sistema de trava rígida nos dois combatentes após inicialização no Sonkyō.
+  - Em dropouts momentâneos (cruzamentos de corpos, giros rápidos de *Tai-atari* ou oclusões severas), o rastreador mantém a trajetória por propagação inercial contínua até que o atleta reapareça, evitando saltos de identificação e falhas nos cálculos biomecânicos.
 - **Detecção Cromática de Flag Dorsal (Tasukuki)**: Segmentação em espaço de cor HSV (`detect_red_flag_score`) no dorso dos atletas para identificação inequívoca de **Kenshi Aka (Vermelho)** e **Kenshi Shiro (Branco)**, mesmo com keikogi azul escuro, branco ou preto.
 - **Filtragem Geométrica de Plano de Combate**: Calibra a escala espacial média dos kenshi e descarta automaticamente pessoas e movimentações em segundo plano (outras lutas, arquibancadas) ou oclusões em primeiro plano (transeuntes passando em frente à câmera).
 
@@ -397,8 +407,8 @@ A interface web conta com uma arquitetura de navegação com visibilidade estrit
 
 O módulo de controle de reprodução atua como uma mesa de corte e **VAR (*Video Assistant Referee*)** interativo acoplada ao player de vídeo da Detecção Gravada:
 
-- **Isolamento e Execução Segura de JavaScript (`streamlit.components.v1.html`)**:
-  - A API nativa `st.html()` do Streamlit bloqueia ativamente tags `<script>` por motivos de sanitização interna. Para contornar essa restrição sem comprometer a segurança, o módulo renderiza um iframe isolado via `streamlit.components.v1.html`.
+- **Isolamento e Execução Segura de JavaScript (`st.iframe`)**:
+  - A API nativa `st.html()` do Streamlit bloqueia ativamente tags `<script>` por motivos de sanitização interna. Para contornar essa restrição sem comprometer a segurança, o módulo renderiza um iframe isolado via `st.iframe` (com fallback retrocompatível para `streamlit.components.v1.html`).
   - Como o iframe compartilha a mesma origem (origin) do aplicativo Streamlit, o script tem acesso seguro e direto ao documento pai através de `window.parent.document`.
 - **Comunicação Direta com o Elemento `<video>` no DOM**:
   - Localiza o elemento de vídeo no DOM pai via `parentDoc.querySelectorAll('video')` ou `parentDoc.getElementById(containerId)`.
@@ -457,7 +467,7 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **Política de Retenção Única**:
   - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
 
-### Módulos de Testes Incluídos (126 Testes)
+### Módulos de Testes Incluídos (132 Testes)
 
 - **`test_auto_trainer.py` (14 testes)**: Valida a inicialização da base de conhecimento de Kendo, diagnóstico autônomo de necessidade mais latente, ciclo de auto-treinamento com tempo controlado, baselines preliminares realistas (< 50%), recalibração de perfis de arbitragem e das 14 modalidades pedagógicas, persistência incremental em governança e checkpoints de tolerância a falhas.
 - **`test_dan_training_governance.py` (12 testes)**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador humano vs IA, média de Dan humano e tabela por Dan com linha dedicada para IA), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
@@ -470,13 +480,13 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_pipeline_cancellation.py` (6 testes)**: Valida cancelamento cooperativo, liberação de recursos de streaming e cronômetro em tempo real.
 - **`test_pose_batch_processing.py` (4 testes)**: Valida processamento de poses em lotes paralelos com aceleração.
 - **`test_scoreboard_and_flag_detection.py` (8 testes)**: Valida o placar eletrônico Sanbon-shobu, detecção cromática de flag dorsal (Tasukuki) e inversão Aka ⇄ Shiro.
-- **`test_sonkyo_and_plane_filtering.py` (14 testes)**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes/árbitros em primeiro plano), debounce e NMS de 35 frames do `EventSpotter`, e persistência de aprendizado de Sonkyō.
+- **`test_sonkyo_and_plane_filtering.py` (20 testes)**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes/árbitros em primeiro plano), delimitação da quadra de luta (Shiai-jo ROI), travamento K=2, interpolação cinemática de pulsos/pés sob oclusão, supressão de falsos positivos, debounce e NMS de 35 frames do `EventSpotter`, e persistência de aprendizado de Sonkyō.
 - **`test_stream_capture.py` (6 testes)**: Valida a captura assíncrona com threading, reconexão automática e otimizações de rede para câmeras IP / RTSP / Webcams.
 - **`test_training_modes.py` (8 testes)**: Valida as 14 modalidades pedagógicas de treino, cálculo dos 3 Pilares (Movimentação, Precisão, Constância) e perfil do Kendoca.
 - **`test_video_downloader.py` (12 testes)**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
 - **`test_video_player_controls.py` (4 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
 
-Total de **126 testes automatizados** distribuídos em 16 módulos, executados e aprovados com 100% de sucesso.
+Total de **132 testes automatizados** distribuídos em 16 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -484,12 +494,28 @@ Total de **126 testes automatizados** distribuídos em 16 módulos, executados e
 
 ---
 
-### `[v2.1.0]` — 2026-09-09 *(Versão Atual)*
+### `[v2.2.0]` — 2026-09-11 *(Versão Atual)*
+
+- **Otimização de Rastreamento dos Kendocas & Supressão Visual de Shinpans ([combatant_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/combatant_tracker.py) & [pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py))**:
+  - **Limpeza Visual do Vídeo Anotado**: O método `draw_combatants_overlay` agora suprime por padrão (`show_discarded=False`) a renderização de caixas cinzas e tags `[2º PLANO DESCARTADO]` / `[OCLUSÃO DESCARTADA]` ao redor de árbitros (Shinpans) e pessoas externas. O vídeo final concentra-se estritamente nos dois atletas (`🔴 AKA` e `⚪ SHIRO`) e nos traçados de seus Shinai.
+  - **Delimitação Automática de Margens da Quadra (*Shiai-jo ROI*)**: Quando o usuário não fornece uma máscara poligonal manual, o sistema aplica limites padrão de quadra ($0.12 \le x \le 0.88$ e $0.20 \le y \le 0.98$), descartando sumariamente árbitros e jurados sentados nas laterais e mesas externas da quadra.
+  - **Calibração Dinâmica para Gravações em Plano Aberto (Wide-Angle)**: O tracker adapta a escala de referência `ref_height` pela média real dos atletas detectados (`max(0.20, avg_height)`), evitando que Kendocas em enquadramentos distantes sejam erroneamente classificados como segundo plano.
+  - **Penalidade de Borda e Distância Mútua de Combate**: Adicionadas penalidades severas ($-4.0$) para esqueletos colados nas bordas da filmagem e penalização progressiva para distâncias horizontais acima do *Maai* típico de combate.
+- **Resiliência a Oclusões e Interpolação Anatômica ([pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py) & [biomechanics.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/biomechanics.py))**:
+  - Implementada a síntese geométrica e interpolação de pulsos (`RIGHT_WRIST`, `LEFT_WRIST`) e pés (`RIGHT_FOOT_INDEX`, `LEFT_FOOT_INDEX`) baseando-se em cotovelos e tornozelos sob oclusão rápida de Hakama ou Men.
+  - Correção de tratamento de exceções de chave (`KeyError: 'RIGHT_FOOT_INDEX'`) no cálculo cinemático de Fumikomi.
+  - Habilitação de persistência inercial contínua (`return_persisted=True`) em [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py) e [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) para preenchimento de dropouts temporários.
+- **Expansão da Suíte de Testes Automatizados**:
+  - Suíte completa de **132 testes automatizados** aprovados com 100% de sucesso (`Ran 132 tests, OK`).
+
+---
+
+### `[v2.1.0]` — 2026-09-09
 
 - **Controles Interativos de Reprodução de Vídeo & VAR ([video_player_controls.py](file:///d:/Projetos/SenpAI/Dev/src/utils/video_player_controls.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - Implementado componente interativo de reprodução de vídeo integrado diretamente abaixo do player no Modo de Detecção Gravada via `render_video_playback_controls()`.
   - **Mesa de Controle VAR**: Botoeiras de transporte (`Play`, `Pause`, `Reiniciar`), botões de salto fino no tempo (`-10s`, `-5s`, `-1s`, `+1s`, `+5s`, `+10s`), seletor de velocidade instantânea (`0.1x`, `0.25x`, `0.5x`, `0.75x`, `1.0x`, `1.5x`, `2.0x`), alternador de tela cheia, controle de volume e mostrador de tempo decorrido.
-  - **Execução Segura em Iframe Isolado (`streamlit.components.v1.html`)**: Superação da limitação nativa do `st.html()`, que bloqueia tags `<script>`, permitindo execução segura de JavaScript no iframe filho com manipulação direta do `<video>` no documento pai (`window.parent.document`).
+  - **Execução Segura em Iframe Isolado (`st.iframe`)**: Superação da limitação nativa do `st.html()`, que bloqueia tags `<script>`, permitindo execução segura de JavaScript no iframe filho com manipulação direta do `<video>` no documento pai (`window.parent.document`).
 - **Resolução de Incompatibilidade de Seek no Streamlit (`st.video`)**:
   - Corrigido o erro fatal `TypeError: MediaMixin.video() got an unexpected keyword argument 'key'` ao invocar `st.video()`.
   - O salto temporal automático para os eventos da Linha do Tempo agora é executado diretamente a nível de DOM pelo script auxiliar através de `target_start_time` e `applyInitialSeek()`, sem necessidade de reinicializar o elemento de mídia no servidor.

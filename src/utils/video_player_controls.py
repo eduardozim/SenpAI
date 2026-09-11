@@ -30,7 +30,7 @@ def generate_video_playback_controls_html(
         container_id: Identificador único do container DOM.
         
     Returns:
-        String contendo bloco HTML com estilos e scripts prontos para st.html().
+        String contendo bloco HTML com estilos e scripts prontos para st.iframe().
     """
     # 1. Preparação dos marcadores rápidos de eventos para os Chips de Navegação
     jump_markers = []
@@ -387,7 +387,7 @@ def generate_video_playback_controls_html(
         const containerId = "{container_id}";
         const markersData = {markers_json};
         const defaultFps = {default_fps};
-        const targetStartTime = {float(target_start_time)};
+        const targetStartTime = {target_start_time};
         let initialSeekApplied = false;
         let activeSpeed = 1.0;
         let lastKnownVideo = null;
@@ -788,7 +788,7 @@ def render_video_playback_controls(
     height: Optional[int] = None
 ) -> None:
     """
-    Renderiza os controles interativos de vídeo diretamente na interface do Streamlit usando components.html().
+    Renderiza os controles interativos de vídeo diretamente na interface do Streamlit usando st.iframe().
     
     Args:
         events: Lista de eventos/golpes detectados pela análise.
@@ -813,4 +813,7 @@ def render_video_playback_controls(
         (sonkyo_edits and (sonkyo_edits.get("initial") or sonkyo_edits.get("final")))
     )
     calc_height = height or (200 if has_markers else 150)
-    components.html(html_code, height=calc_height, scrolling=False)
+    if hasattr(st, "iframe"):
+        st.iframe(html_code, height=calc_height)
+    else:
+        components.html(html_code, height=calc_height, scrolling=False)

@@ -1,26 +1,22 @@
 {
   "status": "completed_consolidated",
-  "session_id": "auto_train_20260909_192300",
+  "session_id": "auto_train_20260910_170906",
   "scope_key": "all_14_modalities",
   "scope_name": "🎯 Necessidade Mais Latente (🎓 14 Modalidades Pedagógicas de Treinamento (Dojo & Exames))",
-  "samples_processed": 199252,
-  "final_accuracy": 65.3,
+  "samples_processed": 198553,
+  "final_accuracy": 82.7,
   "sources_consulted": [
-    {
-      "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
-      "type": "Manual de Arbitragem AJKF"
-    },
     {
       "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
       "type": "Manual Oficial FIK"
     },
     {
-      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
-      "type": "Tratado Técnico Kata"
+      "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+      "type": "Manual de Arbitragem AJKF"
     },
     {
-      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
-      "type": "Corpus de Vídeo Dojo"
+      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+      "type": "Tratado Técnico Kata"
     },
     {
       "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
@@ -29,6 +25,10 @@
     {
       "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
       "type": "Mocap Científico"
+    },
+    {
+      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+      "type": "Corpus de Vídeo Dojo"
     },
     {
       "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
@@ -52,7 +52,7 @@
     }
   ],
   "duration_seconds": 1800.0,
-  "last_updated": "2026-09-09T19:53:00.772189",
+  "last_updated": "2026-09-10T17:39:06.986388",
   "consolidated": true,
-  "last_checkpoint_timestamp": "2026-09-09T19:53:00.773187"
+  "last_checkpoint_timestamp": "2026-09-10T17:39:06.987388"
 }

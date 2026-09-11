@@ -7,9 +7,6 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
 1. **Modo de Detecção em Tempo Real**
 
 2. **Modo de Detecção Gravada**
-   - **Exportar resultados**: Permitir exportar resultado para Excel com relacionamento com link de vídeo de streamming
-   - **Importar revisões**: Permitir a importação de revisão feita em arquivo exportado e editado.
-   - **Upload Sem Restrição de Tamanho**: Suporte a arquivos de vídeo de grande porte (Full HD/4K, sem limite de 200MB).
 
 3. **Modo de Treinamento & Aprendizado**
   - **Treinamento em tempo real**: Permitir analise do treinamento em tempo real
@@ -22,7 +19,6 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
 ### 1. Confiança, Explicabilidade e Revisão Humana
 - **Estado “Inconclusivo”**: Não forçar uma decisão quando o vídeo estiver obstruído, desfocado ou sem ângulo suficiente.
 - **Comparação Lado a Lado**: Mostrar o golpe analisado junto de um exemplo técnico de referência.
-- **Revisão Manual Quadro a Quadro**: Permitir que o revisor ajuste o instante exato do impacto e confirme ou altere a decisão da IA.
 
 ### 2. Qualidade e Preparação do Vídeo
 - **Diagnóstico Automático Antes da Análise**: Verificar resolução, FPS, iluminação, estabilidade, oclusões e visibilidade dos Kenshi antes de iniciar o processamento.
@@ -86,7 +82,7 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
 ### 10. Configurações Gerais do Sistema
 - **Calibração & Limiares**: Escolha e ajuste fino dos perfis de calibração e critérios técnicos.
 - **Armazenamento de Treinamento**: Monitoramento e diagnóstico em tempo real do espaço em disco ocupado pelos datasets de treinamento, histórico de sessões, pesos neurais de IA e bases de conhecimento.
-- **Câmeras & Rede**: Parâmetros de suporte ao protocolo RTCP/RTSP para múltiplas câmeras.
+- **Varredura por Câmeras & Rede**: Procurar e conectar a cameras na rede local com protocolo RTCP/RTSP para múltiplas câmeras.
 - **Interface & Preferências**: Opções visuais e de exibição do dashboard.
 - **Testes Automatizados**: Expansão contínua da cobertura de testes unitários, de integração e e2e da aplicação.
 
@@ -140,7 +136,6 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
   - ~~Erros na captura e aquisição de imagens em tempo real via webcam e transmissões RTSP.~~ *(Resolvido com otimização FFmpeg TCP, `probe_stream_connection` e leitor assíncrono)*
   - ~~Perda de conexão e dessincronização em transmissões de múltiplas câmeras via RTSP.~~ *(Resolvido com reconexão resiliente e threads assíncronas dedicadas)*
 - **Rastreamento de Atletas & Plano de Fundo**:
-
   - Falha na persistência ou troca acidental de identidade entre os Kenshi Aka e Shiro durante a luta.
   - Falha na detecção de elementos de distorção da detecção (Shinpan, Expectadores estáticos ou transitando na frente das cameras, movimentação da camera, etc.)
 
@@ -159,6 +154,7 @@ O **SenpAI Mobile** foi concebido como uma extensão portátil e interativa do e
 ### 2. Treinamento Individual & Assistente Pessoal ("Pocket Sensei")
 - **Feedback em Tempo Real por Áudio (Bluetooth)**: Instruções e correções instantâneas por voz diretamente no fone de ouvido durante treinos solo de *Suburi* e *Uchikomi* (ex: *"Aumente o Zanshin"*, *"Sincronize o Fumikomi"*, *"Men detectado com 92% de precisão"*).
 - **Feedback do Sensei**: Envio do treinamento gravado para o Sensei responsável e obtenção de feedback por voz ou texto.
+- **Tabata System**: Sistema de treino intervalado de alta intensidade (HIIT) com suporte a protocolos Tabata (ver aplicativo Tabata Timer Cronometro Tabata).
 - **Metrônomo Biomecânico & Contador de Suburi**: Monitoramento de cadência rítmica, altura de elevação do *Shinai* e consistência de postura com contagem automática de repetições.
 - **Acesso Completo às Rotinas Propostas de Treino**: Planos de treino personalizados gerados pelo motor de IA com metas diárias, séries recomendadas e vídeos tutoriais de referência técnica.
 - **Simulador Interativo de Exames de Graduação (Kyu/Dan)**: Checklist diagnóstico pré-exame com avaliação de postura, rituais de cortesia (*Reiho*), *Kihon* e conformidade biomecânica para cada nível.

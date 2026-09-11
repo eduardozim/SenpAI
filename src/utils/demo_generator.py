@@ -15,7 +15,7 @@ def generate_demo_kendo_video(output_path: str = "demo_kendo_match.mp4", duratio
     """
     width, height = 640, 480
     total_frames = duration_sec * fps
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fourcc = cv2.VideoWriter.fourcc(*'mp4v')
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     # Parâmetros de animação do boneco

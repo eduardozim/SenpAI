@@ -84,21 +84,41 @@ class TestVideoPlayerControls(unittest.TestCase):
         self.assertIn("KOTE", html)
         self.assertIn("00:05.400", html)
 
-    @patch("streamlit.components.v1.html")
-    def test_render_video_playback_controls(self, mock_html):
-        """Valida a chamada de renderização através de components.html."""
+    @patch("streamlit.iframe")
+    def test_render_video_playback_controls_iframe(self, mock_iframe):
+        """Valida a chamada de renderização através de st.iframe."""
         render_video_playback_controls(
             events=[{"event_info": {"type": "MEN", "timestamp": "00:02.000"}}],
             default_fps=30.0,
             target_start_time=12.5
         )
 
-        mock_html.assert_called_once()
-        args, kwargs = mock_html.call_args
+        mock_iframe.assert_called_once()
+        args, kwargs = mock_iframe.call_args
         self.assertIn("senpai-video-ctrl-panel", args[0])
         self.assertIn("const targetStartTime = 12.5;", args[0])
-        self.assertFalse(kwargs.get("scrolling"))
         self.assertGreater(kwargs.get("height", 0), 0)
+
+    def test_render_video_playback_controls_fallback(self):
+        """Valida o fallback para components.html caso st.iframe não esteja disponível."""
+        import streamlit as st
+        original_iframe = getattr(st, "iframe", None)
+        try:
+            if hasattr(st, "iframe"):
+                delattr(st, "iframe")
+            with patch("streamlit.components.v1.html") as mock_html:
+                render_video_playback_controls(
+                    events=[{"event_info": {"type": "MEN", "timestamp": "00:02.000"}}],
+                    default_fps=30.0,
+                    target_start_time=12.5
+                )
+                mock_html.assert_called_once()
+                args, kwargs = mock_html.call_args
+                self.assertIn("senpai-video-ctrl-panel", args[0])
+                self.assertFalse(kwargs.get("scrolling"))
+        finally:
+            if original_iframe is not None:
+                st.iframe = original_iframe
 
 
 if __name__ == "__main__":

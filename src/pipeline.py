@@ -9,7 +9,7 @@ import time
 import queue
 import threading
 import numpy as np
-from typing import Dict, Any, List, Callable, Optional
+from typing import Dict, Any, List, Callable, Optional, Tuple
 
 from src.vision.pose_detector import PoseDetector
 from src.vision.shinai_tracker import ShinaiTracker
@@ -134,12 +134,13 @@ class SenpAIPipeline:
         final_sonkyo_override: Optional[Dict[str, Any]] = None,
         invert_combatants: bool = False,
         training_modality_override: Optional[str] = None,
-        custom_kendoka_names: Optional[Dict[str, str]] = None
+        custom_kendoka_names: Optional[Dict[str, str]] = None,
+        shiaijo_polygon: Optional[List[Tuple[float, float]]] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Executa a análise completa de um arquivo de vídeo de luta/treino de Kendo:
         1. Rastreamento e associação exclusiva dos 2 Kenshi (Aka e Shiro) no Plano Principal com detecção da cor da flag dorsal (Tasukuki).
-        2. Descarte automático de elementos de Segundo Plano (Background) e Oclusões na frente da câmera.
+        2. Descarte automático de elementos fora do Shiai-jo, Segundo Plano (Background) e Oclusões na frente da câmera.
         3. Detecção e verificação dos momentos de Sonkyō (Abertura e Encerramento) ou aplicação de ajustes manuais com aprendizado contínuo.
         4. Delimitação estrita do início (match_start_frame) e fim (match_end_frame) da luta.
         5. Detecção e avaliação biomecânica exclusiva dos golpes dentro da janela de Sonkyō.
@@ -151,8 +152,11 @@ class SenpAIPipeline:
 
         start_time = time.time()
 
-        # Resetar o rastreador para uma nova análise de vídeo com configuração de inversão
-        self.combatant_tracker = CombatantTracker(invert_assignment=invert_combatants)
+        # Resetar o rastreador para uma nova análise de vídeo com configuração de inversão e polígono do Shiai-jo
+        self.combatant_tracker = CombatantTracker(
+            invert_assignment=invert_combatants,
+            shiaijo_polygon=shiaijo_polygon
+        )
 
         # Coleta de histórico dos combatentes
         aka_history: List[Optional[Dict[str, Any]]] = []
@@ -213,7 +217,11 @@ class SenpAIPipeline:
                             candidates = [synthetic_lm]
 
                         # 2. Filtragem de Planos, Detecção de Flag (Tasukuki) e Associação dos 2 Combatentes
-                        aka_lm, shiro_lm, discarded = self.combatant_tracker.associate_and_filter(candidates, frame=frame_in_batch)
+                        aka_lm, shiro_lm, discarded = self.combatant_tracker.associate_and_filter(
+                            candidates,
+                            frame=frame_in_batch,
+                            return_persisted=True
+                        )
                         aka_history.append(aka_lm)
                         shiro_history.append(shiro_lm)
                         discarded_per_frame.append(discarded)
@@ -230,6 +238,10 @@ class SenpAIPipeline:
                             torch.cuda.empty_cache()
                     except Exception:
                         pass
+
+        # Interpolação suave para quaisquer gaps residuais de detecção (ex: oclusões mútuas de até 10 frames)
+        aka_history = self.combatant_tracker.interpolate_missing_poses(aka_history, max_gap=10)
+        shiro_history = self.combatant_tracker.interpolate_missing_poses(shiro_history, max_gap=10)
 
         # Checagem de cancelamento antes de processamento dos eventos
         if is_cancelled and is_cancelled():
@@ -366,7 +378,7 @@ class SenpAIPipeline:
             shiro_custom = (custom_kendoka_names or {}).get("KENSHI_SHIRO")
 
             cap_render = cv2.VideoCapture(video_path)
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            fourcc = cv2.VideoWriter.fourcc(*'mp4v')
             writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
             try:
@@ -536,7 +548,8 @@ class AnalysisWorker:
         final_sonkyo_override: Optional[Dict[str, Any]] = None,
         invert_combatants: bool = False,
         training_modality_override: Optional[str] = None,
-        custom_kendoka_names: Optional[Dict[str, str]] = None
+        custom_kendoka_names: Optional[Dict[str, str]] = None,
+        shiaijo_polygon: Optional[List[Tuple[float, float]]] = None
     ):
         self.pipeline = pipeline
         self.video_path = video_path
@@ -546,6 +559,7 @@ class AnalysisWorker:
         self.invert_combatants = invert_combatants
         self.training_modality_override = training_modality_override
         self.custom_kendoka_names = custom_kendoka_names
+        self.shiaijo_polygon = shiaijo_polygon
         
         self.progress: float = 0.0
         self.status_message: str = "Inicializando pipeline de visão e pose tracking..."
@@ -604,7 +618,8 @@ class AnalysisWorker:
                 final_sonkyo_override=self.final_sonkyo_override,
                 invert_combatants=self.invert_combatants,
                 training_modality_override=self.training_modality_override,
-                custom_kendoka_names=self.custom_kendoka_names
+                custom_kendoka_names=self.custom_kendoka_names,
+                shiaijo_polygon=self.shiaijo_polygon
             )
 
             self.end_time = time.time()

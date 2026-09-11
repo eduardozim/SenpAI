@@ -5,6 +5,8 @@ Testes Automatizados para Detecção de Sonkyō, Bounding de Luta, Rastreamento 
 import os
 import unittest
 import numpy as np
+import cv2
+from typing import Dict, Any, List, Optional, Tuple
 
 from src.analytics.sonkyo_detector import SonkyoDetector, SonkyoInterval
 from src.vision.combatant_tracker import CombatantTracker, CombatantProfile
@@ -18,7 +20,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.tracker = CombatantTracker()
         self.spotter = EventSpotter()
 
-    def _create_synthetic_standing_pose(self, center_x: float = 0.50) -> dict:
+    def _create_synthetic_standing_pose(self, center_x: float = 0.50) -> Dict[str, Any]:
         """Cria pose de Kenshi em pé (Kamae normal)."""
         return {
             "NOSE": {"x": center_x, "y": 0.25, "z": 0.0, "visibility": 0.9, "px": int(center_x*640), "py": int(0.25*480)},
@@ -34,7 +36,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
             "LEFT_WRIST": {"x": center_x - 0.02, "y": 0.52, "z": 0.0, "visibility": 0.9, "px": int((center_x-0.02)*640), "py": int(0.52*480)}
         }
 
-    def _create_synthetic_sonkyo_pose(self, center_x: float = 0.50) -> dict:
+    def _create_synthetic_sonkyo_pose(self, center_x: float = 0.50) -> Dict[str, Any]:
         """Cria pose de Kenshi em Sonkyō (agachamento ritualístico com quadril rebaixado)."""
         return {
             "NOSE": {"x": center_x, "y": 0.38, "z": 0.0, "visibility": 0.9, "px": int(center_x*640), "py": int(0.38*480)},
@@ -250,6 +252,8 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
             pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
             result = pipeline.process_video(video_path=test_vid, output_video_path=out_vid)
 
+            self.assertIsNotNone(result)
+            assert result is not None
             self.assertIn("sonkyo_analysis", result)
             self.assertIn("plane_filtering", result)
             self.assertIn("effective_combat_duration_seconds", result)
@@ -258,11 +262,15 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
             self.assertGreater(os.path.getsize(out_vid), 1000)
 
             sonkyo = result["sonkyo_analysis"]
+            self.assertIsNotNone(sonkyo)
+            assert sonkyo is not None
             self.assertIn("match_start_frame", sonkyo)
             self.assertIn("match_end_frame", sonkyo)
             self.assertIn("status_message", sonkyo)
 
             planes = result["plane_filtering"]
+            self.assertIsNotNone(planes)
+            assert planes is not None
             self.assertIn("discarded_background_count", planes)
             self.assertIn("discarded_foreground_count", planes)
         finally:
@@ -291,7 +299,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
             self.assertEqual(detector.learned_profile["samples_count"], 0)
 
             # Criar histórico de poses (10 frames de Sonkyō e 20 em pé)
-            timeline = [self._create_synthetic_sonkyo_pose() for _ in range(10)] + [self._create_synthetic_standing_pose() for _ in range(20)]
+            timeline: List[Optional[Dict[str, Any]]] = [self._create_synthetic_sonkyo_pose() for _ in range(10)] + [self._create_synthetic_standing_pose() for _ in range(20)]
             
             # Aprender a partir do intervalo [0, 9]
             learn_res = detector.learn_from_annotation(timeline, start_frame=0, end_frame=9, fps=30.0, interval_type="INITIAL")
@@ -320,7 +328,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
 
         try:
             detector = SonkyoDetector(learned_profile_path=test_profile_path)
-            timeline = [self._create_synthetic_standing_pose() for _ in range(100)]
+            timeline: List[Optional[Dict[str, Any]]] = [self._create_synthetic_standing_pose() for _ in range(100)]
             
             # Forçar overrides manuais do árbitro
             init_override = {"start_timestamp": "00:00.200", "end_timestamp": "00:00.800"}
@@ -378,7 +386,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         """Testa se momentos padrão no início e término do vídeo são incluídos quando o Sonkyō não é detectado."""
         detector = SonkyoDetector()
         # Linha do tempo com 90 frames sem nenhum Sonkyō (apenas pessoas em pé)
-        timeline = [self._create_synthetic_standing_pose() for _ in range(90)]
+        timeline: List[Optional[Dict[str, Any]]] = [self._create_synthetic_standing_pose() for _ in range(90)]
         
         res = detector.detect_match_boundaries(timeline, fps=30.0)
         self.assertTrue(res["is_bounded"])
@@ -400,6 +408,132 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertEqual(fin_s["end_timestamp"], "00:02.966")
         
         self.assertIn("início e término", res["status_message"].lower())
+
+    def test_shiaijo_polygon_filtering(self):
+        """Valida que detecções fora da máscara poligonal do Shiai-jo são descartadas com OUT_OF_BOUNDS."""
+        # Definir polígono do Shiaijo central (x entre 0.20 e 0.80, y entre 0.20 e 0.95)
+        quadra_shiaijo = [
+            (0.20, 0.20),
+            (0.80, 0.20),
+            (0.80, 0.95),
+            (0.20, 0.95)
+        ]
+        tracker = CombatantTracker(shiaijo_polygon=quadra_shiaijo)
+
+        # 1. Kenshi dentro da quadra
+        kenshi_dentro = self._create_synthetic_standing_pose(center_x=0.50)
+        # 2. Espectador / pessoa fora da quadra (x=0.08, lateral extrema)
+        espectador_fora = self._create_synthetic_standing_pose(center_x=0.08)
+
+        aka, shiro, disc = tracker.associate_and_filter([kenshi_dentro, espectador_fora])
+        self.assertEqual(len(disc), 1)
+        self.assertEqual(disc[0]["plane_type"], "OUT_OF_BOUNDS")
+        self.assertIn("Shiai-jo", disc[0]["reason"])
+        self.assertGreaterEqual(tracker.discarded_out_of_shiaijo_count, 1)
+
+    def test_track_locking_k2_and_occlusion_recovery(self):
+        """
+        Valida que o rastreador trava em K=2 combatentes, rejeita 3º elemento inserido no combate
+        e mantém o rastro durante oclusão momentânea com posterior recuperação.
+        """
+        tracker = CombatantTracker(lock_tracks=True)
+        kenshi_left = self._create_synthetic_standing_pose(center_x=0.35)
+        kenshi_right = self._create_synthetic_standing_pose(center_x=0.65)
+
+        # Frame 1: Inicialização e travamento dos 2 Kenshis
+        aka, shiro, _ = tracker.associate_and_filter([kenshi_left, kenshi_right])
+        self.assertEqual(tracker.tracking_state, "LOCKED_COMBAT")
+        self.assertTrue(tracker.aka.is_locked)
+        self.assertTrue(tracker.shiro.is_locked)
+
+        # Frame 2: Simular oclusão severa de Shiro (apenas Aka detectado)
+        aka_f2, shiro_f2, _ = tracker.associate_and_filter([kenshi_right])
+        self.assertIsNotNone(aka_f2)
+        self.assertIsNone(shiro_f2, "Shiro ocluído deve receber None sem perder a identidade.")
+        self.assertEqual(tracker.shiro.occluded_frames, 1)
+        self.assertIsNotNone(tracker.shiro.pred_x, "Shiro deve manter predição inercial ativa.")
+
+        # Frame 3: Shiro reaparece (recuperação de oclusão)
+        aka_f3, shiro_f3, _ = tracker.associate_and_filter([kenshi_left, kenshi_right])
+        self.assertIsNotNone(aka_f3)
+        self.assertIsNotNone(shiro_f3)
+        self.assertGreaterEqual(tracker.occlusion_recovery_count, 1, "Deve registrar recuperação de oclusão.")
+
+    def test_red_flag_cost_prevents_id_swap_on_cross(self):
+        """
+        Valida que a fita vermelha (Aka Tasuki) atua como restrição de identidade contínua,
+        prevenindo troca de IDs mesmo quando os atletas trocam de posições laterais.
+        """
+        frame_aka_red = np.full((480, 640, 3), (35, 35, 35), dtype=np.uint8)
+        # Pintar flag vermelha na posição x ~ 0.65 (pixels 390-440)
+        cv2.rectangle(frame_aka_red, (390, 200), (440, 250), (20, 20, 220), -1)
+
+        tracker = CombatantTracker(lock_tracks=True)
+        pos_left = self._create_synthetic_standing_pose(center_x=0.35)
+        pos_right = self._create_synthetic_standing_pose(center_x=0.65)
+
+        # Frame 1: Inicializar com Aka na direita (com flag vermelha)
+        aka_f1, shiro_f1, _ = tracker.associate_and_filter([pos_left, pos_right], frame=frame_aka_red)
+        self.assertEqual(aka_f1, pos_right)
+        self.assertEqual(shiro_f1, pos_left)
+
+        # Frame 2: Cruzamento de posições - O lutador com vermelho agora se deslocou para a esquerda (x=0.35)
+        frame_cross = np.full((480, 640, 3), (35, 35, 35), dtype=np.uint8)
+        # Pintar flag vermelha na posição x ~ 0.35 (pixels 200-250)
+        cv2.rectangle(frame_cross, (200, 200), (250, 250), (20, 20, 220), -1)
+
+        aka_f2, shiro_f2, _ = tracker.associate_and_filter([pos_left, pos_right], frame=frame_cross)
+        # O lutador que está com vermelho (pos_left) deve se manter como Aka
+        self.assertEqual(aka_f2, pos_left, "Aka deve ser associado ao atleta que porta a fita vermelha.")
+        self.assertEqual(shiro_f2, pos_right, "Shiro deve ser associado ao atleta sem a fita vermelha.")
+
+    def test_summary_includes_new_diagnostics(self):
+        """Valida que get_summary() expõe métricas de Shiaijo, postura e recuperação de oclusão."""
+        tracker = CombatantTracker(shiaijo_polygon=[(0.1, 0.1), (0.9, 0.1), (0.9, 0.9), (0.1, 0.9)])
+        summary = tracker.get_summary()
+
+        self.assertIn("shiaijo_polygon_configured", summary)
+        self.assertTrue(summary["shiaijo_polygon_configured"])
+        self.assertIn("tracking_state", summary)
+        self.assertIn("discarded_out_of_shiaijo_count", summary)
+        self.assertIn("discarded_shinpan_posture_count", summary)
+        self.assertIn("occlusion_recovery_count", summary)
+
+    def test_kendoka_and_hand_persistence_across_dropouts(self):
+        """Valida que o Kendoca e as mãos persistem inercialmente durante falhas momentâneas de detecção."""
+        tracker = CombatantTracker(lock_tracks=True)
+        kenshi_a = self._create_synthetic_standing_pose(center_x=0.35)
+        kenshi_b = self._create_synthetic_standing_pose(center_x=0.65)
+
+        # Frame 1: Ambos detectados com mãos válidas
+        aka_1, shiro_1, _ = tracker.associate_and_filter([kenshi_a, kenshi_b], return_persisted=True)
+        self.assertIsNotNone(aka_1)
+        self.assertIsNotNone(shiro_1)
+        self.assertIn("RIGHT_WRIST", aka_1)
+        self.assertIn("LEFT_WRIST", aka_1)
+
+        # Frame 2: Detecção nula temporária (queda de detecção YOLO em ambos)
+        # Com return_persisted=True, deve projetar as poses e mãos inercialmente em vez de sumir
+        aka_2, shiro_2, _ = tracker.associate_and_filter([], return_persisted=True)
+        self.assertIsNotNone(aka_2, "Aka deve persistir mesmo com frame de detecção nula.")
+        self.assertIsNotNone(shiro_2, "Shiro deve persistir mesmo com frame de detecção nula.")
+        self.assertIn("RIGHT_WRIST", aka_2, "Mãos de Aka devem persistir no corpo.")
+        self.assertIn("LEFT_WRIST", shiro_2, "Mãos de Shiro devem persistir no corpo.")
+
+        # Frame 3: Kendoca detectado mas com mãos ocluídas pelo golpe
+        kenshi_b_no_hands = dict(kenshi_b)
+        kenshi_b_no_hands.pop("RIGHT_WRIST", None)
+        kenshi_b_no_hands.pop("LEFT_WRIST", None)
+        aka_3, shiro_3, _ = tracker.associate_and_filter([kenshi_a, kenshi_b_no_hands], return_persisted=True)
+        self.assertIsNotNone(aka_3)
+        self.assertIn("RIGHT_WRIST", aka_3, "Pulsos/Kote devem ser preservados e propagados pelo tracker.")
+
+        # Teste de interpolação temporal de poses
+        timeline = [kenshi_a, None, None, kenshi_b]
+        interp = CombatantTracker.interpolate_missing_poses(timeline, max_gap=5)
+        self.assertIsNotNone(interp[1])
+        self.assertIsNotNone(interp[2])
+        self.assertAlmostEqual(interp[1]["NOSE"]["x"], 0.45, delta=0.05)
 
 
 if __name__ == "__main__":

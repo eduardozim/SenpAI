@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "last_updated": "2026-09-09T19:53:00.768287",
+  "last_updated": "2026-09-10T17:39:06.981874",
   "total_web_sources_indexed": 14,
   "sources": {
     "fik_regulations": {
@@ -140,9 +140,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 41.0,
-        "current_accuracy": 67.1,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 84.5,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "suburi": {
         "movement_weight": 0.35,
@@ -151,9 +151,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 46.5,
-        "current_accuracy": 72.6,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 90.0,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "kihon": {
         "movement_weight": 0.35,
@@ -162,9 +162,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 44.0,
-        "current_accuracy": 70.1,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 87.5,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "kirikaeshi": {
         "movement_weight": 0.35,
@@ -173,9 +173,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 39.5,
-        "current_accuracy": 65.6,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 83.0,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "uchikomi_geiko": {
         "movement_weight": 0.35,
@@ -184,9 +184,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 38.0,
-        "current_accuracy": 64.1,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 81.5,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "kakari_geiko": {
         "movement_weight": 0.35,
@@ -195,9 +195,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 33.5,
-        "current_accuracy": 59.6,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 77.0,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "yakusoku_geiko": {
         "movement_weight": 0.35,
@@ -206,9 +206,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 37.5,
-        "current_accuracy": 63.6,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 81.0,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "waza_geiko": {
         "movement_weight": 0.35,
@@ -217,9 +217,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 36.5,
-        "current_accuracy": 62.6,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 80.0,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "oji_waza": {
         "movement_weight": 0.35,
@@ -228,9 +228,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 35.5,
-        "current_accuracy": 61.6,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 79.0,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "ji_geiko": {
         "movement_weight": 0.35,
@@ -239,9 +239,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 32.0,
-        "current_accuracy": 58.1,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 75.5,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "shiai_geiko": {
         "movement_weight": 0.35,
@@ -250,9 +250,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 34.0,
-        "current_accuracy": 60.1,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 77.5,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "nihon_kendo_kata": {
         "movement_weight": 0.35,
@@ -261,9 +261,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 45.0,
-        "current_accuracy": 71.1,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 88.5,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "bokuto_kihon_waza": {
         "movement_weight": 0.35,
@@ -272,9 +272,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 42.5,
-        "current_accuracy": 68.6,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 86.0,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       },
       "shinsa": {
         "movement_weight": 0.35,
@@ -283,12 +283,12 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 36.0,
-        "current_accuracy": 62.1,
-        "last_calibrated": "09/09/2026 19:53",
-        "sessions_count": 9
+        "current_accuracy": 79.5,
+        "last_calibrated": "10/09/2026 17:39",
+        "sessions_count": 15
       }
     }
   },
-  "training_sessions_completed": 9,
-  "last_retrained_at": "2026-09-09T19:53:00.768287"
+  "training_sessions_completed": 15,
+  "last_retrained_at": "2026-09-10T17:39:06.981874"
 }

@@ -85,7 +85,8 @@ Recursos da Interface Web:
 - Seleção de Origem do Vídeo no Modo de Detecção Gravada: suporte completo tanto para Upload de Arquivo Local (.mp4, .avi, .mov) quanto para inclusão e download direto de Links do YouTube / Streaming Web com extração de metadados, miniatura e cache inteligente.
 - Navegação Interativa no Vídeo com Salto Temporal Calibrado: clique no evento (Sonkyō Inicial, Golpe ou Sonkyō Final) ou selecione no dropdown para posicionar o player 1 segundo antes (-1.0s) do início do evento para revisão detalhada.
 - Delimitação Temporal da Luta por Sonkyō: identificação automática da postura ritualística de Sonkyō de início e término do combate, com filtragem estrita de golpes na janela regulamentar.
-- Rastreamento dos 2 Kenshi Principais e Filtragem de Planos: descarte inteligente de elementos de fundo (outras lutas, arquibancadas) e oclusões de primeiro plano.
+- Rastreamento dos 2 Kenshi Principais e Filtragem de Planos: descarte inteligente de elementos de fundo (outras lutas, arquibancadas), árbitros (Shinpans) e oclusões de primeiro plano, com aplicação automática de margens da quadra (Shiai-jo) e supressão de ruído visual no vídeo anotado.
+- Delimitação de Quadra (Shiai-jo) & Descarte Silencioso de Não-Kendocas: isolamento estrito dos combatentes centrais na área regulamentar de combate, eliminando caixas de anotação sobre árbitros e espectadores externos.
 - Menu de Configurações com seletor de Hardware (CPU vs GPU NVIDIA CUDA com Tensor Cores FP16 / Ultralytics YOLOv8-Pose) e painel de Governança de Treinamento.
 - Governança de Treinamento e Painel de Revisão por Dan: Distribuição de treinamentos por Dan (1º a 8º Dan) e linha dedicada para Treinamentos Automatizados por IA (Web & Vídeo). Cálculo de nível médio Dan exclusivo para revisões humanas (sem distorção por treinos da IA).
 - Painel de Diagnóstico, Alertas e Log de Debug do Sistema com monitoramento de eventos em tempo real (`senpai_debug.log`).
@@ -95,7 +96,7 @@ Recursos da Interface Web:
 - Layout responsivo em 2 colunas: vídeo fixo (sticky) à esquerda e lista de eventos com barra de rolagem à direita.
 - Treinamento Automático por IA (Web & Vídeo Knowledge Ingestion): Na aba de Governança de Treinamento, permite disparar o motor autônomo de busca e mineração de conhecimento técnico (FIK, AJKF/ZNKR, biomecânica e corpus de vídeos) com duração determinada (em minutos) para aprender e recalibrar as 14 modalidades pedagógicas ou lutas (Shiai), conforme a necessidade mais latente, com tabela de evolução em HTML de alta performance.
 - Conformidade Estrita de Tipagem e Estabilidade: Narrowing de tipos e tratamento defensivo em todos os widgets Streamlit (câmeras, Dan, perfis, qualidades e acelerador), além de blindagem de renderização condicional da Linha do Tempo prevenindo exceções de runtime em resets ou antes da execução da análise.
-- Controles Interativos de Reprodução de Vídeo & Mesa VAR: Painel de controle acoplado diretamente abaixo do vídeo na Detecção Gravada, permitindo Play, Pause, Reinício, saltos rápidos (±1s, ±5s, ±10s), 7 taxas de velocidade (0.1x ultra-lenta a 2.0x rápida), volume e tela cheia via manipulação direta do `<video>` no DOM (executado via `streamlit.components.v1.html`). Sincronização automática com a Linha do Tempo sem dependência do parâmetro 'key' de `st.video`.
+- Controles Interativos de Reprodução de Vídeo & Mesa VAR: Painel de controle acoplado diretamente abaixo do vídeo na Detecção Gravada, permitindo Play, Pause, Reinício, saltos rápidos (±1s, ±5s, ±10s), 7 taxas de velocidade (0.1x ultra-lenta a 2.0x rápida), volume e tela cheia via manipulação direta do `<video>` no DOM (executado via `st.iframe`). Sincronização automática com a Linha do Tempo sem dependência do parâmetro 'key' de `st.video`.
 - Gestão e Retreinamento por Planilha Excel (.xlsx): Exportação da telemetria completa dos golpes detectados para planilha Excel, geração de template vazio para preenchimento manual e importação de planilhas revisadas por árbitros (1º a 8º Dan) com retreinamento adaptativo imediato da IA.
 
 --- B. LINHA DE COMANDO (CLI) ---
@@ -116,10 +117,11 @@ Para processar vídeos diretamente no terminal:
 - Otimizar perfil com base no dataset de feedback gravado:
    python main.py --profile normal --optimize-profile
 
-- Executar suíte completa de testes automatizados (126 testes) com relatório descritivo salvo em logs/:
+- Executar suíte completa de testes automatizados (132 testes) com relatório descritivo salvo em logs/:
    python run_tests.py
    (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
-   * Executa a suíte de 126 testes automatizados distribuídos em 16 módulos com 100% de aprovação
+   * Executa a suíte de 132 testes automatizados distribuídos em 17 módulos com 100% de aprovação
+   * Validações especializadas de rastreamento K=2, supressão de Shinpans, interpolação cinemática de pulsos/pés e delimitador Shiai-jo
    * Gera o arquivo descritivo logs/senpai_test_report.log com detalhes de cada teste
    * Mantém estritamente apenas o último log de testes executado na pasta logs/
 

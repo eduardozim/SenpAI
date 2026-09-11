@@ -32,30 +32,40 @@ class BiomechanicsAnalyzer:
         if not landmarks:
             return 0.0
 
-        r_wrist = np.array([landmarks["RIGHT_WRIST"]["x"], landmarks["RIGHT_WRIST"]["y"]])
+        r_wrist_pt = landmarks.get("RIGHT_WRIST") or landmarks.get("LEFT_WRIST")
+        if not r_wrist_pt:
+            return 0.5
+        r_wrist = np.array([r_wrist_pt["x"], r_wrist_pt["y"]])
         
         st_clean = str(strike_type).replace("メ ", "").replace("コ ", "").replace("ド ", "").replace("ツ ", "").replace("メ", "").replace("コ", "").replace("ド", "").replace("ツ", "").strip().upper()
 
         if st_clean == "MEN":
             # Alvo Men: Acima da linha dos olhos/nariz
-            nose_y = landmarks["NOSE"]["y"]
+            nose_pt = landmarks.get("NOSE") or landmarks.get("RIGHT_EAR") or landmarks.get("LEFT_EAR")
+            nose_y = nose_pt["y"] if nose_pt else 0.25
             diff = abs(r_wrist[1] - nose_y)
             score = max(0.0, 1.0 - (diff * 2.5))
         elif st_clean == "KOTE":
             # Alvo Kote: Linha da cintura/ombro com boa extensão de cotovelo
-            r_elbow = np.array([landmarks["RIGHT_ELBOW"]["x"], landmarks["RIGHT_ELBOW"]["y"], landmarks["RIGHT_ELBOW"]["z"]])
-            r_shoulder = np.array([landmarks["RIGHT_SHOULDER"]["x"], landmarks["RIGHT_SHOULDER"]["y"], landmarks["RIGHT_SHOULDER"]["z"]])
-            p_wrist = np.array([landmarks["RIGHT_WRIST"]["x"], landmarks["RIGHT_WRIST"]["y"], landmarks["RIGHT_WRIST"]["z"]])
-            elbow_angle = self.calculate_angle_3d(r_shoulder, r_elbow, p_wrist)
-            # No Kote a extensão do cotovelo deve ser forte (140° a 170°)
-            score = 1.0 - (abs(155.0 - elbow_angle) / 60.0)
+            r_elbow_pt = landmarks.get("RIGHT_ELBOW") or landmarks.get("LEFT_ELBOW")
+            r_shoulder_pt = landmarks.get("RIGHT_SHOULDER") or landmarks.get("LEFT_SHOULDER")
+            if r_elbow_pt and r_shoulder_pt:
+                r_elbow = np.array([r_elbow_pt["x"], r_elbow_pt["y"], r_elbow_pt.get("z", 0.0)])
+                r_shoulder = np.array([r_shoulder_pt["x"], r_shoulder_pt["y"], r_shoulder_pt.get("z", 0.0)])
+                p_wrist = np.array([r_wrist_pt["x"], r_wrist_pt["y"], r_wrist_pt.get("z", 0.0)])
+                elbow_angle = self.calculate_angle_3d(r_shoulder, r_elbow, p_wrist)
+                score = 1.0 - (abs(155.0 - elbow_angle) / 60.0)
+            else:
+                score = 0.70
         elif st_clean == "DO":
             # Alvo Do: Mãos na altura do peito, trajetória lateral
-            hip_y = landmarks["RIGHT_HIP"]["y"]
+            hip_pt = landmarks.get("RIGHT_HIP") or landmarks.get("LEFT_HIP")
+            hip_y = hip_pt["y"] if hip_pt else 0.60
             diff = abs(r_wrist[1] - hip_y)
             score = max(0.0, 1.0 - (diff * 2.0))
         else: # TSUKI
-            shoulder_y = landmarks["RIGHT_SHOULDER"]["y"]
+            shoulder_pt = landmarks.get("RIGHT_SHOULDER") or landmarks.get("LEFT_SHOULDER")
+            shoulder_y = shoulder_pt["y"] if shoulder_pt else 0.40
             diff = abs(r_wrist[1] - shoulder_y)
             score = max(0.0, 1.0 - (diff * 3.0))
 
@@ -76,7 +86,12 @@ class BiomechanicsAnalyzer:
             if not lm:
                 foot_velocities.append(0.0)
                 continue
-            r_foot = np.array([lm["RIGHT_FOOT_INDEX"]["x"], lm["RIGHT_FOOT_INDEX"]["y"]])
+            r_foot_pt = lm.get("RIGHT_FOOT_INDEX") or lm.get("RIGHT_ANKLE") or lm.get("LEFT_FOOT_INDEX") or lm.get("LEFT_ANKLE")
+            if not r_foot_pt or "x" not in r_foot_pt or "y" not in r_foot_pt:
+                foot_velocities.append(0.0)
+                continue
+
+            r_foot = np.array([r_foot_pt["x"], r_foot_pt["y"]])
             if f == impact_frame - 5 or not pose_history[f - 1]:
                 foot_velocities.append(0.0)
             else:
@@ -84,7 +99,14 @@ class BiomechanicsAnalyzer:
                 if not prev_lm:
                     foot_velocities.append(0.0)
                 else:
-                    prev_foot = np.array([prev_lm["RIGHT_FOOT_INDEX"]["x"], prev_lm["RIGHT_FOOT_INDEX"]["y"]])
+                    prev_foot_pt = prev_lm.get("RIGHT_FOOT_INDEX") or prev_lm.get("RIGHT_ANKLE") or prev_lm.get("LEFT_FOOT_INDEX") or prev_lm.get("LEFT_ANKLE")
+                    if not prev_foot_pt or "x" not in prev_foot_pt or "y" not in prev_foot_pt:
+                        foot_velocities.append(0.0)
+                    else:
+                        prev_foot = np.array([prev_foot_pt["x"], prev_foot_pt["y"]])
+                        vel = float(np.linalg.norm(r_foot - prev_foot))
+                        foot_velocities.append(vel)
+
         if not foot_velocities or max(foot_velocities) < 0.005:
             # Sem rastreamento de pés ou pés em repouso: atribui escore regulamentar neutro
             return 0.75, 0.0
@@ -105,8 +127,13 @@ class BiomechanicsAnalyzer:
         if not landmarks:
             return 0.0
 
-        r_shoulder = np.array([landmarks["RIGHT_SHOULDER"]["x"], landmarks["RIGHT_SHOULDER"]["y"]])
-        r_hip = np.array([landmarks["RIGHT_HIP"]["x"], landmarks["RIGHT_HIP"]["y"]])
+        r_shoulder_pt = landmarks.get("RIGHT_SHOULDER") or landmarks.get("LEFT_SHOULDER")
+        r_hip_pt = landmarks.get("RIGHT_HIP") or landmarks.get("LEFT_HIP")
+        if not r_shoulder_pt or not r_hip_pt:
+            return 0.75
+
+        r_shoulder = np.array([r_shoulder_pt["x"], r_shoulder_pt["y"]])
+        r_hip = np.array([r_hip_pt["x"], r_hip_pt["y"]])
         
         # Vetor da coluna (quadril ao ombro)
         spine_vec = r_shoulder - r_hip # y cresce para baixo na imagem
