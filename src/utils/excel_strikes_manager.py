@@ -14,7 +14,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-from src.engine.feedback_manager import FeedbackManager, DAN_NAMES
+from src.engine.feedback_manager import FeedbackManager, DAN_NAMES, SHINPAN_REV_KEY, SHINPAN_NAME, is_shinpan_reviewer
 from src.engine.calibrator import CalibrationEngine
 from src.utils.logger_manager import log_event
 
@@ -151,12 +151,18 @@ def export_strikes_to_excel(
     dan_val = reviewer_dan if reviewer_dan is not None else (metadata.get("reviewer_dan") if metadata else None)
     if dan_val is None:
         dan_val = 3
-    try:
-        dan_int = int(dan_val)
-    except (ValueError, TypeError):
-        dan_int = 3
-    dan_int = max(1, min(8, dan_int))
-    dan_label = DAN_NAMES.get(dan_int, f"{dan_int}º Dan")
+
+    if is_shinpan_reviewer(dan_val):
+        dan_label = SHINPAN_NAME
+        dan_numeric_str = SHINPAN_REV_KEY
+    else:
+        try:
+            dan_int = int(dan_val)
+        except (ValueError, TypeError):
+            dan_int = 3
+        dan_int = max(1, min(8, dan_int))
+        dan_label = DAN_NAMES.get(dan_int, f"{dan_int}º Dan")
+        dan_numeric_str = str(dan_int)
 
     rows = []
     for idx, s in enumerate(strikes_data):
@@ -228,7 +234,7 @@ def export_strikes_to_excel(
     meta_rows = [
         {"Metadado": "Link de Streaming", "Valor": st_url if st_url else "N/A"},
         {"Metadado": "Graduação Dan do Revisor", "Valor": dan_label},
-        {"Metadado": "Dan do Revisor (Numérico)", "Valor": str(dan_int)},
+        {"Metadado": "Dan do Revisor (Numérico)", "Valor": dan_numeric_str},
         {"Metadado": "Nome / Arquivo do Vídeo", "Valor": video_name},
         {"Metadado": "Data e Hora da Exportação", "Valor": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
         {"Metadado": "Total de Golpes Registrados", "Valor": str(len(rows))},
@@ -402,10 +408,13 @@ def import_strikes_from_excel(
                 if any(term in k_txt for term in ["streaming", "link", "url"]):
                     if v_str and v_str not in ["nan", "None", "N/A", "Nenhum link informado"]:
                         meta_streaming_url = v_str
-                elif "dan" in k_txt:
-                    num_m = re.search(r"\d+", v_str)
-                    if num_m:
-                        meta_reviewer_dan = int(num_m.group(0))
+                elif "dan" in k_txt or "revisor" in k_txt or "arbitr" in k_txt:
+                    if is_shinpan_reviewer(v_str):
+                        meta_reviewer_dan = SHINPAN_REV_KEY
+                    else:
+                        num_m = re.search(r"\d+", v_str)
+                        if num_m:
+                            meta_reviewer_dan = int(num_m.group(0))
     except Exception:
         pass
 
@@ -473,6 +482,9 @@ def import_strikes_from_excel(
                 non_empty = df[c].dropna()
                 for val in non_empty:
                     v_str = str(val).strip()
+                    if is_shinpan_reviewer(v_str):
+                        meta_reviewer_dan = SHINPAN_REV_KEY
+                        break
                     num_m = re.search(r"\d+", v_str)
                     if num_m:
                         meta_reviewer_dan = int(num_m.group(0))
@@ -610,9 +622,12 @@ def import_strikes_from_excel(
         row_dan_raw = row.get("reviewer_dan")
         row_dan = None
         if row_dan_raw is not None and not pd.isna(row_dan_raw):
-            num_m = re.search(r"\d+", str(row_dan_raw))
-            if num_m:
-                row_dan = int(num_m.group(0))
+            if is_shinpan_reviewer(row_dan_raw):
+                row_dan = SHINPAN_REV_KEY
+            else:
+                num_m = re.search(r"\d+", str(row_dan_raw))
+                if num_m:
+                    row_dan = int(num_m.group(0))
         if row_dan is None:
             row_dan = meta_reviewer_dan
 
@@ -698,20 +713,28 @@ def execute_training_from_imported_strikes(
     imported_strikes: List[Dict[str, Any]],
     video_name: str,
     profile_key: str,
-    reviewer_dan: int,
+    reviewer_dan: Any,
     current_profile_config: Dict[str, Any],
     feedback_mgr: FeedbackManager,
     auto_trainer_instance: Optional[Any] = None
 ) -> Dict[str, Any]:
     """
     Executa o treinamento adaptativo dos golpes a partir dos dados importados do Excel:
-    1. Grava as anotações supervisionadas com governança por Dan no FeedbackManager.
-    2. Recalibra os limiares de decisão de Ki-Ken-Tai-Ichi e Zanshin.
+    1. Grava as anotações supervisionadas com governança por Dan ou Shinpans no FeedbackManager.
+    2. Recalibra os limiares de decisão de Ki-Ken-Tai-Ichi e Zanshin e os pesos dos golpes.
     3. Atualiza o perfil ativo no CalibrationEngine.
     4. Opcionalmente alimenta a base de conhecimento do AutoTrainer para o escopo de combates gravados (recorded_shiai).
     """
-    dan_val = max(1, min(8, reviewer_dan))
-    dan_name = DAN_NAMES.get(dan_val, f"{dan_val}º Dan")
+    if is_shinpan_reviewer(reviewer_dan):
+        dan_val = SHINPAN_REV_KEY
+        dan_name = SHINPAN_NAME
+    else:
+        try:
+            dan_int = int(reviewer_dan)
+            dan_val = max(1, min(8, dan_int))
+        except Exception:
+            dan_val = 1
+        dan_name = DAN_NAMES.get(dan_val, f"{dan_val}º Dan")
 
     # Salva sessão de revisão via feedback manager
     new_cfg, session_rec = feedback_mgr.save_review_session(
@@ -755,6 +778,7 @@ def execute_training_from_imported_strikes(
         "items_count": len(imported_strikes),
         "reviewer_dan": dan_val,
         "reviewer_dan_name": dan_name,
+        "is_shinpan_decision": session_rec.get("is_shinpan_decision", False),
         "new_config": new_cfg,
         "session_record": session_rec,
         "optimization_summary": session_rec.get("optimization_summary", {}),

@@ -9,7 +9,19 @@ import datetime
 from typing import Dict, Any, List, Tuple, Optional
 from src.utils.logger_manager import log_event
 
-DAN_NAMES: Dict[int, str] = {
+SHINPAN_REV_KEY: str = "shinpan"
+SHINPAN_NAME: str = "Decisão dos Shinpans"
+SHINPAN_CALIBRATION_WEIGHT: float = 4.5  # Constante média equilibrada (mediana de 1º a 8º Dan)
+
+def is_shinpan_reviewer(dan_val: Any) -> bool:
+    if dan_val is None:
+        return False
+    if dan_val in [SHINPAN_REV_KEY, "shinpan", "Decisão dos Shinpans", -1, 10]:
+        return True
+    s = str(dan_val).strip().lower()
+    return "shinpan" in s or "árbitro" in s or "arbitro" in s or "decisao dos shinpans" in s or "decisão dos shinpans" in s
+
+DAN_NAMES: Dict[Any, str] = {
     1: "1º Dan (Shodan)",
     2: "2º Dan (Nidan)",
     3: "3º Dan (Sandan)",
@@ -17,7 +29,9 @@ DAN_NAMES: Dict[int, str] = {
     5: "5º Dan (Godan)",
     6: "6º Dan (Rokudan)",
     7: "7º Dan (Nanadan)",
-    8: "8º Dan (Hachidan)"
+    8: "8º Dan (Hachidan)",
+    SHINPAN_REV_KEY: SHINPAN_NAME,
+    10: SHINPAN_NAME
 }
 
 DEFAULT_CALIBRATION_PROFILES: Dict[str, Any] = {
@@ -100,17 +114,31 @@ class FeedbackManager:
         strike_type: str = "MEN",
         timestamp: str = "00:00.000",
         notes: str = "",
-        reviewer_dan: int = 1,
+        reviewer_dan: Any = 1,
         is_edited: bool = False,
         is_included: bool = False,
-        decision_category: str = ""
+        decision_category: str = "",
+        is_shinpan_decision: Optional[bool] = None
     ) -> Dict[str, Any]:
         """
-        Adiciona ou atualiza uma anotação de feedback no dataset com registro de Dan e categoria de decisão.
+        Adiciona ou atualiza uma anotação de feedback no dataset com registro de Dan ou Decisão dos Shinpans.
         """
         data = self.load_feedback()
-        dan_val = max(1, min(8, reviewer_dan))
-        dan_name = DAN_NAMES.get(dan_val, f"{dan_val}º Dan")
+        is_shinpan = (
+            is_shinpan_decision is True or
+            is_shinpan_reviewer(reviewer_dan)
+        )
+        if is_shinpan:
+            dan_val = SHINPAN_REV_KEY
+            dan_name = SHINPAN_NAME
+        else:
+            try:
+                dan_int = int(reviewer_dan)
+                dan_val = max(1, min(8, dan_int))
+            except Exception:
+                dan_val = 1
+            dan_name = DAN_NAMES.get(dan_val, f"{dan_val}º Dan")
+
         now_iso = datetime.datetime.now().isoformat(timespec="seconds")
 
         entry = {
@@ -127,6 +155,7 @@ class FeedbackManager:
             "notes": notes,
             "reviewer_dan": dan_val,
             "reviewer_dan_name": dan_name,
+            "is_shinpan_decision": is_shinpan,
             "review_date": now_iso,
             "is_edited": is_edited,
             "is_included": is_included
@@ -152,16 +181,26 @@ class FeedbackManager:
         self,
         video_name: str,
         profile_key: str,
-        reviewer_dan: int,
+        reviewer_dan: Any,
         review_items: List[Dict[str, Any]],
         current_profile_config: Dict[str, Any]
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        Salva uma sessão de revisão de detecção gravada, atualiza os dados por Dan,
+        Salva uma sessão de revisão de detecção gravada, atualiza os dados por Dan ou Shinpans,
         executa o retreinamento do modelo e grava no histórico de treinamentos.
         """
-        dan_val = max(1, min(8, reviewer_dan))
-        dan_name = DAN_NAMES.get(dan_val, f"{dan_val}º Dan")
+        is_shinpan = is_shinpan_reviewer(reviewer_dan)
+        if is_shinpan:
+            dan_val = SHINPAN_REV_KEY
+            dan_name = SHINPAN_NAME
+        else:
+            try:
+                dan_int = int(reviewer_dan)
+                dan_val = max(1, min(8, dan_int))
+            except Exception:
+                dan_val = 1
+            dan_name = DAN_NAMES.get(dan_val, f"{dan_val}º Dan")
+
         now_iso = datetime.datetime.now().isoformat(timespec="seconds")
 
         saved_entries = []
@@ -179,7 +218,8 @@ class FeedbackManager:
                 reviewer_dan=dan_val,
                 is_edited=item.get("is_edited", False),
                 is_included=item.get("is_included", False),
-                decision_category=str(item.get("decision_category") or item.get("category") or "")
+                decision_category=str(item.get("decision_category") or item.get("category") or ""),
+                is_shinpan_decision=is_shinpan
             )
             saved_entries.append(entry)
 
@@ -193,6 +233,7 @@ class FeedbackManager:
             "timestamp": now_iso,
             "reviewer_dan": dan_val,
             "reviewer_dan_name": dan_name,
+            "is_shinpan_decision": is_shinpan,
             "video_name": video_name,
             "profile_key": profile_key,
             "items_count": len(saved_entries),
@@ -233,9 +274,9 @@ class FeedbackManager:
     def get_training_metrics(self) -> Dict[str, Any]:
         """
         Calcula as métricas de governança para o Menu de Configurações:
-        - Contador total de treinamentos realizados (Humanos + IA).
-        - Nível médio (Dan) dos treinamentos humanos (1º ao 8º Dan).
-        - Tabela de quantidade de treinamentos agrupada por Dan (1º a 8º Dan) + Treinamentos Automatizados por IA.
+        - Contador total de treinamentos realizados (Humanos Dan + Decisão dos Shinpans + IA).
+        - Nível médio (Dan) dos treinamentos humanos (1º ao 8º Dan, isolado e sem distorção).
+        - Tabela de quantidade de treinamentos agrupada por Dan (1º a 8º Dan) + Decisão dos Shinpans + Treinamentos Automatizados por IA.
         """
         history = self.load_history()
         data = self.load_feedback()
@@ -244,6 +285,7 @@ class FeedbackManager:
 
         dan_counts = {dan: 0 for dan in range(1, 9)}
         auto_trainings_count = 0
+        shinpan_trainings_count = 0
 
         dan_sum = 0
         human_weight_count = 0
@@ -259,8 +301,15 @@ class FeedbackManager:
                     str(session.get("id", "")).startswith("auto_train_") or
                     str(session.get("video_name", "")).startswith("AI_Auto_Trainer_")
                 )
+                is_shinpan = (
+                    session.get("is_shinpan_decision", False) or
+                    is_shinpan_reviewer(session.get("reviewer_dan")) or
+                    session.get("reviewer_dan_name") in [SHINPAN_NAME, "Decisão dos Shinpans (Árbitros de Shiai)"]
+                )
                 if is_auto:
                     auto_trainings_count += 1
+                elif is_shinpan:
+                    shinpan_trainings_count += 1
                 else:
                     dan = session.get("reviewer_dan", 1)
                     if isinstance(dan, int) and 1 <= dan <= 8:
@@ -270,12 +319,15 @@ class FeedbackManager:
         elif data:
             # Fallback para contar revisões se o histórico estiver vazio
             for item in data:
-                dan = item.get("reviewer_dan", 1)
-                if isinstance(dan, int) and 1 <= dan <= 8:
-                    dan_counts[dan] += 1
-                    dan_sum += dan
-                    human_weight_count += 1
-            total_trainings = human_weight_count
+                if item.get("is_shinpan_decision") or is_shinpan_reviewer(item.get("reviewer_dan")):
+                    shinpan_trainings_count += 1
+                else:
+                    dan = item.get("reviewer_dan", 1)
+                    if isinstance(dan, int) and 1 <= dan <= 8:
+                        dan_counts[dan] += 1
+                        dan_sum += dan
+                        human_weight_count += 1
+            total_trainings = human_weight_count + shinpan_trainings_count
 
         avg_dan = (dan_sum / human_weight_count) if human_weight_count > 0 else 0.0
         avg_dan_round = round(avg_dan, 1)
@@ -283,10 +335,16 @@ class FeedbackManager:
 
         if human_weight_count > 0:
             avg_dan_label = f"{avg_dan_round}º Dan ({DAN_NAMES.get(avg_dan_int, '')})"
+        elif shinpan_trainings_count > 0:
+            avg_dan_label = "Decisão dos Shinpans (Árbitros de Shiai)"
         elif auto_trainings_count > 0:
             avg_dan_label = "Treinamento Automático por IA (Sem revisor humano)"
         else:
             avg_dan_label = "Nenhum treinamento"
+
+        shinpan_items_count = sum(
+            1 for d in data if d.get("is_shinpan_decision") or is_shinpan_reviewer(d.get("reviewer_dan"))
+        )
 
         table_data = []
         for dan in range(1, 9):
@@ -298,6 +356,15 @@ class FeedbackManager:
                 "Quantidade Treinamentos": cnt,
                 "Percentual (%)": f"{pct}%"
             })
+
+        # Linha dedicada para Decisão dos Shinpans (Árbitros de Shiai)
+        shinpan_pct = round((shinpan_trainings_count / total_trainings) * 100, 1) if total_trainings > 0 else 0.0
+        table_data.append({
+            "Dan": "⚖️ Shinpans",
+            "Nome Graduação": "Decisão dos Shinpans (Árbitros de Shiai)",
+            "Quantidade Treinamentos": shinpan_trainings_count,
+            "Percentual (%)": f"{shinpan_pct}%"
+        })
 
         # Linha dedicada para Treinamentos Automatizados por IA
         auto_pct = round((auto_trainings_count / total_trainings) * 100, 1) if total_trainings > 0 else 0.0
@@ -313,6 +380,8 @@ class FeedbackManager:
         return {
             "total_trainings_count": total_trainings,
             "human_trainings_count": human_weight_count,
+            "shinpan_trainings_count": shinpan_trainings_count,
+            "shinpan_items_count": shinpan_items_count,
             "auto_trainings_count": auto_trainings_count,
             "average_dan_level": avg_dan_round,
             "average_dan_label": avg_dan_label,
@@ -621,10 +690,15 @@ class FeedbackManager:
             item["id"] = item_id
 
             if item_id not in existing_ids:
-                if "reviewer_dan" not in item:
-                    item["reviewer_dan"] = 1
-                if "reviewer_dan_name" not in item:
-                    item["reviewer_dan_name"] = DAN_NAMES.get(item["reviewer_dan"], "1º Dan")
+                if is_shinpan_reviewer(item.get("reviewer_dan")) or item.get("is_shinpan_decision") or item.get("reviewer_dan_name") == SHINPAN_NAME:
+                    item["reviewer_dan"] = SHINPAN_REV_KEY
+                    item["reviewer_dan_name"] = SHINPAN_NAME
+                    item["is_shinpan_decision"] = True
+                else:
+                    if "reviewer_dan" not in item:
+                        item["reviewer_dan"] = 1
+                    if "reviewer_dan_name" not in item:
+                        item["reviewer_dan_name"] = DAN_NAMES.get(item["reviewer_dan"], "1º Dan")
                 if "review_date" not in item:
                     item["review_date"] = now_iso
 
@@ -650,11 +724,15 @@ class FeedbackManager:
                 new_history_count += 1
 
         if imported_items and not imported_history:
+            first_is_shinpan = is_shinpan_reviewer(imported_items[0].get("reviewer_dan")) or imported_items[0].get("is_shinpan_decision")
+            first_dan = SHINPAN_REV_KEY if first_is_shinpan else imported_items[0].get("reviewer_dan", 1)
+            first_name = SHINPAN_NAME if first_is_shinpan else DAN_NAMES.get(first_dan, "1º Dan")
             session_rec = {
                 "id": f"train_imp_{now_iso.replace(':', '').replace('-', '')}_{len(current_history)+1}",
                 "timestamp": now_iso,
-                "reviewer_dan": imported_items[0].get("reviewer_dan", 1),
-                "reviewer_dan_name": DAN_NAMES.get(imported_items[0].get("reviewer_dan", 1), "1º Dan"),
+                "reviewer_dan": first_dan,
+                "reviewer_dan_name": first_name,
+                "is_shinpan_decision": first_is_shinpan,
                 "video_name": imported_items[0].get("video_name", "imported_package"),
                 "profile_key": imported_items[0].get("profile_key", "normal"),
                 "items_count": len(imported_items),
@@ -701,7 +779,9 @@ class FeedbackManager:
     def optimize_profile_config(self, profile_key: str, current_config: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Aplica otimização por reforço baseada nos feedbacks gravados para o perfil ativo.
-        Pondera anotações por revisores de maior graduação Dan.
+        Pondera anotações por revisores de maior graduação Dan (1 a 8) e Decisão dos Shinpans
+        com constante média equilibrada (SHINPAN_CALIBRATION_WEIGHT = 4.5).
+        Recalibra min_total_score, sub_thresholds e os pesos de validação (weights).
         """
         feedback_list = [d for d in self.load_feedback() if d.get("profile_key") == profile_key or not d.get("profile_key")]
 
@@ -722,7 +802,15 @@ class FeedbackManager:
 
         changes_summary = []
 
-        # Ponderação por Dan (Dan 1x a 8x peso)
+        def _get_item_weight(item: Dict[str, Any]) -> float:
+            if item.get("is_shinpan_decision") or is_shinpan_reviewer(item.get("reviewer_dan")):
+                return SHINPAN_CALIBRATION_WEIGHT
+            r_dan = item.get("reviewer_dan", 1)
+            if isinstance(r_dan, (int, float)) and 1 <= r_dan <= 8:
+                return float(r_dan)
+            return 1.0
+
+        # Ponderação e ajuste de limiares
         if fps:
             max_fp_total_score = max([d.get("total_score", 0.0) for d in fps]) / 100.0 if fps else 0.0
             if max_fp_total_score >= min_total:
@@ -732,12 +820,15 @@ class FeedbackManager:
 
             sub_keys = ["target_impact", "fumikomi_sync", "posture", "zanshin"]
             for skey in sub_keys:
-                fp_sub_scores = [d.get("sub_scores", {}).get(skey, 100.0) / 100.0 for d in fps if "sub_scores" in d]
-                tp_sub_scores = [d.get("sub_scores", {}).get(skey, 0.0) / 100.0 for d in tps if "sub_scores" in d]
+                fp_items = [d for d in fps if "sub_scores" in d and skey in d.get("sub_scores", {})]
+                tp_items = [d for d in tps if "sub_scores" in d and skey in d.get("sub_scores", {})]
 
-                if fp_sub_scores:
-                    avg_fp_sub = sum(fp_sub_scores) / len(fp_sub_scores)
-                    avg_tp_sub = (sum(tp_sub_scores) / len(tp_sub_scores)) if tp_sub_scores else 0.80
+                if fp_items:
+                    fp_w_sum = sum(_get_item_weight(d) for d in fp_items)
+                    tp_w_sum = sum(_get_item_weight(d) for d in tp_items)
+
+                    avg_fp_sub = sum((d["sub_scores"][skey] / 100.0) * _get_item_weight(d) for d in fp_items) / (fp_w_sum if fp_w_sum > 0 else 1.0)
+                    avg_tp_sub = (sum((d["sub_scores"][skey] / 100.0) * _get_item_weight(d) for d in tp_items) / (tp_w_sum if tp_w_sum > 0 else 1.0)) if tp_items else 0.80
 
                     if avg_tp_sub > avg_fp_sub:
                         old_sub = sub_thresholds.get(skey, 0.50)
@@ -749,6 +840,47 @@ class FeedbackManager:
             old_min = min_total
             min_total = max(0.40, min_total - 0.04)
             changes_summary.append(f"Suavização da Pontuação Mínima Global para capturar golpes perdidos: {int(old_min*100)}% ➔ {int(min_total*100)}%")
+
+        # Recalibração adaptativa dos pesos dos 4 pilares (weights)
+        if tps or fps:
+            sub_keys = ["target_impact", "fumikomi_sync", "posture", "zanshin"]
+            tp_weight_sums = {k: 0.0 for k in sub_keys}
+            total_tp_w = 0.0
+
+            for item in tps:
+                w_factor = _get_item_weight(item)
+                scores = item.get("sub_scores", {})
+                has_scores = any(k in scores for k in sub_keys)
+                total_tp_w += w_factor
+                for k in sub_keys:
+                    s_val = (scores.get(k, 80.0) if has_scores else 80.0) / 100.0
+                    tp_weight_sums[k] += s_val * w_factor
+
+            if total_tp_w > 0:
+                raw_proportions = {k: tp_weight_sums[k] / total_tp_w for k in sub_keys}
+                prop_sum = sum(raw_proportions.values())
+                if prop_sum > 0:
+                    target_w = {k: raw_proportions[k] / prop_sum for k in sub_keys}
+                    alpha = min(0.20, 0.03 * (total_tp_w / 5.0))
+                    new_w_calc = {}
+                    for k in sub_keys:
+                        cur_w = weights.get(k, 0.25)
+                        new_w_calc[k] = (1.0 - alpha) * cur_w + alpha * target_w[k]
+
+                    w_sum = sum(new_w_calc.values())
+                    new_weights = {k: round(new_w_calc[k] / w_sum, 3) for k in sub_keys}
+                    diff_sum = round(1.0 - sum(new_weights.values()), 3)
+                    new_weights["target_impact"] = round(new_weights["target_impact"] + diff_sum, 3)
+
+                    if any(abs(new_weights[k] - weights.get(k, 0.0)) >= 0.005 for k in sub_keys):
+                        changes_summary.append(
+                            f"Recalibração dos Pesos de Validação dos Golpes: "
+                            f"Alvo={int(new_weights['target_impact']*100)}%, "
+                            f"Fumikomi={int(new_weights['fumikomi_sync']*100)}%, "
+                            f"Postura={int(new_weights['posture']*100)}%, "
+                            f"Zanshin={int(new_weights['zanshin']*100)}%"
+                        )
+                        weights = new_weights
 
         new_config["min_total_score"] = round(min_total, 2)
         new_config["sub_thresholds"] = sub_thresholds

@@ -1210,12 +1210,14 @@ elif nav_page == "settings":
         training_metrics = feedback_mgr.get_training_metrics()
         storage_info = training_metrics.get("storage_info", feedback_mgr.get_training_storage_info())
 
-        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-        m_col1.metric("Total de Treinamentos Realizados", training_metrics["total_trainings_count"])
-        m_col2.metric("Nível Médio (Dan) dos Treinamentos", training_metrics["average_dan_label"])
-        m_col3.metric("Total de Marcações de Revisão", training_metrics["total_review_items"])
-        m_col4.metric(
-            "Espaço em Disco do Treinamento",
+        shinpan_count = training_metrics.get("shinpan_trainings_count", 0)
+        m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
+        m_col1.metric("Total de Treinamentos", training_metrics["total_trainings_count"])
+        m_col2.metric("Nível Médio (Dan)", training_metrics["average_dan_label"])
+        m_col3.metric("Decisões dos Shinpans", f"{shinpan_count} sessões")
+        m_col4.metric("Total de Marcações", training_metrics["total_review_items"])
+        m_col5.metric(
+            "Espaço em Disco",
             storage_info["total_formatted"],
             help="Espaço total em disco ocupado pelos dados de feedback, histórico de retreinamento, modelos neurais e base de conhecimento da IA."
         )
@@ -3149,8 +3151,9 @@ elif nav_page == "analysis":
 
             # 0. SE EXISTIR RESULTADO: PLACAR OFICIAL (SANBON-SHOBU) NO TOPO DO PAINEL
             enable_editing = st.session_state.get("editing_enabled", False)
-            selected_dan: int = 3
-            dan_options: dict[int, str] = {
+            active_dan_key = st.session_state.get("reviewer_dan_select", 3)
+            selected_dan: Any = active_dan_key if active_dan_key == "shinpan" else int(active_dan_key or 3)
+            dan_options: dict[Any, str] = {
                 1: "1º Dan (Shodan)",
                 2: "2º Dan (Nidan)",
                 3: "3º Dan (Sandan)",
@@ -3158,7 +3161,8 @@ elif nav_page == "analysis":
                 5: "5º Dan (Godan)",
                 6: "6º Dan (Rokudan)",
                 7: "7º Dan (Nanadan)",
-                8: "8º Dan (Hachidan)"
+                8: "8º Dan (Hachidan)",
+                "shinpan": "Decisão dos Shinpans"
             }
             if "session_reviews" not in st.session_state:
                 st.session_state["session_reviews"] = {}
@@ -3176,8 +3180,9 @@ elif nav_page == "analysis":
             # 0. NO MODO COMPETITIVO / GRAVADO: PLACAR OFICIAL (SANBON-SHOBU) & BARRA DE CONTROLES NO TOPO DO PAINEL
             if app_mode != "training":
                 enable_editing = st.session_state.get("editing_enabled", False)
-                selected_dan: int = 3
-                dan_options: dict[int, str] = {
+                active_dan_key = st.session_state.get("reviewer_dan_select", 3)
+                selected_dan = active_dan_key if active_dan_key == "shinpan" else int(active_dan_key or 3)
+                dan_options: dict[Any, str] = {
                     1: "1º Dan (Shodan)",
                     2: "2º Dan (Nidan)",
                     3: "3º Dan (Sandan)",
@@ -3185,7 +3190,8 @@ elif nav_page == "analysis":
                     5: "5º Dan (Godan)",
                     6: "6º Dan (Rokudan)",
                     7: "7º Dan (Nanadan)",
-                    8: "8º Dan (Hachidan)"
+                    8: "8º Dan (Hachidan)",
+                    "shinpan": "Decisão dos Shinpans"
                 }
                 if "session_reviews" not in st.session_state:
                     st.session_state["session_reviews"] = {}
@@ -3203,40 +3209,18 @@ elif nav_page == "analysis":
                     raw_aka_strikes = []
                     raw_shiro_strikes = []
 
-                    # 1. Golpes detectados automaticamente pelo modelo
-                    for ev_i, ev_d in enumerate(res.get("events", [])):
-                        ev_info_d = ev_d["event_info"]
-                        ev_id_d = f"event_{ev_i+1}_frame_{ev_info_d['impact_frame']}"
-                        rev_d = session_revs.get(ev_id_d)
-
-                        if rev_d:
-                            if rev_d.get("is_edited"):
-                                is_valid_d = (rev_d.get("category") == "VALID_IPPON")
-                            elif rev_d.get("is_confirmed"):
-                                is_valid_d = ev_d["evaluation"].get("is_valid", False)
-                            else:
-                                is_valid_d = (rev_d.get("label") == "TP" and rev_d.get("category") not in ["INVALID_HIT", "NO_STRIKE"])
-                        else:
-                            is_valid_d = ev_d["evaluation"].get("is_valid", False)
-
-                        if is_valid_d:
-                            if ev_info_d.get("attacker_id") == "KENSHI_AKA":
-                                raw_aka_strikes.append(ev_d)
-                            else:
-                                raw_shiro_strikes.append(ev_d)
-
-                    # 2. Golpes adicionais incluídos manualmente pelo usuário
-                    for fn_k, fn_v in session_revs.items():
-                        if fn_v.get("is_included"):
-                            is_fn_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
-                            if is_fn_ippon:
+                    if enable_editing and selected_dan == "shinpan":
+                        # Modo Decisão dos Shinpans: o placar computa EXCLUSIVAMENTE os golpes válidos apontados pelos árbitros
+                        for fn_k, fn_v in session_revs.items():
+                            is_fn_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON" or fn_v.get("label") == "TP")
+                            if is_fn_ippon and fn_v.get("reviewer_dan") == "shinpan":
                                 fake_ev = {
                                     "event_info": {
                                         "attacker_id": fn_v.get("attacker_id", "KENSHI_AKA"),
                                         "attacker_name": fn_v.get("attacker_name", "Kenshi Aka (Vermelho)"),
                                         "type": fn_v.get("strike_type", "MEN"),
                                         "timestamp": fn_v.get("timestamp", "00:00.000"),
-                                        "impact_frame": 0
+                                        "impact_frame": fn_v.get("impact_frame", 0)
                                     },
                                     "evaluation": {"is_valid": True, "total_score": 100.0}
                                 }
@@ -3244,6 +3228,49 @@ elif nav_page == "analysis":
                                     raw_aka_strikes.append(fake_ev)
                                 else:
                                     raw_shiro_strikes.append(fake_ev)
+                    else:
+                        # Modo Treinador / Dan: considera os golpes detectados pela IA e revisões feitas
+                        # 1. Golpes detectados automaticamente pelo modelo
+                        for ev_i, ev_d in enumerate(res.get("events", [])):
+                            ev_info_d = ev_d["event_info"]
+                            ev_id_d = f"event_{ev_i+1}_frame_{ev_info_d['impact_frame']}"
+                            rev_d = session_revs.get(ev_id_d)
+
+                            if rev_d and rev_d.get("reviewer_dan") != "shinpan":
+                                if rev_d.get("is_edited"):
+                                    is_valid_d = (rev_d.get("category") == "VALID_IPPON")
+                                elif rev_d.get("is_confirmed"):
+                                    is_valid_d = ev_d["evaluation"].get("is_valid", False)
+                                else:
+                                    is_valid_d = (rev_d.get("label") == "TP" and rev_d.get("category") not in ["INVALID_HIT", "NO_STRIKE"])
+                            else:
+                                is_valid_d = ev_d["evaluation"].get("is_valid", False)
+
+                            if is_valid_d:
+                                if ev_info_d.get("attacker_id") == "KENSHI_AKA":
+                                    raw_aka_strikes.append(ev_d)
+                                else:
+                                    raw_shiro_strikes.append(ev_d)
+
+                        # 2. Golpes adicionais incluídos manualmente pelo revisor Dan
+                        for fn_k, fn_v in session_revs.items():
+                            if fn_v.get("is_included") and fn_v.get("reviewer_dan") != "shinpan":
+                                is_fn_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
+                                if is_fn_ippon:
+                                    fake_ev = {
+                                        "event_info": {
+                                            "attacker_id": fn_v.get("attacker_id", "KENSHI_AKA"),
+                                            "attacker_name": fn_v.get("attacker_name", "Kenshi Aka (Vermelho)"),
+                                            "type": fn_v.get("strike_type", "MEN"),
+                                            "timestamp": fn_v.get("timestamp", "00:00.000"),
+                                            "impact_frame": 0
+                                        },
+                                        "evaluation": {"is_valid": True, "total_score": 100.0}
+                                    }
+                                    if fn_v.get("attacker_id") == "KENSHI_AKA":
+                                        raw_aka_strikes.append(fake_ev)
+                                    else:
+                                        raw_shiro_strikes.append(fake_ev)
 
                     if not is_inverted:
                         aka_val_strikes = raw_aka_strikes
@@ -3339,20 +3366,40 @@ elif nav_page == "analysis":
                 if enable_editing:
                     rev_header_col1, rev_header_col2 = st.columns([3, 1])
                     with rev_header_col1:
+                        curr_dan_idx = list(dan_options.keys()).index(selected_dan) if selected_dan in dan_options else 2
                         dan_val = st.selectbox(
-                            "🥋 Graduação DAN do Revisor:",
+                            "🥋 Graduação / Tipo de Revisor:",
                             options=list(dan_options.keys()),
                             format_func=lambda x: dan_options[x],
-                            index=2,
+                            index=curr_dan_idx,
                             key="reviewer_dan_select"
                         )
-                        selected_dan = int(dan_val or 3)
+                        selected_dan = dan_val if dan_val == "shinpan" else int(dan_val or 3)
                     with rev_header_col2:
                         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
                         if st.button("🔄 Resetar Revisão", width="stretch", help="Reseta todas as alterações de marcação e edições feitas nesta sessão"):
                             st.session_state["session_reviews"] = {}
-                            st.toast("🔄 Marcações da sessão resetadas ao estado original!", icon="🔄")
+                            if selected_dan == "shinpan":
+                                st.toast("🔄 Sessão resetada! Linha do tempo limpa para inclusão de Ippons dos Shinpans.", icon="🔄")
+                            else:
+                                st.toast("🔄 Revisão resetada! Golpes identificados pela IA restaurados.", icon="🔄")
                             st.rerun()
+
+                    if selected_dan == "shinpan":
+                        st.markdown(
+                            """
+                            <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 2px solid #EAB308; border-radius: 10px; padding: 12px 16px; margin: 10px 0;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="font-size: 1.25rem;">⚖️</span>
+                                    <h4 style="color: #FDE047; margin: 0;">Modo Decisão dos Shinpans (Árbitros de Shiai) Ativo</h4>
+                                </div>
+                                <p style="color: #FEF08A; font-size: 0.88rem; margin: 6px 0 0 0;">
+                                    A Linha do Tempo & Revisão de Golpes está configurada para <b>registrar exclusivamente os golpes válidos (Ippon / Yūko-datotsu) apontados pelos Shinpans</b> no Shiai. Golpes não assinalados pela arbitragem não pontuam. As marcações serão utilizadas para recalibrar os pesos biomecânicos de validação de forma balanceada.
+                                </p>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
 
                 # Banner de Reprocessamento de Sonkyō
                 if sonkyo_edits:
@@ -3576,80 +3623,109 @@ elif nav_page == "analysis":
                         res = st.session_state["analysis_result"]
                         sonkyo_info = res.get("sonkyo_analysis", {})
 
-                        # Montagem da lista unificada e cronológica de todos os golpes (detectados + incluídos)
+                        # Montagem da lista unificada e cronológica de golpes
                         combined_strikes = []
                         session_revs = st.session_state.get("session_reviews", {})
 
-                        # 1. Golpes detectados pelo modelo
-                        for idx_raw, ev_data in enumerate(res.get("events", [])):
-                            ev = ev_data["event_info"]
-                            eval_info = ev_data["evaluation"]
-                            event_id_str = f"event_{idx_raw+1}_frame_{ev['impact_frame']}"
+                        if enable_editing and selected_dan == "shinpan":
+                            # Modo Decisão dos Shinpans: Linha do tempo liberada para incluir EXCLUSIVAMENTE
+                            # os golpes válidos apontados pelos Shinpans em Shiai.
+                            # Os golpes detectados por IA não entram automaticamente na linha do tempo,
+                            # permitindo registrar apenas os Ippons concedidos pela arbitragem.
+                            for fn_k, fn_v in session_revs.items():
+                                is_fn_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON" or fn_v.get("label") == "TP")
+                                if is_fn_ippon and fn_v.get("reviewer_dan") == "shinpan":
+                                    ts_val = fn_v.get("timestamp", "00:00.000")
+                                    combined_strikes.append({
+                                        "event_id": fn_k,
+                                        "source": "SHINPAN_IPPON",
+                                        "raw_event": fn_v.get("raw_event"),
+                                        "review": fn_v,
+                                        "timestamp": ts_val,
+                                        "time_sec": parse_ts_to_seconds(ts_val),
+                                        "orig_is_valid": True,
+                                        "attacker_label": fn_v.get("attacker_name", "Kenshi Aka (Vermelho)"),
+                                        "attacker_id": fn_v.get("attacker_id", "KENSHI_AKA"),
+                                        "impact_frame": fn_v.get("impact_frame", 0),
+                                        "diagnostic_report": fn_v.get("diagnostic_report", None)
+                                    })
+                        else:
+                            # Modo Treinador / Dan ou Edição Desabilitada: Apresenta todos os golpes identificados por IA
+                            # 1. Golpes detectados pelo modelo
+                            for idx_raw, ev_data in enumerate(res.get("events", [])):
+                                ev = ev_data["event_info"]
+                                eval_info = ev_data["evaluation"]
+                                event_id_str = f"event_{idx_raw+1}_frame_{ev['impact_frame']}"
 
-                            orig_att_name = ev.get("attacker_name", "Kenshi Aka (Vermelho)")
-                            orig_att_id = ev.get("attacker_id", "KENSHI_AKA")
-                            if is_inverted:
-                                attacker_label = "Kenshi Shiro (Branco)" if "AKA" in orig_att_id else "Kenshi Aka (Vermelho)"
-                                attacker_id = "KENSHI_SHIRO" if "AKA" in orig_att_id else "KENSHI_AKA"
-                            else:
-                                attacker_label = orig_att_name
-                                attacker_id = orig_att_id
+                                orig_att_name = ev.get("attacker_name", "Kenshi Aka (Vermelho)")
+                                orig_att_id = ev.get("attacker_id", "KENSHI_AKA")
+                                if is_inverted:
+                                    attacker_label = "Kenshi Shiro (Branco)" if "AKA" in orig_att_id else "Kenshi Aka (Vermelho)"
+                                    attacker_id = "KENSHI_SHIRO" if "AKA" in orig_att_id else "KENSHI_AKA"
+                                else:
+                                    attacker_label = orig_att_name
+                                    attacker_id = orig_att_id
 
-                            orig_is_valid = eval_info.get('is_valid', False)
+                                orig_is_valid = eval_info.get('is_valid', False)
 
-                            # Estado da revisão desta marcação
-                            current_rev = session_revs.get(event_id_str, {
-                                "event_id": event_id_str,
-                                "label": "TP" if orig_is_valid else "FP",
-                                "category": "VALID_IPPON" if orig_is_valid else "INVALID_HIT",
-                                "is_valid_ippon": orig_is_valid,
-                                "strike_type": ev['type'],
-                                "timestamp": ev['timestamp'],
-                                "attacker_id": attacker_id,
-                                "attacker_name": attacker_label,
-                                "total_score": eval_info.get('total_score', 0.0),
-                                "sub_scores": eval_info.get('sub_scores', {}),
-                                "is_edited": False,
-                                "is_confirmed": False,
-                                "is_included": False,
-                                "notes": ""
-                            })
-                            current_rev["attacker_name"] = attacker_label
-                            current_rev["attacker_id"] = attacker_id
+                                # Estado da revisão desta marcação (apenas se revisado em modo Dan)
+                                rev_cand = session_revs.get(event_id_str)
+                                if rev_cand and rev_cand.get("reviewer_dan") != "shinpan":
+                                    current_rev = rev_cand
+                                else:
+                                    current_rev = {
+                                        "event_id": event_id_str,
+                                        "label": "TP" if orig_is_valid else "FP",
+                                        "category": "VALID_IPPON" if orig_is_valid else "INVALID_HIT",
+                                        "is_valid_ippon": orig_is_valid,
+                                        "strike_type": ev['type'],
+                                        "timestamp": ev['timestamp'],
+                                        "attacker_id": attacker_id,
+                                        "attacker_name": attacker_label,
+                                        "total_score": eval_info.get('total_score', 0.0),
+                                        "sub_scores": eval_info.get('sub_scores', {}),
+                                        "is_edited": False,
+                                        "is_confirmed": False,
+                                        "is_included": False,
+                                        "notes": ""
+                                    }
+                                current_rev["attacker_name"] = attacker_label
+                                current_rev["attacker_id"] = attacker_id
 
-                            strike_ts = current_rev.get("timestamp", ev.get("timestamp", "00:00.000"))
-                            combined_strikes.append({
-                                "event_id": event_id_str,
-                                "source": "AI_DETECTED",
-                                "raw_event": ev_data,
-                                "review": current_rev,
-                                "timestamp": strike_ts,
-                                "time_sec": parse_ts_to_seconds(strike_ts),
-                                "orig_is_valid": orig_is_valid,
-                                "attacker_label": attacker_label,
-                                "attacker_id": attacker_id,
-                                "impact_frame": ev.get("impact_frame", 0),
-                                "diagnostic_report": ev_data.get("diagnostic_report", "")
-                            })
-
-                        # 2. Golpes incluídos manualmente pelo revisor
-                        for fn_k, fn_v in session_revs.items():
-                            if fn_v.get("is_included"):
-                                ts_val = fn_v.get("timestamp", "00:00.000")
-                                inc_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
+                                strike_ts = current_rev.get("timestamp", ev.get("timestamp", "00:00.000"))
                                 combined_strikes.append({
-                                    "event_id": fn_k,
-                                    "source": "INCLUDED",
-                                    "raw_event": None,
-                                    "review": fn_v,
-                                    "timestamp": ts_val,
-                                    "time_sec": parse_ts_to_seconds(ts_val),
-                                    "orig_is_valid": inc_ippon,
-                                    "attacker_label": fn_v.get("attacker_name", "Kenshi Aka (Vermelho)"),
-                                    "attacker_id": fn_v.get("attacker_id", "KENSHI_AKA"),
-                                    "impact_frame": 0,
-                                    "diagnostic_report": None
+                                    "event_id": event_id_str,
+                                    "source": "AI_DETECTED",
+                                    "raw_event": ev_data,
+                                    "review": current_rev,
+                                    "timestamp": strike_ts,
+                                    "time_sec": parse_ts_to_seconds(strike_ts),
+                                    "orig_is_valid": orig_is_valid,
+                                    "attacker_label": attacker_label,
+                                    "attacker_id": attacker_id,
+                                    "impact_frame": ev.get("impact_frame", 0),
+                                    "diagnostic_report": ev_data.get("diagnostic_report", "")
                                 })
+
+                            # 2. Golpes incluídos manualmente pelo revisor Dan (se houver e edição ativa)
+                            if enable_editing:
+                                for fn_k, fn_v in session_revs.items():
+                                    if fn_v.get("is_included") and fn_v.get("reviewer_dan") != "shinpan":
+                                        ts_val = fn_v.get("timestamp", "00:00.000")
+                                        inc_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
+                                        combined_strikes.append({
+                                            "event_id": fn_k,
+                                            "source": "INCLUDED",
+                                            "raw_event": None,
+                                            "review": fn_v,
+                                            "timestamp": ts_val,
+                                            "time_sec": parse_ts_to_seconds(ts_val),
+                                            "orig_is_valid": inc_ippon,
+                                            "attacker_label": fn_v.get("attacker_name", "Kenshi Aka (Vermelho)"),
+                                            "attacker_id": fn_v.get("attacker_id", "KENSHI_AKA"),
+                                            "impact_frame": 0,
+                                            "diagnostic_report": None
+                                        })
 
                         # Ordenação estrita cronológica pelo tempo do golpe
                         combined_strikes.sort(key=lambda s: s["time_sec"])
@@ -3744,7 +3820,7 @@ elif nav_page == "analysis":
                                             help="Graduação Dan do árbitro (Shinpan) ou revisor que constará no arquivo de exportação.",
                                             key="sel_dan_excel_export"
                                         )
-                                        exp_dan: int = exp_dan_sel if exp_dan_sel is not None else exp_dan_default
+                                        exp_dan = exp_dan_sel if exp_dan_sel is not None else exp_dan_default
 
                                     c_m1, c_m2, c_m3 = st.columns(3)
                                     total_comb = len(combined_strikes)
@@ -3848,7 +3924,7 @@ elif nav_page == "analysis":
                                                     key="sel_dan_excel_import",
                                                     help=f"Chancela Dan sugerida: {imported_dan_name or dan_options.get(suggested_dan)}."
                                                 )
-                                                imp_dan: int = imp_dan_sel if imp_dan_sel is not None else suggested_dan
+                                                imp_dan = imp_dan_sel if imp_dan_sel is not None else suggested_dan
                                             with g_c2:
                                                 imp_profile_sel = st.selectbox(
                                                     "Perfil de Calibração Alvo:",
@@ -3905,8 +3981,15 @@ elif nav_page == "analysis":
                                 return
                             mid_s = max(0.0, (prev_time_s + next_time_s) / 2.0)
                             suggested_ts = format_seconds_to_ts(mid_s)
+                            is_shinpan_mode = bool(enable_editing and selected_dan == "shinpan")
 
-                            with st.expander(f"➕ Inserir Golpe entre {prev_desc} e {next_desc} (~{suggested_ts})", expanded=False):
+                            exp_title = (
+                                f"➕ Inserir Golpe Válido dos Shinpans entre {prev_desc} e {next_desc} (~{suggested_ts})"
+                                if is_shinpan_mode else
+                                f"➕ Inserir Golpe entre {prev_desc} e {next_desc} (~{suggested_ts})"
+                            )
+
+                            with st.expander(exp_title, expanded=False):
                                 c_in1, c_in2 = st.columns(2)
                                 with c_in1:
                                     ins_ts = st.text_input("Timestamp", value=suggested_ts, key=f"ins_ts_{slot_id}", help="Momento exato do golpe a ser inserido")
@@ -3929,19 +4012,26 @@ elif nav_page == "analysis":
                                     ins_att_id = att_opts[att_labels.index(ins_att_sel_str)][0]
                                     ins_att_name = "Kenshi Aka (Vermelho)" if ins_att_id == "KENSHI_AKA" else "Kenshi Shiro (Branco)"
 
-                                    ins_val_opts = [
-                                        ("VALID_IPPON", "✅ Golpe Válido (Ippon)"),
-                                        ("INVALID_HIT", "❌ Golpe Inválido (Não foi Ippon)")
-                                    ]
+                                    if is_shinpan_mode:
+                                        ins_val_opts = [
+                                            ("VALID_IPPON", "✅ Golpe Válido apontado pelos Shinpans (Ippon)")
+                                        ]
+                                    else:
+                                        ins_val_opts = [
+                                            ("VALID_IPPON", "✅ Golpe Válido (Ippon)"),
+                                            ("INVALID_HIT", "❌ Golpe Inválido (Não foi Ippon)")
+                                        ]
                                     ins_val_labels = [v[1] for v in ins_val_opts]
                                     ins_val_sel = st.radio("Validação do Golpe", ins_val_labels, horizontal=True, key=f"ins_val_{slot_id}")
                                     ins_val_sel_str = ins_val_sel or ins_val_labels[0]
                                     ins_val_code = ins_val_opts[ins_val_labels.index(ins_val_sel_str)][0]
                                     ins_is_ippon = (ins_val_code == "VALID_IPPON")
 
-                                ins_notes = st.text_input("Observação", value=f"Golpe inserido entre {prev_desc} e {next_desc}", key=f"ins_notes_{slot_id}")
+                                default_note = f"Ippon concedido pelos Shinpans entre {prev_desc} e {next_desc}" if is_shinpan_mode else f"Golpe inserido entre {prev_desc} e {next_desc}"
+                                ins_notes = st.text_input("Observação", value=default_note, key=f"ins_notes_{slot_id}")
 
-                                if st.button("💾 Adicionar Golpe Nesta Posição", key=f"btn_apply_ins_{slot_id}", type="secondary", width="stretch"):
+                                btn_ins_lbl = "💾 Adicionar Ippon dos Shinpans Nesta Posição" if is_shinpan_mode else "💾 Adicionar Golpe Nesta Posição"
+                                if st.button(btn_ins_lbl, key=f"btn_apply_ins_{slot_id}", type="secondary", width="stretch"):
                                     new_id = f"fn_{ins_ts.replace(':', '_').replace('.', '_')}_{ins_att_id.lower()}_{slot_id}"
                                     new_item = {
                                         "event_id": new_id,
@@ -3958,6 +4048,7 @@ elif nav_page == "analysis":
                                         "is_included": True,
                                         "is_confirmed": False,
                                         "is_edited": True,
+                                        "reviewer_dan": selected_dan,
                                         "notes": ins_notes
                                     }
                                     st.session_state["session_reviews"][new_id] = new_item
@@ -3975,6 +4066,93 @@ elif nav_page == "analysis":
                                     )
                                     st.toast(f"✅ Golpe ({ins_type} de {ins_att_name} às {ins_ts}) inserido com sucesso na sequência!", icon="➕")
                                     st.rerun()
+
+                        has_strikes = bool(combined_strikes)
+
+                        # Painel de sugestões rápidas da IA para inclusão de Ippon dos Shinpans
+                        if enable_editing and selected_dan == "shinpan" and res.get("events"):
+                            with st.expander("🤖 Aproveitar Golpes Detectados pela IA (Sugestões para Inclusão de Ippon)", expanded=not has_strikes):
+                                st.markdown(
+                                    """
+                                    <div style="background: rgba(59, 130, 246, 0.08); border-left: 3px solid #3B82F6; padding: 8px 12px; margin-bottom: 12px; font-size: 13px; color: #93C5FD;">
+                                        Abaixo estão os momentos de golpe identificados automaticamente pela IA neste combate.<br/>
+                                        <b>Clique em '+ Ippon dos Shinpans'</b> para incluir o golpe diretamente na linha do tempo oficial dos Shinpans sem precisar digitar horários manualmente.
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                                ai_events = res.get("events", [])
+                                for a_idx, a_ev_data in enumerate(ai_events):
+                                    a_ev = a_ev_data["event_info"]
+                                    a_eval = a_ev_data["evaluation"]
+                                    a_ev_id = f"shinpan_ai_{a_idx+1}_frame_{a_ev.get('impact_frame', 0)}"
+
+                                    already_added = a_ev_id in session_revs or any(
+                                        r.get("timestamp") == a_ev.get("timestamp") and r.get("strike_type") == a_ev.get("type")
+                                        for r in session_revs.values()
+                                    )
+
+                                    orig_att_id = a_ev.get("attacker_id", "KENSHI_AKA")
+                                    if is_inverted:
+                                        a_att_label = "Kenshi Shiro (Branco)" if "AKA" in orig_att_id else "Kenshi Aka (Vermelho)"
+                                        a_att_id = "KENSHI_SHIRO" if "AKA" in orig_att_id else "KENSHI_AKA"
+                                    else:
+                                        a_att_label = a_ev.get("attacker_name", "Kenshi Aka (Vermelho)")
+                                        a_att_id = orig_att_id
+
+                                    col_s1, col_s2, col_s3, col_s4, col_s5 = st.columns([1.4, 1.2, 2.2, 1.4, 2.2])
+                                    with col_s1:
+                                        st.markdown(f"⏱️ **`{a_ev.get('timestamp')}`**")
+                                    with col_s2:
+                                        st.markdown(f"🥋 **{format_katakana_strike(a_ev.get('type'))}**")
+                                    with col_s3:
+                                        c_dot = "🔴" if "AKA" in a_att_id else "⚪"
+                                        st.markdown(f"{c_dot} {a_att_label}")
+                                    with col_s4:
+                                        sc_val = a_eval.get("total_score", 0.0)
+                                        st.markdown(f"Score: `{sc_val:.0f}%`")
+                                    with col_s5:
+                                        if already_added:
+                                            st.markdown("✅ *Já Adicionado*")
+                                        else:
+                                            if st.button("➕ Ippon dos Shinpans", key=f"btn_add_ai_shinpan_{a_idx}_{a_ev_id}", width="stretch", help="Adicionar este golpe como Ippon oficial dos Shinpans"):
+                                                new_sh_item = {
+                                                    "event_id": a_ev_id,
+                                                    "label": "TP",
+                                                    "category": "VALID_IPPON",
+                                                    "decision_category": "VALID_IPPON",
+                                                    "is_valid_ippon": True,
+                                                    "strike_type": a_ev.get("type", "MEN"),
+                                                    "timestamp": a_ev.get("timestamp", "00:00.000"),
+                                                    "attacker_id": a_att_id,
+                                                    "attacker_name": a_att_label,
+                                                    "total_score": a_eval.get("total_score", 100.0),
+                                                    "sub_scores": a_eval.get("sub_scores", {}),
+                                                    "is_included": True,
+                                                    "is_confirmed": False,
+                                                    "is_edited": True,
+                                                    "impact_frame": a_ev.get("impact_frame", 0),
+                                                    "diagnostic_report": a_ev_data.get("diagnostic_report", ""),
+                                                    "reviewer_dan": "shinpan",
+                                                    "notes": f"Ippon oficial concedido pelos Shinpans ({format_katakana_strike(a_ev.get('type'))})"
+                                                }
+                                                st.session_state["session_reviews"][a_ev_id] = new_sh_item
+                                                feedback_mgr.save_feedback(
+                                                    video_name=video_name_simple,
+                                                    profile_key=profile_choice,
+                                                    event_id=a_ev_id,
+                                                    label="TP",
+                                                    strike_type=a_ev.get("type", "MEN"),
+                                                    timestamp=a_ev.get("timestamp", "00:00.000"),
+                                                    notes=new_sh_item["notes"],
+                                                    reviewer_dan="shinpan",
+                                                    is_included=True,
+                                                    decision_category="VALID_IPPON",
+                                                    sub_scores=a_eval.get("sub_scores", {}),
+                                                    total_score=a_eval.get("total_score", 100.0)
+                                                )
+                                                st.toast(f"✅ Ippon ({format_katakana_strike(a_ev.get('type'))} de {a_att_label} @ {a_ev.get('timestamp')}) adicionado à Decisão dos Shinpans!", icon="⚖️")
+                                                st.rerun()
 
                         with st.container(height=650):
                             has_initial = sonkyo_info.get("has_initial_sonkyo", False) and sonkyo_info.get("initial_sonkyo")
@@ -4048,7 +4226,10 @@ elif nav_page == "analysis":
 
                                 # 2. GOLPES NA JANELA REGULAMENTAR DE COMBATE (ORDENADOS CRONOLOGICAMENTE)
                                 if not has_strikes:
-                                    st.info("ℹ️ Nenhum golpe regulamentar registrado entre os momentos de Sonkyō.")
+                                    if enable_editing and selected_dan == "shinpan":
+                                        st.info("⚖️ **Linha do tempo liberada para Decisão dos Shinpans.**\n\nNenhum Ippon foi registrado ainda para este combate. Utilize a seção de inclusão abaixo, os botões '+' na linha do tempo ou importe sugestões da IA acima para registrar os golpes válidos apontados pelos árbitros.")
+                                    else:
+                                        st.info("ℹ️ Nenhum golpe regulamentar registrado entre os momentos de Sonkyō.")
                                     render_inline_strike_inserter("slot_init_to_fin", curr_end_s, fin_start_s_calc, "Sonkyō Inicial", "Sonkyō Final")
                                 else:
                                     # Botão de + entre Sonkyō Inicial e Golpe #1
@@ -4103,6 +4284,11 @@ elif nav_page == "analysis":
                                             status_badge = "❌ INVÁLIDO"
                                             badge_html = '<div class="invalid-badge">❌ GOLPE INVÁLIDO</div>'
 
+                                        # Em modo Shinpan ativo, destacar visualmente como Ippon dos Shinpans
+                                        if enable_editing and selected_dan == "shinpan":
+                                            status_badge = "⚖️ IPPON DOS SHINPANS"
+                                            badge_html = '<div class="valid-badge" style="background-color:#78350F; color:#FDE68A; border: 1px solid #F59E0B;">⚖️ DECISÃO DOS SHINPANS: GOLPE VÁLIDO (IPPON)</div>'
+
                                         # Destaque do golpe responsável pela marcação (Katakana: メ MEN, コ KOTE, ド DO, ツ TSUKI)
                                         display_strike_title = format_katakana_strike(current_rev['strike_type']) if is_this_ippon else current_rev['strike_type']
 
@@ -4156,11 +4342,39 @@ elif nav_page == "analysis":
                                                 # Painel de Edição/Confirmação por Dan quando ativado
                                                 if enable_editing:
                                                     st.markdown("---")
-                                                    if strike_source == "INCLUDED":
+                                                    if selected_dan == "shinpan":
+                                                        st.markdown("**⚖️ Ações para Decisão dos Shinpans:**")
+                                                        act_col1, act_col2 = st.columns([1.5, 1.5])
+                                                        with act_col1:
+                                                            if st.button("🗑️ Remover este Ippon", key=f"btn_del_shinpan_{idx}_{event_id_str}", width="stretch", help="Remove este Ippon da lista oficial dos Shinpans"):
+                                                                if event_id_str in st.session_state.get("session_reviews", {}):
+                                                                    del st.session_state["session_reviews"][event_id_str]
+                                                                st.toast(f"Ippon #{idx+1} removido da decisão dos Shinpans!", icon="🗑️")
+                                                                st.rerun()
+                                                        with act_col2:
+                                                            show_edit = st.checkbox("✏️ Ajustar Detalhes", key=f"chk_edit_shinpan_{idx}_{event_id_str}")
+
+                                                        if show_edit:
+                                                            curr_st = current_rev.get('strike_type', 'MEN')
+                                                            st_opts = ["MEN", "KOTE", "DO", "TSUKI"]
+                                                            st_idx = st_opts.index(curr_st) if curr_st in st_opts else 0
+                                                            new_type_sel = st.selectbox("Técnica", st_opts, index=st_idx, format_func=DiagnosticReporter.format_strike_name, key=f"sel_sh_type_{idx}_{event_id_str}")
+                                                            new_type = new_type_sel or st_opts[0]
+                                                            new_ts = st.text_input("Timestamp", value=current_rev.get('timestamp', '00:00.000'), key=f"inp_sh_ts_{idx}_{event_id_str}")
+                                                            new_notes = st.text_input("Observações", value=current_rev.get("notes", ""), key=f"inp_sh_notes_{idx}_{event_id_str}")
+                                                            if st.button("💾 Salvar Ajuste", key=f"btn_save_sh_adj_{idx}_{event_id_str}", width="stretch"):
+                                                                current_rev["strike_type"] = new_type
+                                                                current_rev["timestamp"] = new_ts
+                                                                current_rev["notes"] = new_notes
+                                                                current_rev["is_edited"] = True
+                                                                st.session_state["session_reviews"][event_id_str] = current_rev
+                                                                st.toast("Detalhes do Ippon atualizados!", icon="💾")
+                                                                st.rerun()
+                                                    elif strike_source == "INCLUDED":
                                                         st.markdown(f"**Ações para Golpe Incluído ({dan_options.get(selected_dan, 'Dan')}):**")
                                                         if st.button("🗑️ Remover esta inclusão", key=f"btn_del_inc_slot_{idx}_{event_id_str}", width="stretch"):
                                                             if event_id_str in st.session_state["session_reviews"]:
-                                                                 del st.session_state["session_reviews"][event_id_str]
+                                                                del st.session_state["session_reviews"][event_id_str]
                                                             st.toast(f"Golpe #{idx+1} incluído removido com sucesso!", icon="🗑️")
                                                             st.rerun()
                                                     else:
@@ -4359,8 +4573,13 @@ elif nav_page == "analysis":
 
                             # Seção de Inclusão de Novo Golpe Perdido (FN / Adicional)
                             if enable_editing or app_mode == "training":
+                                is_shinpan_active = bool(enable_editing and selected_dan == "shinpan")
                                 st.markdown("---")
-                                st.subheader("➕ Incluir Nova Marcação de Golpe (Golpe Perdido)")
+                                if is_shinpan_active:
+                                    st.subheader("⚖️ Incluir Golpe Válido dos Shinpans (Ippon de Shiai)")
+                                    st.caption("Adicione somente os golpes em que os Shinpans levantaram as bandeiras e concederam o Ippon no Shiai.")
+                                else:
+                                    st.subheader("➕ Incluir Nova Marcação de Golpe (Golpe Perdido)")
                             
                                 fn_col1, fn_col2 = st.columns(2)
                                 with fn_col1:
@@ -4387,19 +4606,25 @@ elif nav_page == "analysis":
                                     fn_att_name = "Kenshi Aka (Vermelho)" if fn_att_id == "KENSHI_AKA" else "Kenshi Shiro (Branco)"
 
                                     # 2. Se foi Golpe Válido (Ippon) ou Golpe Inválido
-                                    fn_validity_options = [
-                                        ("VALID_IPPON", "✅ Golpe Válido (Ippon)"),
-                                        ("INVALID_HIT", "❌ Golpe Inválido (Não foi Ippon)")
-                                    ]
+                                    if is_shinpan_active:
+                                        fn_validity_options = [
+                                            ("VALID_IPPON", "⚖️ Golpe Válido dos Shinpans (Ippon de Shiai)")
+                                        ]
+                                    else:
+                                        fn_validity_options = [
+                                            ("VALID_IPPON", "✅ Golpe Válido (Ippon)"),
+                                            ("INVALID_HIT", "❌ Golpe Inválido (Não foi Ippon)")
+                                        ]
                                     fn_val_labels = [v[1] for v in fn_validity_options]
                                     fn_val_sel = st.radio("Validação do Golpe", fn_val_labels, horizontal=True, key="fn_validity_input")
                                     fn_val_sel_str = fn_val_sel or fn_val_labels[0]
                                     fn_val_code = fn_validity_options[fn_val_labels.index(fn_val_sel_str)][0]
                                     fn_is_ippon = (fn_val_code == "VALID_IPPON")
 
-                                fn_notes = st.text_input("Observação do Revisor", value="Golpe não detectado pelo modelo", key="fn_notes_input")
+                                fn_notes = st.text_input("Observação do Revisor", value="Ippon concedido pelos Shinpans em Shiai" if is_shinpan_active else "Golpe não detectado pelo modelo", key="fn_notes_input")
 
-                                if st.button("➕ Incluir Marcação no Dataset", width="stretch"):
+                                btn_include_label = "⚖️ Incluir Ippon dos Shinpans no Dataset" if is_shinpan_active else "➕ Incluir Marcação no Dataset"
+                                if st.button(btn_include_label, width="stretch"):
                                     new_fn_id = f"fn_{fn_timestamp.replace(':', '_').replace('.', '_')}_{fn_att_id.lower()}_{len(st.session_state.get('session_reviews', {}))+1}"
                                     new_fn_item = {
                                         "event_id": new_fn_id,
@@ -4416,6 +4641,7 @@ elif nav_page == "analysis":
                                         "is_included": True,
                                         "is_confirmed": False,
                                         "is_edited": True,
+                                        "reviewer_dan": selected_dan,
                                         "notes": fn_notes
                                     }
                                     st.session_state["session_reviews"][new_fn_id] = new_fn_item
@@ -4437,27 +4663,37 @@ elif nav_page == "analysis":
                             # Botão de Salvar Alterações e Retreinar Modelo ao Final
                             if enable_editing:
                                 st.markdown("---")
-                                st.subheader("💾 Finalizar Revisão & Retreinar Modelo")
-                                st.caption(f"Salva todas as confirmações, edições e inclusões feitas sob a responsabilidade do revisor **{dan_options.get(selected_dan, 'Dan')}** e executa o retreinamento adaptativo.")
+                                if enable_editing and selected_dan == "shinpan":
+                                    st.subheader("⚖️ Finalizar Decisão dos Shinpans & Recalibrar Pesos")
+                                    st.caption("Salva todas as decisões oficiais dos Shinpans (Ippons de Shiai) com peso regulamentar calibrado (4.5) e recalibra a validação do modelo.")
+                                    save_btn_label = "⚖️ Salvar Decisão dos Shinpans & Recalibrar Pesos"
+                                else:
+                                    st.subheader("💾 Finalizar Revisão & Retreinar Modelo")
+                                    st.caption(f"Salva todas as confirmações, edições e inclusões feitas sob a responsabilidade do revisor **{dan_options.get(selected_dan, 'Dan')}** e executa o retreinamento adaptativo.")
+                                    save_btn_label = "💾 Salvar Alterações e Retreinar Modelo"
 
-                                if st.button("💾 Salvar Alterações e Retreinar Modelo", type="primary", width="stretch"):
+                                if st.button(save_btn_label, type="primary", width="stretch"):
                                     items_to_save = list(st.session_state["session_reviews"].values())
                                     if not items_to_save:
-                                        # Se nenhuma alteração explícita foi feita, incluir todos os detectados padrão como confirmados
-                                        for idx, ev_data in enumerate(res["events"]):
-                                            ev = ev_data["event_info"]
-                                            eval_info = ev_data["evaluation"]
-                                            is_val = eval_info.get("is_valid", False)
-                                            items_to_save.append({
-                                                "event_id": f"event_{idx+1}_frame_{ev['impact_frame']}",
-                                                "label": "TP" if is_val else "FP",
-                                                "decision_category": "VALID_IPPON" if is_val else "INVALID_HIT",
-                                                "strike_type": ev['type'],
-                                                "timestamp": ev['timestamp'],
-                                                "total_score": eval_info.get('total_score', 0.0),
-                                                "sub_scores": eval_info.get('sub_scores', {}),
-                                                "is_confirmed": True
-                                            })
+                                        if enable_editing and selected_dan == "shinpan":
+                                            st.warning("⚠️ Nenhum Ippon dos Shinpans foi registrado para este combate. Adicione os golpes válidos apontados pelos árbitros antes de salvar a calibração.")
+                                            st.stop()
+                                        else:
+                                            # Se nenhuma alteração explícita foi feita no modo Dan, incluir todos os detectados padrão como confirmados
+                                            for idx, ev_data in enumerate(res["events"]):
+                                                ev = ev_data["event_info"]
+                                                eval_info = ev_data["evaluation"]
+                                                is_val = eval_info.get("is_valid", False)
+                                                items_to_save.append({
+                                                    "event_id": f"event_{idx+1}_frame_{ev['impact_frame']}",
+                                                    "label": "TP" if is_val else "FP",
+                                                    "decision_category": "VALID_IPPON" if is_val else "INVALID_HIT",
+                                                    "strike_type": ev['type'],
+                                                    "timestamp": ev['timestamp'],
+                                                    "total_score": eval_info.get('total_score', 0.0),
+                                                    "sub_scores": eval_info.get('sub_scores', {}),
+                                                    "is_confirmed": True
+                                                })
 
                                     new_cfg, session_rec = feedback_mgr.save_review_session(
                                         video_name=video_name_simple,

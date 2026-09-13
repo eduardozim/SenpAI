@@ -98,6 +98,14 @@ Recursos da Interface Web:
 - Conformidade Estrita de Tipagem e Estabilidade: Narrowing de tipos e tratamento defensivo em todos os widgets Streamlit (câmeras, Dan, perfis, qualidades e acelerador), além de blindagem de renderização condicional da Linha do Tempo prevenindo exceções de runtime em resets ou antes da execução da análise.
 - Controles Interativos de Reprodução de Vídeo & Mesa VAR: Painel de controle acoplado diretamente abaixo do vídeo na Detecção Gravada, permitindo Play, Pause, Reinício, saltos rápidos (±1s, ±5s, ±10s), 7 taxas de velocidade (0.1x ultra-lenta a 2.0x rápida), volume e tela cheia via manipulação direta do `<video>` no DOM (executado via `st.iframe`). Sincronização automática com a Linha do Tempo sem dependência do parâmetro 'key' de `st.video`.
 - Gestão e Retreinamento por Planilha Excel (.xlsx): Exportação da telemetria completa dos golpes detectados para planilha Excel, geração de template vazio para preenchimento manual e importação de planilhas revisadas por árbitros (1º a 8º Dan) com retreinamento adaptativo imediato da IA.
+- Decisão dos Shinpans (Árbitros de Shiai) & Linha do Tempo Liberada: Opção regulamentar para registrar exclusivamente os golpes válidos (Ippons) concedidos pelos árbitros em Shiai. A linha do tempo é liberada (sem pré-carregar golpes não assinalados), disponibilizando painel de sugestões rápidas da IA (botão "➕ Ippon dos Shinpans" em 1 clique), inseridores inline "+" e inclusão manual com placar oficial computando estritamente os Ippons arbitrais.
+- 5 Regras Estritas de Transição de Estado na Linha do Tempo:
+  1. Habilitar edição desmarcada: Apresenta a lista completa de golpes detectados pela IA.
+  2. Habilitar edição marcada + Dan selecionado (1º a 8º Dan): Apresenta golpes de IA com ações de revisão do treinador.
+  3. Habilitar edição marcada + Decisão dos Shinpans: Linha do tempo limpa apenas para Ippons concedidos pelos árbitros.
+  4. Habilitar edição desmarcada após Decisão dos Shinpans: Todos os golpes de IA voltam a ser apresentados imediatamente.
+  5. Seleção de Dan após Decisão dos Shinpans: Todos os golpes de IA voltam a ser apresentados com ferramentas do Dan escolhido.
+- Governança & Calibração dos Shinpans com Peso Balanceado (4.5): As decisões dos árbitros utilizam peso médio fixo (4.5) para recalibração normalizada dos critérios biomecânicos sem distorcer o cálculo do nível médio Dan puro dos treinadores (1º ao 8º Dan), com estatísticas e contadores dedicados.
 
 --- B. LINHA DE COMANDO (CLI) ---
 Para processar vídeos diretamente no terminal:
@@ -117,11 +125,11 @@ Para processar vídeos diretamente no terminal:
 - Otimizar perfil com base no dataset de feedback gravado:
    python main.py --profile normal --optimize-profile
 
-- Executar suíte completa de testes automatizados (132 testes) com relatório descritivo salvo em logs/:
+- Executar suíte completa de testes automatizados (143 testes) com relatório descritivo salvo em logs/:
    python run_tests.py
    (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
-   * Executa a suíte de 132 testes automatizados distribuídos em 17 módulos com 100% de aprovação
-   * Validações especializadas de rastreamento K=2, supressão de Shinpans, interpolação cinemática de pulsos/pés e delimitador Shiai-jo
+   * Executa a suíte de 143 testes automatizados distribuídos em 17 módulos com 100% de aprovação
+   * Validações especializadas de rastreamento K=2, supressão de Shinpans, governança Dan e Decisão dos Shinpans
    * Gera o arquivo descritivo logs/senpai_test_report.log com detalhes de cada teste
    * Mantém estritamente apenas o último log de testes executado na pasta logs/
 
@@ -176,9 +184,10 @@ Opções disponíveis:
    mesa de corte e controles interativos VAR (Play/Pause, saltos finos de ±1s/±5s/±10s,
    velocidades de 0.1x a 2.0x e seek direto no DOM sincronizado com a Linha do Tempo),
    gestão de golpes via planilha Excel (exportação detalhada em .xlsx, template em
-   branco e importação com retreinamento adaptativo da IA por Dan), edição de golpes
-   por Dan na interface (Shodan a Hachidan), corte automático de clipes e relatórios
-   diagnósticos de combate.
+   branco e importação com retreinamento adaptativo da IA por Dan), modo oficial
+   de "Decisão dos Shinpans" com linha do tempo liberada para inclusão exclusiva
+   de Ippons de Shiai, edição e confirmação de golpes por Dan na interface (Shodan
+   a Hachidan), corte automático de clipes e relatórios diagnósticos de combate.
 
 2. MODO DE TREINAMENTO & APRENDIZADO (training):
    Projetado para instrutores e atletas para refinamento técnico e preparação para exames.

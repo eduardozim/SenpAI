@@ -327,22 +327,25 @@ Para um golpe ser validado como **Yuko-Datotsu** (Ponto Válido / *Ippon*):
 
 Gerencia o ciclo completo de auditoria, revisão por Dan e otimização adaptativa dos modelos:
 
-- **Seleção de Dan do Revisor**: Mapeia revisores de **1º Dan (Shodan)** a **8º Dan (Hachidan)**, associando `reviewer_dan`, `reviewer_dan_name` e `review_date` (timestamp ISO) a cada revisão.
+- **Seleção de Dan do Revisor**: Mapeia revisores de **1º Dan (Shodan)** a **8º Dan (Hachidan)**, bem como a opção regulamentar **"Decisão dos Shinpans"** (`reviewer_dan == "shinpan"`), associando `reviewer_dan`, `reviewer_dan_name` e `review_date` (timestamp ISO) a cada revisão.
+- **Decisão dos Shinpans & Peso Balanceado de Calibração**:
+  - A Decisão dos Shinpans é tratada de forma especializada e separada das avaliações pedagógicas por Dan.
+  - Utiliza uma **constante média fixa como peso regulamentar**: `SHINPAN_CALIBRATION_WEIGHT = 4.5`. Esse peso balanceado situa-se entre 1º e 8º Dan, não sobrecarregando nem superando a autoridade técnica de um Dan avançado (como 7º ou 8º Dan), garantindo que as marcações dos árbitros em Shiai calibrem os critérios biomecânicos de forma harmoniosa.
 - **Edição e Regra de Auditabilidade (Sem Exclusão)**:
   - Permite **confirmar** marcações, **editar** técnica/timestamp/resultado e **incluir** golpes perdidos (falsos negativos).
-  - A exclusão de marcações é **desabilitada por norma de auditabilidade**, preservando a integridade do conjunto de dados.
-- **Histórico de Treinamentos (`data/training_history.json`)**: Registra cada sessão de retreinamento executada, incluindo o Dan do aplicador, a contagem de itens revisados e o resumo das alterações de calibração.
+  - A exclusão de marcações é **desabilitada por norma de auditabilidade** para revisores Dan, preservando a integridade do conjunto de dados. No modo Shinpan, Ippons adicionados podem ser removidos da lista oficial antes da finalização.
+- **Histórico de Treinamentos (`data/training_history.json`)**: Registra cada sessão de retreinamento executada, incluindo o Dan do aplicador (ou indicação de Shinpan via `is_shinpan_decision`), a contagem de itens revisados e o resumo das alterações de calibração.
 - **Métricas de Governança (`get_training_metrics()`)**:
-  - Contador total de treinamentos realizados (separando sessões de revisores humanos e treinamentos automatizados por IA).
-  - Nível médio (Dan) dos treinamentos humanos (1º ao 8º Dan), garantindo que os treinamentos automáticos de IA não sejam contabilizados como 8º Dan nem distorçam a média dos árbitros humanos.
-  - Tabela de distribuição da quantidade de treinamentos e percentual por Dan (1º a 8º Dan) + **linha dedicada para Treinamentos Automatizados (IA / Web & Vídeo)**.
+  - Contador total de treinamentos realizados (separando sessões de revisores humanos, sessões de **Decisão dos Shinpans** e treinamentos automatizados por IA).
+  - **Preservação da Média Pura dos Dans**: O nível médio (Dan) dos treinamentos considera **exclusivamente revisores humanos com graduação Dan (1º ao 8º Dan)**. As sessões arbitrais dos Shinpans são contabilizadas isoladamente (`shinpan_trainings_count`), não distorcendo o cálculo da graduação média dos treinadores.
+  - Tabela de distribuição da quantidade de treinamentos e percentual por Dan (1º a 8º Dan) + **linha dedicada para Decisões dos Shinpans** + **linha dedicada para Treinamentos Automatizados (IA / Web & Vídeo)**.
 - **Espaço em Disco do Treinamento & Modelos (`get_training_storage_info()`)**:
   - Medição em tempo real do espaço em disco ocupado pelo ecossistema de treinamento do sistema.
   - Discriminação detalhada por categoria: **Datasets & Histórico** (`data/`), **Modelos de IA & Pesos Neurais** (`models/`, ex: YOLOv8-Pose) e **Memória de Conhecimento & Calibração** (`config/`).
   - Painel com cards visuais e listagem expansível com caminhos físicos, status e tamanho de cada arquivo no disco.
 - **Pacotes de Treinamento (Exportação e Importação)**:
-  - `export_training_package()`: Exporta um arquivo `.json` contendo todas as marcações com o Dan do revisor e as datas dos treinamentos realizados.
-  - `import_training_package()`: Importa arquivos `.json` previamente baixados, mesclando dados e recalibrando o modelo automaticamente.
+  - `export_training_package()`: Exporta um arquivo `.json` contendo todas as marcações com o Dan do revisor (ou flag `is_shinpan_decision`) e as datas dos treinamentos realizados.
+  - `import_training_package()`: Importa arquivos `.json` previamente baixados, mesclando dados e recalibrando o modelo automaticamente, restaurando integralmente o histórico de Shinpans e Dans.
   - `reset_all_training_data()`: Apaga os dados de treinamento e restaura o sistema ao estágio inicial.
 
 ### 4.5. Treinamento Automático por Inteligência Artificial ([auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py) & [ai_knowledge_base.json](file:///d:/Projetos/SenpAI/Dev/config/ai_knowledge_base.json))
@@ -442,6 +445,34 @@ Permite a auditoria, anotação offline e retreinamento do modelo de IA através
 
 ---
 
+### 4.10. Decisão dos Shinpans & Gestão da Linha do Tempo em Arbitragem de Shiai
+
+O módulo de **Decisão dos Shinpans** foi concebido para atender às exigências formais de arbitragem em campeonatos de Kendo (*Shiai*), onde a pontuação válida (*Yūko-Datotsu*) depende exclusivamente do julgamento colegiado dos três árbitros em quadra (um *Shushin* e dois *Fukushin*).
+
+- **Princípio da Linha do Tempo Liberada**:
+  - Diferentemente da revisão pedagógica por Dan (onde todos os golpes identificados pela IA são apresentados para análise do treinador), ao selecionar a opção **"Decisão dos Shinpans"**, a Linha do Tempo fica **limpa e liberada** para conter **exclusivamente os golpes válidos (Ippons) confirmados pela arbitragem oficial** na luta.
+  - Golpes detectados pelo modelo que não foram assinalados pelos Shinpans não entram na contagem de pontos do combate.
+- **As 5 Regras Estritas de Transição de Estado da Interface**:
+  1. **Habilitar Edição Não Selecionada (`enable_editing == False`)**: A listagem completa de golpes identificados automaticamente pela IA (`res['events']`) é apresentada com sua pontuação biomecânica original e status padrão (`✅ PONTO VÁLIDO (IPPON)` ou `❌ GOLPE INVÁLIDO`).
+  2. **Habilitar Edição Selecionada + Graduação Dan (1º a 8º Dan)**: A listagem completa de golpes identificados pela IA é apresentada acompanhada das ferramentas de ação técnica do treinador Dan (`✅ Confirmar`, `✏️ Editar`, `🚫 Não Houve Golpe`, inclusões manuais e remoções).
+  3. **Habilitar Edição Selecionada + Decisão dos Shinpans**: A lista cronológica fica limpa/liberada para incluir exclusivamente os Ippons concedidos pelos árbitros de Shiai.
+  4. **Habilitar Edição Desmarcada após Decisão dos Shinpans**: A listagem completa de golpes detectados pela IA volta a ser apresentada imediatamente em sua totalidade, sem resquícios de filtros arbitrais e com plena reatividade visual.
+  5. **Selecionar um Dan (1º a 8º Dan) após Decisão dos Shinpans**: A listagem completa de golpes detectados pela IA volta a ser apresentada imediatamente com os botões de revisão do Dan escolhido, ignorando anotações arbitrais na linha do tempo técnica.
+- **Painel de Sugestões Rápidas da IA (`🤖 Aproveitar Golpes Detectados pela IA`)**:
+  - Exibe os momentos de golpe pré-identificados pelo modelo, com timestamp, técnica em Katakana, combatente atacante e índice de aprovação.
+  - Botão **`➕ Ippon dos Shinpans`**: Permite oficializar em 1 clique o golpe diretamente na linha do tempo oficial dos Shinpans, sem necessidade de digitação manual de horários ou timestamps.
+- **Inseridores Inline e Inclusão Manual**:
+  - Inseridores inline `+` nos intervalos entre o Sonkyō e entre golpes para inclusão de lances intermediários.
+  - Formulário manual ao final do combate restrito a `VALID_IPPON` e observações padronizadas.
+- **Placar Oficial Eletrônico (Sanbon-Shobu)**:
+  - No modo Shinpan, o placar oficial computa **exclusivamente os Ippons atribuídos pela arbitragem**, garantindo total fidelidade com as súmulas e placares físicos de competição.
+- **Recalibração Balanceada de Pesos (`SHINPAN_CALIBRATION_WEIGHT = 4.5`)**:
+  - Botão `⚖️ Salvar Decisão dos Shinpans & Recalibrar Pesos`.
+  - Recalibra os pesos dos 4 critérios de *Ki-Ken-Tai-Ichi* (*target_impact*, *fumikomi_sync*, *posture*, *zanshin*) utilizando fator de aprendizado balanceado `4.5` com normalização matemática estrita ($\sum w = 1.0$).
+  - Trava de proteção: impede confirmação automática incorreta caso nenhum Ippon tenha sido apontado pelos árbitros.
+
+---
+
 ## 5. Suíte de Testes Automatizados e Relatório de Execução
 
 O projeto inclui suíte completa de testes automatizados em `unittest` com runner customizado ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py)) e script de execução dedicado ([run_tests.py](file:///d:/Projetos/SenpAI/Dev/run_tests.py)).
@@ -467,26 +498,27 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **Política de Retenção Única**:
   - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
 
-### Módulos de Testes Incluídos (132 Testes)
+### Módulos de Testes Incluídos (143 Testes)
 
 - **`test_auto_trainer.py` (14 testes)**: Valida a inicialização da base de conhecimento de Kendo, diagnóstico autônomo de necessidade mais latente, ciclo de auto-treinamento com tempo controlado, baselines preliminares realistas (< 50%), recalibração de perfis de arbitragem e das 14 modalidades pedagógicas, persistência incremental em governança e checkpoints de tolerância a falhas.
-- **`test_dan_training_governance.py` (12 testes)**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador humano vs IA, média de Dan humano e tabela por Dan com linha dedicada para IA), exportação/importação de pacotes `.json` com data e Dan, e reset do sistema.
-- **`test_environment.py` (4 testes)**: Valida detecção e integridade do ambiente virtual Python (`.venv`).
-- **`test_excel_strikes_io.py` (6 testes)**: Valida exportação de golpes detectados para planilha Excel (.xlsx), geração de template vazio, importação com sanitização e validação de schema, integração com a base de governança de Dan e acionamento de retreinamento do modelo.
-- **`test_feedback_loop.py` (4 testes)**: Valida salvamento, persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
-- **`test_hardware_settings.py` (8 testes)**: Valida detecção de GPU NVIDIA CUDA, configurações globais e resolução de fallback transparente para CPU.
-- **`test_logger_manager.py` (6 testes)**: Valida sistema de logs, métricas em tempo real e diagnósticos automatizados.
+- **`test_dan_training_governance.py` (8 testes)**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador humano vs IA, média de Dan humano pura e tabela por Dan com linha dedicada para IA e Decisão dos Shinpans), ponderação regulamentar com peso balanceado (4.5) para Shinpans, as 5 regras de transição de estado da UI (`test_shinpan_ui_state_transitions`), exportação/importação de pacotes `.json` com data e Dan/Shinpan, e reset do sistema.
+- **`test_environment.py` (9 testes)**: Valida detecção, integridade e isolamento do ambiente virtual Python (`.venv`).
+- **`test_excel_strikes_io.py` (7 testes)**: Valida exportação de golpes detectados para planilha Excel (.xlsx), geração de template vazio, importação com sanitização e validação de schema, suporte a anotações por Dan e Shinpans, integração com a base de governança e acionamento de retreinamento do modelo.
+- **`test_feedback_loop.py` (2 testes)**: Valida persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
+- **`test_hardware_settings.py` (7 testes)**: Valida detecção de GPU NVIDIA CUDA, configurações globais e resolução de fallback transparente para CPU.
+- **`test_logger_manager.py` (5 testes)**: Valida sistema de logs, métricas em tempo real e diagnósticos automatizados.
 - **`test_multi_camera_fusion.py` (10 testes)**: Valida o motor de consenso e fusão multi-câmeras, escalonamento de quórum por quantidade de câmeras ($N=1$ a $4$), rejeição de falsos positivos unilaterais, alinhamento temporal, fusão de scores e a presença da análise completa de Yūko-Datotsu (Ki-Ken-Tai-Ichi) para golpes Ippon e não-Ippon.
-- **`test_pipeline_cancellation.py` (6 testes)**: Valida cancelamento cooperativo, liberação de recursos de streaming e cronômetro em tempo real.
-- **`test_pose_batch_processing.py` (4 testes)**: Valida processamento de poses em lotes paralelos com aceleração.
-- **`test_scoreboard_and_flag_detection.py` (8 testes)**: Valida o placar eletrônico Sanbon-shobu, detecção cromática de flag dorsal (Tasukuki) e inversão Aka ⇄ Shiro.
-- **`test_sonkyo_and_plane_filtering.py` (20 testes)**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes/árbitros em primeiro plano), delimitação da quadra de luta (Shiai-jo ROI), travamento K=2, interpolação cinemática de pulsos/pés sob oclusão, supressão de falsos positivos, debounce e NMS de 35 frames do `EventSpotter`, e persistência de aprendizado de Sonkyō.
-- **`test_stream_capture.py` (6 testes)**: Valida a captura assíncrona com threading, reconexão automática e otimizações de rede para câmeras IP / RTSP / Webcams.
-- **`test_training_modes.py` (8 testes)**: Valida as 14 modalidades pedagógicas de treino, cálculo dos 3 Pilares (Movimentação, Precisão, Constância) e perfil do Kendoca.
+- **`test_pipeline_cancellation.py` (7 testes)**: Valida cancelamento cooperativo, liberação de recursos de streaming e cronômetro em tempo real.
+- **`test_pose_batch_processing.py` (8 testes)**: Valida processamento de poses em lotes paralelos com aceleração.
+- **`test_scoreboard_and_flag_detection.py` (7 testes)**: Valida o placar eletrônico Sanbon-shobu, detecção cromática de flag dorsal (Tasukuki) e inversão Aka ⇄ Shiro.
+- **`test_shinai_tracking.py` (6 testes)**: Valida rastreamento de Shinai, estimação do Kensen, zonas anatômicas de alvo e predição vetorial de impacto.
+- **`test_sonkyo_and_plane_filtering.py` (21 testes)**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes/árbitros em primeiro plano), delimitação da quadra de luta (Shiai-jo ROI), travamento K=2, interpolação cinemática de pulsos/pés sob oclusão, supressão de falsos positivos, debounce e NMS de 35 frames do `EventSpotter`, e persistência de aprendizado de Sonkyō.
+- **`test_stream_capture.py` (8 testes)**: Valida a captura assíncrona com threading, reconexão automática e otimizações de rede para câmeras IP / RTSP / Webcams.
+- **`test_training_modes.py` (7 testes)**: Valida as 14 modalidades pedagógicas de treino, cálculo dos 3 Pilares (Movimentação, Precisão, Constância) e perfil do Kendoca.
 - **`test_video_downloader.py` (12 testes)**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
-- **`test_video_player_controls.py` (4 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
+- **`test_video_player_controls.py` (5 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
 
-Total de **132 testes automatizados** distribuídos em 16 módulos, executados e aprovados com 100% de sucesso.
+Total de **143 testes automatizados** distribuídos em 17 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -494,7 +526,35 @@ Total de **132 testes automatizados** distribuídos em 16 módulos, executados e
 
 ---
 
-### `[v2.2.0]` — 2026-09-11 *(Versão Atual)*
+### `[v2.3.0]` — 2026-09-13 *(Versão Atual)*
+
+- **Módulo de Decisão dos Shinpans & Linha do Tempo Dedicada ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py) & [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py))**:
+  - **Opção Regulamentar "Decisão dos Shinpans"**: Inclusão da opção arbitral no seletor de revisores, permitindo que a arbitragem de Shiai registre exclusivamente os golpes válidos (Ippon / Yūko-datotsu) concedidos pelos três árbitros em quadra.
+  - **Linha do Tempo Liberada e Limpa**: Ao selecionar Decisão dos Shinpans, a linha do tempo cronológica não carrega automaticamente todos os golpes da IA, ficando limpa e disponível para incluir apenas os Ippons oficiais concedidos.
+  - **Implementação e Blindagem das 5 Regras de Transição de Estado**:
+    1. *Habilitar Edição Desmarcado*: Apresenta a listagem completa de golpes identificados pela IA (`res['events']`) com badges de status originais (`PONTO VÁLIDO (IPPON)` ou `GOLPE INVÁLIDO`).
+    2. *Habilitar Edição Marcado + Dan Selecionado (1º ao 8º Dan)*: Apresenta a listagem de golpes da IA acompanhada das ferramentas de ação técnica de treinador Dan (`Confirmar`, `Editar`, `Não Houve Golpe`, inclusões manuais e remoções).
+    3. *Habilitar Edição Marcado + Decisão dos Shinpans*: Linha do tempo limpa/liberada para inclusão exclusiva de Ippons de Shiai.
+    4. *Habilitar Edição Desmarcado após Decisão dos Shinpans*: A listagem de golpes detectados pela IA volta a ser apresentada imediatamente em sua totalidade, sem resquícios de filtros arbitrais e com plena reatividade visual.
+    5. *Selecionar um Dan após Decisão dos Shinpans*: A listagem de golpes detectados pela IA volta a ser apresentada imediatamente com os botões de revisão do Dan escolhido, ignorando anotações arbitrais na linha do tempo técnica.
+  - **Painel de Sugestões Rápidas da IA (`🤖 Aproveitar Golpes Detectados pela IA`)**:
+    - Exibe momentos de impacto detectados pelo modelo com botão `➕ Ippon dos Shinpans` para inclusão oficial em 1 clique, eliminando necessidade de digitação de horários.
+  - **Inseridores Inline e Inclusão Manual**:
+    - Botões inline `+` entre eventos (Sonkyō e golpes) e formulário manual restrito a `VALID_IPPON`.
+  - **Placar Oficial Sanbon-Shobu**:
+    - No modo Shinpan, computa exclusivamente os Ippons assinalados pela arbitragem.
+- **Governança & Calibração Balanceada de Shinpans**:
+  - **Constante Média Regulamentar**: `SHINPAN_CALIBRATION_WEIGHT = 4.5`, recalibrando os pesos biomecânicos de forma balanceada e normalizando a soma estritamente em 1.0, sem sobrecarregar Dans elevados.
+  - **Isolamento da Média de Dan (`average_dan_level`)**: Sessões arbitrais não alteram a média aritmética pura dos treinadores Dan (1º ao 8º Dan).
+  - **Métricas Dedicadas no Histórico**: Contabilização explícita sob `shinpan_trainings_count` e exibição de cards e linhas dedicadas no painel de Governança de Treinamento.
+  - **Suporte Bidirecional em Pacotes JSON e Planilhas Excel (.xlsx)**: Exportação e importação preservando a marcação de Shinpans.
+- **Expansão da Suíte de Testes Automatizados**:
+  - Suíte completa de **143 testes automatizados** aprovados com 100% de sucesso (`Ran 143 tests, OK`).
+  - Adicionados testes de transição de estado e calibração arbitral em `test_dan_training_governance.py`.
+
+---
+
+### `[v2.2.0]` — 2026-09-11
 
 - **Otimização de Rastreamento dos Kendocas & Supressão Visual de Shinpans ([combatant_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/combatant_tracker.py) & [pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py))**:
   - **Limpeza Visual do Vídeo Anotado**: O método `draw_combatants_overlay` agora suprime por padrão (`show_discarded=False`) a renderização de caixas cinzas e tags `[2º PLANO DESCARTADO]` / `[OCLUSÃO DESCARTADA]` ao redor de árbitros (Shinpans) e pessoas externas. O vídeo final concentra-se estritamente nos dois atletas (`🔴 AKA` e `⚪ SHIRO`) e nos traçados de seus Shinai.

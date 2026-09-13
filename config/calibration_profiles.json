@@ -26,10 +26,10 @@
       "zanshin": 0.15
     },
     "sub_thresholds": {
-      "target_impact": 0.73,
+      "target_impact": 0.72,
       "fumikomi_sync": 0.75,
       "posture": 0.75,
-      "zanshin": 0.73
+      "zanshin": 0.72
     }
   },
   "rigido": {
@@ -46,6 +46,22 @@
       "target_impact": 0.7,
       "fumikomi_sync": 0.6,
       "posture": 0.6,
+      "zanshin": 0.55
+    }
+  },
+  "shiai": {
+    "name": "Shiai",
+    "min_total_score": 0.65,
+    "weights": {
+      "target_impact": 0.4,
+      "fumikomi_sync": 0.25,
+      "posture": 0.2,
+      "zanshin": 0.15
+    },
+    "sub_thresholds": {
+      "target_impact": 0.65,
+      "fumikomi_sync": 0.65,
+      "posture": 0.65,
       "zanshin": 0.55
     }
   }

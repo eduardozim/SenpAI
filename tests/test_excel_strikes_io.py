@@ -323,6 +323,42 @@ class TestExcelStrikesIO(unittest.TestCase):
             self.assertEqual(itm["dan_revisor"], 7)
             self.assertEqual(itm["streaming_url"], test_url)
 
+    def test_export_and_import_with_shinpan_reviewer(self):
+        """Valida que a Decisão dos Shinpans é preservada no Excel e executa retreinamento com peso calibrado 4.5."""
+        sample_strikes = self._get_sample_strikes()
+        excel_bytes = export_strikes_to_excel(
+            sample_strikes,
+            video_name="shiai_tokyo.mp4",
+            reviewer_dan="shinpan"
+        )
+
+        imported_items, summary = import_strikes_from_excel(io.BytesIO(excel_bytes))
+        self.assertEqual(summary["reviewer_dan"], "shinpan")
+        self.assertEqual(summary["reviewer_dan_name"], "Decisão dos Shinpans")
+
+        base_cfg = {
+            "name": "Shiai",
+            "min_total_score": 0.65,
+            "weights": {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15},
+            "sub_thresholds": {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45}
+        }
+        train_res = execute_training_from_imported_strikes(
+            imported_strikes=imported_items,
+            video_name="shiai_tokyo.mp4",
+            profile_key="shiai",
+            reviewer_dan="shinpan",
+            current_profile_config=base_cfg,
+            feedback_mgr=self.feedback_mgr
+        )
+        self.assertEqual(train_res["status"], "success")
+        self.assertEqual(train_res["reviewer_dan"], "shinpan")
+        self.assertEqual(train_res["reviewer_dan_name"], "Decisão dos Shinpans")
+        self.assertTrue(train_res.get("is_shinpan_decision"))
+
+        metrics = self.feedback_mgr.get_training_metrics()
+        self.assertEqual(metrics["shinpan_trainings_count"], 1)
+        self.assertEqual(metrics["average_dan_level"], 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()

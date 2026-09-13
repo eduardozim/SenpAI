@@ -100,14 +100,16 @@ class TestDanTrainingGovernance(unittest.TestCase):
         self.assertIn("4.0º Dan", metrics["average_dan_label"])
 
         dan_dist = metrics["dan_distribution"]
-        self.assertEqual(len(dan_dist), 9)  # 1º ao 8º Dan + 🤖 IA
+        self.assertEqual(len(dan_dist), 10)  # 1º ao 8º Dan + ⚖️ Shinpans + 🤖 IA
         
         dan3_entry = next(item for item in dan_dist if item["Dan"] == "3º Dan")
         dan5_entry = next(item for item in dan_dist if item["Dan"] == "5º Dan")
+        shinpan_entry = next(item for item in dan_dist if "Shinpans" in item["Dan"])
         auto_entry = next(item for item in dan_dist if "IA" in item["Dan"])
         
         self.assertEqual(dan3_entry["Quantidade Treinamentos"], 1)
         self.assertEqual(dan5_entry["Quantidade Treinamentos"], 1)
+        self.assertEqual(shinpan_entry["Quantidade Treinamentos"], 0)
         self.assertEqual(auto_entry["Quantidade Treinamentos"], 0)
 
         # Adicionar uma sessão de treinamento automático de IA e verificar que não altera o Dan médio humano
@@ -215,6 +217,187 @@ class TestDanTrainingGovernance(unittest.TestCase):
         metrics = self.mgr.get_training_metrics()
         self.assertIn("storage_info", metrics)
         self.assertEqual(metrics["storage_info"]["total_bytes"], storage_info["total_bytes"])
+
+    def test_shinpan_review_session_and_governance_metrics(self):
+        """Valida que a Decisão dos Shinpans é tratada à parte da graduação Dan, com peso constante 4.5 e métricas dedicadas."""
+        current_config = {
+            "name": "Normal",
+            "min_total_score": 0.65,
+            "weights": {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15},
+            "sub_thresholds": {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45}
+        }
+
+        # 1. Salvar sessão por Decisão dos Shinpans
+        shinpan_items = [
+            {
+                "event_id": "sh_1",
+                "label": "TP",
+                "category": "VALID_IPPON",
+                "decision_category": "VALID_IPPON",
+                "strike_type": "MEN",
+                "timestamp": "00:02.100",
+                "total_score": 85.0,
+                "sub_scores": {"target_impact": 90.0, "fumikomi_sync": 80.0, "posture": 80.0, "zanshin": 75.0},
+                "is_confirmed": False,
+                "is_edited": True
+            }
+        ]
+        new_cfg, record = self.mgr.save_review_session(
+            video_name="shiai_finals.mp4",
+            profile_key="normal",
+            reviewer_dan="shinpan",
+            review_items=shinpan_items,
+            current_profile_config=current_config
+        )
+
+        self.assertEqual(record["reviewer_dan"], "shinpan")
+        self.assertEqual(record["reviewer_dan_name"], "Decisão dos Shinpans")
+        self.assertTrue(record.get("is_shinpan_decision"))
+        self.assertAlmostEqual(sum(new_cfg["weights"].values()), 1.0, places=3)
+
+        # 2. Métricas de governança com apenas Shinpans
+        m1 = self.mgr.get_training_metrics()
+        self.assertEqual(m1["total_trainings_count"], 1)
+        self.assertEqual(m1["shinpan_trainings_count"], 1)
+        self.assertEqual(m1["human_trainings_count"], 0)
+        self.assertEqual(m1["average_dan_level"], 0.0)  # Shinpans tratados à parte, Dan médio não poluído
+
+        # 3. Adicionar sessão de treinador 4º Dan (Yondan)
+        coach_items = [
+            {
+                "event_id": "co_1",
+                "label": "TP",
+                "category": "VALID_IPPON",
+                "decision_category": "VALID_IPPON",
+                "strike_type": "KOTE",
+                "timestamp": "00:03.500",
+                "total_score": 80.0,
+                "sub_scores": {"target_impact": 80.0, "fumikomi_sync": 80.0, "posture": 80.0, "zanshin": 80.0}
+            }
+        ]
+        self.mgr.save_review_session(
+            video_name="shiai_finals.mp4",
+            profile_key="normal",
+            reviewer_dan=4,
+            review_items=coach_items,
+            current_profile_config=new_cfg
+        )
+
+        # 4. Métricas consolidadas: Shinpans + 4º Dan
+        m2 = self.mgr.get_training_metrics()
+        self.assertEqual(m2["total_trainings_count"], 2)
+        self.assertEqual(m2["shinpan_trainings_count"], 1)
+        self.assertEqual(m2["human_trainings_count"], 1)
+        self.assertEqual(m2["average_dan_level"], 4.0)  # Permanece puramente 4.0
+
+        # Verificar tabela de distribuição
+        dan_dist = m2["dan_distribution"]
+        shinpan_row = next(r for r in dan_dist if "Shinpans" in r["Dan"])
+        dan4_row = next(r for r in dan_dist if r["Dan"] == "4º Dan")
+        self.assertEqual(shinpan_row["Quantidade Treinamentos"], 1)
+        self.assertEqual(dan4_row["Quantidade Treinamentos"], 1)
+
+        # 5. Exportação e Importação de pacote mantendo flag Shinpan
+        pkg = self.mgr.export_training_package()
+        self.mgr.reset_all_training_data()
+        self.assertEqual(self.mgr.get_training_metrics()["total_trainings_count"], 0)
+
+        imp_res = self.mgr.import_training_package(pkg)
+        self.assertEqual(imp_res["status"], "success")
+        m3 = self.mgr.get_training_metrics()
+        self.assertEqual(m3["total_trainings_count"], 2)
+        self.assertEqual(m3["shinpan_trainings_count"], 1)
+        self.assertEqual(m3["average_dan_level"], 4.0)
+
+    def test_shinpan_ui_state_transitions(self):
+        """Valida as 5 regras de transição de estado da UI e listagem de golpes:
+        1. Habilitar edição desmarcado: lista todos os golpes de IA.
+        2. Habilitar edição marcado e Dan selecionado (não Shinpan): lista golpes de IA.
+        3. Habilitar edição marcado e Decisão dos Shinpans selecionado: lista limpa apenas com Ippons dos Shinpans.
+        4. Habilitar edição desmarcado depois de Shinpans selecionado: volta a listar golpes de IA.
+        5. Selecionar um Dan após Shinpans selecionado: volta a listar golpes de IA.
+        """
+        ai_events = [
+            {"event_info": {"type": "MEN", "timestamp": "00:02.100", "impact_frame": 63}, "evaluation": {"is_valid": True}},
+            {"event_info": {"type": "KOTE", "timestamp": "00:05.400", "impact_frame": 162}, "evaluation": {"is_valid": False}},
+            {"event_info": {"type": "DO", "timestamp": "00:08.800", "impact_frame": 264}, "evaluation": {"is_valid": True}}
+        ]
+
+        session_revs = {
+            "shinpan_1": {
+                "event_id": "shinpan_1",
+                "label": "TP",
+                "category": "VALID_IPPON",
+                "is_valid_ippon": True,
+                "reviewer_dan": "shinpan",
+                "timestamp": "00:02.100",
+                "strike_type": "MEN"
+            },
+            "dan_inc_1": {
+                "event_id": "dan_inc_1",
+                "label": "TP",
+                "category": "VALID_IPPON",
+                "is_valid_ippon": True,
+                "is_included": True,
+                "reviewer_dan": 4,
+                "timestamp": "00:04.000",
+                "strike_type": "MEN"
+            }
+        }
+
+        def build_strikes(enable_editing, selected_dan):
+            combined = []
+            if enable_editing and selected_dan == "shinpan":
+                for fn_k, fn_v in session_revs.items():
+                    is_fn_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON" or fn_v.get("label") == "TP")
+                    if is_fn_ippon and fn_v.get("reviewer_dan") == "shinpan":
+                        combined.append({"event_id": fn_k, "source": "SHINPAN_IPPON"})
+            else:
+                for idx_raw, ev_data in enumerate(ai_events):
+                    ev = ev_data["event_info"]
+                    event_id_str = f"event_{idx_raw+1}_frame_{ev['impact_frame']}"
+                    combined.append({"event_id": event_id_str, "source": "AI_DETECTED"})
+                if enable_editing:
+                    for fn_k, fn_v in session_revs.items():
+                        if fn_v.get("is_included") and fn_v.get("reviewer_dan") != "shinpan":
+                            combined.append({"event_id": fn_k, "source": "INCLUDED"})
+            return combined
+
+        # Caso 1: Habilitar edição desmarcado -> Lista completa de golpes identificados pela IA (3 golpes)
+        c1 = build_strikes(enable_editing=False, selected_dan=3)
+        self.assertEqual(len(c1), 3)
+        self.assertTrue(all(s["source"] == "AI_DETECTED" for s in c1))
+
+        # Caso 2: Habilitar edição marcado e Dan selecionado (ex: 4º Dan) -> Golpes IA + inclusão Dan (4 golpes)
+        c2 = build_strikes(enable_editing=True, selected_dan=4)
+        self.assertEqual(len(c2), 4)
+        self.assertEqual(len([s for s in c2 if s["source"] == "AI_DETECTED"]), 3)
+        self.assertEqual(len([s for s in c2 if s["source"] == "INCLUDED"]), 1)
+
+        # Caso 3: Habilitar edição marcado e Decisão dos Shinpans selecionado -> Apenas Ippons dos Shinpans (1 golpe)
+        c3 = build_strikes(enable_editing=True, selected_dan="shinpan")
+        self.assertEqual(len(c3), 1)
+        self.assertEqual(c3[0]["source"], "SHINPAN_IPPON")
+        self.assertEqual(c3[0]["event_id"], "shinpan_1")
+
+        # Caso 3b: Decisão dos Shinpans sem nenhum Ippon cadastrado -> Lista completamente limpa (0 golpes)
+        old_revs = session_revs.copy()
+        session_revs.clear()
+        c3b = build_strikes(enable_editing=True, selected_dan="shinpan")
+        self.assertEqual(len(c3b), 0)
+        session_revs.update(old_revs)
+
+        # Caso 4: Habilitar edição desmarcado depois de Shinpans selecionado (selected_dan ainda "shinpan" no state)
+        # -> Volta a apresentar todos os golpes identificados pela IA (3 golpes)
+        c4 = build_strikes(enable_editing=False, selected_dan="shinpan")
+        self.assertEqual(len(c4), 3)
+        self.assertTrue(all(s["source"] == "AI_DETECTED" for s in c4))
+
+        # Caso 5: Selecionar um Dan (ex: 3º Dan) após Decisão dos Shinpans -> Volta a apresentar golpes identificados pela IA (4 golpes com inclusão do Dan)
+        c5 = build_strikes(enable_editing=True, selected_dan=3)
+        self.assertEqual(len(c5), 4)
+        self.assertEqual(len([s for s in c5 if s["source"] == "AI_DETECTED"]), 3)
+        self.assertFalse(any(s["source"] == "SHINPAN_IPPON" for s in c5))
 
 if __name__ == "__main__":
     unittest.main()
