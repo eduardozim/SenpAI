@@ -15,6 +15,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 import cv2
 import numpy as np
 import logging
+import contextlib
 try:
     import mediapipe as mp
 except ImportError:
@@ -54,6 +55,7 @@ class PoseDetector:
         self.use_gpu = False
         self.yolo_model = None
         self.torch_device = None
+        self.torch = None
         self.pose = None
 
         if mp is not None and hasattr(mp, "solutions") and hasattr(mp.solutions, "pose"):
@@ -226,7 +228,9 @@ class PoseDetector:
         if self.yolo_model is not None:
             # --- INFERÊNCIA YOLO (GPU OU CPU) ---
             dev = "cuda:0" if self.use_gpu else "cpu"
-            results = self.yolo_model(frame, device=dev, verbose=False, conf=0.25, imgsz=640)
+            ctx = self.torch.inference_mode() if (self.torch is not None and hasattr(self.torch, "inference_mode")) else contextlib.nullcontext()
+            with ctx:
+                results = self.yolo_model(frame, device=dev, verbose=False, conf=0.25, imgsz=640)
             candidates = self._yolo_results_to_landmarks_list(results, w, h)
             
             if candidates:
@@ -279,14 +283,16 @@ class PoseDetector:
         if self.yolo_model is not None:
             # --- INFERÊNCIA PARALELA EM LOTE (BATCH INFERENCE) NA GPU OU CPU ---
             dev = "cuda:0" if self.use_gpu else "cpu"
-            results = self.yolo_model(
-                frames,
-                device=dev,
-                batch=len(frames),
-                verbose=False,
-                conf=0.25,
-                imgsz=640
-            )
+            ctx = self.torch.inference_mode() if (self.torch is not None and hasattr(self.torch, "inference_mode")) else contextlib.nullcontext()
+            with ctx:
+                results = self.yolo_model(
+                    frames,
+                    device=dev,
+                    batch=len(frames),
+                    verbose=False,
+                    conf=0.25,
+                    imgsz=640
+                )
             batch_candidates = []
             for res in results:
                 cands = self._single_yolo_result_to_landmarks(res, w, h)
@@ -310,7 +316,9 @@ class PoseDetector:
         if self.yolo_model is not None:
             # --- INFERÊNCIA PARALELA MULTI-PESSOA YOLO (GPU OU CPU) ---
             dev = "cuda:0" if self.use_gpu else "cpu"
-            results = self.yolo_model(frame, device=dev, verbose=False, conf=0.25, imgsz=640)
+            ctx = self.torch.inference_mode() if (self.torch is not None and hasattr(self.torch, "inference_mode")) else contextlib.nullcontext()
+            with ctx:
+                results = self.yolo_model(frame, device=dev, verbose=False, conf=0.25, imgsz=640)
             candidates = self._yolo_results_to_landmarks_list(results, w, h)
             return candidates, frame
 
@@ -448,8 +456,15 @@ class PoseDetector:
                 lm = item.get("landmarks")
                 p_type = item.get("plane_type", "BACKGROUND")
                 if lm:
-                    tag = "[2º PLANO DESCARTADO]" if p_type == "BACKGROUND" else "[OCLUSÃO DESCARTADA]"
-                    CombatantVisualizer.draw_discarded_marker(out, lm, label=tag)
+                    if p_type == "SHINPAN":
+                        tag = "⚖️ [SHINPAN (ARBITRO)]"
+                    elif p_type == "OUT_OF_BOUNDS":
+                        tag = "⛔ [FORA DO SHIAI-JO]"
+                    elif p_type == "BACKGROUND":
+                        tag = "[2º PLANO DESCARTADO]"
+                    else:
+                        tag = "[OCLUSÃO DESCARTADA]"
+                    CombatantVisualizer.draw_discarded_marker(out, lm, label=tag, plane_type=p_type)
 
         # 4. Desenhar Alvos e Destaques de Golpes em Execução (Yuko-Datotsu / Ki-Ken-Tai-Ichi)
         if active_strikes:
@@ -568,44 +583,72 @@ class CombatantVisualizer:
 
     @staticmethod
     def draw_shinai(frame: np.ndarray, landmarks: Dict[str, Any], is_striking: bool = False):
-        """Desenha a espada Shinai projetada a partir dos pulsos ao longo do eixo do antebraço."""
+        """
+        Desenha a espada Shinai na tela.
+        Se os dados visuais/rastreados estiverem presentes em landmarks['SHINAI'],
+        utiliza o Kensen e a base reais. Caso contrário, projeta cinemática a partir dos pulsos.
+        """
         h, w, _ = frame.shape
-        r_wrist = CombatantVisualizer._extract_pt(landmarks.get("RIGHT_WRIST"), w, h)
-        l_wrist = CombatantVisualizer._extract_pt(landmarks.get("LEFT_WRIST"), w, h)
-        hand_pt = r_wrist if r_wrist is not None else l_wrist
+        shinai_data = landmarks.get("SHINAI") if landmarks else None
 
-        r_elbow = CombatantVisualizer._extract_pt(landmarks.get("RIGHT_ELBOW"), w, h)
-        l_elbow = CombatantVisualizer._extract_pt(landmarks.get("LEFT_ELBOW"), w, h)
-        elbow_pt = r_elbow if r_elbow is not None else l_elbow
+        base_pt = None
+        tip_pt = None
+        is_visual = False
 
-        if not hand_pt:
-            return
+        if shinai_data and isinstance(shinai_data, dict) and shinai_data.get("detected"):
+            b_px = shinai_data.get("base_px")
+            t_px = shinai_data.get("tip_px")
+            if b_px and t_px:
+                base_pt = (int(b_px[0]), int(b_px[1]))
+                tip_pt = (int(t_px[0]), int(t_px[1]))
+                is_visual = bool(shinai_data.get("is_visual", False))
 
-        if elbow_pt:
-            dx = float(hand_pt[0] - elbow_pt[0])
-            dy = float(hand_pt[1] - elbow_pt[1])
-            norm = np.hypot(dx, dy)
-            if norm > 5:
-                # Projeta o comprimento da lâmina do Shinai
-                shinai_len = max(38, int(norm * 1.40))
-                tip_x = int(hand_pt[0] + (dx / norm) * shinai_len)
-                tip_y = int(hand_pt[1] + (dy / norm) * shinai_len)
+        # Fallback cinemático se não houver dados em landmarks['SHINAI']
+        if base_pt is None or tip_pt is None:
+            r_wrist = CombatantVisualizer._extract_pt(landmarks.get("RIGHT_WRIST"), w, h)
+            l_wrist = CombatantVisualizer._extract_pt(landmarks.get("LEFT_WRIST"), w, h)
+            hand_pt = r_wrist if r_wrist is not None else l_wrist
+            if not hand_pt:
+                return
+
+            base_pt = hand_pt
+            r_elbow = CombatantVisualizer._extract_pt(landmarks.get("RIGHT_ELBOW"), w, h)
+            l_elbow = CombatantVisualizer._extract_pt(landmarks.get("LEFT_ELBOW"), w, h)
+            elbow_pt = r_elbow if r_elbow is not None else l_elbow
+
+            if elbow_pt:
+                dx = float(hand_pt[0] - elbow_pt[0])
+                dy = float(hand_pt[1] - elbow_pt[1])
+                norm = np.hypot(dx, dy)
+                if norm > 5:
+                    shinai_len = max(38, int(norm * 1.40))
+                    tip_x = int(hand_pt[0] + (dx / norm) * shinai_len)
+                    tip_y = int(hand_pt[1] + (dy / norm) * shinai_len)
+                else:
+                    tip_x, tip_y = hand_pt[0] + 30, hand_pt[1] - 45
             else:
                 tip_x, tip_y = hand_pt[0] + 30, hand_pt[1] - 45
-        else:
-            tip_x, tip_y = hand_pt[0] + 30, hand_pt[1] - 45
 
-        tip_x = int(np.clip(tip_x, 0, w - 1))
-        tip_y = int(np.clip(tip_y, 0, h - 1))
+            tip_pt = (int(np.clip(tip_x, 0, w - 1)), int(np.clip(tip_y, 0, h - 1)))
 
         sword_color = (0, 215, 255) if not is_striking else (0, 69, 255) # Ouro ou Vermelho Neon
-        thickness = 3 if not is_striking else 5
+        blade_thickness = 4 if is_visual else (3 if not is_striking else 5)
 
-        # Haste do Shinai
-        cv2.line(frame, hand_pt, (tip_x, tip_y), sword_color, thickness, cv2.LINE_AA)
-        # Kensen (Ponta da espada)
-        cv2.circle(frame, (tip_x, tip_y), 4 if not is_striking else 6, (255, 255, 255), -1, cv2.LINE_AA)
-        cv2.circle(frame, (tip_x, tip_y), 6 if not is_striking else 9, sword_color, 2, cv2.LINE_AA)
+        # 1. Empunhadura (Tsuka - cabo da espada)
+        # Segmento inicial do cabo em branco destacando as mãos do Kendoca
+        tsuka_end_x = int(base_pt[0] + 0.20 * (tip_pt[0] - base_pt[0]))
+        tsuka_end_y = int(base_pt[1] + 0.20 * (tip_pt[1] - base_pt[1]))
+        cv2.line(frame, base_pt, (tsuka_end_x, tsuka_end_y), (255, 255, 255), max(2, blade_thickness - 1), cv2.LINE_AA)
+
+        # 2. Haste do Shinai (Take / Lâmina de Bambu)
+        cv2.line(frame, (tsuka_end_x, tsuka_end_y), tip_pt, sword_color, blade_thickness, cv2.LINE_AA)
+        if is_visual:
+            # Filete central branco (Tsuru / corda do Shinai)
+            cv2.line(frame, (tsuka_end_x, tsuka_end_y), tip_pt, (255, 255, 255), 1, cv2.LINE_AA)
+
+        # 3. Kensen (Ponta da espada / Sakigawa)
+        cv2.circle(frame, tip_pt, 4 if not is_striking else 6, (255, 255, 255), -1, cv2.LINE_AA)
+        cv2.circle(frame, tip_pt, 6 if not is_striking else 9, sword_color, 2, cv2.LINE_AA)
 
     @staticmethod
     def draw_strike_overlay(
@@ -686,7 +729,12 @@ class CombatantVisualizer:
         cv2.putText(frame, strike_title, (20, banner_y + 27), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2, cv2.LINE_AA)
 
     @staticmethod
-    def draw_discarded_marker(frame: np.ndarray, landmarks: Dict[str, Any], label: str):
+    def draw_discarded_marker(
+        frame: np.ndarray,
+        landmarks: Dict[str, Any],
+        label: str,
+        plane_type: str = "BACKGROUND"
+    ):
         h, w, _ = frame.shape
         if not landmarks:
             return
@@ -706,8 +754,15 @@ class CombatantVisualizer:
         xmin, xmax = max(0, min(xs)), min(w - 1, max(xs))
         ymin, ymax = max(0, min(ys)), min(h - 1, max(ys))
 
-        # Caixa tracejada/cinza discreta para indicar o descarte do plano
-        cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (100, 116, 139), 1)
-        cv2.putText(frame, label, (xmin, max(12, ymin - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (148, 163, 184), 1, cv2.LINE_AA)
+        if plane_type == "SHINPAN":
+            # Borda âmbar/dourada distinta e etiqueta para o árbitro (Shinpan)
+            border_color = (30, 160, 240)
+            text_color = (50, 200, 255)
+            cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), border_color, 2)
+            cv2.putText(frame, label, (xmin, max(14, ymin - 5)), cv2.FONT_HERSHEY_SIMPLEX, 0.40, text_color, 1, cv2.LINE_AA)
+        else:
+            # Caixa cinza discreta para indicar o descarte do plano / fora de quadra
+            cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (100, 116, 139), 1)
+            cv2.putText(frame, label, (xmin, max(12, ymin - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.35, (148, 163, 184), 1, cv2.LINE_AA)
 
 

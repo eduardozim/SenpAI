@@ -3,11 +3,16 @@ Módulo de Rastreamento dos 2 Combatentes Principais e Filtragem de Planos.
 Identifica e rastreia os 2 Kenshi (Aka & Shiro) que realizaram o Sonkyō inicial de abertura,
 descartando elementos de segundo plano (outras lutas/fundo), transeuntes de primeiro plano (frente da câmera),
 árbitros (Shinpans) e detecções fora da área regulamentar do Shiai-jo.
+Elimina inversões espúrias através de associação bipartida inercial contínua, barreira de histerese anti-swap
+e ancoragem geométrica via Shinai.
 """
 
 import cv2
 import numpy as np
 from typing import Dict, Any, List, Tuple, Optional
+
+from src.vision.shinai_tracker import ShinaiTracker
+
 
 class CombatantProfile:
     def __init__(self, combatant_id: str, name: str, color_bgr: Tuple[int, int, int]):
@@ -19,6 +24,8 @@ class CombatantProfile:
         self.last_bbox: Optional[Tuple[float, float, float, float]] = None # (xmin, ymin, xmax, ymax)
         self.last_valid_landmarks: Optional[Dict[str, Any]] = None
         self.history: List[Optional[Dict[str, Any]]] = []
+        self.shinai: Optional[Dict[str, Any]] = None
+        self.facing: Optional[str] = None
 
         # Predição de Movimento e Resiliência Temporal (Filtro Inercial / Kalman simplificado)
         self.vx: float = 0.0
@@ -37,8 +44,6 @@ class CombatantProfile:
                 self.vy = 0.60 * self.vy + 0.40 * (cy - self.last_center_y)
 
             # Persistência anatômica dos pulsos/mãos (Kote/Shinai grip)
-            # Se um pulso não foi detectado no frame mas estava presente no frame anterior,
-            # propaga a posição do pulso acompanhando o deslocamento do tronco.
             if self.last_valid_landmarks:
                 dx = cx - (self.last_center_x if self.last_center_x is not None else cx)
                 dy = cy - (self.last_center_y if self.last_center_y is not None else cy)
@@ -68,6 +73,11 @@ class CombatantProfile:
                             syn_f["visibility"] = float(prev_f.get("visibility", 0.8) * 0.9)
                             landmarks[foot_key] = syn_f
 
+            if "SHINAI" in landmarks:
+                self.shinai = landmarks["SHINAI"]
+            if "FACING" in landmarks:
+                self.facing = landmarks["FACING"]
+
             self.last_center_x = cx
             self.last_center_y = cy
             self.last_bbox = bbox
@@ -94,7 +104,6 @@ class CombatantProfile:
             return self.history[-1]
 
         if self.last_valid_landmarks and self.occluded_frames <= max_gap:
-            # Projetar cada ponto somando o deslocamento inercial amortecido
             decay = 0.85 ** self.occluded_frames
             dx = self.vx * decay
             dy = self.vy * decay
@@ -110,6 +119,12 @@ class CombatantProfile:
                     projected[k] = p_copy
                 else:
                     projected[k] = v
+
+            if self.shinai:
+                projected["SHINAI"] = dict(self.shinai)
+            if self.facing:
+                projected["FACING"] = self.facing
+
             return projected
 
         return None
@@ -127,21 +142,6 @@ class CombatantTracker:
         track_buffer: int = 60,
         lock_tracks: bool = True
     ):
-        """
-        - min_background_scale_ratio: Limiar abaixo do qual o elemento é classificado como Segundo Plano (Fundo).
-        - max_foreground_scale_ratio: Limiar acima do qual o elemento é classificado como Oclusão de Primeiro Plano (Frente da Câmera).
-        - ground_line_tolerance: Tolerância de deslocamento vertical dos pés em relação ao solo do Shiaijo.
-        - invert_assignment: Se True, inverte manualmente as identidades de Aka e Shiro.
-        - shiaijo_polygon: Polígono 2D de coordenadas normalizadas (x, y) definindo a área do Shiaijo.
-        - min_kenshi_score: Pontuação mínima de postura (empunhadura Shinai vs bandeiras de árbitro).
-        - track_buffer: Número máximo de frames de buffer para manter Kenshi ocluído sem perder ID.
-        - lock_tracks: Se True, trava o rastreador estritamente em K=2 combatentes após a inicialização.
-
-        Configuração Padrão de Posição (Câmera Oposta à Mesa dos Juízes):
-        Em Kendo oficial, observando do lado oposto à mesa dos juízes (visão padrão da câmera):
-        - Esquerda do enquadramento (x <= 0.50) = Kenshi Shiro (Branco)
-        - Direita do enquadramento (x > 0.50) = Kenshi Aka (Vermelho)
-        """
         self.min_bg_ratio = min_background_scale_ratio
         self.max_fg_ratio = max_foreground_scale_ratio
         self.ground_tolerance = ground_line_tolerance
@@ -151,11 +151,14 @@ class CombatantTracker:
         self.track_buffer = track_buffer
         self.lock_tracks = lock_tracks
 
-        # Perfis dos 2 lutadores
-        self.aka = CombatantProfile("KENSHI_AKA", "Kenshi Aka (Vermelho)", (40, 40, 230)) # Vermelho BGR
-        self.shiro = CombatantProfile("KENSHI_SHIRO", "Kenshi Shiro (Branco)", (240, 240, 240)) # Branco BGR
+        # Módulo de Shinai dedicado para ancoragem postural
+        self.shinai_tracker = ShinaiTracker()
 
-        # Rastreamento de Evidência da Flag Vermelha (Tasukuki nas costas)
+        # Perfis dos 2 lutadores
+        self.aka = CombatantProfile("KENSHI_AKA", "Kenshi Aka (Vermelho)", (40, 40, 230))
+        self.shiro = CombatantProfile("KENSHI_SHIRO", "Kenshi Shiro (Branco)", (240, 240, 240))
+
+        # Evidência da fita vermelha (Tasuki) acumulada exclusivamente na inicialização
         self.candidate_left_red_score = 0.0
         self.candidate_right_red_score = 0.0
         self.red_evidence_frames_left = 0
@@ -163,15 +166,27 @@ class CombatantTracker:
         self.flag_decision = "POSITION_DEFAULT_OPPOSITE_JUDGES"
         self.flag_confidence = 0.50
 
+        # Barreira de histerese anti-swap (impede trocas espúrias de lado)
+        self.pending_swap_frames = 0
+        self.SWAP_CONFIRMATION_THRESHOLD = 8   # Frames consecutivos necessários para confirmar crossover real
+        self.SWAP_HYSTERESIS_MARGIN = 0.25     # Custo adicional exigido para superar a inércia do track atual
+
         # Estado do Sistema de Rastreamento (K=2)
         self.tracking_state = "UNINITIALIZED" # "UNINITIALIZED", "LOCKED_COMBAT"
         self.is_calibrated = False
-        self.ref_height = 0.35
+        self.ref_height = 0.42
         self.ref_bbox_area = 0.08
         self.ref_ground_y = 0.78
         self.ref_shoulder_width = 0.12
+        # Rastreamento formal dos 3 Shinpans (Árbitros)
+        self.shinpans: Dict[str, Optional[Dict[str, Any]]] = {
+            "SHINPAN_LEFT": None,
+            "SHINPAN_CENTER": None,
+            "SHINPAN_RIGHT": None
+        }
+        self.discarded_shinpan_count = 0
 
-        # Contadores estatísticos de descartes e recuperação
+        # Contadores estatísticos
         self.discarded_background_count = 0
         self.discarded_foreground_count = 0
         self.discarded_out_of_shiaijo_count = 0
@@ -180,15 +195,10 @@ class CombatantTracker:
         self.occlusion_recovery_count = 0
 
     def is_within_shiaijo(self, ground_x: float, ground_y: float) -> bool:
-        """
-        Verifica se as coordenadas de contato com o solo (ground_x, ground_y)
-        estão estritamente contidas no polígono do Shiai-jo.
-        Se nenhum polígono for configurado, aplica margens automáticas padrão da quadra
-        para filtrar árbitros laterais e pessoas nas bordas da câmera (9 a 11 metros centrais).
-        """
+        """Verifica se o ponto de solo está estritamente contido no polígono do Shiai-jo."""
         if not self.shiaijo_polygon or len(self.shiaijo_polygon) < 3:
-            # Margem padrão de segurança: Kenshis lutam entre x in [0.12, 0.88] e y in [0.20, 0.98]
-            return 0.12 <= ground_x <= 0.88 and 0.20 <= ground_y <= 0.98
+            # Margem padrão de segurança da quadra ativa de combate: Kenshis combatem entre x in [0.18, 0.82] e y in [0.20, 0.98]
+            return 0.18 <= ground_x <= 0.82 and 0.20 <= ground_y <= 0.98
 
         poly = np.array(self.shiaijo_polygon, dtype=np.float32)
         res = cv2.pointPolygonTest(poly, (ground_x, ground_y), False)
@@ -197,17 +207,13 @@ class CombatantTracker:
     @staticmethod
     def detect_red_flag_score(frame: Optional[np.ndarray], landmarks: Optional[Dict[str, Any]]) -> float:
         """
-        Analisa a presença da fita vermelha (Aka Tasukuki / Mejirushi) nas costas/tronco do praticante.
-        O Keikogi pode ser de qualquer cor (azul escuro, branco, preto), mas a fita vermelha tem
-        alta saturação e matiz vermelho característico no dorso (região entre ombros e quadril).
-        Retorna uma pontuação de 0.0 a 1.0 (densidade/intensidade de vermelho na ROI dorsal).
+        Analisa a presença da fita vermelha (Aka Tasuki) nas costas/tronco do praticante.
+        Retorna score de 0.0 a 1.0 (densidade de vermelho na ROI dorsal).
         """
         if frame is None or not landmarks:
             return 0.0
 
         h, w = frame.shape[:2]
-        
-        # Obter bounding box da região dorsal / tronco
         shoulder_pts = [landmarks[k] for k in ["LEFT_SHOULDER", "RIGHT_SHOULDER"] if k in landmarks and isinstance(landmarks[k], dict)]
         hip_pts = [landmarks[k] for k in ["LEFT_HIP", "RIGHT_HIP"] if k in landmarks and isinstance(landmarks[k], dict)]
 
@@ -236,14 +242,9 @@ class CombatantTracker:
         if roi.size == 0:
             return 0.0
 
-        # Converter ROI para HSV
         hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-        
-        # Máscaras para a cor vermelha da fita (Tasukuki)
-        # Faixa 1: H [0, 14], S >= 70, V >= 50
-        mask1 = cv2.inRange(hsv, np.array([0, 70, 50], dtype=np.uint8), np.array([14, 255, 255], dtype=np.uint8))
-        # Faixa 2: H [166, 180], S >= 70, V >= 50
-        mask2 = cv2.inRange(hsv, np.array([166, 70, 50], dtype=np.uint8), np.array([180, 255, 255], dtype=np.uint8))
+        mask1 = cv2.inRange(hsv, np.array([0, 100, 75], dtype=np.uint8), np.array([12, 255, 255], dtype=np.uint8))
+        mask2 = cv2.inRange(hsv, np.array([168, 100, 75], dtype=np.uint8), np.array([180, 255, 255], dtype=np.uint8))
         red_mask = cv2.bitwise_or(mask1, mask2)
 
         red_pixels = cv2.countNonZero(red_mask)
@@ -252,7 +253,10 @@ class CombatantTracker:
             return 0.0
 
         red_ratio = red_pixels / float(total_pixels)
-        score = float(np.clip(red_ratio / 0.05, 0.0, 1.0))
+        # Rejeitar ruído de piso/verniz/cadeiras (< 2.5% da área do tronco)
+        if red_ratio < 0.025:
+            return 0.0
+        score = float(np.clip((red_ratio - 0.025) / 0.08, 0.0, 1.0))
         return score
 
     @staticmethod
@@ -278,10 +282,7 @@ class CombatantTracker:
         timeline: List[Optional[Dict[str, Any]]],
         max_gap: int = 10
     ) -> List[Optional[Dict[str, Any]]]:
-        """
-        Interpola linearmente poses e membros ausentes em gaps temporários (<= max_gap frames).
-        Garante continuidade absoluta no vídeo renderizado e nas análises de velocidade e trajetória.
-        """
+        """Interpola linearmente poses e membros ausentes em gaps temporários."""
         n = len(timeline)
         result = list(timeline)
         i = 0
@@ -315,6 +316,8 @@ class CombatantTracker:
                                     interp[k] = dict(pt1)
                                 elif isinstance(pt2, dict):
                                     interp[k] = dict(pt2)
+                            if "SHINAI" in p1:
+                                interp["SHINAI"] = dict(p1["SHINAI"])
                             result[mid] = interp
                 i = next_idx
             else:
@@ -329,7 +332,6 @@ class CombatantTracker:
         h = max(0.01, ymax - ymin)
         area = w * h
 
-        # Posição dos pés / tornozelos
         if "RIGHT_ANKLE" in landmarks and "LEFT_ANKLE" in landmarks:
             ground_y = (landmarks["RIGHT_ANKLE"]["y"] + landmarks["LEFT_ANKLE"]["y"]) / 2.0
             ground_x = (landmarks["RIGHT_ANKLE"]["x"] + landmarks["LEFT_ANKLE"]["x"]) / 2.0
@@ -340,7 +342,6 @@ class CombatantTracker:
             ground_y = ymax
             ground_x = (xmin + xmax) / 2.0
 
-        # Largura dos ombros
         if "RIGHT_SHOULDER" in landmarks and "LEFT_SHOULDER" in landmarks:
             shoulder_w = abs(landmarks["RIGHT_SHOULDER"]["x"] - landmarks["LEFT_SHOULDER"]["x"])
         else:
@@ -359,71 +360,63 @@ class CombatantTracker:
             "ymax": ymax
         }
 
-    @staticmethod
-    def compute_kenshi_feature_score(landmarks: Optional[Dict[str, Any]]) -> float:
+    def compute_kenshi_feature_score(self, landmarks: Optional[Dict[str, Any]], frame: Optional[np.ndarray] = None) -> float:
         """
         Calcula a probabilidade (0.0 a 1.0) de um esqueleto detectado ser um Kenshi (lutador)
-        em vez de um Shinpan (árbitro de Kendo segurando bandeiras) ou espectador.
-        
-        Critérios avaliados:
-        1. Empunhadura de Shinai em Kamae: As duas mãos (RIGHT_WRIST e LEFT_WRIST) estão próximas,
-           empunhando o Tsuka (cabo da espada) na linha central do abdômen/solar plexus.
-           (Árbitros mantêm as mãos afastadas segurando bandeiras nas laterais ou abaixadas).
-        2. Centralidade horizontal no Shiaijo: Kenshis combatem na área central (x=0.20 a x=0.80),
-           enquanto árbitros ocupam as bordas e esquinas do Shiaijo.
-        3. Postura de corte / elevação de braços (Furikaburi): Mãos elevadas acima dos ombros.
-        4. Postura de Sonkyō / Flexão atlética de pernas.
+        em vez de um Shinpan (árbitro de Kendo segurando bandeiras) ou espectador ao fundo.
         """
         if not landmarks:
             return 0.0
 
         cx, cy, (xmin, ymin, xmax, ymax) = CombatantTracker.extract_bbox_and_center(landmarks)
         h = max(0.01, ymax - ymin)
+        m = self.get_skeleton_metrics(landmarks)
         score = 0.35
 
-        # 1. Proximidade dos pulsos (Empunhadura bimanual do Shinai)
+        # 1. Proximidade dos pulsos (Empunhadura bimanual do Shinai - marcador definitivo de Kenshi vs Shinpan)
         r_wrist = landmarks.get("RIGHT_WRIST")
         l_wrist = landmarks.get("LEFT_WRIST")
         if r_wrist and l_wrist and "x" in r_wrist and "x" in l_wrist:
             wrist_dist = np.hypot(r_wrist["x"] - l_wrist["x"], r_wrist["y"] - l_wrist["y"])
-            # No Kendo Kamae, as duas mãos seguram o mesmo cabo (< 0.18 de h)
-            if wrist_dist < (0.18 * h):
-                score += 0.35
-            elif wrist_dist < (0.28 * h):
-                score += 0.15
-            else:
-                # Mãos bem abertas / separadas (característico de árbitro com bandeiras nas duas mãos)
-                score -= 0.25
+            if wrist_dist < (0.16 * h):
+                score += 0.40
+            elif wrist_dist < (0.26 * h):
+                score += 0.20
+            elif wrist_dist > (0.40 * h):
+                score -= 0.35  # Árbitros com braços soltos ou segurando bandeiras separadas
 
-        # 2. Posição no Shiaijo (Kenshis no miolo, árbitros nas extremidades)
+        # 2. Centralidade horizontal no Shiaijo
         dist_center_x = abs(cx - 0.50)
         if dist_center_x <= 0.28:
-            score += 0.25 * (1.0 - (dist_center_x / 0.28))
+            score += 0.20 * (1.0 - (dist_center_x / 0.28))
         elif dist_center_x >= 0.42:
-            # Posição periférica extrema (típico de árbitro lateral)
-            score -= 0.20
+            score -= 0.30
 
-        # 3. Elevação de braços para corte (Furikaburi / Shinai elevado)
+        # 3. Profundidade de solo (Solo de combate dos Kenshis fica tipicamente entre 0.65 e 0.92)
+        if m["ground_y"] < 0.62:
+            score -= 0.40
+        elif 0.68 <= m["ground_y"] <= 0.92:
+            score += 0.20
+
+        # 4. Elevação de braços para corte (Furikaburi / Shinai elevado)
         r_sh = landmarks.get("RIGHT_SHOULDER")
         if r_wrist and r_sh and "y" in r_wrist and "y" in r_sh:
             if r_wrist["y"] <= r_sh["y"]:
                 score += 0.25
 
-        # 4. Flexão de joelhos / Agachamento de Sonkyō
+        # 5. Flexão de joelhos / Agachamento de Sonkyō
         r_hip = landmarks.get("RIGHT_HIP")
         r_knee = landmarks.get("RIGHT_KNEE")
         r_ankle = landmarks.get("RIGHT_ANKLE")
         if r_hip and r_knee and r_ankle and "y" in r_hip and "y" in r_knee and "y" in r_ankle:
             leg_span = abs(r_ankle["y"] - r_hip["y"])
             if leg_span < (0.38 * h):
-                score += 0.25  # Sonkyō ou agachamento atlético
+                score += 0.30
 
         return float(np.clip(score, 0.0, 1.0))
 
     def calibrate_main_plane(self, candidate_poses: List[Dict[str, Any]]):
-        """
-        Calibra as métricas de referência do Plano Principal com base nas poses dos dois lutadores.
-        """
+        """Calibra as métricas de referência do Plano Principal com base nas poses dos dois lutadores."""
         if not candidate_poses:
             return
 
@@ -432,64 +425,163 @@ class CombatantTracker:
             return
 
         heights = [m["height"] for m in valid_metrics]
-        avg_h = float(np.mean(heights)) if heights else 0.35
-        self.ref_height = max(0.20, avg_h)
-        self.ref_bbox_area = float(np.mean([m["area"] for m in valid_metrics]))
-        self.ref_ground_y = float(np.mean([m["ground_y"] for m in valid_metrics]))
+        avg_h = float(np.mean(heights)) if heights else 0.42
+        # Bounded calibration to prevent foreground arbiters from inflating the plane
+        # and ensure standing up from Sonkyo never triggers scale_h > 1.35
+        self.ref_height = max(0.38, float(np.clip(avg_h, 0.25, 0.60)))
+        self.ref_bbox_area = float(np.clip(np.mean([m["area"] for m in valid_metrics]), 0.05, 0.18))
+        self.ref_ground_y = float(np.clip(np.mean([m["ground_y"] for m in valid_metrics]), 0.68, 0.88))
         self.ref_shoulder_width = float(np.mean([m["shoulder_width"] for m in valid_metrics]))
         self.is_calibrated = True
 
-    def classify_plane(self, landmarks: Optional[Dict[str, Any]]) -> Tuple[str, float, str]:
+    def classify_shinpan(self, landmarks: Optional[Dict[str, Any]], frame: Optional[np.ndarray] = None) -> Tuple[bool, str, float]:
         """
-        Classifica um esqueleto detectado em:
-        - "MAIN_PLANE": Pertence aos 2 Kenshi no plano principal da luta.
-        - "BACKGROUND": Segundo plano / fundo (outras lutas, árbitros distantes, arquibancada).
-        - "FOREGROUND_OCCLUDER": Primeiro plano excessivo / Árbitro em primeiro plano na frente dos Kenshis.
-        - "INVALID": Dados insuficientes.
+        Identifica se um esqueleto detectado pertence a um dos 3 Shinpans (árbitros oficiais).
+        Critérios:
+        1. Mãos separadas portando bandeiras (hand_dist >= 0.09 vs empunhadura bimanual da Shinai <= 0.065).
+        2. Cabeça descoberta (sem capacete Men metálico do Kendo).
+        3. Posicionamento na geometria perimetral do triângulo de arbitragem da FIK:
+           - Lateral Esquerda (cx <= 0.22)
+           - Lateral Direita (cx >= 0.80)
+           - Fundo de Quadra / Mesas (ground_y <= 0.66 ou cy <= 0.52).
+        4. Presença de bandeiras vermelha e branca nas imediações dos punhos.
         """
+        if not landmarks:
+            return False, "NONE", 0.0
+
+        cx, cy, _ = self.extract_bbox_and_center(landmarks)
+        m = self.get_skeleton_metrics(landmarks)
+        rw = landmarks.get("RIGHT_WRIST")
+        lw = landmarks.get("LEFT_WRIST")
+        h = max(0.01, m["height"])
+
+        # Distância entre as mãos
+        hand_dist = float(np.hypot(rw["x"] - lw["x"], rw["y"] - lw["y"])) if rw and lw and "x" in rw and "x" in lw else 1.0
+
+        # Zonas típicas dos 3 Shinpans
+        is_left_perimeter = (cx <= 0.22)
+        is_right_perimeter = (cx >= 0.80)
+        is_court_depth = (m["ground_y"] <= 0.66 or cy <= 0.52)
+        is_shinpan_zone = is_left_perimeter or is_right_perimeter or is_court_depth
+
+        # Mãos separadas: árbitros seguram uma bandeira em cada mão
+        is_hands_apart = (hand_dist >= 0.09) or (hand_dist >= 0.28 * h)
+
+        # Cabeça descoberta: orelhas visíveis sem o capacete Men
+        re = landmarks.get("RIGHT_EAR")
+        le = landmarks.get("LEFT_EAR")
+        has_exposed_ears = bool(re or le)
+
+        # Detecção de cor de bandeiras nas mãos (se frame fornecido)
+        has_flag_colors = False
+        if frame is not None and (rw or lw):
+            fh, fw = frame.shape[:2]
+            for w_pt in [rw, lw]:
+                if w_pt and "x" in w_pt:
+                    wx, wy = int(w_pt["x"] * fw), int(w_pt["y"] * fh)
+                    x1, x2 = max(0, wx - 25), min(fw, wx + 25)
+                    y1, y2 = max(0, wy - 15), min(fh, wy + 55)
+                    hand_roi = frame[y1:y2, x1:x2]
+                    if hand_roi.size > 0:
+                        hsv = cv2.cvtColor(hand_roi, cv2.COLOR_BGR2HSV)
+                        m_red1 = cv2.inRange(hsv, np.array([0, 100, 75]), np.array([12, 255, 255]))
+                        m_red2 = cv2.inRange(hsv, np.array([168, 100, 75]), np.array([180, 255, 255]))
+                        m_red = cv2.bitwise_or(m_red1, m_red2)
+                        m_white = cv2.inRange(hsv, np.array([0, 0, 180]), np.array([180, 50, 255]))
+                        if cv2.countNonZero(m_red) > 10 or cv2.countNonZero(m_white) > 25:
+                            has_flag_colors = True
+                            break
+
+        confidence = 0.0
+        # No miolo de combate central (área dos lutadores com solo normal),
+        # um indivíduo só pode ser árbitro se explicitamente tiver cabeça descoberta E mãos afastadas com bandeiras
+        if (0.22 < cx < 0.78) and m["ground_y"] > 0.66:
+            if not has_exposed_ears or not is_hands_apart:
+                return False, "NONE", 0.0
+
+        if is_shinpan_zone:
+            confidence += 0.35
+        if is_hands_apart:
+            confidence += 0.35
+        if has_exposed_ears:
+            confidence += 0.20
+        if has_flag_colors:
+            confidence += 0.20
+
+        # Posição lateral típica dos 2 árbitros de borda (triângulo da FIK)
+        if (0.10 <= cx <= 0.22 or 0.78 <= cx <= 0.90):
+            if is_hands_apart and (has_exposed_ears or has_flag_colors or m["ground_y"] >= 0.80):
+                confidence = max(confidence, 0.85)
+
+        if confidence >= 0.50:
+            if is_left_perimeter:
+                role = "SHINPAN_LEFT"
+            elif is_right_perimeter:
+                role = "SHINPAN_RIGHT"
+            else:
+                role = "SHINPAN_CENTER"
+            return True, role, confidence
+
+        return False, "NONE", confidence
+
+    @property
+    def state(self) -> str:
+        """Alias ergonômico para tracking_state."""
+        return self.tracking_state
+
+    def classify_plane(self, landmarks: Optional[Dict[str, Any]], frame: Optional[np.ndarray] = None) -> Tuple[str, float, str]:
+        """Classifica um esqueleto em MAIN_PLANE, BACKGROUND, FOREGROUND_OCCLUDER ou SHINPAN."""
         if not landmarks:
             return "INVALID", 0.0, "Sem landmarks válidos"
 
         self.total_detections_processed += 1
         m = self.get_skeleton_metrics(landmarks)
 
-        ref_h = self.ref_height if self.is_calibrated else 0.55
-        ref_area = self.ref_bbox_area if self.is_calibrated else 0.12
-        ref_ground = self.ref_ground_y if self.is_calibrated else 0.85
+        ref_h = self.ref_height if self.is_calibrated else 0.42
+        ref_area = self.ref_bbox_area if self.is_calibrated else 0.08
+        ref_ground = self.ref_ground_y if self.is_calibrated else 0.78
 
         scale_h = m["height"] / max(0.01, ref_h)
         scale_area = m["area"] / max(0.001, ref_area)
 
-        # 1. Verificação de Segundo Plano (BACKGROUND)
-        is_on_ground_line = (m["ground_y"] >= (ref_ground - self.ground_tolerance))
-        is_bg_distant = (m["ground_y"] < (ref_ground - self.ground_tolerance)) and (scale_h < 0.80)
-        is_bg_tiny = (scale_h < 0.35) and (scale_area < 0.18)
+        # 1. Identificação direta de Árbitro Oficial (SHINPAN)
+        is_sp, sp_role, sp_conf = self.classify_shinpan(landmarks, frame=frame)
+        if is_sp:
+            self.discarded_shinpan_count += 1
+            reason = f"Árbitro ({sp_role}) identificado fora do combate (Conf: {sp_conf:.2f})"
+            return "SHINPAN", scale_h, reason
 
-        if (is_bg_distant or is_bg_tiny) and not is_on_ground_line:
+        # 2. Verificação de Primeiro Plano Excessivo (FOREGROUND_OCCLUDER)
+        # Árbitro ou operador de câmera em frente ao plano de combate
+        is_fg_bottom = (m["ground_y"] >= 0.92 and m["height"] > 0.36)
+        is_fg_huge = (m["height"] > 0.65)
+        is_fg_edge_crop = (m["ymin"] <= 0.01 and m["ymax"] >= 0.95 and scale_area > 1.1)
+
+        if is_fg_bottom or is_fg_huge or is_fg_edge_crop:
+            self.discarded_foreground_count += 1
+            reason = f"Árbitro/Oclusão na frente da câmera (Escala: {scale_h:.2f}x, Área: {scale_area:.2f}x ref, Pé Y: {m['ground_y']:.2f})"
+            return "FOREGROUND_OCCLUDER", scale_h, reason
+
+        # 3. Verificação de Segundo Plano (BACKGROUND)
+        # Pessoas nas mesas ao fundo, árbitro central afastado ou plateia
+        is_bg_court_depth = (m["ground_y"] < 0.68 and m["height"] < 0.22) or (m["ground_y"] < 0.60)
+        is_bg_distant = self.is_calibrated and (m["ground_y"] < (ref_ground - 0.10)) and (scale_h < 0.75)
+        is_bg_tiny = (m["height"] < 0.13) or (self.is_calibrated and scale_h < 0.35 and m["height"] < 0.18)
+
+        if is_bg_court_depth or is_bg_distant or is_bg_tiny:
             self.discarded_background_count += 1
             reason = f"Elemento de Segundo Plano detectado (Escala: {scale_h:.2f}x, Área: {scale_area:.2f}x ref, Pé Y: {m['ground_y']:.2f})"
             return "BACKGROUND", scale_h, reason
 
-        # 2. Verificação de Primeiro Plano Excessivo / Árbitro Oclusor (FOREGROUND_OCCLUDER)
-        is_fg_scale = (scale_h > self.max_fg_ratio) or (scale_area > (self.max_fg_ratio ** 2))
-        is_fg_edge_crop = (m["ymin"] <= 0.01 and m["ymax"] >= 0.98 and scale_area > 1.2)
-
-        if is_fg_scale or is_fg_edge_crop:
-            self.discarded_foreground_count += 1
-            reason = f"Árbitro/Oclusão na frente da câmera (Escala: {scale_h:.2f}x, Área: {scale_area:.2f}x ref)"
-            return "FOREGROUND_OCCLUDER", scale_h, reason
-
-        # 3. Classificação como Plano Principal (MAIN_PLANE)
+        # 4. Plano Principal de Combate
         return "MAIN_PLANE", scale_h, "Plano Principal de Combate"
 
     def select_best_combatant_pair(
         self,
-        candidates: List[Dict[str, Any]]
+        candidates: List[Dict[str, Any]],
+        frame: Optional[np.ndarray] = None
     ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], List[Dict[str, Any]]]:
-        """
-        Dentre todos os esqueletos detectados no frame (que podem incluir Kenshis, Shinpans/árbitros e transeuntes),
-        seleciona com precisão o par (Kenshi_Left, Kenshi_Right) que melhor representa os 2 combatentes.
-        """
+        """Seleciona com máxima precisão o par (Kenshi_Left, Kenshi_Right) dentre múltiplos candidatos."""
         if not candidates:
             return None, None, []
 
@@ -508,7 +600,7 @@ class CombatantTracker:
         best_pair_score = -1e9
 
         m_list = [self.get_skeleton_metrics(c) for c in candidates]
-        k_scores = [self.compute_kenshi_feature_score(c) for c in candidates]
+        k_scores = [self.compute_kenshi_feature_score(c, frame=frame) for c in candidates]
 
         for i in range(len(candidates)):
             for j in range(i + 1, len(candidates)):
@@ -522,36 +614,34 @@ class CombatantTracker:
                 pair_dist = abs(cx_i - cx_j)
 
                 # 1. Pontuação individual de Kenshi (Shinai / Kamae / Sonkyō)
-                score = (ks_i + ks_j) * 2.5
+                score = (ks_i + ks_j) * 3.0
 
-                # 2. Compatibilidade de escala (ambos os Kenshis estão no mesmo plano)
+                # 2. Compatibilidade de escala
                 h_max = max(m_i["height"], m_j["height"], 0.01)
                 h_min = min(m_i["height"], m_j["height"])
                 scale_ratio = h_min / h_max
                 score += scale_ratio * 2.0
 
-                # 3. Alinhamento de solo (mesma linha de pés no Shiaijo)
+                # 3. Alinhamento de solo
                 ground_diff = abs(m_i["ground_y"] - m_j["ground_y"])
                 if ground_diff < 0.12:
-                    score += 1.2
+                    score += 1.5
                 else:
-                    score -= ground_diff * 3.0
+                    score -= ground_diff * 4.0
 
                 # 4. Centralidade conjunta da dupla no Shiaijo
                 center_dist = abs(pair_center - 0.50)
-                score += max(0.0, 1.0 - center_dist * 2.0) * 1.5
+                score += max(0.0, 1.0 - center_dist * 2.5) * 2.0
 
-                # Penalidade severa se algum dos membros estiver colado nas bordas do enquadramento
-                if cx_i < 0.15 or cx_i > 0.85:
-                    score -= 4.0
-                if cx_j < 0.15 or cx_j > 0.85:
-                    score -= 4.0
+                # Penalidade severa se algum estiver nas bordas do enquadramento
+                if cx_i < 0.14 or cx_i > 0.86: score -= 5.0
+                if cx_j < 0.14 or cx_j > 0.86: score -= 5.0
 
-                # 5. Distância mútua de combate (Maai típico: 0.10 a 0.55 de distância horizontal)
-                if 0.10 <= pair_dist <= 0.55:
-                    score += 1.5
+                # 5. Distância mútua de combate (Maai típico: 0.12 a 0.50)
+                if 0.12 <= pair_dist <= 0.50:
+                    score += 2.0
                 else:
-                    score -= max(1.0, (pair_dist - 0.55) * 6.0)
+                    score -= max(1.0, (pair_dist - 0.50) * 8.0)
 
                 # 6. Continuidade temporal com posições rastreadas anteriormente
                 target_aka_x = self.aka.pred_x if self.aka.pred_x is not None else self.aka.last_center_x
@@ -561,23 +651,17 @@ class CombatantTracker:
                         abs(cx_i - target_aka_x) + abs(cx_j - target_shiro_x),
                         abs(cx_i - target_shiro_x) + abs(cx_j - target_aka_x)
                     )
-                    score += max(0.0, 2.5 - d_tracked * 5.0)
-
-                # 7. Penalidade severa para disparidade de 1º plano (ex: árbitro em 1º plano vs Kenshi no fundo)
-                if (m_i["height"] > 0.72 and m_j["height"] < 0.55) or (m_j["height"] > 0.72 and m_i["height"] < 0.55):
-                    score -= 3.0
+                    score += max(0.0, 3.0 - d_tracked * 6.0)
 
                 if score > best_pair_score:
                     best_pair_score = score
                     best_pair = (c_i, c_j)
 
-        # Ordenar o par vencedor da esquerda para a direita
         c_a, c_b = best_pair
         cxa, _, _ = self.extract_bbox_and_center(c_a)
         cxb, _, _ = self.extract_bbox_and_center(c_b)
         cand_left, cand_right = (c_a, c_b) if cxa <= cxb else (c_b, c_a)
 
-        # Tratar os demais candidatos como descartados (árbitros, transeuntes ou fundo)
         ref_h = (self.get_skeleton_metrics(cand_left)["height"] + self.get_skeleton_metrics(cand_right)["height"]) / 2.0
         discarded = []
         for c in candidates:
@@ -610,16 +694,7 @@ class CombatantTracker:
         return_persisted: bool = False
     ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], List[Dict[str, Any]]]:
         """
-        Recebe a lista de esqueletos/poses detectados no frame, aplica:
-        1. Delimitação poligonal da quadra (Shiai-jo ROI Mask).
-        2. Pré-filtro postural e geométrico de planos (descarte de Shinpans e fundos).
-        3. Rastreamento e travamento de IDs estrito (K=2) com predição temporal inercial.
-        4. Segmentação da cor da fita vermelha (Aka Tasuki) para garantia de identidade contínua.
-        5. Persistência inercial opcional para preenchimento de dropouts temporários.
-        Retorna:
-            - aka_landmarks: Optional[Dict]
-            - shiro_landmarks: Optional[Dict]
-            - discarded_items: List[Dict] com dados dos elementos descartados
+        Associa os 2 Kenshis principais com imunidade a inversões e ancoragem do Shinai.
         """
         def _wrap_result(a_res, s_res, d_res):
             if not return_persisted:
@@ -629,10 +704,12 @@ class CombatantTracker:
             return final_a, final_s, d_res
 
         if not frame_landmarks_list:
-            # Ambos os Kenshis ocluídos / sem detecção no frame
             self.aka.update(None)
             self.shiro.update(None)
             return _wrap_result(None, None, [])
+
+        # Resetar árbitros identificados no frame atual
+        self.shinpans = {"SHINPAN_LEFT": None, "SHINPAN_CENTER": None, "SHINPAN_RIGHT": None}
 
         # --- ETAPA 1: FILTRAGEM POR DELIMITAÇÃO DA QUADRA (SHIAI-JO ROI) ---
         shiaijo_filtered: List[Dict[str, Any]] = []
@@ -641,12 +718,22 @@ class CombatantTracker:
         for lm in frame_landmarks_list:
             m = self.get_skeleton_metrics(lm)
             if not self.is_within_shiaijo(m["ground_x"], m["ground_y"]):
-                self.discarded_out_of_shiaijo_count += 1
+                # Verificar se é um dos Shinpans perimetrais
+                is_sp, role, _ = self.classify_shinpan(lm, frame=frame)
+                if is_sp:
+                    self.shinpans[role] = lm
+                    self.discarded_shinpan_count += 1
+                    plane_t = "SHINPAN"
+                    reason = f"Árbitro (Shinpan) lateral/perimetral descartado ({role})"
+                else:
+                    self.discarded_out_of_shiaijo_count += 1
+                    plane_t = "OUT_OF_BOUNDS"
+                    reason = f"Detecção fora dos limites do Shiai-jo ativo (Solo: X={m['ground_x']:.2f}, Y={m['ground_y']:.2f})"
                 discarded_items.append({
                     "landmarks": lm,
-                    "plane_type": "OUT_OF_BOUNDS",
+                    "plane_type": plane_t,
                     "scale": 1.0,
-                    "reason": f"Detecção fora dos limites do Shiai-jo (Solo: X={m['ground_x']:.2f}, Y={m['ground_y']:.2f})"
+                    "reason": reason
                 })
             else:
                 shiaijo_filtered.append(lm)
@@ -657,42 +744,48 @@ class CombatantTracker:
             return _wrap_result(None, None, discarded_items)
 
         # --- ETAPA 2: PRÉ-FILTRO POSTURAL E SELEÇÃO DE CANDIDATOS VÁLIDOS ---
+        main_plane_candidates: List[Dict[str, Any]] = []
+        for lm in shiaijo_filtered:
+            plane_type, scale, reason = self.classify_plane(lm, frame=frame)
+            if plane_type == "MAIN_PLANE":
+                main_plane_candidates.append(lm)
+            else:
+                if plane_type == "SHINPAN":
+                    _, role, _ = self.classify_shinpan(lm, frame=frame)
+                    self.shinpans[role] = lm
+                discarded_items.append({
+                    "landmarks": lm,
+                    "plane_type": plane_type,
+                    "scale": scale,
+                    "reason": reason
+                })
+
+        # NUNCA reintegra árbitros ou não-combatentes no modo LOCKED_COMBAT!
+        # Apenas na inicialização antes da calibração se houver falha temporária
+        if not self.is_calibrated and len(main_plane_candidates) < 2 and len(shiaijo_filtered) >= 2:
+            eligible = [c for c in shiaijo_filtered if not self.classify_shinpan(c, frame=frame)[0]]
+            if len(eligible) >= 2:
+                sorted_by_kenshi = sorted(eligible, key=lambda c: self.compute_kenshi_feature_score(c), reverse=True)
+                main_plane_candidates = sorted_by_kenshi[:2]
+                discarded_items = [item for item in discarded_items if item["landmarks"] not in main_plane_candidates]
+
         cand_left: Optional[Dict[str, Any]] = None
         cand_right: Optional[Dict[str, Any]] = None
 
-        if len(shiaijo_filtered) <= 2:
-            main_plane_candidates: List[Dict[str, Any]] = []
-            for lm in shiaijo_filtered:
-                plane_type, scale, reason = self.classify_plane(lm)
-                if plane_type == "MAIN_PLANE":
-                    main_plane_candidates.append(lm)
-                else:
-                    discarded_items.append({
-                        "landmarks": lm,
-                        "plane_type": plane_type,
-                        "scale": scale,
-                        "reason": reason
-                    })
-
-            if not main_plane_candidates:
-                self.aka.update(None)
-                self.shiro.update(None)
-                return _wrap_result(None, None, discarded_items)
-
-            if len(main_plane_candidates) == 1:
-                cand_left = main_plane_candidates[0]
-                cand_right = None
-            else:
-                c1, c2 = main_plane_candidates[0], main_plane_candidates[1]
-                cx1, _, _ = self.extract_bbox_and_center(c1)
-                cx2, _, _ = self.extract_bbox_and_center(c2)
-                if cx1 <= cx2:
-                    cand_left, cand_right = c1, c2
-                else:
-                    cand_left, cand_right = c2, c1
+        if len(main_plane_candidates) == 0:
+            self.aka.update(None)
+            self.shiro.update(None)
+            return _wrap_result(None, None, discarded_items)
+        elif len(main_plane_candidates) == 1:
+            cand_left = main_plane_candidates[0]
+            cand_right = None
+        elif len(main_plane_candidates) == 2:
+            c1, c2 = main_plane_candidates[0], main_plane_candidates[1]
+            cx1, _, _ = self.extract_bbox_and_center(c1)
+            cx2, _, _ = self.extract_bbox_and_center(c2)
+            cand_left, cand_right = (c1, c2) if cx1 <= cx2 else (c2, c1)
         else:
-            # 3 ou mais candidatos: Usar a seleção combinatória de par ótimo e descartar Shinpans
-            cand_left, cand_right, disc_shinpan = self.select_best_combatant_pair(shiaijo_filtered)
+            cand_left, cand_right, disc_shinpan = self.select_best_combatant_pair(main_plane_candidates, frame=frame)
             discarded_items.extend(disc_shinpan)
 
         if cand_left is None and cand_right is None:
@@ -708,21 +801,20 @@ class CombatantTracker:
                 self.shiro.update(None)
                 return _wrap_result(None, None, discarded_items)
 
-            cx, _, _ = self.extract_bbox_and_center(single_cand)
+            cx, cy, _ = self.extract_bbox_and_center(single_cand)
             target_aka_x = self.aka.pred_x if self.aka.pred_x is not None else (self.aka.last_center_x if self.aka.last_center_x is not None else 0.70)
+            target_aka_y = self.aka.pred_y if self.aka.pred_y is not None else (self.aka.last_center_y if self.aka.last_center_y is not None else 0.50)
             target_shiro_x = self.shiro.pred_x if self.shiro.pred_x is not None else (self.shiro.last_center_x if self.shiro.last_center_x is not None else 0.30)
+            target_shiro_y = self.shiro.pred_y if self.shiro.pred_y is not None else (self.shiro.last_center_y if self.shiro.last_center_y is not None else 0.50)
 
-            d_aka = abs(cx - target_aka_x)
-            d_shiro = abs(cx - target_shiro_x)
-            red_score = self.detect_red_flag_score(frame, single_cand) if frame is not None else 0.0
-            if red_score >= 0.20:
-                d_aka -= 0.30
-                d_shiro += 0.30
+            d_aka = float(np.hypot(cx - target_aka_x, cy - target_aka_y))
+            d_shiro = float(np.hypot(cx - target_shiro_x, cy - target_shiro_y))
 
             if self.aka.last_center_x is not None or self.shiro.last_center_x is not None:
                 if d_aka <= d_shiro:
                     if self.aka.occluded_frames > 0:
                         self.occlusion_recovery_count += 1
+                    single_cand["SHINAI"] = self.shinai_tracker.track_shinai(frame, single_cand, self.aka.shinai)
                     self.aka.update(single_cand)
                     self.shiro.update(None)
                     res_a, res_s = (single_cand, None) if not self.invert_assignment else (None, single_cand)
@@ -730,6 +822,7 @@ class CombatantTracker:
                 else:
                     if self.shiro.occluded_frames > 0:
                         self.occlusion_recovery_count += 1
+                    single_cand["SHINAI"] = self.shinai_tracker.track_shinai(frame, single_cand, self.shiro.shinai)
                     self.shiro.update(single_cand)
                     self.aka.update(None)
                     res_a, res_s = (None, single_cand) if not self.invert_assignment else (single_cand, None)
@@ -738,37 +831,42 @@ class CombatantTracker:
                 # Inicialização sem histórico prévio
                 if not self.invert_assignment:
                     if cx <= 0.50:
+                        single_cand["SHINAI"] = self.shinai_tracker.track_shinai(frame, single_cand, self.shiro.shinai)
                         self.shiro.update(single_cand)
                         self.aka.update(None)
                         return _wrap_result(None, single_cand, discarded_items)
                     else:
+                        single_cand["SHINAI"] = self.shinai_tracker.track_shinai(frame, single_cand, self.aka.shinai)
                         self.aka.update(single_cand)
                         self.shiro.update(None)
                         return _wrap_result(single_cand, None, discarded_items)
                 else:
                     if cx <= 0.50:
+                        single_cand["SHINAI"] = self.shinai_tracker.track_shinai(frame, single_cand, self.aka.shinai)
                         self.aka.update(single_cand)
                         self.shiro.update(None)
                         return _wrap_result(single_cand, None, discarded_items)
                     else:
+                        single_cand["SHINAI"] = self.shinai_tracker.track_shinai(frame, single_cand, self.shiro.shinai)
                         self.shiro.update(single_cand)
                         self.aka.update(None)
                         return _wrap_result(None, single_cand, discarded_items)
 
-        # --- ETAPA 3: AMOSTRAGEM DA FITA VERMELHA (TASUKI) NAS COSTAS ---
+        # --- ETAPA 3: AMOSTRAGEM DA FITA VERMELHA (TASUKI) ---
         score_left = 0.0
         score_right = 0.0
         if frame is not None:
             score_left = self.detect_red_flag_score(frame, cand_left)
             score_right = self.detect_red_flag_score(frame, cand_right)
 
-            if score_left >= 0.10:
-                self.candidate_left_red_score += score_left
-                self.red_evidence_frames_left += 1
+            if self.tracking_state != "LOCKED_COMBAT":
+                if score_left >= 0.10:
+                    self.candidate_left_red_score += score_left
+                    self.red_evidence_frames_left += 1
 
-            if score_right >= 0.10:
-                self.candidate_right_red_score += score_right
-                self.red_evidence_frames_right += 1
+                if score_right >= 0.10:
+                    self.candidate_right_red_score += score_right
+                    self.red_evidence_frames_right += 1
 
         # --- ETAPA 4: ASSOCIAÇÃO BIPARTIDA E TRAVAMENTO DE IDS (K=2) ---
         cxl, cyl, _ = self.extract_bbox_and_center(cand_left)
@@ -777,33 +875,60 @@ class CombatantTracker:
         if self.tracking_state == "LOCKED_COMBAT":
             target_aka_x = self.aka.pred_x if self.aka.pred_x is not None else (self.aka.last_center_x if self.aka.last_center_x is not None else 0.70)
             target_aka_y = self.aka.pred_y if self.aka.pred_y is not None else (self.aka.last_center_y if self.aka.last_center_y is not None else 0.50)
-
             target_shiro_x = self.shiro.pred_x if self.shiro.pred_x is not None else (self.shiro.last_center_x if self.shiro.last_center_x is not None else 0.30)
             target_shiro_y = self.shiro.pred_y if self.shiro.pred_y is not None else (self.shiro.last_center_y if self.shiro.last_center_y is not None else 0.50)
 
-            # Distâncias Euclidianas 2D completas
-            dist_l_to_shiro = float(np.hypot(cxl - target_shiro_x, cyl - target_shiro_y))
-            dist_r_to_aka = float(np.hypot(cxr - target_aka_x, cyr - target_aka_y))
+            pair_dist = abs(cxl - cxr)
+            prev_aka_is_left = (target_aka_x < target_shiro_x)
+            flag_diff = score_left - score_right
 
-            dist_l_to_aka = float(np.hypot(cxl - target_aka_x, cyl - target_aka_y))
-            dist_r_to_shiro = float(np.hypot(cxr - target_shiro_x, cyr - target_shiro_y))
-
-            # Opção A: cand_left = Shiro, cand_right = Aka
-            cost_a = dist_l_to_shiro + dist_r_to_aka
-            if score_left >= 0.15: cost_a += 1.50
-            if score_right >= 0.15: cost_a -= 0.50
-
-            # Opção B: cand_left = Aka, cand_right = Shiro
-            cost_b = dist_l_to_aka + dist_r_to_shiro
-            if score_left >= 0.15: cost_b -= 0.50
-            if score_right >= 0.15: cost_b += 1.50
-
-            if cost_b < cost_a:
+            # REGRA 1: Evidência contundente de fita vermelha (Aka Tasuki inequívoco com contraste >= 0.50)
+            # Previne trocas espúrias por ruído de piso (<0.30), mas respeita fitas vermelhas reais confirmadas
+            if flag_diff >= 0.50:
                 aka_lm = cand_left
                 shiro_lm = cand_right
-            else:
+            elif flag_diff <= -0.50:
                 aka_lm = cand_right
                 shiro_lm = cand_left
+            # REGRA 2: BARREIRA FÍSICA ESPACIAL ANTI-TELEPORTE
+            # Se os atletas estão separados por mais de 15% da largura da tela e sem fita contundente,
+            # é fisicamente impossível terem trocado de posição em um único frame (33ms).
+            elif pair_dist > 0.15:
+                if prev_aka_is_left:
+                    aka_lm = cand_left
+                    shiro_lm = cand_right
+                else:
+                    aka_lm = cand_right
+                    shiro_lm = cand_left
+            else:
+                # REGRA 3: CRUZAMENTO FÍSICO / TAIATARI (pair_dist <= 0.15)
+                # Os lutadores estão em contato próximo ou cruzando. Usamos distância contínua com histerese.
+                dist_l_to_shiro = float(np.hypot(cxl - target_shiro_x, cyl - target_shiro_y))
+                dist_r_to_aka = float(np.hypot(cxr - target_aka_x, cyr - target_aka_y))
+                dist_l_to_aka = float(np.hypot(cxl - target_aka_x, cyl - target_aka_y))
+                dist_r_to_shiro = float(np.hypot(cxr - target_shiro_x, cyr - target_shiro_y))
+
+                # Opção A: cand_left = Shiro, cand_right = Aka
+                cost_a = dist_l_to_shiro + dist_r_to_aka
+                # Opção B: cand_left = Aka, cand_right = Shiro
+                cost_b = dist_l_to_aka + dist_r_to_shiro
+
+                # Histerese contra inversão espúria momentânea
+                if prev_aka_is_left:
+                    if cost_a < (cost_b - 0.18):
+                        aka_lm = cand_right
+                        shiro_lm = cand_left
+                    else:
+                        aka_lm = cand_left
+                        shiro_lm = cand_right
+                else:
+                    if cost_b < (cost_a - 0.18):
+                        aka_lm = cand_left
+                        shiro_lm = cand_right
+                    else:
+                        aka_lm = cand_right
+                        shiro_lm = cand_left
+
         else:
             # Inicialização / Primeiro frame de Sonkyō
             diff = self.candidate_right_red_score - self.candidate_left_red_score
@@ -823,14 +948,38 @@ class CombatantTracker:
                 self.flag_decision = "POSITION_DEFAULT_OPPOSITE_JUDGES"
                 self.flag_confidence = 0.50
 
+            if self.invert_assignment:
+                aka_lm, shiro_lm = shiro_lm, aka_lm
+
             if self.lock_tracks and aka_lm and shiro_lm:
                 self.tracking_state = "LOCKED_COMBAT"
                 self.aka.is_locked = True
                 self.shiro.is_locked = True
 
-        # Inversão manual se solicitada pelo operador
-        if self.invert_assignment:
-            aka_lm, shiro_lm = shiro_lm, aka_lm
+        # Anexar Shinai rastreado aos landmarks finais com orientação corporal e espacial correta
+        if aka_lm and shiro_lm:
+            cxa, _, _ = self.extract_bbox_and_center(aka_lm)
+            cxs, _, _ = self.extract_bbox_and_center(shiro_lm)
+            facing_aka = "RIGHT" if cxa < cxs else "LEFT"
+            facing_shiro = "LEFT" if cxa < cxs else "RIGHT"
+        else:
+            facing_aka = "LEFT" if not self.invert_assignment else "RIGHT"
+            facing_shiro = "RIGHT" if not self.invert_assignment else "LEFT"
+
+        if aka_lm:
+            aka_lm["SHINAI"] = self.shinai_tracker.track_shinai(
+                frame,
+                aka_lm,
+                prev_state=self.aka.shinai,
+                expected_facing=facing_aka
+            )
+        if shiro_lm:
+            shiro_lm["SHINAI"] = self.shinai_tracker.track_shinai(
+                frame,
+                shiro_lm,
+                prev_state=self.shiro.shinai,
+                expected_facing=facing_shiro
+            )
 
         # Calibrar plano principal se ainda não calibrado
         if not self.is_calibrated and aka_lm and shiro_lm:
@@ -860,6 +1009,8 @@ class CombatantTracker:
             "discarded_foreground_count": self.discarded_foreground_count,
             "discarded_out_of_shiaijo_count": self.discarded_out_of_shiaijo_count,
             "discarded_shinpan_posture_count": self.discarded_shinpan_posture_count,
+            "discarded_shinpan_count": self.discarded_shinpan_count,
+            "shinpans_tracked": {k: bool(v is not None) for k, v in self.shinpans.items()},
             "occlusion_recovery_count": self.occlusion_recovery_count,
             "total_detections_processed": self.total_detections_processed,
             "flag_decision": self.flag_decision,

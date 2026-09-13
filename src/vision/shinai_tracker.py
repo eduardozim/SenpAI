@@ -1,10 +1,14 @@
 """
-Módulo de rastreamento do Shinai (Espada) e Regiões de Ataca Target (Men, Kote, Do, Tsuki).
-Utiliza a extensão vetorial dos pulsos/mãos para estimar a ponta da espada (Kensen) e os pontos de contato.
+Módulo de Rastreamento Avançado do Shinai (Espada de Bambu) e Regiões de Ataque Alvo.
+Combina visão computacional (segmentação de cor de bambu, detecção de linhas e gradientes)
+com cinemática postural bimanual e filtragem temporal inercial para ancorar com máxima
+estabilidade a posição, orientação corporal e alvos anatômicos dos Kendocas.
 """
 
+import cv2
 import numpy as np
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple, Optional, List
+
 
 class ShinaiTracker:
     def __init__(self, shinai_length_ratio: float = 1.6):
@@ -13,41 +17,220 @@ class ShinaiTracker:
         """
         self.shinai_length_ratio = shinai_length_ratio
 
-    def estimate_shinai_tip(self, landmarks: Dict[str, Any]) -> Optional[Tuple[float, float, float]]:
+    def track_shinai(
+        self,
+        frame: Optional[np.ndarray],
+        landmarks: Optional[Dict[str, Any]],
+        prev_state: Optional[Dict[str, Any]] = None,
+        expected_facing: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """
-        Estima as coordenadas 3D (x, y, z) do Kensen (ponta do Shinai) a partir da posição dos pulsos e cotovelos.
+        Rastreia e mapeia o Shinai (base, lâmina e ponta/Kensen) a partir dos landmarks das mãos
+        e das características visuais (bambu/linhas retas) presentes no frame.
+
+        Retorna dicionário com:
+          - detected: bool
+          - base_norm: (x, y) normalizado
+          - tip_norm: (x, y) normalizado
+          - base_px: (px, py) pixels
+          - tip_px: (px, py) pixels
+          - angle_deg: float (graus em relação ao plano horizontal)
+          - length_norm: float
+          - facing: "RIGHT", "LEFT" ou "CENTER"
+          - confidence: float (0.0 a 1.0)
+          - is_visual: bool (True se detectado por visão, False se cinemático)
         """
         if not landmarks:
             return None
 
-        # Posição dos pulsos e cotovelos
-        r_w_pt = landmarks.get("RIGHT_WRIST") or landmarks.get("LEFT_WRIST")
-        r_e_pt = landmarks.get("RIGHT_ELBOW") or landmarks.get("LEFT_ELBOW") or landmarks.get("RIGHT_SHOULDER")
-        if not r_w_pt or not r_e_pt:
+        h, w = (frame.shape[:2]) if frame is not None else (480, 640)
+
+        # 1. Localizar centro das mãos / empunhadura do Tsuka
+        r_w = landmarks.get("RIGHT_WRIST")
+        l_w = landmarks.get("LEFT_WRIST")
+        r_e = landmarks.get("RIGHT_ELBOW") or landmarks.get("LEFT_ELBOW") or landmarks.get("RIGHT_SHOULDER")
+
+        if not r_w and not l_w:
             return None
 
-        r_wrist = np.array([r_w_pt["x"], r_w_pt["y"], r_w_pt.get("z", 0.0)])
-        r_elbow = np.array([r_e_pt["x"], r_e_pt["y"], r_e_pt.get("z", 0.0)])
-        
-        l_w_pt = landmarks.get("LEFT_WRIST") or r_w_pt
-        l_wrist = np.array([l_w_pt["x"], l_w_pt["y"], l_w_pt.get("z", 0.0)])
+        # Ponto base (Tsuka): centro ponderado entre as mãos (mão direita à frente)
+        if r_w and l_w and "x" in r_w and "x" in l_w:
+            bx = 0.65 * float(r_w["x"]) + 0.35 * float(l_w["x"])
+            by = 0.65 * float(r_w["y"]) + 0.35 * float(l_w["y"])
+        else:
+            main_w = r_w if r_w else l_w
+            bx = float(main_w["x"])
+            by = float(main_w["y"])
 
-        # Centro do punho (mão direita na frente, mão esquerda na base do Tsuka)
-        hand_center = (r_wrist * 0.7) + (l_wrist * 0.3)
-        
-        # Vetor de direção do antebraço direito
-        forearm_vec = r_wrist - r_elbow
-        norm = np.linalg.norm(forearm_vec)
-        if norm == 0:
-            return tuple(hand_center)
-        
-        direction = forearm_vec / norm
-        
-        # Estimar ponta do Shinai projetada
-        shinai_length = norm * self.shinai_length_ratio
-        kensen_3d = hand_center + direction * shinai_length
-        
-        return float(kensen_3d[0]), float(kensen_3d[1]), float(kensen_3d[2])
+        b_px = (int(np.clip(bx * w, 0, w - 1)), int(np.clip(by * h, 0, h - 1)))
+
+        # Vetor do antebraço para estimativa de direção padrão
+        forearm_vec = np.array([0.0, -1.0])
+        forearm_len = 0.15
+        if r_w and r_e and "x" in r_w and "x" in r_e:
+            dx = float(r_w["x"]) - float(r_e["x"])
+            dy = float(r_w["y"]) - float(r_e["y"])
+            norm = float(np.hypot(dx, dy))
+            if norm > 0.02:
+                forearm_vec = np.array([dx / norm, dy / norm])
+                forearm_len = norm
+
+        # Orientação esperada (se Kendoca está à esquerda e ataca para a direita ou vice-versa)
+        if expected_facing == "RIGHT" and forearm_vec[0] < -0.2:
+            forearm_vec[0] = abs(forearm_vec[0])
+        elif expected_facing == "LEFT" and forearm_vec[0] > 0.2:
+            forearm_vec[0] = -abs(forearm_vec[0])
+
+        visual_tip_px = None
+        is_visual = False
+        visual_conf = 0.0
+
+        # 2. Mapeamento Visual no Frame (Bambu + Linhas de Alta Rigidez)
+        if frame is not None:
+            # Definir ROI ao redor das mãos se estendendo na direção provável da espada
+            # Dimensão da ROI: ~25% da altura da imagem
+            roi_rad = int(max(60, min(w, h) * 0.28))
+            y1 = max(0, b_px[1] - roi_rad)
+            y2 = min(h, b_px[1] + roi_rad)
+            x1 = max(0, b_px[0] - roi_rad)
+            x2 = min(w, b_px[0] + roi_rad)
+
+            roi = frame[y1:y2, x1:x2]
+            if roi.shape[0] > 20 and roi.shape[1] > 20:
+                # Otimização de performance: redimensionar para resolução máxima de 180px para acelerar Canny/Hough
+                scale_factor = 1.0
+                if max(roi.shape[0], roi.shape[1]) > 180:
+                    scale_factor = 160.0 / float(max(roi.shape[0], roi.shape[1]))
+                    roi_proc = cv2.resize(roi, (0, 0), fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_LINEAR)
+                else:
+                    roi_proc = roi
+
+                hsv = cv2.cvtColor(roi_proc, cv2.COLOR_BGR2HSV)
+                # Máscara de cor de bambu (tons bege, amarelo-claro e madeira clara)
+                mask = cv2.inRange(hsv, np.array([12, 20, 75], dtype=np.uint8), np.array([42, 225, 255], dtype=np.uint8))
+
+                # Detecção de bordas nas faixas de bambu
+                edges = cv2.Canny(mask, 40, 140)
+
+                # Buscar segmentos lineares pelo HoughLinesP em resolução otimizada
+                min_len = max(12, int(22 * scale_factor))
+                lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=16, minLineLength=min_len, maxLineGap=int(10 * scale_factor))
+
+                if lines is not None and len(lines) > 0:
+                    best_line = None
+                    best_score = -1e9
+                    base_in_roi = np.array([(b_px[0] - x1) * scale_factor, (b_px[1] - y1) * scale_factor], dtype=np.float32)
+
+                    for line in lines:
+                        coords = np.asarray(line).ravel()
+                        if len(coords) < 4:
+                            continue
+                        lx1, ly1, lx2, ly2 = int(coords[0]), int(coords[1]), int(coords[2]), int(coords[3])
+                        p1 = np.array([lx1, ly1], dtype=np.float32)
+                        p2 = np.array([lx2, ly2], dtype=np.float32)
+
+                        seg_vec = p2 - p1
+                        seg_len = float(np.linalg.norm(seg_vec))
+                        if seg_len < (14 * scale_factor):
+                            continue
+
+                        # O Kensen é a ponta mais distante da base
+                        d1 = float(np.linalg.norm(p1 - base_in_roi))
+                        d2 = float(np.linalg.norm(p2 - base_in_roi))
+
+                        tip_pt = p2 if d1 <= d2 else p1
+                        dist_to_root = min(d1, d2)
+
+                        dir_vec = (tip_pt - base_in_roi)
+                        dir_norm = float(np.linalg.norm(dir_vec))
+                        if dir_norm < (8 * scale_factor):
+                            continue
+                        dir_unit = dir_vec / dir_norm
+
+                        # Pontuação da linha:
+                        score = seg_len * 1.5 - dist_to_root * 1.8
+                        align = float(dir_unit[0] * forearm_vec[0] + dir_unit[1] * forearm_vec[1])
+                        score += align * 35.0
+
+                        if expected_facing == "RIGHT" and dir_unit[0] > 0.1:
+                            score += 25.0
+                        elif expected_facing == "LEFT" and dir_unit[0] < -0.1:
+                            score += 25.0
+
+                        if score > best_score:
+                            best_score = score
+                            # Mapear de volta à escala original do ROI
+                            orig_tip_x = tip_pt[0] / scale_factor
+                            orig_tip_y = tip_pt[1] / scale_factor
+                            best_line = (int(orig_tip_x + x1), int(orig_tip_y + y1), seg_len / scale_factor)
+
+                    if best_line is not None and best_score > 8.0:
+                        visual_tip_px = (best_line[0], best_line[1])
+                        is_visual = True
+                        visual_conf = float(np.clip(best_score / (100.0 * scale_factor), 0.70, 0.95))
+
+        # 3. Fallback Cinemático Suave se não houver linha visual nítida
+        estimated_len = max(0.18, forearm_len * self.shinai_length_ratio)
+        if visual_tip_px is not None:
+            tx = float(np.clip(visual_tip_px[0] / max(1, w), 0.0, 1.0))
+            ty = float(np.clip(visual_tip_px[1] / max(1, h), 0.0, 1.0))
+            conf = visual_conf
+        else:
+            tx = float(np.clip(bx + forearm_vec[0] * estimated_len, 0.0, 1.0))
+            ty = float(np.clip(by + forearm_vec[1] * estimated_len, 0.0, 1.0))
+            conf = 0.55
+
+        # 4. Filtragem Temporal Inercial (Suavização Exponencial)
+        if prev_state and prev_state.get("tip_norm") is not None:
+            prev_tx, prev_ty = prev_state["tip_norm"]
+            # Suavizar ruídos de alta frequência
+            alpha = 0.70 if is_visual else 0.40
+            tx = float(alpha * tx + (1.0 - alpha) * prev_tx)
+            ty = float(alpha * ty + (1.0 - alpha) * prev_ty)
+
+        t_px = (int(np.clip(tx * w, 0, w - 1)), int(np.clip(ty * h, 0, h - 1)))
+
+        # 5. Cálculo de Vetores, Ângulo e Orientação Corporal (Facing Direction)
+        dx = tx - bx
+        dy = ty - by
+        actual_len = float(np.hypot(dx, dy))
+        angle_rad = np.arctan2(-dy, dx) # Positivo para cima
+        angle_deg = float(np.degrees(angle_rad))
+
+        if dx > 0.035:
+            facing = "RIGHT"
+        elif dx < -0.035:
+            facing = "LEFT"
+        else:
+            facing = expected_facing or "CENTER"
+
+        return {
+            "detected": True,
+            "base_norm": (bx, by),
+            "tip_norm": (tx, ty),
+            "base_px": b_px,
+            "tip_px": t_px,
+            "angle_deg": angle_deg,
+            "length_norm": actual_len,
+            "facing": facing,
+            "confidence": conf,
+            "is_visual": is_visual
+        }
+
+    def estimate_shinai_tip(self, landmarks: Dict[str, Any]) -> Optional[Tuple[float, float, float]]:
+        """
+        Estima as coordenadas 3D (x, y, z) do Kensen (ponta do Shinai) a partir da posição dos pulsos e cotovelos.
+        Mantido para retrocompatibilidade.
+        """
+        if not landmarks:
+            return None
+
+        res = self.track_shinai(frame=None, landmarks=landmarks)
+        if res and "tip_norm" in res:
+            tx, ty = res["tip_norm"]
+            return float(tx), float(ty), 0.0
+
+        return None
 
     @staticmethod
     def get_target_zones(landmarks: Dict[str, Any]) -> Dict[str, Tuple[float, float, float]]:

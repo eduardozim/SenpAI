@@ -33,6 +33,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.streamlit/
 
 # ==============================================================================
 # ARQUIVOS GERADOS PELO TREINAMENTO DE VISÃO COMPUTACIONAL (USUÁRIO)
@@ -71,4 +72,5 @@ data/test_*.json
 # Serializações e dumps temporários de treino
 *.joblib
 
-
+# Scratch scripts e temporários de análise
+scratch/

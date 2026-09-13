@@ -31,9 +31,8 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
             "RIGHT_KNEE": {"x": center_x + 0.04, "y": 0.76, "z": 0.0, "visibility": 0.9, "px": int((center_x+0.04)*640), "py": int(0.76*480)},
             "LEFT_KNEE": {"x": center_x - 0.04, "y": 0.76, "z": 0.0, "visibility": 0.9, "px": int((center_x-0.04)*640), "py": int(0.76*480)},
             "RIGHT_ANKLE": {"x": center_x + 0.04, "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int((center_x+0.04)*640), "py": int(0.90*480)},
-            "LEFT_ANKLE": {"x": center_x - 0.04, "y": 0.90, "z": 0.0, "visibility": 0.9, "px": int((center_x-0.04)*640), "py": int(0.90*480)},
-            "RIGHT_WRIST": {"x": center_x + 0.08, "y": 0.50, "z": 0.0, "visibility": 0.9, "px": int((center_x+0.08)*640), "py": int(0.50*480)},
-            "LEFT_WRIST": {"x": center_x - 0.02, "y": 0.52, "z": 0.0, "visibility": 0.9, "px": int((center_x-0.02)*640), "py": int(0.52*480)}
+            "RIGHT_WRIST": {"x": center_x + 0.03, "y": 0.50, "z": 0.0, "visibility": 0.9, "px": int((center_x+0.03)*640), "py": int(0.50*480)},
+            "LEFT_WRIST": {"x": center_x - 0.01, "y": 0.52, "z": 0.0, "visibility": 0.9, "px": int((center_x-0.01)*640), "py": int(0.52*480)}
         }
 
     def _create_synthetic_sonkyo_pose(self, center_x: float = 0.50) -> Dict[str, Any]:
@@ -206,7 +205,7 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertEqual(shiro_res, kenshi_shiro, "Kenshi Shiro no plano central deve ser selecionado.")
         self.assertEqual(len(disc), 2, "Os dois árbitros devem ser descartados.")
         for d in disc:
-            self.assertIn(d["plane_type"], ["FOREGROUND_OCCLUDER", "BACKGROUND"])
+            self.assertIn(d["plane_type"], ["SHINPAN", "FOREGROUND_OCCLUDER", "BACKGROUND"])
             self.assertIn("Árbitro", d["reason"])
 
     def test_sonkyo_with_hakama_occlusions(self):
@@ -534,6 +533,84 @@ class TestSonkyoAndPlaneFiltering(unittest.TestCase):
         self.assertIsNotNone(interp[1])
         self.assertIsNotNone(interp[2])
         self.assertAlmostEqual(interp[1]["NOSE"]["x"], 0.45, delta=0.05)
+
+    def test_shinpan_classification_with_flags_and_attire(self):
+        """Valida que árbitros (com mãos separadas portando bandeiras ou em posições perimetrais) são classificados como SHINPAN."""
+        tracker = CombatantTracker()
+
+        # Árbitro lateral esquerdo segurando duas bandeiras com mãos abertas (distância mãos > 0.09)
+        referee_left = {
+            "NOSE": {"x": 0.15, "y": 0.35, "z": 0.0, "visibility": 0.9, "px": int(0.15 * 640), "py": int(0.35 * 480)},
+            "RIGHT_SHOULDER": {"x": 0.18, "y": 0.42, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_SHOULDER": {"x": 0.12, "y": 0.42, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_WRIST": {"x": 0.22, "y": 0.55, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_WRIST": {"x": 0.08, "y": 0.55, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_HIP": {"x": 0.17, "y": 0.65, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_HIP": {"x": 0.13, "y": 0.65, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_ANKLE": {"x": 0.17, "y": 0.88, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_ANKLE": {"x": 0.13, "y": 0.88, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_EAR": {"x": 0.17, "y": 0.34, "z": 0.0, "visibility": 0.85, "px": 100, "py": 100},
+            "LEFT_EAR": {"x": 0.13, "y": 0.34, "z": 0.0, "visibility": 0.85, "px": 100, "py": 100},
+        }
+
+        # Kenshi no centro com empunhadura bimanual fechada do Shinai (distância mãos < 0.04)
+        kenshi_center = {
+            "NOSE": {"x": 0.45, "y": 0.30, "z": 0.0, "visibility": 0.9, "px": int(0.45 * 640), "py": int(0.30 * 480)},
+            "RIGHT_SHOULDER": {"x": 0.48, "y": 0.38, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_SHOULDER": {"x": 0.42, "y": 0.38, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_WRIST": {"x": 0.46, "y": 0.50, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_WRIST": {"x": 0.44, "y": 0.51, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_HIP": {"x": 0.47, "y": 0.62, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_HIP": {"x": 0.43, "y": 0.62, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_ANKLE": {"x": 0.47, "y": 0.88, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_ANKLE": {"x": 0.43, "y": 0.88, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+        }
+
+        is_ref, role, _ = tracker.classify_shinpan(referee_left)
+        self.assertTrue(is_ref, "Árbitro lateral com mãos abertas deve ser identificado.")
+        self.assertEqual(role, "SHINPAN_LEFT")
+
+        is_kenshi_ref, _, _ = tracker.classify_shinpan(kenshi_center)
+        self.assertFalse(is_kenshi_ref, "Kenshi central com empunhadura de Shinai não deve ser classificado como árbitro.")
+
+    def test_tsubazeria_single_candidate_persists_occluded_opponent(self):
+        """Valida que em Tsubazeria (1 Kendoca visível no centro), o árbitro lateral NUNCA é capturado como oponente ocluso."""
+        tracker = CombatantTracker(lock_tracks=True)
+
+        kenshi_aka = self._create_synthetic_standing_pose(center_x=0.42)
+        kenshi_shiro = self._create_synthetic_standing_pose(center_x=0.58)
+
+        # 1. Calibrar e travar combate com os 2 lutadores
+        a1, s1, _ = tracker.associate_and_filter([kenshi_aka, kenshi_shiro], return_persisted=True)
+        self.assertIsNotNone(a1)
+        self.assertIsNotNone(s1)
+        self.assertEqual(tracker.state, "LOCKED_COMBAT")
+
+        # 2. Simular Tsubazeria: apenas 1 Kendoca visível no centro (x=0.50), e 1 árbitro lateral na borda (x=0.14)
+        clash_kenshi = self._create_synthetic_standing_pose(center_x=0.50)
+        referee_sideline = {
+            "NOSE": {"x": 0.14, "y": 0.35, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_SHOULDER": {"x": 0.17, "y": 0.42, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_SHOULDER": {"x": 0.11, "y": 0.42, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_WRIST": {"x": 0.21, "y": 0.54, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_WRIST": {"x": 0.07, "y": 0.54, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_HIP": {"x": 0.16, "y": 0.65, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_HIP": {"x": 0.12, "y": 0.65, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "RIGHT_ANKLE": {"x": 0.16, "y": 0.88, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+            "LEFT_ANKLE": {"x": 0.12, "y": 0.88, "z": 0.0, "visibility": 0.9, "px": 100, "py": 100},
+        }
+
+        a2, s2, disc2 = tracker.associate_and_filter([clash_kenshi, referee_sideline], return_persisted=True)
+
+        # O árbitro lateral NUNCA pode ter sido associado a Aka ou Shiro!
+        aka_x = (a2["NOSE"]["x"] if a2 else 0.0)
+        shiro_x = (s2["NOSE"]["x"] if s2 else 0.0)
+        self.assertGreater(aka_x, 0.30, "Aka não pode saltar para a posição do árbitro lateral (x=0.14).")
+        self.assertGreater(shiro_x, 0.30, "Shiro não pode saltar para a posição do árbitro lateral (x=0.14).")
+
+        # O árbitro deve estar na lista de descartados e no dicionário de shinpans
+        self.assertTrue(any(d.get("plane_type") == "SHINPAN" for d in disc2), "Árbitro deve ser catalogado como SHINPAN.")
+        self.assertIsNotNone(tracker.shinpans.get("SHINPAN_LEFT"), "Árbitro esquerdo deve ser rastreado no tracker.")
 
 
 if __name__ == "__main__":
