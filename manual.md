@@ -552,6 +552,32 @@ Total de **143 testes automatizados** distribuídos em 17 módulos, executados e
   - Suíte completa de **143 testes automatizados** aprovados com 100% de sucesso (`Ran 143 tests, OK`).
   - Adicionados testes de transição de estado e calibração arbitral em `test_dan_training_governance.py`.
 
+### `[v2.3.0]` — 2026-09-14
+
+- **Reformulação do Treinamento Automático Inteligente por IA & Reconhecimento Transversal de Modalidades ([auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py), [training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Reconhecimento Transversal da Modalidade do Vídeo em Qualquer Módulo de Análise**:
+    - O sistema agora identifica automaticamente qual das 14 modalidades oficiais de treinamento de Kendo (com Kanjis) está sendo executada no vídeo, tanto no **Modo de Detecção Gravada**, quanto no **Modo em Tempo Real (Webcam / Multi-Câmeras)** e no **Modo de Treinamento & Aprendizado**.
+    - No modo Gravado, o SenpAI renderiza um banner de destaque com a modalidade reconhecida, confiança percentual, justificativa detalhada e um acordeão com os princípios de Kendo aprendidos pela IA para aquela modalidade.
+    - No modo Tempo Real, o HUD do contador de pontos ao vivo exibe continuamente a modalidade reconhecida dinamicamente no fluxo das câmeras.
+  - **Ingestão e Mineração Web Resiliente de Princípios do Kendo**:
+    - Implementada a função `search_web_kendo_knowledge()`, que realiza buscas dinâmicas em enciclopédias e manuais técnicos online (API da Wikipedia e diretrizes internacionais) com fallback automático e resiliente para as diretrizes da FIK (*International Kendo Federation*) e AJKF (*All Japan Kendo Federation*), garantindo operação 100% offline.
+  - **Sequência Automática de Aprendizado por Necessidade Mais Latente (`diagnose_latent_need`)**:
+    - No treinamento automático, a seleção da estratégia é **100% automática e sequencial**, não exigindo seleção manual pelo usuário:
+      1. *1º Passo (Prioridade Máxima)*: Foca primeiramente na modalidade com **menor percentual de aprendizado acumulado** (`lowest_accuracy`), sanando a maior carência do modelo.
+      2. *2º Passo (Consolidação Transversal)*: Após trabalhar a modalidade deficiente, avança automaticamente para o **conhecimento geral e princípios universais do Kendo** (`general_knowledge` / Ki-Ken-Tai-Ichi, Maai, Zanshin, Hasuji, Tenouchi e Sonkyō).
+      3. *3º Passo (Exploração Contínua / Última Opção)*: Como última opção de ciclo, sorteia uma **modalidade randômica** (`random_modality`), diversificando o repertório técnico e prevenindo sobreajuste.
+      4. O ciclo reinicia automaticamente reavaliando a menor acurácia agora recalibrada.
+  - **Registro Cumulativo e Evolução Contínua do Conhecimento por Modalidade**:
+    - A base de conhecimento (`ai_knowledge_base.json`) agora grava de forma persistente e cumulativa para cada uma das 14 modalidades:
+      - `principles_learned`: Conceitos técnicos e éticos absorvidos e refinados.
+      - `biomechanical_profile`: Limiares de cadência (CPM), alinhamento postural e alvos preferenciais.
+      - `web_sources`: URLs e referências mineradas.
+      - `evolution_log`: Histórico cronológico de recalibrações.
+      - `mastery_level`: Nível de maestria do modelo (*Fase Inicial*, *Em Calibração*, *Calibrado*, *Excelente / Shiai*).
+    - Na aba *Sumário de Acurácia por Modalidade*, foi implementado o painel interativo *"📖 O Que o SenpAI Já Aprendeu sobre Cada Modalidade"* para consulta profunda do conhecimento acumulado e dos princípios universais da ZNKR/FIK.
+- **Expansão da Suíte de Testes Automatizados (149 Testes)**:
+  - Suíte completa de **149 testes automatizados** aprovados com 100% de sucesso (`Ran 149 tests, OK`), incluindo testes para a sequência automática de 3 etapas, resiliência na busca web e identificação transversal de modalidades com Sonkyō.
+
 ---
 
 ### `[v2.2.0]` — 2026-09-11

@@ -489,13 +489,15 @@ class SenpAIPipeline:
         final_sonkyo_str = f"Detectado (Fim: {sonkyo_analysis.get('match_end_timestamp', f'{round(total_frames / fps, 2)}s')})" if sonkyo_analysis["has_final_sonkyo"] else "Não detectado"
         
         # 7. Análise de Treinamento & Aprendizado (14 Modalidades Oficiais com Kanji e 3 Pilares)
+        has_sonkyo_in_video = bool(sonkyo_analysis.get("has_initial_sonkyo") or sonkyo_analysis.get("has_final_sonkyo"))
         training_analysis = self.training_analyzer.analyze_session(
             primary_history=primary_history,
             secondary_history=secondary_history,
             detected_strikes=all_raw_strikes,
             modality_override=training_modality_override,
             fps=fps,
-            custom_kendoka_names=custom_kendoka_names
+            custom_kendoka_names=custom_kendoka_names,
+            has_sonkyo=has_sonkyo_in_video
         )
 
         summary_log = (

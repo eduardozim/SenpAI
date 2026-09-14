@@ -1,7 +1,7 @@
 {
-  "version": "1.0.0",
-  "last_updated": "2026-09-10T17:39:06.981874",
-  "total_web_sources_indexed": 14,
+  "version": "2.0.0",
+  "last_updated": "2026-09-14T17:50:55.477185",
+  "total_web_sources_indexed": 3,
   "sources": {
     "fik_regulations": {
       "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
@@ -75,53 +75,18 @@
         ],
         "stamina_retention_ratio_target": 0.88
       }
-    },
-    "ajkf_/_znkr_kendo_shinpan_&_shiai_practi": {
-      "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
-      "type": "Manual de Arbitragem AJKF"
-    },
-    "fik_international_kendo_regulations_(art": {
-      "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
-      "type": "Manual Oficial FIK"
-    },
-    "treatise_on_nihon_kendo_kata_technical_&": {
-      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
-      "type": "Tratado Técnico Kata"
-    },
-    "kirikaeshi_continuous_stroke_cadence_&_d": {
-      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
-      "type": "Corpus de Vídeo Dojo"
-    },
-    "high-speed_motion_capture_of_fumikomi-as": {
-      "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
-      "type": "Mocap Científico"
-    },
-    "all_japan_kendo_championship_finals_-_ki": {
-      "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
-      "type": "Corpus de Vídeo HD"
-    },
-    "kendo_pedagogical_training_curriculum:_1": {
-      "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
-      "type": "Currículo Pedagógico"
-    },
-    "physiological_&_biomechanical_load_in_su": {
-      "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
-      "type": "Estudo Biomecânico"
-    },
-    "reinforcement_optimization_on_dan_review": {
-      "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
-      "type": "Dataset de Calibração"
-    },
-    "multi-view_neural_consensus_&_perspectiv": {
-      "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
-      "type": "Modelo Neural"
-    },
-    "senpai_knowledge_base_&_calibration_prof": {
-      "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
-      "type": "Base de Conhecimento"
     }
   },
   "learned_parameters": {
+    "general_kendo_principles": [
+      "Ki-Ken-Tai-Ichi (気剣体一致): Unidade completa e simultânea de espírito (Ki), espada (Ken) e corpo/pés (Tai).",
+      "Maai (間合い): Domínio da distância espacial e temporal (Toma, Issoku-itto-no-maai e Chikama).",
+      "Zanshin (残心): Prontidão mental, estado de alerta e prontidão espiritual contínua após qualquer ataque.",
+      "Shisei (姿勢): Postura ereta e digna com coluna alinhada (< 8.5° de inclinação) e ombros nivelados.",
+      "Hasuji & Tenouchi (刃筋・手の内): Trajetória correta do fio da lâmina e compressão elástica com dedos mínimo e anelar.",
+      "Sonkyō (蹲踞): Postura cerimonial agachada tradicional de reverência mútua, prontidão e etiqueta marcial (Reigi).",
+      "Chushin-sen (中心線): Ocupação e domínio ininterrupto da linha central de corte e defesa através do Shinai."
+    ],
     "shiai_scoring": {
       "optimal_weights": {
         "target_impact": 0.42,
@@ -137,158 +102,600 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 41.0,
-        "current_accuracy": 84.5,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 41.0,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "Okuri-ashi (送り足): Deslocamento fundamental deslizante impulsionado pela perna esquerda sem cruzar as pernas.",
+          "Calcanhar Esquerdo Suspenso: Elevação contínua de 2 a 3 cm do calcanhar esquerdo para prontidão instantânea de arranque (Hiki-tsuke).",
+          "Estabilidade do Centro de Gravidade: Manutenção do quadril nivelado durante deslocamentos rápidos (Ayumi-ashi, Tsugi-ashi, Hiraki-ashi)."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            30,
+            90
+          ],
+          "focus_areas": [
+            "Alinhamento de pés",
+            "Calcanhar esquerdo elevado",
+            "Estabilidade do quadril",
+            "Fluidez de deslocamento"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "AJKF Kendo Manual - Section 3: Ashi-sabaki & Footwork Mechanics",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/ashi_sabaki"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "suburi": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 46.5,
-        "current_accuracy": 90.0,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 46.5,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Em Calibração",
+        "principles_learned": [
+          "Hasuji (刃筋): Alinhamento estrito do corte sem desvio lateral da lâmina (Monouchi).",
+          "Tenouchi (手の内): Aperto coordenado dos dedos mínimo e anelar no momento da parada na altura do alvo.",
+          "Furikaburi (振りかぶり): Amplitude de elevação dos cotovelos entre 115° e 140° mantendo o queixo recolhido.",
+          "Shisei (姿勢): Manutenção da verticalidade da coluna vertebral com inclinação máxima < 8.5°."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            25,
+            60
+          ],
+          "focus_areas": [
+            "Amplitude de Furikaburi",
+            "Verticalidade da coluna",
+            "Parada firme na altura do alvo",
+            "Simetria de braços (Tenouchi)"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "FIK & AJKF Pedagogical Suburi Standards & Biomechanics",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/suburi"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "kihon": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 44.0,
-        "current_accuracy": 87.5,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 44.0,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "Chudan no Kamae (中段の構え): Guarda fundamental inexpugnável com ponta do Shinai direcionada à garganta do oponente.",
+          "Maai (間合い): Manutenção precisa da distância de um passo e um golpe (Issoku-itto-no-maai).",
+          "Zanshin (残心): Prontidão mental e física imediata após a conclusão de qualquer golpe básico."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            10,
+            30
+          ],
+          "focus_areas": [
+            "Estrutura da guarda Kamae",
+            "Manutenção de Maai",
+            "Sincronismo no golpe",
+            "Qualidade do Zanshin"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "AJKF Fundamental Kendo (Kihon) Teaching Curriculum",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/kihon"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "kirikaeshi": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 39.5,
-        "current_accuracy": 83.0,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 39.5,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "Cadência Contínua e Respiração: Execução ininterrupta de cortes Shōmen e Sayū-men a 45° de Hasuji em respiração única (Iki-tsugi).",
+          "Taiatari (体当たり): Contato e choque corporal pelo centro sem colapsar a postura e sem recuar os ombros.",
+          "Tenouchi Dinâmico: Relaxamento dos ombros na elevação e compressão elástica no impacto alternado dos dois lados do Men."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            45,
+            90
+          ],
+          "focus_areas": [
+            "Ângulo de 45° no Sayu-men",
+            "Ritmo ininterrupto",
+            "Controle de respiração",
+            "Potência e flexibilidade de ombros"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "Kinematic Analysis of Continuous Strikes in Kirikaeshi (Sports Biomechanics)",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/kirikaeshi"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "uchikomi_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 38.0,
-        "current_accuracy": 81.5,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 38.0,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "Explosão na Abertura: Reconhecimento e ataque instantâneo no milissegundo em que o Motodachi abre o alvo.",
+          "Fumikomi Potente: Aterrissagem com a planta do pé direito sincrônica ao impacto no alvo (Ki-Ken-Tai-Ichi).",
+          "Passagem Rápida (Nuke): Cruzamento ágil pelo lado do oponente sem perder o equilíbrio e giro veloz em Zanshin."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            20,
+            50
+          ],
+          "focus_areas": [
+            "Velocidade de reação na abertura",
+            "Aceleração e Fumikomi",
+            "Passagem rápida (Nuke)",
+            "Retorno imediato em Kamae"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "AJKF Teaching Methodology: Motodachi & Kakarite Dynamics",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/uchikomi_geiko"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "kakari_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 33.5,
-        "current_accuracy": 77.0,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 33.5,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "Kiai Inabalável: Ataques agressivos e contínuos em intensidade máxima sem hesitação durante períodos curtos (20s a 60s).",
+          "Preservação da Postura sob Fadiga: Resistência muscular preservando a retidão da coluna e guarda mesmo sob exaustão extrema."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            35,
+            75
+          ],
+          "focus_areas": [
+            "Cadência máxima e espírito inquebrantável",
+            "Ataque contínuo sem hesitação",
+            "Preservação da postura sob exaustão",
+            "Fumikomi potente"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "Physiological & Biomechanical Load in High-Intensity Kakari-geiko",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/kakari_geiko"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "yakusoku_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 37.5,
-        "current_accuracy": 81.0,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 37.5,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "Sincronismo Combinado: Execução harmoniosa e exata de sequências previamente combinadas entre os parceiros.",
+          "Maai de Transição: Ajuste consciente da distância a cada golpe combinado sem quebras de ritmo."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            12,
+            35
+          ],
+          "focus_areas": [
+            "Sincronismo entre os parceiros",
+            "Precisão na execução combinada",
+            "Controle de distância (Maai)",
+            "Postura correta na transição"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "Pedagogical Kendo: Structured Pair Exercises (Yakusoku-geiko)",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/yakusoku_geiko"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "waza_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 36.5,
-        "current_accuracy": 80.0,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 36.5,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "Automatização Técnica: Repetição exaustiva de técnicas ofensivas complexas (Debana-waza, Hiki-waza).",
+          "Gatilho de Oportunidade: Percepção do momento exato em que o adversário inicia o movimento ou recua a guarda."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            12,
+            35
+          ],
+          "focus_areas": [
+            "Timing do gatilho de ataque",
+            "Mecanismo biomecânico do golpe",
+            "Precisão do ponto de impacto",
+            "Fluidez na execução"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "Advanced Waza Analysis in Modern Kendo (Debana, Hiki, Nuki)",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/waza_geiko"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "oji_waza": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 35.5,
-        "current_accuracy": 79.0,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 35.5,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "Técnicas de Resposta (Oji-waza): Nuki (esquiva por baixo), Kaeshi (deflexão giratória), Suriage (deslize ascendente) e Uchiotoshi.",
+          "Economia de Movimento: Desvio milimétrico da espada adversária seguido de contragolpe imediato pelo centro (Chushin-sen)."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            10,
+            30
+          ],
+          "focus_areas": [
+            "Tempo de antecipação e leitura de corte",
+            "Movimento mínimo e preciso no desvio",
+            "Contra-golpe instantâneo sem perda de centro",
+            "Zanshin seguro"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "AJKF Technical Manual: Principles of Oji-waza and Counters",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/oji_waza"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "ji_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 32.0,
-        "current_accuracy": 75.5,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 32.0,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "Pressão com Seme (攻め): Rompimento da guarda e quebra da postura mental do adversário antes de desferir o ataque.",
+          "Ki-Ken-Tai-Ichi em Combate Livre: Aplicação plena dos fundamentos de golpe, corte e pés sem pré-determinação.",
+          "Chushin-sen: Disputa e domínio ininterrupto da linha central de corte e defesa."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            8,
+            25
+          ],
+          "focus_areas": [
+            "Construção de oportunidade com Seme",
+            "Manutenção da compostura e centro",
+            "Variedade técnica inteligente",
+            "Postura digna sob pressão"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "The Philosophy and Practice of Ji-geiko in Contemporary Kendo",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/ji_geiko"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "shiai_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 34.0,
-        "current_accuracy": 77.5,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 34.0,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "Yuko-Datotsu Oficial: Validação rigorosa dos 4 critérios regulamentares de Ippon da FIK (Impacto, Fumikomi, Postura, Zanshin).",
+          "Sonkyō Protocolar: Entrada, cumprimento cerimonial e agachamento formal respeitando a etiqueta marcial de Shiai.",
+          "Gestão do Tempo e Distância de Combate: Ataques decisivos dentro do tempo regulamentar sem acúmulo de faltas (Hansoku)."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            6,
+            20
+          ],
+          "focus_areas": [
+            "Decisão rápida e eficácia de Ippon",
+            "Domínio de Maai em situação real",
+            "Prevenção de faltas",
+            "Zanshin impecável"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/shiai_geiko"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "nihon_kendo_kata": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 45.0,
-        "current_accuracy": 88.5,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 45.0,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Em Calibração",
+        "principles_learned": [
+          "Formas Tradicionais com Bokutō: Katas oficiais 1 a 10 entre Uchidachi (mestre) e Shidachi (aprendiz) com rigor estético milenar.",
+          "Hasuji de Espada de Madeira: Trajetória precisa de corte com Bokutō parando a milímetros do alvo sem contato violento.",
+          "Reigi e Respiração Cerimonial: Etiqueta, respeito marcial, ritmo cadenciado e presença espiritual silenciosa (Zanshin)."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            4,
+            15
+          ],
+          "focus_areas": [
+            "Etiqueta e compostura (Reigi)",
+            "Precisão dos passos e distância ritual",
+            "Timing perfeito de corte sem contato desordenado",
+            "Zanshin e presença espiritual"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "AJKF / ZNKR Nihon Kendo Kata Official Technical Guide",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/nihon_kendo_kata"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "bokuto_kihon_waza": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 42.5,
-        "current_accuracy": 86.0,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 42.5,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "9 Fundamentos com Bokutō (Bokutō ni yoru Kendō Kihon Waza Keiko Hō): Fixação da mecânica do corte e transição correta de espada.",
+          "Empunhadura e Hasuji: Correção de vícios de Shinai através da empunhadura oval e peso sólido do Bokutō."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            6,
+            20
+          ],
+          "focus_areas": [
+            "Ângulo correto da lâmina (Hasuji)",
+            "Coordenação de pés e postura",
+            "Compreensão da técnica básica com Bokutō",
+            "Sincronismo de comando"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "ZNKR Instructional Manual for Bokuto Kihon Waza Keiko Ho",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/bokuto_kihon_waza"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       },
       "shinsa": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 36.0,
-        "current_accuracy": 79.5,
-        "last_calibrated": "10/09/2026 17:39",
-        "sessions_count": 15
+        "current_accuracy": 36.0,
+        "last_calibrated": "Inicial Calibrado",
+        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "principles_learned": [
+          "Critérios Oficiais de Exame Dan: Postura digna (Shisei), etiqueta impecável (Reigi), Kiai penetrante e domínio dos fundamentos.",
+          "Ataque Resoluto e Zanshin: Demonstração de coragem e técnica limpa sem hesitação, recuo ou movimentos desnecessários."
+        ],
+        "biomechanical_profile": {
+          "cadence_optimal": [
+            6,
+            22
+          ],
+          "focus_areas": [
+            "Postura impecável (Shisei)",
+            "Etiqueta e respeito marcial (Reigi)",
+            "Kiai forte e confiante",
+            "Técnica limpa e Zanshin decisivo"
+          ]
+        },
+        "web_sources": [
+          {
+            "title": "FIK & AJKF Official Examination & Dan Ranking Standard Regulations",
+            "type": "Manual Oficial AJKF",
+            "url": "https://www.kendo.or.jp/knowledge/shinsa"
+          }
+        ],
+        "evolution_log": [
+          {
+            "date": "14/09/2026",
+            "gain": "+0.0%",
+            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          }
+        ],
+        "sessions_count": 0
       }
     }
   },
-  "training_sessions_completed": 15,
-  "last_retrained_at": "2026-09-10T17:39:06.981874"
+  "training_sessions_completed": 0
 }

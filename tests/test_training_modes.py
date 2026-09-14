@@ -233,8 +233,54 @@ class TestTrainingModesAndPedagogy(unittest.TestCase):
         self.assertEqual(len(res_dict["kendokas"]), 2)
         self.assertIn("pillars", res_dict["kendokas"][0])
         self.assertIn("recommended_exercises", res_dict["kendokas"][0])
+        self.assertIn("justification", res_dict)
+        self.assertIn("learned_principles", res_dict)
+        self.assertIn("modality_category", res_dict)
+        self.assertIn("web_sources", res_dict)
+
+    def test_modality_auto_detection_with_sonkyo(self):
+        """Valida a detecção de Shiai-geiko e Shinsa considerando a presença de Sonkyō."""
+        # 120 frames (~4s) com 1 golpe (~15 CPM) e Sonkyō -> Shiai-geiko
+        pose_hist_p1 = [self._create_mock_pose() for _ in range(120)]
+        pose_hist_p2 = [self._create_mock_pose(nose_x=0.7) for _ in range(120)]
+        strikes = [
+            StrikeEvent(strike_type="MEN", start_frame=20, impact_frame=25, end_frame=30, fps=30.0, attacker_id="KENSHI_SHIRO")
+        ]
+
+        mod_k, conf, just = self.analyzer.detect_training_modality(
+            pose_hist_p1, secondary_history=pose_hist_p2, detected_strikes=strikes, fps=30.0, has_sonkyo=True
+        )
+        self.assertEqual(mod_k, "shiai_geiko")
+        self.assertGreaterEqual(conf, 0.80)
+        self.assertIn("Sonkyō", just)
+
+        # Sem golpes e com Sonkyō -> Shinsa (Exame)
+        mod_k2, conf2, just2 = self.analyzer.detect_training_modality(
+            pose_hist_p1, secondary_history=pose_hist_p2, detected_strikes=[], fps=30.0, has_sonkyo=True
+        )
+        self.assertEqual(mod_k2, "shinsa")
+        self.assertGreaterEqual(conf2, 0.80)
+
+    def test_session_analysis_enriched_with_principles(self):
+        """Valida que analyze_session retorna princípios aprendidos e metadados completos."""
+        pose_hist = [self._create_mock_pose() for _ in range(60)]
+        strikes = [
+            StrikeEvent(strike_type="MEN", start_frame=10, impact_frame=15, end_frame=20, fps=30.0, attacker_id="KENSHI_SOLO")
+        ]
+
+        result = self.analyzer.analyze_session(
+            primary_history=pose_hist,
+            secondary_history=[],
+            detected_strikes=strikes,
+            fps=30.0
+        )
+        self.assertIsInstance(result.learned_principles, list)
+        self.assertGreaterEqual(len(result.learned_principles), 1)
+        self.assertTrue(len(result.justification) > 10)
+        self.assertTrue(len(result.modality_category) > 0)
 
 
 if __name__ == "__main__":
     unittest.main()
+
 

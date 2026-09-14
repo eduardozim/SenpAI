@@ -299,6 +299,101 @@ class TestAutoTrainer(unittest.TestCase):
         self.assertGreater(info_sub_after["gain_pct"], 0)
         self.assertGreaterEqual(info_sub_after["sessions_count"], 1)
 
+    def test_diagnose_latent_need_selectable_strategies(self):
+        """Valida a seleção explícita das 3 estratégias de necessidade mais latente."""
+        # 1. Menor percentual de aprendizado
+        diag_low = self.engine.diagnose_latent_need(strategy="lowest_accuracy")
+        self.assertIn("chosen_scope", diag_low)
+        self.assertTrue(any("menor percentual" in r.lower() or "menor precisão" in r.lower() or "latente" in r.lower() for r in diag_low["diagnosis_reasons"]))
+
+        # 2. Conhecimento geral do Kendo
+        diag_gen = self.engine.diagnose_latent_need(strategy="general_knowledge")
+        self.assertEqual(diag_gen["chosen_scope"], "general_all")
+        self.assertTrue(any("conhecimento geral" in r.lower() or "princípios do kendo" in r.lower() for r in diag_gen["diagnosis_reasons"]))
+
+        # 3. Modalidade randômica
+        diag_rnd = self.engine.diagnose_latent_need(strategy="random_modality")
+        self.assertIn("chosen_scope", diag_rnd)
+        self.assertTrue(diag_rnd["chosen_scope"].startswith("modality_"))
+        self.assertTrue(any("randômica" in r.lower() or "randomica" in r.lower() for r in diag_rnd["diagnosis_reasons"]))
+
+    def test_diagnose_latent_need_automatic_sequence(self):
+        """Valida a progressão sequencial automática em 3 etapas: 1º menor acurácia -> 2º geral -> 3º randômica -> loop."""
+        kb = self.engine.load_knowledge_base()
+
+        # Etapa 1: Menor percentual de aprendizado
+        kb["learned_parameters"]["auto_learning_sequence_step"] = 0
+        self.engine.save_knowledge_base(kb)
+        diag_step1 = self.engine.diagnose_latent_need(strategy="auto")
+        self.assertEqual(diag_step1["sequence_step"], 1)
+        self.assertTrue(diag_step1["chosen_scope"].startswith("modality_"))
+        self.assertTrue(any("etapa 1/3" in r.lower() or "menor percentual" in r.lower() for r in diag_step1["diagnosis_reasons"]))
+
+        # Etapa 2: Conhecimento geral
+        kb["learned_parameters"]["auto_learning_sequence_step"] = 1
+        self.engine.save_knowledge_base(kb)
+        diag_step2 = self.engine.diagnose_latent_need(strategy="auto")
+        self.assertEqual(diag_step2["sequence_step"], 2)
+        self.assertEqual(diag_step2["chosen_scope"], "general_all")
+        self.assertTrue(any("etapa 2/3" in r.lower() or "conhecimento geral" in r.lower() for r in diag_step2["diagnosis_reasons"]))
+
+        # Etapa 3: Modalidade randômica (última opção)
+        kb["learned_parameters"]["auto_learning_sequence_step"] = 2
+        self.engine.save_knowledge_base(kb)
+        diag_step3 = self.engine.diagnose_latent_need(strategy="auto")
+        self.assertEqual(diag_step3["sequence_step"], 3)
+        self.assertTrue(diag_step3["chosen_scope"].startswith("modality_"))
+        self.assertTrue(any("etapa 3/3" in r.lower() or "randômica" in r.lower() for r in diag_step3["diagnosis_reasons"]))
+
+        # Ciclo reinicia: Etapa 4 -> 1
+        kb["learned_parameters"]["auto_learning_sequence_step"] = 3
+        self.engine.save_knowledge_base(kb)
+        diag_step4 = self.engine.diagnose_latent_need(strategy="auto")
+        self.assertEqual(diag_step4["sequence_step"], 1)
+        self.assertTrue(diag_step4["chosen_scope"].startswith("modality_"))
+
+    def test_web_knowledge_search_and_fallback(self):
+        """Valida que a busca web por IA encontra dados e lida com falha de rede/desconhecidos com fallback."""
+        # Busca por modalidade existente (deve retornar fontes da web ou base local resiliente)
+        sources_sub = self.engine.search_web_kendo_knowledge("suburi", max_results=2)
+        self.assertIsInstance(sources_sub, list)
+        self.assertGreaterEqual(len(sources_sub), 1)
+        self.assertIn("title", sources_sub[0])
+        self.assertIn("summary", sources_sub[0])
+
+        # Busca por escopo geral
+        sources_gen = self.engine.search_web_kendo_knowledge("general", max_results=2)
+        self.assertGreaterEqual(len(sources_gen), 1)
+
+        # Busca por chave desconhecida (deve retornar fallback sem crash)
+        sources_unk = self.engine.search_web_kendo_knowledge("modalidade_inexistente_xyz", max_results=2)
+        self.assertIsInstance(sources_unk, list)
+        self.assertGreaterEqual(len(sources_unk), 1)
+
+    def test_cumulative_modality_knowledge_recording(self):
+        """Valida que o treinamento automático acumula princípios, fontes e logs de evolução de forma persistente."""
+        # Executar treino rápido em kirikaeshi
+        res = self.engine.run_auto_training(
+            scope_key="modality_kirikaeshi",
+            duration_minutes=0.08,
+            intensity="rapido"
+        )
+        self.assertEqual(res["status"], "success")
+
+        # Inspecionar conhecimento acumulado da modalidade
+        learned = self.engine.get_modality_learned_knowledge("kirikaeshi")
+        self.assertEqual(learned["key"], "kirikaeshi")
+        self.assertIn("principles_learned", learned)
+        self.assertGreaterEqual(len(learned["principles_learned"]), 2)
+        self.assertIn("biomechanical_profile", learned)
+        self.assertIn("evolution_log", learned)
+        self.assertGreaterEqual(len(learned["evolution_log"]), 1)
+
+        # Princípios gerais do Kendo
+        gen_principles = self.engine.get_general_kendo_principles()
+        self.assertGreaterEqual(len(gen_principles), 4)
+
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -142,12 +142,14 @@ def format_katakana_strike(strike_type: str) -> str:
     st_clean = strike_type.strip()
     return TIMELINE_KATAKANA_STRIKES.get(st_clean.upper(), TIMELINE_KATAKANA_STRIKES.get(st_clean, st_clean))
 
-def parse_ts_to_seconds(ts_str: str) -> float:
+def parse_ts_to_seconds(ts_str: Any) -> float:
     """Converte timestamps (ex: '00:02.500', '02.500', '2.5s') em segundos (float)."""
-    if not ts_str:
+    if ts_str is None or isinstance(ts_str, bool):
         return 0.0
+    if isinstance(ts_str, (int, float)):
+        return float(ts_str)
     try:
-        ts = ts_str.strip().lower().replace("s", "")
+        ts = str(ts_str).strip().lower().replace("s", "")
         if ":" in ts:
             parts = ts.split(":")
             return float(parts[0]) * 60.0 + float(parts[1])
@@ -210,12 +212,26 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
             </div>
             <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.06);">
                 <div style="color: #E2E8F0; font-size: 13px; margin-bottom: 3px;"><b>{meta.get('category', 'Modalidade')}:</b> {meta.get('description', '')}</div>
-                <div style="color: #94A3B8; font-size: 12px;">🎯 <b>Focos Principais de Avaliação:</b> {' • '.join(meta.get('focus_areas', []))}</div>
+                <div style="color: #94A3B8; font-size: 12px; margin-bottom: 3px;">🎯 <b>Focos Principais de Avaliação:</b> {' • '.join(meta.get('focus_areas', []))}</div>
+                {f"<div style='color: #38BDF8; font-size: 12px; margin-top: 4px;'>💡 <b>Diagnóstico da IA:</b> {train_data.get('justification', '')}</div>" if train_data.get('justification') else ""}
             </div>
         </div>
         """,
         unsafe_allow_html=True
     )
+
+    # Princípios Aprendidos e Fontes de Conhecimento Mineradas
+    learned_principles = train_data.get("learned_principles", [])
+    web_sources = train_data.get("web_sources", [])
+    if learned_principles:
+        with st.expander(f"📖 Princípios do Kendo Aprendidos pelo SenpAI para {mod_display_name}", expanded=False):
+            st.caption("Princípios técnicos, posturais e éticos consolidados pelo treinamento automático e fontes oficiais:")
+            for pr in learned_principles:
+                st.markdown(f"- 🥋 **{pr}**")
+            if web_sources:
+                st.markdown("**Fontes e Referências Técnicas Mineradas:**")
+                for ws in web_sources:
+                    st.markdown(f"- 🌐 [{ws.get('title', 'Fonte')}]({ws.get('url', '#')}) *(Tipo: {ws.get('type', 'Web')})*")
 
     # 2. CONTROLES: DOWNLOAD DO RELATÓRIO CONSOLIDADO
     top_c1, top_c2 = st.columns([2.8, 1.2])
@@ -1436,13 +1452,35 @@ elif nav_page == "settings":
                 unsafe_allow_html=True
             )
 
-            # Diagnóstico prévio em tempo real quando selecionado 'Necessidade Mais Latente'
+            # Diagnóstico prévio em tempo real quando selecionado 'Necessidade Mais Latente' (Sequência 100% Automática)
+            latent_strategy = "auto"
             if sel_scope_key == "latent_need":
-                diag_info = auto_trainer.diagnose_latent_need()
+                diag_info = auto_trainer.diagnose_latent_need(strategy="auto")
                 diag_reasons_str = " ".join(diag_info.get("diagnosis_reasons", []))
-                st.info(
-                    f"💡 **Diagnóstico Automático Ativo:** Foco eleito em **{diag_info['scope_name']}**.\n\n"
-                    f"*{diag_reasons_str}*"
+                seq_step_num = diag_info.get("sequence_step", 1)
+                seq_step_title = diag_info.get("sequence_step_name", "1º Menor Percentual de Aprendizado")
+
+                st.markdown(
+                    f"""
+                    <div style="background: linear-gradient(135deg, rgba(30, 27, 75, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1.5px solid #6366F1; border-radius: 8px; padding: 12px 16px; margin-top: 6px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.15);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid rgba(99, 102, 241, 0.25); padding-bottom: 4px;">
+                            <span style="color: #A5B4FC; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;">
+                                🔄 SEQUÊNCIA AUTOMÁTICA DE APRENDIZADO
+                            </span>
+                            <span style="background: rgba(99, 102, 241, 0.3); color: #C7D2FE; border: 1px solid #6366F1; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">
+                                Etapa {seq_step_num}/3: {seq_step_title}
+                            </span>
+                        </div>
+                        <div style="color: #FFFFFF; font-size: 13.5px; margin-bottom: 5px;">
+                            🎯 <b>Foco Eleito Automaticamente:</b> <span style="color: #38BDF8; font-weight: 700;">{diag_info['scope_name']}</span>
+                        </div>
+                        <div style="color: #94A3B8; font-size: 11.5px; line-height: 1.45;">
+                            <b>Ciclo Contínuo:</b> 1º Menor Acurácia ➔ 2º Princípios Gerais de Kendo ➔ 3º Modalidade Randômica (Exploração).<br>
+                            <i>{diag_reasons_str}</i>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
                 )
 
             st.markdown("**⚙️ Fontes e Profundidade da Pesquisa por IA:**")
@@ -1521,6 +1559,7 @@ elif nav_page == "settings":
                             intensity=depth_sel,
                             include_video=inc_vid_chk,
                             include_text_guidelines=inc_txt_chk,
+                            latent_strategy=latent_strategy,
                             progress_callback=update_progress_ui
                         )
                     except Exception as ex:
@@ -1830,6 +1869,66 @@ elif nav_page == "settings":
                     "💡 **Legenda dos 3 Pilares:** **M** = Movimentação (Postura, Coluna, Calcanhar Esquerdo) | "
                     "**P** = Precisão (Trajetória, Hasuji, Ki-Ken-Tai-Ichi) | **C** = Constância (Cadência, Regularidade e Resistência)."
                 )
+
+                st.markdown("---")
+                st.markdown("#### 📖 O Que o SenpAI Já Aprendeu sobre Cada Modalidade")
+                st.caption("Consulte detalhadamente os princípios técnicos consolidados, perfil biomecânico de tolerâncias e fontes mineradas pela IA:")
+
+                mod_inspect_keys = [m.get("key", "") for m in modalities_data if m.get("key")]
+                if not mod_inspect_keys:
+                    mod_inspect_keys = list(TRAINING_MODALITIES_METADATA.keys())
+
+                sel_inspect_key_raw = st.selectbox(
+                    "Selecione a Modalidade para Inspecionar o Conhecimento Acumulado:",
+                    options=mod_inspect_keys,
+                    format_func=lambda k: f"{TRAINING_MODALITIES_METADATA.get(k, {}).get('name', k)} — {TRAINING_MODALITIES_METADATA.get(k, {}).get('category', '')}",
+                    key="sel_modality_inspect_box"
+                )
+                sel_inspect_key = str(sel_inspect_key_raw or "suburi")
+                mod_learned = auto_trainer.get_modality_learned_knowledge(sel_inspect_key)
+
+                c_info1, c_info2 = st.columns([1.8, 1.2])
+                with c_info1:
+                    st.markdown(f"##### 🥋 {mod_learned.get('name', sel_inspect_key)} (*{mod_learned.get('category', '')}*)")
+                    st.markdown(f"**Nível de Maestria:** `{mod_learned.get('mastery_level', 'Praticante')}` &nbsp;|&nbsp; **Acurácia Atual:** `{mod_learned.get('current_accuracy_pct', 85.0):.1f}%`")
+                    st.markdown(f"**Ciclos de Treinamento:** `{mod_learned.get('training_sessions_count', 0)}` &nbsp;|&nbsp; **Amostras Processadas:** `{mod_learned.get('samples_estimated', 0):,}`")
+
+                    st.markdown("**Princípios Técnicos e Filosóficos Aprendidos:**")
+                    pr_list = mod_learned.get("principles_learned", [])
+                    if pr_list:
+                        for pr in pr_list:
+                            st.markdown(f"- ⚔️ {pr}")
+                    else:
+                        st.caption("Nenhum princípio específico gravado ainda.")
+
+                with c_info2:
+                    st.markdown("##### 🧬 Perfil Biomecânico Esperado")
+                    bio = mod_learned.get("biomechanical_profile", {})
+                    if bio:
+                        st.markdown(f"- **Cadência Ideal:** `{bio.get('cadence_cpm', '20-60')} CPM`")
+                        st.markdown(f"- **Tolerância Postural:** `{bio.get('posture_tilt_tolerance', 'Alta')}`")
+                        st.markdown(f"- **Elevação de Calcanhar:** `{bio.get('heel_elevation_min', 'Simétrica')}`")
+                        st.markdown(f"- **Foco de Alvo:** `{bio.get('datotsu_target_focus', 'Men, Kote, Do, Tsuki')}`")
+
+                    st.markdown("##### 🌐 Fontes Web Mineradas")
+                    web_src = mod_learned.get("web_sources", [])
+                    if web_src:
+                        for ws in web_src:
+                            st.markdown(f"- 📄 [{ws.get('title', 'Referência')}]({ws.get('url', '#')}) *(Tipo: {ws.get('type', 'Web')})*")
+                    else:
+                        st.caption("Nenhuma fonte externa minerada ainda.")
+
+                evo_log = mod_learned.get("evolution_log", [])
+                if evo_log:
+                    with st.expander(f"📜 Log Histórico de Evolução de {mod_learned.get('name', '')} ({len(evo_log)} registros)", expanded=False):
+                        for log_entry in evo_log:
+                            st.markdown(f"- `{log_entry.get('timestamp', '')}` — **{log_entry.get('event', '')}**: {log_entry.get('details', '')}")
+
+                with st.expander("📚 Ver Princípios Gerais e Fundamentos Universais do Kendo (ZNKR / FIK)", expanded=False):
+                    gen_principles = auto_trainer.get_general_kendo_principles()
+                    for gp in gen_principles:
+                        st.markdown(f"- 🏯 **{gp}**")
+
 
         with tab_evo_sources:
             st.markdown("**Corpus Técnico de Diretrizes Oficiais e Vídeos Indexados pela IA:**")
@@ -2312,18 +2411,22 @@ elif nav_page == "analysis":
     # MODO 3: DETECÇÃO EM TEMPO REAL MULTI-CÂMERAS (1 A 4 CÂMERAS)
     # ==========================================================================
     if app_mode == "realtime":
-        def render_live_score_html(score_shiro: int, score_aka: int, total_shiro: int, total_aka: int) -> str:
+        def render_live_score_html(score_shiro: int, score_aka: int, total_shiro: int, total_aka: int, modality_label: str = "Avaliando movimentação...") -> str:
             total_strikes = total_shiro + total_aka
             total_ippon = score_shiro + score_aka
             shiro_sub = f"{score_shiro} Ippon{'s' if score_shiro != 1 else ''} / {total_shiro} Golpe{'s' if total_shiro != 1 else ''}"
             aka_sub = f"{score_aka} Ippon{'s' if score_aka != 1 else ''} / {total_aka} Golpe{'s' if total_aka != 1 else ''}"
             return (
                 f'<div style="background: #090D16; border: 1.5px solid #334155; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.35);">'
-                f'<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 6px; margin-bottom: 10px;">'
+                f'<div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 6px; margin-bottom: 8px;">'
                 f'<span style="color: #94A3B8; font-size: 11px; font-weight: 800; letter-spacing: 0.6px;">🥋 CONTADOR DE PONTOS (AO VIVO)</span>'
                 f'<span style="color: #38BDF8; font-size: 11px; font-weight: 700; background: rgba(56,189,248,0.12); padding: 2px 8px; border-radius: 9999px;">'
                 f'Total: {total_strikes} Golpe{"s" if total_strikes != 1 else ""} ({total_ippon} Ippon{"s" if total_ippon != 1 else ""})'
                 f'</span>'
+                f'</div>'
+                f'<div style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 6px; padding: 5px 9px; margin-bottom: 8px; font-size: 11px; color: #C7D2FE; display: flex; justify-content: space-between; align-items: center;">'
+                f'<span>🎓 <b>Modalidade Reconhecida:</b> <b style="color: #FFFFFF;">{modality_label}</b></span>'
+                f'<span style="font-size: 10px; color: #A5B4FC; background: rgba(99,102,241,0.25); padding: 1px 6px; border-radius: 4px;">IA Ativa</span>'
                 f'</div>'
                 f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">'
                 f'<div style="background: rgba(255, 255, 255, 0.05); border: 1.5px solid #94A3B8; border-radius: 8px; padding: 8px 10px; text-align: center;">'
@@ -2554,8 +2657,9 @@ elif nav_page == "analysis":
                 frame_count = 0
                 start_time = time.time()
                 current_fps = 30.0
+                live_modality_name = "Detectando movimentação..."
 
-                live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes))
+                live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
 
                 while run_live_detection:
                     any_frame_read = False
@@ -2631,6 +2735,20 @@ elif nav_page == "analysis":
                         continue
 
 
+                    # Identificação contínua e periódica da modalidade de treinamento no fluxo de vídeo
+                    if frame_count % 45 == 0 and len(live_pose_histories[0]) >= 20:
+                        try:
+                            sec_h = live_pose_histories[1] if num_cameras > 1 else []
+                            m_k, m_c, _ = pipeline.training_analyzer.detect_training_modality(
+                                primary_history=live_pose_histories[0][-90:],
+                                secondary_history=sec_h[-90:] if sec_h else [],
+                                fps=current_fps or 30.0
+                            )
+                            live_modality_name = f"{TRAINING_MODALITIES_METADATA.get(m_k, {}).get('name', m_k)} ({int(m_c * 100)}%)"
+                            live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
+                        except Exception:
+                            pass
+
                     # Avaliação conjunta do golpe pelo conjunto de imagens das câmeras (processado em background)
                     if frame_count % 3 == 0 and any(len(h) >= 15 for h in live_pose_histories):
                         multicam_eval = pipeline.multicam_fusion.evaluate_live_step(
@@ -2661,7 +2779,7 @@ elif nav_page == "analysis":
                                 if is_ippon:
                                     score_aka += 1
 
-                            live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes))
+                            live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
 
                             # Banner superior de notificação imediata
                             if is_ippon:
@@ -3623,6 +3741,52 @@ elif nav_page == "analysis":
                         res = st.session_state["analysis_result"]
                         sonkyo_info = res.get("sonkyo_analysis", {})
 
+                        # Banner de Reconhecimento da Modalidade de Treinamento no Vídeo
+                        train_data = res.get("training_analysis", {})
+                        if train_data:
+                            t_mod_name = train_data.get("modality_name", "Treinamento de Kendo")
+                            t_mod_cat = train_data.get("modality_category", "Geral")
+                            t_conf_pct = int(train_data.get("detection_confidence", 0.8) * 100)
+                            t_det_m = train_data.get("detection_method", "AUTO_DETECTED")
+                            t_just = train_data.get("justification", "")
+                            t_learned_pr = train_data.get("learned_principles", [])
+                            t_web_src = train_data.get("web_sources", [])
+
+                            st.markdown(
+                                f"""
+                                <div style="background: linear-gradient(135deg, #090D16 0%, #1E1B4B 100%); border: 2px solid #6366F1; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; box-shadow: 0 4px 18px rgba(99, 102, 241, 0.25);">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(99, 102, 241, 0.3); padding-bottom: 6px; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-size: 22px;">🎓</span>
+                                            <div>
+                                                <div style="color: #A5B4FC; font-size: 10px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;">MODALIDADE DE TREINAMENTO RECONHECIDA NO VÍDEO</div>
+                                                <div style="color: #FFFFFF; font-size: 17px; font-weight: 900; font-family: monospace;">
+                                                    {t_mod_name} <span style="font-size: 13px; color: #CBD5E1; font-weight: 500;">— {t_mod_cat}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <span style="background: rgba(99, 102, 241, 0.25); color: #C7D2FE; border: 1px solid #6366F1; padding: 2px 8px; border-radius: 16px; font-size: 11px; font-weight: 700;">
+                                                {'🔍 IA Reconheceu' if t_det_m == 'AUTO_DETECTED' else '⚙️ Selecionado'} ({t_conf_pct}% Confiança)
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div style="color: #94A3B8; font-size: 12px;">
+                                        💡 <b>Diagnóstico da IA:</b> {t_just}
+                                    </div>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                            if t_learned_pr:
+                                with st.expander(f"📖 Princípios do Kendo Aprendidos pela IA para {t_mod_name}", expanded=False):
+                                    for pr in t_learned_pr:
+                                        st.markdown(f"- 🥋 **{pr}**")
+                                    if t_web_src:
+                                        st.markdown("**Fontes Web Mineradas:**")
+                                        for ws in t_web_src:
+                                            st.markdown(f"- 🌐 [{ws.get('title', 'Fonte')}]({ws.get('url', '#')})")
+
                         # Montagem da lista unificada e cronológica de golpes
                         combined_strikes = []
                         session_revs = st.session_state.get("session_reviews", {})
@@ -3635,7 +3799,7 @@ elif nav_page == "analysis":
                             for fn_k, fn_v in session_revs.items():
                                 is_fn_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON" or fn_v.get("label") == "TP")
                                 if is_fn_ippon and fn_v.get("reviewer_dan") == "shinpan":
-                                    ts_val = fn_v.get("timestamp", "00:00.000")
+                                    ts_val = str(fn_v.get("timestamp") or "00:00.000")
                                     combined_strikes.append({
                                         "event_id": fn_k,
                                         "source": "SHINPAN_IPPON",
@@ -3692,7 +3856,7 @@ elif nav_page == "analysis":
                                 current_rev["attacker_name"] = attacker_label
                                 current_rev["attacker_id"] = attacker_id
 
-                                strike_ts = current_rev.get("timestamp", ev.get("timestamp", "00:00.000"))
+                                strike_ts = str(current_rev.get("timestamp") or ev.get("timestamp") or "00:00.000")
                                 combined_strikes.append({
                                     "event_id": event_id_str,
                                     "source": "AI_DETECTED",
@@ -3711,7 +3875,7 @@ elif nav_page == "analysis":
                             if enable_editing:
                                 for fn_k, fn_v in session_revs.items():
                                     if fn_v.get("is_included") and fn_v.get("reviewer_dan") != "shinpan":
-                                        ts_val = fn_v.get("timestamp", "00:00.000")
+                                        ts_val = str(fn_v.get("timestamp") or "00:00.000")
                                         inc_ippon = fn_v.get("is_valid_ippon", fn_v.get("category") == "VALID_IPPON")
                                         combined_strikes.append({
                                             "event_id": fn_k,

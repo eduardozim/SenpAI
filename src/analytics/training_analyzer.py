@@ -29,6 +29,8 @@ import numpy as np
 from typing import Dict, List, Any, Optional, Tuple, Sequence
 
 
+
+
 # ==============================================================================
 # DICIONÁRIO E METADADOS DAS 14 MODALIDADES OFICIAIS DE TREINAMENTO (COM KANJI)
 # ==============================================================================
@@ -218,7 +220,7 @@ class TrainingPillarMetrics:
 
         self.cadence_cpm = round(float(cadence_cpm), 1)
         self.cadence_std_dev_seconds = round(float(cadence_std_dev_seconds), 3)
-        self.total_repetitions = int(total_repetitions)
+        self.total_repetitions = total_repetitions
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -380,7 +382,11 @@ class TrainingSessionResult:
         duration_seconds: float,
         total_frames_analyzed: int,
         kendokas: List[KendokaTrainingProfile],
-        session_summary_text: str
+        session_summary_text: str,
+        justification: str = "",
+        learned_principles: Optional[List[str]] = None,
+        modality_category: str = "",
+        web_sources: Optional[List[Dict[str, str]]] = None
     ):
         self.modality_key = modality_key
         self.modality_name = modality_name
@@ -388,9 +394,13 @@ class TrainingSessionResult:
         self.detection_method = detection_method  # "AUTO_DETECTED" ou "MANUAL_SELECT"
         self.is_manual_override = is_manual_override
         self.duration_seconds = round(float(duration_seconds), 2)
-        self.total_frames_analyzed = int(total_frames_analyzed)
+        self.total_frames_analyzed = total_frames_analyzed
         self.kendokas = kendokas
         self.session_summary_text = session_summary_text
+        self.justification = justification
+        self.learned_principles = learned_principles or []
+        self.modality_category = modality_category
+        self.web_sources = web_sources or []
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -402,7 +412,11 @@ class TrainingSessionResult:
             "duration_seconds": self.duration_seconds,
             "total_frames_analyzed": self.total_frames_analyzed,
             "kendokas": [k.to_dict() for k in self.kendokas],
-            "session_summary_text": self.session_summary_text
+            "session_summary_text": self.session_summary_text,
+            "justification": self.justification,
+            "learned_principles": self.learned_principles,
+            "modality_category": self.modality_category,
+            "web_sources": self.web_sources
         }
 
 
@@ -424,11 +438,13 @@ class TrainingAnalyzer:
         primary_history: Sequence[Optional[Dict[str, Any]]],
         secondary_history: Optional[Sequence[Optional[Dict[str, Any]]]] = None,
         detected_strikes: Optional[List[Any]] = None,
-        fps: float = 30.0
+        fps: float = 30.0,
+        has_sonkyo: bool = False
     ) -> Tuple[str, float, str]:
         """
         Classifica a modalidade do treino analisando:
         - Quantidade de praticantes ativos (1 praticante solo vs 2 praticantes em dupla)
+        - Presença de Sonkyō inicial/final (indicativo de Shiai-geiko, Shinsa ou Kata)
         - Frequência e cadência dos golpes no tempo
         - Padrões de deslocamento de pés vs golpes no ar
         - Ritmo contínuo alternado (Kirikaeshi) vs rajadas intensas (Kakari-geiko) vs combate livre (Ji-geiko)
@@ -461,19 +477,26 @@ class TrainingAnalyzer:
         if strikes_per_minute >= 40 and num_strikes >= 8:
             return "kirikaeshi", 0.90, f"Sequência rápida e contínua de golpes alternados com alta cadência ({strikes_per_minute:.1f} CPM), característica de Kirikaeshi."
 
-        # Kakari-geiko: Densidade altíssima de ataques em curto espaço de tempo (35+ CPM)
+        # Kakari-geiko: Densidade altíssima de ataques em curto espaço de tempo (32+ CPM)
         if strikes_per_minute >= 32:
             return "kakari_geiko", 0.85, f"Sequência intensa e ininterrupta de ataques com alta frequência ({strikes_per_minute:.1f} CPM), típica de Kakari-geiko."
 
-        # Uchikomi-geiko: Golpes regulares com pausas intermediárias de abertura de alvo (20-30 CPM)
+        # Uchikomi-geiko: Golpes regulares com pausas intermediárias de abertura de alvo (18-32 CPM)
         if 18 <= strikes_per_minute < 32:
             return "uchikomi_geiko", 0.82, f"Cadência ritmada de ataques sobre aberturas sucessivas de alvo pelo parceiro ({strikes_per_minute:.1f} CPM)."
+
+        # Shiai-geiko ou Shinsa com Sonkyō detectado e cadência típica de luta / exame
+        if has_sonkyo and 6 <= strikes_per_minute < 20:
+            return "shiai_geiko", 0.88, f"Dois praticantes em combate com presença de Sonkyō regulamentar e disputa por Ippon ({strikes_per_minute:.1f} CPM), característico de Shiai-geiko."
+
+        if has_sonkyo and strikes_per_minute < 6:
+            return "shinsa", 0.84, f"Execução com Sonkyō formal, etiqueta e pausas estruturadas, padrão de exame de graduação (Shinsa) ou Nihon Kendō Kata."
 
         # Kihon / Waza-geiko / Yakusoku-geiko: Poucos golpes estruturados, pausas para retorno em Kamae
         if 8 <= strikes_per_minute < 18:
             return "kihon", 0.80, f"Estrutura pausada com foco na execução correta dos fundamentos, postura e Zanshin."
 
-        # Combate Livre / Simulação (Ji-geiko ou Shiai-geiko)
+        # Combate Livre / Simulação (Ji-geiko)
         if num_strikes > 0:
             return "ji_geiko", 0.78, f"Dois praticantes em dinâmica de combate livre, disputando centro e oportunidade (Ji-geiko)."
 
@@ -765,7 +788,8 @@ class TrainingAnalyzer:
         detected_strikes: Optional[List[Any]] = None,
         modality_override: Optional[str] = None,
         fps: float = 30.0,
-        custom_kendoka_names: Optional[Dict[str, str]] = None
+        custom_kendoka_names: Optional[Dict[str, str]] = None,
+        has_sonkyo: bool = False
     ) -> TrainingSessionResult:
         """
         Executa a análise completa da sessão de treinamento, processando cada Kendoca
@@ -781,20 +805,40 @@ class TrainingAnalyzer:
             confidence = 1.0
             det_method = "MANUAL_SELECT"
             is_override = True
+            justification = f"Modalidade selecionada manualmente pelo usuário: {TRAINING_MODALITIES_METADATA[modality_key]['name']}."
         else:
-            auto_key, conf, _ = self.detect_training_modality(
+            auto_key, conf, just = self.detect_training_modality(
                 primary_history=primary_history,
                 secondary_history=secondary_history,
                 detected_strikes=strikes,
-                fps=fps
+                fps=fps,
+                has_sonkyo=has_sonkyo
             )
             modality_key = auto_key
             confidence = conf
             det_method = "AUTO_DETECTED"
             is_override = False
+            justification = just
 
         modality_meta = TRAINING_MODALITIES_METADATA.get(modality_key, TRAINING_MODALITIES_METADATA["suburi"])
         modality_name = modality_meta["name"]
+        modality_cat = modality_meta.get("category", "Geral")
+
+        # Obter princípios acumulados e fontes de conhecimento do Kendo
+        try:
+            from src.engine.auto_trainer import get_modality_learned_knowledge
+            learned_info = get_modality_learned_knowledge(modality_key)
+        except Exception:
+            learned_info = {}
+
+        learned_principles = learned_info.get("principles_learned", [])
+        if not learned_principles:
+            focus_str = ", ".join(modality_meta.get("focus_areas", ["Fundamentos", "Ki-Ken-Tai-Ichi"]))
+            learned_principles = [
+                f"Princípio Técnico ({modality_name}): Domínio de {focus_str}.",
+                "Alinhamento postural (Shisei) e prontidão marcial (Zanshin)."
+            ]
+        web_sources = learned_info.get("web_sources", [])
 
         # 2. Identificação e Análise dos Kendocas Rastreáveis
         valid_prim = [p for p in primary_history if p]
@@ -911,7 +955,11 @@ class TrainingAnalyzer:
             duration_seconds=duration_sec,
             total_frames_analyzed=len(primary_history),
             kendokas=kendokas_list,
-            session_summary_text=summary
+            session_summary_text=summary,
+            justification=justification,
+            learned_principles=learned_principles,
+            modality_category=modality_cat,
+            web_sources=web_sources
         )
 
     # --------------------------------------------------------------------------
