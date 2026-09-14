@@ -21,17 +21,19 @@ class TestExcelStrikesIO(unittest.TestCase):
     def setUp(self):
         self.test_dataset = "data/test_excel_feedback.json"
         self.test_history = "data/test_excel_history.json"
+        self.test_shinpan_registry = "data/test_excel_shinpan_videos.json"
         self._cleanup_test_files()
         self.feedback_mgr = FeedbackManager(
             dataset_path=self.test_dataset,
-            history_path=self.test_history
+            history_path=self.test_history,
+            shinpan_registry_path=self.test_shinpan_registry
         )
 
     def tearDown(self):
         self._cleanup_test_files()
 
     def _cleanup_test_files(self):
-        for p in [self.test_dataset, self.test_history]:
+        for p in [self.test_dataset, self.test_history, self.test_shinpan_registry]:
             if os.path.exists(p):
                 try:
                     os.remove(p)

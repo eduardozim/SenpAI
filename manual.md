@@ -470,6 +470,14 @@ O módulo de **Decisão dos Shinpans** foi concebido para atender às exigência
   - Botão `⚖️ Salvar Decisão dos Shinpans & Recalibrar Pesos`.
   - Recalibra os pesos dos 4 critérios de *Ki-Ken-Tai-Ichi* (*target_impact*, *fumikomi_sync*, *posture*, *zanshin*) utilizando fator de aprendizado balanceado `4.5` com normalização matemática estrita ($\sum w = 1.0$).
   - Trava de proteção: impede confirmação automática incorreta caso nenhum Ippon tenha sido apontado pelos árbitros.
+- **Governança de Links de Vídeos & Prevenção de Entradas Duplicadas para Shinpans**:
+  - **Registro Persistente de Links de Vídeos (`data/shinpan_reviewed_videos.json`)**: Ao homologar uma sessão como *Decisão dos Shinpans*, o link do vídeo (YouTube watch, Shorts, streaming web ou arquivo de upload local) é normalizado para um identificador canônico e persistido com data/hora, ID da sessão de retreinamento e quantidade de Ippons homologados.
+  - **Bloqueio Estrito de Duplicidade para Shinpans**: O sistema impede terminantemente que um mesmo link de vídeo receba 2 entradas como *Decisão dos Shinpans*, protegendo a integridade do histórico arbitral. Quando um vídeo já registrado é aberto em modo Shinpan:
+    - Um banner de bloqueio é exibido: `⛔ ENTRADA DUPLICADA BLOQUEADA — DECISÃO DOS SHINPANS JÁ REGISTRADA`, informando data, sessão e link registrado.
+    - Os botões `⚖️ Salvar Decisão dos Shinpans & Recalibrar Pesos` e `➕ Ippon dos Shinpans` ficam bloqueados e desabilitados.
+    - O motor de governança levanta `DuplicateShinpanReviewError` prevenindo qualquer tentativa de gravação duplicada.
+  - **Revisão por DAN Irrestrita para Entradas Duplicadas**: A restrição de link único incide **exclusivamente sobre a Decisão dos Shinpans**. Revisores graduados de **1º ao 8º Dan** possuem total liberdade para avaliar o mesmo link de vídeo quantas vezes forem necessárias (para fins formativos, estudos técnicos e análises pedagógicas), sem qualquer restrição de entradas duplicadas.
+  - **Painel de Auditoria e Consulta**: Aba de Governança de Treinamento exibe a lista expansível de vídeos homologados com seus links, IDs canônicos, datas e sessões.
 
 ---
 

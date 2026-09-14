@@ -14,7 +14,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-from src.engine.feedback_manager import FeedbackManager, DAN_NAMES, SHINPAN_REV_KEY, SHINPAN_NAME, is_shinpan_reviewer
+from src.engine.feedback_manager import FeedbackManager, DAN_NAMES, SHINPAN_REV_KEY, SHINPAN_NAME, is_shinpan_reviewer, DuplicateShinpanReviewError
 from src.engine.calibrator import CalibrationEngine
 from src.utils.logger_manager import log_event
 
@@ -716,7 +716,8 @@ def execute_training_from_imported_strikes(
     reviewer_dan: Any,
     current_profile_config: Dict[str, Any],
     feedback_mgr: FeedbackManager,
-    auto_trainer_instance: Optional[Any] = None
+    auto_trainer_instance: Optional[Any] = None,
+    streaming_url: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Executa o treinamento adaptativo dos golpes a partir dos dados importados do Excel:
@@ -742,7 +743,8 @@ def execute_training_from_imported_strikes(
         profile_key=profile_key,
         reviewer_dan=dan_val,
         review_items=imported_strikes,
-        current_profile_config=current_profile_config
+        current_profile_config=current_profile_config,
+        video_url=streaming_url
     )
 
     # Persiste o novo perfil de calibração

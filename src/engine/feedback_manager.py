@@ -5,13 +5,70 @@ Gerencia a gravação de marcações (TP, FP, FN, edições e revisões por Dan)
 
 import json
 import os
+import re
 import datetime
 from typing import Dict, Any, List, Tuple, Optional
+from urllib.parse import urlparse
 from src.utils.logger_manager import log_event
 
 SHINPAN_REV_KEY: str = "shinpan"
 SHINPAN_NAME: str = "Decisão dos Shinpans"
 SHINPAN_CALIBRATION_WEIGHT: float = 4.5  # Constante média equilibrada (mediana de 1º a 8º Dan)
+
+
+class DuplicateShinpanReviewError(ValueError):
+    """Exceção levantada ao tentar registrar uma segunda Decisão dos Shinpans para um mesmo link de vídeo."""
+    pass
+
+
+def normalize_video_identifier(url_or_name: Optional[str]) -> str:
+    """
+    Normaliza a URL ou o identificador de arquivo do vídeo para uma chave canônica única.
+    Permite detectar o mesmo vídeo independentemente do formato do link ou parâmetros extras.
+
+    Exemplos:
+    - https://www.youtube.com/watch?v=ABC123xyz -> youtube:ABC123xyz
+    - https://youtu.be/ABC123xyz -> youtube:ABC123xyz
+    - https://www.youtube.com/shorts/ABC123xyz -> youtube:ABC123xyz
+    - https://example.com/video.mp4?token=123 -> url:https://example.com/video.mp4
+    - upload_172000000_fight.mp4 -> file:fight.mp4
+    - fight.mp4 -> file:fight.mp4
+    """
+    if not url_or_name or not isinstance(url_or_name, str):
+        return ""
+
+    val = url_or_name.strip()
+    if not val:
+        return ""
+
+    # Padrões do YouTube
+    yt_patterns = [
+        r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{6,})",
+        r"(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]{6,})",
+        r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{6,})",
+        r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/live\/([a-zA-Z0-9_-]{6,})",
+        r"(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]{6,})",
+    ]
+    for pat in yt_patterns:
+        m = re.search(pat, val, re.IGNORECASE)
+        if m:
+            return f"youtube:{m.group(1)}"
+
+    # URLs HTTP/HTTPS genéricas
+    if val.startswith("http://") or val.startswith("https://"):
+        try:
+            parsed = urlparse(val)
+            clean_url = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+            return f"url:{clean_url.rstrip('/').lower()}"
+        except Exception:
+            return f"url:{val.lower()}"
+
+    # Arquivo local / upload
+    basename = os.path.basename(val)
+    # Remove prefixo temporário 'upload_\d+_' se presente
+    clean_basename = re.sub(r"^upload_\d+_", "", basename)
+    return f"file:{clean_basename.lower()}"
+
 
 def is_shinpan_reviewer(dan_val: Any) -> bool:
     if dan_val is None:
@@ -65,13 +122,15 @@ class FeedbackManager:
         history_path: str = "data/training_history.json",
         profiles_path: str = "config/calibration_profiles.json",
         models_dir: str = "models",
-        knowledge_base_path: str = "config/ai_knowledge_base.json"
+        knowledge_base_path: str = "config/ai_knowledge_base.json",
+        shinpan_registry_path: str = "data/shinpan_reviewed_videos.json"
     ):
         self.dataset_path = dataset_path
         self.history_path = history_path
         self.profiles_path = profiles_path
         self.models_dir = models_dir
         self.knowledge_base_path = knowledge_base_path
+        self.shinpan_registry_path = shinpan_registry_path
         self._ensure_files_exist()
 
     def _ensure_files_exist(self):
@@ -83,6 +142,11 @@ class FeedbackManager:
         os.makedirs(os.path.dirname(self.history_path), exist_ok=True)
         if not os.path.exists(self.history_path):
             with open(self.history_path, "w", encoding="utf-8") as f:
+                json.dump([], f, indent=2, ensure_ascii=False)
+
+        os.makedirs(os.path.dirname(self.shinpan_registry_path), exist_ok=True)
+        if not os.path.exists(self.shinpan_registry_path):
+            with open(self.shinpan_registry_path, "w", encoding="utf-8") as f:
                 json.dump([], f, indent=2, ensure_ascii=False)
 
     def load_feedback(self) -> List[Dict[str, Any]]:
@@ -102,6 +166,133 @@ class FeedbackManager:
                 except Exception:
                     return []
         return []
+
+    def load_shinpan_reviewed_videos(self) -> List[Dict[str, Any]]:
+        """
+        Carrega a lista de links/arquivos de vídeos com Decisão dos Shinpans já registrada.
+        Sincroniza retroativamente com registros de training_history.json caso algum
+        vídeo histórico de Shinpans ainda não esteja presente no arquivo exclusivo.
+        """
+        entries: List[Dict[str, Any]] = []
+        if os.path.exists(self.shinpan_registry_path):
+            try:
+                with open(self.shinpan_registry_path, "r", encoding="utf-8") as f:
+                    entries = json.load(f)
+            except Exception:
+                entries = []
+
+        # Sincronização retroativa com training_history.json
+        history = self.load_history()
+        registered_ids = {e.get("video_identifier") for e in entries if e.get("video_identifier")}
+        history_added = False
+
+        for h in history:
+            is_sh = bool(h.get("is_shinpan_decision") or is_shinpan_reviewer(h.get("reviewer_dan")))
+            if is_sh:
+                v_url = h.get("video_url") or h.get("streaming_url") or ""
+                v_name = h.get("video_name") or ""
+                canon_id = normalize_video_identifier(v_url) if v_url else normalize_video_identifier(v_name)
+                if canon_id and canon_id not in registered_ids:
+                    new_rec = {
+                        "video_identifier": canon_id,
+                        "video_url": v_url or v_name,
+                        "video_name": v_name,
+                        "session_id": h.get("id", ""),
+                        "reviewed_at": h.get("timestamp", ""),
+                        "reviewer_dan": SHINPAN_REV_KEY,
+                        "reviewer_dan_name": SHINPAN_NAME,
+                        "profile_key": h.get("profile_key", "normal"),
+                        "items_count": h.get("items_count", 0)
+                    }
+                    entries.append(new_rec)
+                    registered_ids.add(canon_id)
+                    history_added = True
+
+        if history_added and os.path.exists(os.path.dirname(self.shinpan_registry_path)):
+            try:
+                with open(self.shinpan_registry_path, "w", encoding="utf-8") as f:
+                    json.dump(entries, f, indent=2, ensure_ascii=False)
+            except Exception:
+                pass
+
+        return entries
+
+    def is_video_reviewed_by_shinpan(
+        self,
+        video_url: Optional[str] = None,
+        video_name: Optional[str] = None
+    ) -> Tuple[bool, Optional[Dict[str, Any]]]:
+        """
+        Verifica se o link ou nome do vídeo já possui uma Decisão dos Shinpans homologada.
+        Retorna (True, record) se já foi avaliado pelos Shinpans, ou (False, None) caso contrário.
+        """
+        cand_ids = set()
+        if video_url:
+            cand_ids.add(normalize_video_identifier(video_url))
+        if video_name:
+            cand_ids.add(normalize_video_identifier(video_name))
+        cand_ids.discard("")
+
+        if not cand_ids:
+            return False, None
+
+        entries = self.load_shinpan_reviewed_videos()
+        for entry in entries:
+            e_id = entry.get("video_identifier")
+            if e_id and e_id in cand_ids:
+                return True, entry
+            if video_url and entry.get("video_url") and entry.get("video_url").strip().lower() == video_url.strip().lower():
+                return True, entry
+            if video_name and entry.get("video_name") and entry.get("video_name").strip().lower() == video_name.strip().lower():
+                return True, entry
+
+        return False, None
+
+    def register_shinpan_review(
+        self,
+        video_identifier: str,
+        video_url: str,
+        video_name: str,
+        session_id: str,
+        reviewed_at: str,
+        items_count: int,
+        profile_key: str
+    ) -> Dict[str, Any]:
+        """
+        Registra oficialmente o link/arquivo do vídeo na lista de Decisões dos Shinpans.
+        """
+        entries = self.load_shinpan_reviewed_videos()
+        record = {
+            "video_identifier": video_identifier,
+            "video_url": video_url,
+            "video_name": video_name,
+            "session_id": session_id,
+            "reviewed_at": reviewed_at,
+            "reviewer_dan": SHINPAN_REV_KEY,
+            "reviewer_dan_name": SHINPAN_NAME,
+            "profile_key": profile_key,
+            "items_count": items_count
+        }
+
+        idx_found = None
+        for i, e in enumerate(entries):
+            if e.get("video_identifier") == video_identifier:
+                idx_found = i
+                break
+        if idx_found is not None:
+            entries[idx_found] = record
+        else:
+            entries.append(record)
+
+        with open(self.shinpan_registry_path, "w", encoding="utf-8") as f:
+            json.dump(entries, f, indent=2, ensure_ascii=False)
+
+        log_event(
+            "INFO",
+            f"VÍDEO REGISTRADO EM DECISÃO DOS SHINPANS: Link/ID='{video_identifier}', Sessão='{session_id}', Ippons={items_count}",
+            "feedback_manager"
+        )
+        return record
 
     def save_feedback(
         self,
@@ -183,17 +374,36 @@ class FeedbackManager:
         profile_key: str,
         reviewer_dan: Any,
         review_items: List[Dict[str, Any]],
-        current_profile_config: Dict[str, Any]
+        current_profile_config: Dict[str, Any],
+        video_url: Optional[str] = None
     ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Salva uma sessão de revisão de detecção gravada, atualiza os dados por Dan ou Shinpans,
         executa o retreinamento do modelo e grava no histórico de treinamentos.
+
+        Regras de Governança:
+        - Decisão dos Shinpans: Registra o link/arquivo do vídeo e NÃO permite 2 entradas com o mesmo link de vídeo.
+        - Revisão por Dan (1º ao 8º Dan): NÃO possui restrição de entradas duplicadas.
         """
         is_shinpan = is_shinpan_reviewer(reviewer_dan)
         if is_shinpan:
             dan_val = SHINPAN_REV_KEY
             dan_name = SHINPAN_NAME
+
+            # REGRA DE GOVERNANÇA: Bloqueio estrito de entradas duplicadas para Decisão dos Shinpans
+            already_reviewed, prior_record = self.is_video_reviewed_by_shinpan(video_url=video_url, video_name=video_name)
+            if already_reviewed and prior_record:
+                p_date = prior_record.get("reviewed_at", "sessão anterior")
+                p_sess = prior_record.get("session_id", "")
+                p_url = prior_record.get("video_url") or video_url or video_name
+                raise DuplicateShinpanReviewError(
+                    f"Entrada duplicada bloqueada: O link/vídeo '{p_url}' já possui uma Decisão dos Shinpans registrada "
+                    f"em {p_date} (Sessão: {p_sess}). "
+                    f"Conforme as regras de governança, cada link de vídeo só pode receber 1 única Decisão dos Shinpans. "
+                    f"Para múltiplas revisões ou estudos técnicos deste vídeo, utilize a Revisão por Dan (1º ao 8º Dan)."
+                )
         else:
+            # Revisão por Dan: Sem restrição para entradas duplicadas
             try:
                 dan_int = int(reviewer_dan)
                 dan_val = max(1, min(8, dan_int))
@@ -228,13 +438,18 @@ class FeedbackManager:
 
         # Registrar o evento de treinamento no histórico
         history = self.load_history()
+        session_id = f"train_{now_iso.replace(':', '').replace('-', '')}_{len(history)+1}"
+        canon_id = normalize_video_identifier(video_url) if video_url else normalize_video_identifier(video_name)
+
         session_record = {
-            "id": f"train_{now_iso.replace(':', '').replace('-', '')}_{len(history)+1}",
+            "id": session_id,
             "timestamp": now_iso,
             "reviewer_dan": dan_val,
             "reviewer_dan_name": dan_name,
             "is_shinpan_decision": is_shinpan,
             "video_name": video_name,
+            "video_url": video_url or "",
+            "video_identifier": canon_id,
             "profile_key": profile_key,
             "items_count": len(saved_entries),
             "optimization_summary": opt_summary
@@ -243,6 +458,18 @@ class FeedbackManager:
 
         with open(self.history_path, "w", encoding="utf-8") as f:
             json.dump(history, f, indent=2, ensure_ascii=False)
+
+        # Registra link na lista de vídeos com Decisão dos Shinpans
+        if is_shinpan and canon_id:
+            self.register_shinpan_review(
+                video_identifier=canon_id,
+                video_url=video_url or video_name,
+                video_name=video_name,
+                session_id=session_id,
+                reviewed_at=now_iso,
+                items_count=len(saved_entries),
+                profile_key=profile_key
+            )
 
         return new_config, session_record
 
@@ -426,7 +653,7 @@ class FeedbackManager:
         knowledge_bytes = 0
 
         # 1. Datasets & Histórico (data/)
-        dataset_paths = [self.dataset_path, self.history_path]
+        dataset_paths = [self.dataset_path, self.history_path, self.shinpan_registry_path]
         data_folder = os.path.dirname(self.dataset_path) or "data"
         seen_paths = set()
 
@@ -436,7 +663,12 @@ class FeedbackManager:
             if os.path.exists(p):
                 sz = os.path.getsize(p)
                 datasets_bytes += sz
-                desc = "Dataset de Feedbacks & Marcações Dan" if p == self.dataset_path else "Histórico de Sessões de Retreinamento"
+                if p == self.dataset_path:
+                    desc = "Dataset de Feedbacks & Marcações Dan"
+                elif p == self.shinpan_registry_path:
+                    desc = "Registro de Vídeos com Decisão dos Shinpans"
+                else:
+                    desc = "Histórico de Sessões de Retreinamento"
                 files_detail.append({
                     "name": os.path.basename(p),
                     "path": p.replace("\\", "/"),
@@ -501,7 +733,7 @@ class FeedbackManager:
                             "category_key": "models",
                             "bytes": sz,
                             "formatted": self._format_bytes(sz),
-                            "description": "Pesos Neurais YOLOv8-Pose (PyTorch CUDA/CPU)",
+                            "description": "Rede Neural YOLOv8 / Pose Estimation",
                             "exists": True
                         })
             except Exception:
@@ -519,23 +751,22 @@ class FeedbackManager:
                 "category_key": "models",
                 "bytes": sz,
                 "formatted": self._format_bytes(sz),
-                "description": "Pesos Neurais YOLOv8-Pose (Raiz)",
+                "description": "Rede Neural YOLOv8 / Pose Estimation",
                 "exists": True
             })
 
-        # 3. Base de Conhecimento & Perfis de Calibração (config/)
-        config_items = [
-            (self.profiles_path, "Perfis de Calibração Biomecânica", "calibration_profiles"),
-            (target_kb_path, "Base de Conhecimento e Memória do Auto-Trainer", "ai_knowledge_base")
-        ]
-        for p, desc, subkey in config_items:
-            if os.path.exists(p):
-                sz = os.path.getsize(p)
+        # 3. Base de Conhecimento e Calibração (config/)
+        config_paths = [self.profiles_path, target_kb_path]
+        for cp in config_paths:
+            norm_cp = os.path.normpath(cp)
+            if os.path.exists(cp):
+                sz = os.path.getsize(cp)
                 knowledge_bytes += sz
+                desc = "Base de Conhecimento Técnico da IA (FIK/ZNKR)" if cp == target_kb_path else "Perfis de Calibração Biomecânica"
                 files_detail.append({
-                    "name": os.path.basename(p),
-                    "path": p.replace("\\", "/"),
-                    "category": "Conhecimento & Calibração da IA",
+                    "name": os.path.basename(cp),
+                    "path": cp.replace("\\", "/"),
+                    "category": "Conhecimento & Calibração",
                     "category_key": "knowledge_config",
                     "bytes": sz,
                     "formatted": self._format_bytes(sz),
@@ -544,13 +775,13 @@ class FeedbackManager:
                 })
             else:
                 files_detail.append({
-                    "name": os.path.basename(p),
-                    "path": p.replace("\\", "/"),
-                    "category": "Conhecimento & Calibração da IA",
+                    "name": os.path.basename(cp),
+                    "path": cp.replace("\\", "/"),
+                    "category": "Conhecimento & Calibração",
                     "category_key": "knowledge_config",
                     "bytes": 0,
                     "formatted": "0 B",
-                    "description": desc,
+                    "description": "Configuração padrão inicial",
                     "exists": False
                 })
 
@@ -559,17 +790,17 @@ class FeedbackManager:
         categories = {
             "datasets": {
                 "name": "Datasets & Feedbacks",
-                "folder": (os.path.dirname(self.dataset_path) or "data").replace("\\", "/") + "/",
+                "folder": data_folder.replace("\\", "/") + "/",
                 "bytes": datasets_bytes,
                 "formatted": self._format_bytes(datasets_bytes),
-                "description": "Anotações de Dan (TP/FP/FN), correções e histórico de retreinamento"
+                "description": "Feedbacks de marcações, histórico de sessões e registros de vídeos dos Shinpans"
             },
             "models": {
                 "name": "Modelos de IA & Pesos Neurais",
                 "folder": target_models_dir.replace("\\", "/") + "/",
                 "bytes": models_bytes,
                 "formatted": self._format_bytes(models_bytes),
-                "description": "Pesos PyTorch / YOLOv8-Pose para rastreamento multi-person"
+                "description": "Pesos neurais do YOLOv8 Pose e modelos de IA do sistema"
             },
             "knowledge_config": {
                 "name": "Conhecimento & Calibração",
@@ -589,8 +820,8 @@ class FeedbackManager:
 
     def reset_all_training_data(self) -> None:
         """
-        Apaga todo o treinamento do sistema, limpando conjuntos de dados e
-        restaurando os perfis de calibração para a configuração padrão original.
+        Apaga todo o treinamento do sistema, limpando conjuntos de dados,
+        registro de vídeos dos Shinpans e restaurando os perfis de calibração para a configuração padrão.
         """
         with open(self.dataset_path, "w", encoding="utf-8") as f:
             json.dump([], f, indent=2, ensure_ascii=False)
@@ -598,19 +829,23 @@ class FeedbackManager:
         with open(self.history_path, "w", encoding="utf-8") as f:
             json.dump([], f, indent=2, ensure_ascii=False)
 
+        with open(self.shinpan_registry_path, "w", encoding="utf-8") as f:
+            json.dump([], f, indent=2, ensure_ascii=False)
+
         os.makedirs(os.path.dirname(self.profiles_path), exist_ok=True)
         with open(self.profiles_path, "w", encoding="utf-8") as f:
             json.dump(DEFAULT_CALIBRATION_PROFILES, f, indent=2, ensure_ascii=False)
 
-        log_event("WARNING", "TREINAMENTO APAGADO (RESET): Todo o histórico de revisões, dataset de feedbacks e calibrações foram restaurados ao estágio inicial de fábrica.", "feedback_manager")
+        log_event("WARNING", "TREINAMENTO APAGADO (RESET): Todo o histórico de revisões, dataset de feedbacks, registro de vídeos dos Shinpans e calibrações foram restaurados ao estágio inicial de fábrica.", "feedback_manager")
 
     def export_training_package(self) -> Dict[str, Any]:
         """
         Exporta o pacote de treinamento atual contendo todos os arquivos de revisão,
-        marcações por Dan, histórico de treinamentos e perfis calibrados.
+        marcações por Dan, histórico de treinamentos, registro de vídeos dos Shinpans e perfis calibrados.
         """
         data = self.load_feedback()
         history = self.load_history()
+        shinpan_videos = self.load_shinpan_reviewed_videos()
         metrics = self.get_training_metrics()
 
         profiles = DEFAULT_CALIBRATION_PROFILES.copy()
@@ -631,14 +866,16 @@ class FeedbackManager:
                 "total_trainings_performed": metrics["total_trainings_count"],
                 "average_reviewer_dan": metrics["average_dan_level"],
                 "average_dan_label": metrics["average_dan_label"],
-                "total_review_entries": len(data)
+                "total_review_entries": len(data),
+                "shinpan_reviewed_videos_count": len(shinpan_videos)
             },
             "review_items": data,
             "training_history": history,
+            "shinpan_reviewed_videos": shinpan_videos,
             "calibration_profiles": profiles
         }
 
-        log_event("INFO", f"PACOTE DE TREINAMENTO EXPORTADO: Pacote gerado com {len(data)} itens de revisão e {len(history)} treinamentos registrados.", "feedback_manager")
+        log_event("INFO", f"PACOTE DE TREINAMENTO EXPORTADO: Pacote gerado com {len(data)} itens de revisão, {len(history)} treinamentos e {len(shinpan_videos)} vídeos com Decisão dos Shinpans registrados.", "feedback_manager")
         return pkg
 
     def import_training_package(self, package_data: Any) -> Dict[str, Any]:
@@ -648,6 +885,7 @@ class FeedbackManager:
         """
         imported_items = []
         imported_history = []
+        imported_shinpan_videos = []
         imported_profiles = {}
 
         if isinstance(package_data, list):
@@ -668,12 +906,15 @@ class FeedbackManager:
             if "training_history" in package_data and isinstance(package_data["training_history"], list):
                 imported_history = package_data["training_history"]
 
+            if "shinpan_reviewed_videos" in package_data and isinstance(package_data["shinpan_reviewed_videos"], list):
+                imported_shinpan_videos = package_data["shinpan_reviewed_videos"]
+
             if "calibration_profiles" in package_data and isinstance(package_data["calibration_profiles"], dict):
                 imported_profiles = package_data["calibration_profiles"]
         else:
             raise ValueError("Formato de arquivo JSON não reconhecido.")
 
-        if not imported_items and not imported_history and not imported_profiles:
+        if not imported_items and not imported_history and not imported_profiles and not imported_shinpan_videos:
             raise ValueError("O arquivo JSON não contém itens de revisão nem histórico válidos.")
 
         # 1. Carregar e mesclar revisões no dataset
@@ -722,6 +963,23 @@ class FeedbackManager:
                 current_history.append(h_item)
                 existing_hist_ids.add(h_id)
                 new_history_count += 1
+
+        with open(self.history_path, "w", encoding="utf-8") as f:
+            json.dump(current_history, f, indent=2, ensure_ascii=False)
+
+        # 2.1. Mesclar vídeos de Shinpans importados e sincronizar com histórico
+        current_shinpan_videos = self.load_shinpan_reviewed_videos()
+        registered_video_ids = {v.get("video_identifier") for v in current_shinpan_videos if v.get("video_identifier")}
+        for sv in imported_shinpan_videos:
+            if isinstance(sv, dict):
+                sv_id = sv.get("video_identifier") or normalize_video_identifier(sv.get("video_url") or sv.get("video_name"))
+                if sv_id and sv_id not in registered_video_ids:
+                    sv["video_identifier"] = sv_id
+                    current_shinpan_videos.append(sv)
+                    registered_video_ids.add(sv_id)
+
+        with open(self.shinpan_registry_path, "w", encoding="utf-8") as f:
+            json.dump(current_shinpan_videos, f, indent=2, ensure_ascii=False)
 
         if imported_items and not imported_history:
             first_is_shinpan = is_shinpan_reviewer(imported_items[0].get("reviewer_dan")) or imported_items[0].get("is_shinpan_decision")

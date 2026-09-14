@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional
 
 from src.pipeline import SenpAIPipeline, AnalysisWorker
 from src.utils.demo_generator import generate_demo_kendo_video
-from src.engine.feedback_manager import FeedbackManager
+from src.engine.feedback_manager import FeedbackManager, DuplicateShinpanReviewError
 from src.engine.auto_trainer import auto_trainer, AUTO_TRAINING_SCOPES, KENDO_KNOWLEDGE_RESOURCES
 from src.utils.excel_strikes_manager import (
     export_strikes_to_excel,
@@ -1308,6 +1308,25 @@ elif nav_page == "settings":
         for d_row in training_metrics["dan_distribution"]:
             dan_table_md += f"| **{d_row['Dan']}** | {d_row['Nome Graduação']} | {d_row['Quantidade Treinamentos']} | {d_row['Percentual (%)']} |\n"
         st.markdown(dan_table_md)
+
+        # Relação de Vídeos Registrados com Decisão dos Shinpans
+        shinpan_videos_list = feedback_mgr.load_shinpan_reviewed_videos()
+        with st.expander(f"📹 Links de Vídeos com Decisão dos Shinpans Homologada ({len(shinpan_videos_list)} registrados)", expanded=False):
+            st.caption("Relação de vídeos de combate com Decisão dos Shinpans registrada no sistema. Conforme a regra de governança, cada link de vídeo só pode receber 1 única Decisão dos Shinpans.")
+            if shinpan_videos_list:
+                sh_table_rows = []
+                for s_item in shinpan_videos_list:
+                    sh_table_rows.append({
+                        "Vídeo / Link": s_item.get("video_url") or s_item.get("video_name", "N/A"),
+                        "ID Canônico": s_item.get("video_identifier", "N/A"),
+                        "Data Homologação": s_item.get("reviewed_at", "N/A"),
+                        "Sessão ID": s_item.get("session_id", "N/A"),
+                        "Ippons Válidos": s_item.get("items_count", 0),
+                        "Perfil": s_item.get("profile_key", "normal")
+                    })
+                st.dataframe(pd.DataFrame(sh_table_rows), use_container_width=True)
+            else:
+                st.info("ℹ️ Nenhum link de vídeo com Decisão dos Shinpans registrado até o momento.")
 
         st.markdown("#### 🛠️ Gerenciamento do Dataset de Treinamento:")
         act_col1, act_col2, act_col3 = st.columns(3)
@@ -3295,6 +3314,16 @@ elif nav_page == "analysis":
             else:
                 video_name_simple = os.path.basename(video_file_path) if video_file_path else "recorded_match.mp4"
 
+            video_url_current = (
+                st.session_state.get("youtube_url")
+                or st.session_state.get("uploaded_file_name")
+                or video_name_simple
+            )
+            is_shinpan_registered, shinpan_reg_info = feedback_mgr.is_video_reviewed_by_shinpan(
+                video_url=video_url_current,
+                video_name=video_name_simple
+            )
+
             # 0. NO MODO COMPETITIVO / GRAVADO: PLACAR OFICIAL (SANBON-SHOBU) & BARRA DE CONTROLES NO TOPO DO PAINEL
             if app_mode != "training":
                 enable_editing = st.session_state.get("editing_enabled", False)
@@ -3504,20 +3533,53 @@ elif nav_page == "analysis":
                             st.rerun()
 
                     if selected_dan == "shinpan":
-                        st.markdown(
-                            """
-                            <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 2px solid #EAB308; border-radius: 10px; padding: 12px 16px; margin: 10px 0;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="font-size: 1.25rem;">⚖️</span>
-                                    <h4 style="color: #FDE047; margin: 0;">Modo Decisão dos Shinpans (Árbitros de Shiai) Ativo</h4>
+                        if is_shinpan_registered and shinpan_reg_info:
+                            st.markdown(
+                                f"""
+                                <div style="background: linear-gradient(135deg, rgba(127, 29, 29, 0.45) 0%, rgba(153, 27, 27, 0.3) 100%); border: 2px solid #EF4444; border-radius: 10px; padding: 14px 18px; margin: 12px 0;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 1.5rem;">⛔</span>
+                                        <h4 style="color: #FCA5A5; margin: 0; font-weight: 800;">Entrada Duplicada Bloqueada — Decisão dos Shinpans já Registrada</h4>
+                                    </div>
+                                    <p style="color: #FEE2E2; font-size: 0.90rem; margin: 8px 0 6px 0; line-height: 1.4;">
+                                        Este vídeo já possui uma <b>Decisão dos Shinpans</b> oficialmente homologada no sistema:<br/>
+                                        • <b>Data/Hora do Registro:</b> {shinpan_reg_info.get('reviewed_at', 'Sessão anterior')}<br/>
+                                        • <b>ID da Sessão:</b> <code>{shinpan_reg_info.get('session_id', 'N/A')}</code> &nbsp;|&nbsp; 🥋 <b>Total de Ippons:</b> {shinpan_reg_info.get('items_count', 0)} golpe(s)<br/>
+                                        • <b>Link/Arquivo Registrado:</b> <code>{shinpan_reg_info.get('video_url', video_url_current)}</code>
+                                    </p>
+                                    <div style="background: rgba(0, 0, 0, 0.35); border-left: 3px solid #F87171; border-radius: 6px; padding: 8px 12px; margin-top: 8px; font-size: 0.85rem; color: #FECACA;">
+                                        ⚖️ <b>Regra de Governança:</b> Cada link de vídeo de combate só pode receber <b>1 única entrada</b> como Decisão dos Shinpans para garantir a integridade dos dados regulamentares.<br/>
+                                        💡 <b>Revisão por DAN Irrestrita:</b> Para realizar novas avaliações, revisões pedagógicas ou análises comparativas deste mesmo vídeo, altere o seletor acima para <b>Revisão por DAN (1º ao 8º Dan)</b>, onde <b>não há restrição para entradas duplicadas</b>.
+                                    </div>
                                 </div>
-                                <p style="color: #FEF08A; font-size: 0.88rem; margin: 6px 0 0 0;">
-                                    A Linha do Tempo & Revisão de Golpes está configurada para <b>registrar exclusivamente os golpes válidos (Ippon / Yūko-datotsu) apontados pelos Shinpans</b> no Shiai. Golpes não assinalados pela arbitragem não pontuam. As marcações serão utilizadas para recalibrar os pesos biomecânicos de validação de forma balanceada.
-                                </p>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
+                                """,
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            st.markdown(
+                                """
+                                <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 2px solid #EAB308; border-radius: 10px; padding: 12px 16px; margin: 10px 0;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="font-size: 1.25rem;">⚖️</span>
+                                        <h4 style="color: #FDE047; margin: 0;">Modo Decisão dos Shinpans (Árbitros de Shiai) Ativo</h4>
+                                    </div>
+                                    <p style="color: #FEF08A; font-size: 0.88rem; margin: 6px 0 0 0;">
+                                        A Linha do Tempo & Revisão de Golpes está configurada para <b>registrar exclusivamente os golpes válidos (Ippon / Yūko-datotsu) apontados pelos Shinpans</b> no Shiai. Golpes não assinalados pela arbitragem não pontuam. As marcações serão utilizadas para recalibrar os pesos biomecânicos de validação de forma balanceada.
+                                    </p>
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
+                    else:
+                        if is_shinpan_registered and shinpan_reg_info:
+                            st.markdown(
+                                f"""
+                                <div style="background: rgba(30, 58, 138, 0.25); border: 1px solid #3B82F6; border-radius: 8px; padding: 8px 14px; margin: 8px 0; font-size: 0.85rem; color: #BFDBFE;">
+                                    ℹ️ <b>Revisão por DAN Livre:</b> Este vídeo já possui uma Decisão dos Shinpans registrada (Sessão <code>{shinpan_reg_info.get('session_id', '')}</code>). Como você está revisando sob a governança de <b>{dan_options.get(selected_dan, 'Dan')}</b>, <b>não há restrição de entradas duplicadas</b> e suas anotações técnicas serão salvas normalmente.
+                                </div>
+                                """,
+                                unsafe_allow_html=True
+                            )
 
                 # Banner de Reprocessamento de Sonkyō
                 if sonkyo_edits:
@@ -4123,7 +4185,8 @@ elif nav_page == "analysis":
                                                         reviewer_dan=imp_dan,
                                                         current_profile_config=current_p,
                                                         feedback_mgr=feedback_mgr,
-                                                        auto_trainer_instance=auto_trainer
+                                                        auto_trainer_instance=auto_trainer,
+                                                        streaming_url=active_streaming_url or video_url_current
                                                     )
 
                                                     st.success(f"🎉 Treinamento concluído com sucesso! {train_res['items_count']} golpes registrados sob governança de {train_res['reviewer_dan_name']}.")
@@ -4276,7 +4339,9 @@ elif nav_page == "analysis":
                                         sc_val = a_eval.get("total_score", 0.0)
                                         st.markdown(f"Score: `{sc_val:.0f}%`")
                                     with col_s5:
-                                        if already_added:
+                                        if is_shinpan_registered:
+                                            st.markdown("🔒 *Bloqueado (Já Registrado)*")
+                                        elif already_added:
                                             st.markdown("✅ *Já Adicionado*")
                                         else:
                                             if st.button("➕ Ippon dos Shinpans", key=f"btn_add_ai_shinpan_{a_idx}_{a_ev_id}", width="stretch", help="Adicionar este golpe como Ippon oficial dos Shinpans"):
@@ -4788,7 +4853,10 @@ elif nav_page == "analysis":
                                 fn_notes = st.text_input("Observação do Revisor", value="Ippon concedido pelos Shinpans em Shiai" if is_shinpan_active else "Golpe não detectado pelo modelo", key="fn_notes_input")
 
                                 btn_include_label = "⚖️ Incluir Ippon dos Shinpans no Dataset" if is_shinpan_active else "➕ Incluir Marcação no Dataset"
-                                if st.button(btn_include_label, width="stretch"):
+                                is_include_disabled = is_shinpan_active and is_shinpan_registered
+                                if is_include_disabled:
+                                    st.caption("🔒 *Inclusão de Ippons dos Shinpans bloqueada: Este vídeo já possui uma Decisão dos Shinpans homologada.*")
+                                if st.button(btn_include_label, width="stretch", disabled=is_include_disabled):
                                     new_fn_id = f"fn_{fn_timestamp.replace(':', '_').replace('.', '_')}_{fn_att_id.lower()}_{len(st.session_state.get('session_reviews', {}))+1}"
                                     new_fn_item = {
                                         "event_id": new_fn_id,
@@ -4827,16 +4895,26 @@ elif nav_page == "analysis":
                             # Botão de Salvar Alterações e Retreinar Modelo ao Final
                             if enable_editing:
                                 st.markdown("---")
-                                if enable_editing and selected_dan == "shinpan":
+                                is_shinpan_active = (selected_dan == "shinpan")
+                                is_shinpan_blocked = bool(is_shinpan_active and is_shinpan_registered)
+
+                                if is_shinpan_active:
                                     st.subheader("⚖️ Finalizar Decisão dos Shinpans & Recalibrar Pesos")
-                                    st.caption("Salva todas as decisões oficiais dos Shinpans (Ippons de Shiai) com peso regulamentar calibrado (4.5) e recalibra a validação do modelo.")
+                                    if is_shinpan_blocked:
+                                        st.caption("⛔ **Bloqueado:** Este link de vídeo já possui uma Decisão dos Shinpans registrada. Para novas avaliações, selecione uma graduação Dan (1º ao 8º Dan).")
+                                    else:
+                                        st.caption("Salva todas as decisões oficiais dos Shinpans (Ippons de Shiai) com peso regulamentar calibrado (4.5) e recalibra a validação do modelo.")
                                     save_btn_label = "⚖️ Salvar Decisão dos Shinpans & Recalibrar Pesos"
                                 else:
                                     st.subheader("💾 Finalizar Revisão & Retreinar Modelo")
-                                    st.caption(f"Salva todas as confirmações, edições e inclusões feitas sob a responsabilidade do revisor **{dan_options.get(selected_dan, 'Dan')}** e executa o retreinamento adaptativo.")
+                                    st.caption(f"Salva todas as confirmações, edições e inclusões feitas sob a responsabilidade do revisor **{dan_options.get(selected_dan, 'Dan')}** e executa o retreinamento adaptativo. (Sem restrição de duplicidade).")
                                     save_btn_label = "💾 Salvar Alterações e Retreinar Modelo"
 
-                                if st.button(save_btn_label, type="primary", width="stretch"):
+                                if st.button(save_btn_label, type="primary", width="stretch", disabled=is_shinpan_blocked):
+                                    if is_shinpan_blocked:
+                                        st.error("⛔ Entrada duplicada bloqueada: Este link de vídeo já possui uma Decisão dos Shinpans oficial registrada. Selecione uma graduação Dan para salvar novas análises.")
+                                        st.stop()
+
                                     items_to_save = list(st.session_state["session_reviews"].values())
                                     if not items_to_save:
                                         if enable_editing and selected_dan == "shinpan":
@@ -4859,22 +4937,26 @@ elif nav_page == "analysis":
                                                     "is_confirmed": True
                                                 })
 
-                                    new_cfg, session_rec = feedback_mgr.save_review_session(
-                                        video_name=video_name_simple,
-                                        profile_key=profile_choice,
-                                        reviewer_dan=selected_dan,
-                                        review_items=items_to_save,
-                                        current_profile_config=current_p
-                                    )
-                                    # Atualizar o perfil ativo no calibrador
-                                    pipeline_temp = SenpAIPipeline(calibration_profile=profile_choice)
-                                    pipeline_temp.calibrator.update_and_save_profile(profile_choice, new_cfg)
+                                    try:
+                                        new_cfg, session_rec = feedback_mgr.save_review_session(
+                                            video_name=video_name_simple,
+                                            profile_key=profile_choice,
+                                            reviewer_dan=selected_dan,
+                                            review_items=items_to_save,
+                                            current_profile_config=current_p,
+                                            video_url=video_url_current
+                                        )
+                                        # Atualizar o perfil ativo no calibrador
+                                        pipeline_temp = SenpAIPipeline(calibration_profile=profile_choice)
+                                        pipeline_temp.calibrator.update_and_save_profile(profile_choice, new_cfg)
 
-                                    st.success(f"🎉 Revisão salva e modelo retreinado com sucesso! ({len(items_to_save)} marcações processadas por {dan_options.get(selected_dan)}).")
-                                    if session_rec.get("optimization_summary", {}).get("changes"):
-                                        st.markdown("**Alterações da Calibração:**")
-                                        for chg in session_rec["optimization_summary"]["changes"]:
-                                            st.markdown(f"- {chg}")
+                                        st.success(f"🎉 Revisão salva e modelo retreinado com sucesso! ({len(items_to_save)} marcações processadas por {dan_options.get(selected_dan)}).")
+                                        if session_rec.get("optimization_summary", {}).get("changes"):
+                                            st.markdown("**Alterações da Calibração:**")
+                                            for chg in session_rec["optimization_summary"]["changes"]:
+                                                st.markdown(f"- {chg}")
+                                    except DuplicateShinpanReviewError as dup_err:
+                                        st.error(f"⛔ {str(dup_err)}")
 else:
     # Estado inicial ou fallback se nenhuma página específica for selecionada
     render_welcome_home_page()

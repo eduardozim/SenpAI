@@ -5,26 +5,33 @@ Testes Automatizados para Edição por Dan, Retreinamento e Governança de Trein
 import os
 import json
 import unittest
-from src.engine.feedback_manager import FeedbackManager, DAN_NAMES
+from src.engine.feedback_manager import (
+    FeedbackManager,
+    DAN_NAMES,
+    DuplicateShinpanReviewError,
+    normalize_video_identifier
+)
 
 class TestDanTrainingGovernance(unittest.TestCase):
     def setUp(self):
         self.test_dataset_path = "data/test_feedback_dataset.json"
         self.test_history_path = "data/test_training_history.json"
         self.test_profiles_path = "config/test_calibration_profiles.json"
+        self.test_shinpan_registry_path = "data/test_shinpan_reviewed_videos.json"
 
-        for p in [self.test_dataset_path, self.test_history_path, self.test_profiles_path]:
+        for p in [self.test_dataset_path, self.test_history_path, self.test_profiles_path, self.test_shinpan_registry_path]:
             if os.path.exists(p):
                 os.remove(p)
 
         self.mgr = FeedbackManager(
             dataset_path=self.test_dataset_path,
             history_path=self.test_history_path,
-            profiles_path=self.test_profiles_path
+            profiles_path=self.test_profiles_path,
+            shinpan_registry_path=self.test_shinpan_registry_path
         )
 
     def tearDown(self):
-        for p in [self.test_dataset_path, self.test_history_path, self.test_profiles_path]:
+        for p in [self.test_dataset_path, self.test_history_path, self.test_profiles_path, self.test_shinpan_registry_path]:
             if os.path.exists(p):
                 os.remove(p)
 
@@ -398,6 +405,270 @@ class TestDanTrainingGovernance(unittest.TestCase):
         self.assertEqual(len(c5), 4)
         self.assertEqual(len([s for s in c5 if s["source"] == "AI_DETECTED"]), 3)
         self.assertFalse(any(s["source"] == "SHINPAN_IPPON" for s in c5))
+
+    def test_normalize_video_identifier(self):
+        """Valida que URLs de diferentes formatos do YouTube e nomes de arquivos normalizam para o mesmo ID canônico."""
+        # Formatos YouTube
+        self.assertEqual(normalize_video_identifier("https://www.youtube.com/watch?v=kendo_match_123"), "youtube:kendo_match_123")
+        self.assertEqual(normalize_video_identifier("https://youtu.be/kendo_match_123"), "youtube:kendo_match_123")
+        self.assertEqual(normalize_video_identifier("https://www.youtube.com/shorts/kendo_match_123?feature=share"), "youtube:kendo_match_123")
+        self.assertEqual(normalize_video_identifier("https://www.youtube.com/live/kendo_match_123"), "youtube:kendo_match_123")
+        self.assertEqual(normalize_video_identifier("https://www.youtube.com/embed/kendo_match_123"), "youtube:kendo_match_123")
+
+        # URL genérica HTTP/HTTPS
+        self.assertEqual(normalize_video_identifier("https://example.com/videos/shiai_final.mp4?token=abc"), "url:https://example.com/videos/shiai_final.mp4")
+
+        # Upload local (remoção de prefixo temporário 'upload_timestamp_')
+        self.assertEqual(normalize_video_identifier("upload_1740000000_shiai_tokyo.mp4"), "file:shiai_tokyo.mp4")
+        self.assertEqual(normalize_video_identifier("shiai_tokyo.mp4"), "file:shiai_tokyo.mp4")
+        self.assertEqual(normalize_video_identifier("C:/temp/uploads/upload_9999_final.mp4"), "file:final.mp4")
+
+        # Entradas vazias
+        self.assertEqual(normalize_video_identifier(None), "")
+        self.assertEqual(normalize_video_identifier(""), "")
+
+    def test_shinpan_video_link_registration_and_blocking_duplicates(self):
+        """Valida que uma Decisão dos Shinpans registra o link do vídeo e bloqueia uma 2ª entrada com o mesmo link."""
+        video_url = "https://www.youtube.com/watch?v=kendo_championship_final_2024"
+        video_name = "Final Masculina Kendo 2024"
+        items = [
+            {
+                "event_id": "sh_1",
+                "label": "TP",
+                "strike_type": "MEN",
+                "timestamp": "01:23.450",
+                "total_score": 100.0,
+                "is_valid_ippon": True,
+                "reviewer_dan": "shinpan"
+            }
+        ]
+        cfg = {
+            "name": "Treino Geral (Normal)",
+            "min_total_score": 0.65,
+            "weights": {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15},
+            "sub_thresholds": {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45}
+        }
+
+        # Antes de salvar: vídeo não consta como registrado
+        is_reviewed, _ = self.mgr.is_video_reviewed_by_shinpan(video_url=video_url, video_name=video_name)
+        self.assertFalse(is_reviewed)
+
+        # 1ª Entrada: Decisão dos Shinpans deve ser salva com sucesso
+        new_cfg, rec = self.mgr.save_review_session(
+            video_name=video_name,
+            profile_key="normal",
+            reviewer_dan="shinpan",
+            review_items=items,
+            current_profile_config=cfg,
+            video_url=video_url
+        )
+        self.assertEqual(rec["reviewer_dan"], "shinpan")
+        self.assertEqual(rec["items_count"], 1)
+
+        # Após salvar: vídeo deve estar registrado na lista de vídeos dos Shinpans
+        is_reviewed_after, reg_info = self.mgr.is_video_reviewed_by_shinpan(video_url=video_url, video_name=video_name)
+        self.assertTrue(is_reviewed_after)
+        self.assertIsNotNone(reg_info)
+        self.assertEqual(reg_info["video_identifier"], "youtube:kendo_championship_final_2024")
+
+        # 2ª Entrada com a mesma URL completa: DEVE ser BLOQUEADA (levantar DuplicateShinpanReviewError)
+        with self.assertRaises(DuplicateShinpanReviewError) as ctx_exact:
+            self.mgr.save_review_session(
+                video_name=video_name,
+                profile_key="normal",
+                reviewer_dan="shinpan",
+                review_items=items,
+                current_profile_config=new_cfg,
+                video_url=video_url
+            )
+        self.assertIn("Entrada duplicada bloqueada", str(ctx_exact.exception))
+
+        # 2ª Entrada com link encurtado (youtu.be) apontando para o mesmo vídeo: TAMBÉM DEVE ser BLOQUEADA!
+        alternate_url = "https://youtu.be/kendo_championship_final_2024"
+        with self.assertRaises(DuplicateShinpanReviewError) as ctx_alt:
+            self.mgr.save_review_session(
+                video_name="Outro Titulo Mas Mesmo Video",
+                profile_key="normal",
+                reviewer_dan="shinpan",
+                review_items=items,
+                current_profile_config=new_cfg,
+                video_url=alternate_url
+            )
+        self.assertIn("Entrada duplicada bloqueada", str(ctx_alt.exception))
+
+    def test_dan_review_unrestricted_duplicate_video_links(self):
+        """Valida que revisões por DAN (1º ao 8º Dan) NÃO possuem restrição para entradas duplicadas com o mesmo link."""
+        video_url = "https://www.youtube.com/watch?v=training_session_dan_study"
+        video_name = "Estudo Técnico de Ippon"
+        cfg = {
+            "name": "Treino Geral (Normal)",
+            "min_total_score": 0.65,
+            "weights": {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15},
+            "sub_thresholds": {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45}
+        }
+        items_1 = [{"event_id": "e1", "label": "TP", "strike_type": "MEN", "reviewer_dan": 3}]
+        items_2 = [{"event_id": "e2", "label": "FP", "strike_type": "KOTE", "reviewer_dan": 6}]
+        items_3 = [{"event_id": "e3", "label": "TP", "strike_type": "DO", "reviewer_dan": 7}]
+
+        # 1ª Entrada com 3º Dan
+        cfg_1, rec_1 = self.mgr.save_review_session(
+            video_name=video_name,
+            profile_key="normal",
+            reviewer_dan=3,
+            review_items=items_1,
+            current_profile_config=cfg,
+            video_url=video_url
+        )
+        self.assertEqual(rec_1["reviewer_dan"], 3)
+
+        # 2ª Entrada com o mesmo link de vídeo com 6º Dan -> PERMITIDA SEM RESTRIÇÃO
+        cfg_2, rec_2 = self.mgr.save_review_session(
+            video_name=video_name,
+            profile_key="normal",
+            reviewer_dan=6,
+            review_items=items_2,
+            current_profile_config=cfg_1,
+            video_url=video_url
+        )
+        self.assertEqual(rec_2["reviewer_dan"], 6)
+
+        # 3ª Entrada com o mesmo link de vídeo com 7º Dan -> PERMITIDA SEM RESTRIÇÃO
+        cfg_3, rec_3 = self.mgr.save_review_session(
+            video_name=video_name,
+            profile_key="normal",
+            reviewer_dan=7,
+            review_items=items_3,
+            current_profile_config=cfg_2,
+            video_url=video_url
+        )
+        self.assertEqual(rec_3["reviewer_dan"], 7)
+
+        # Histórico deve conter as 3 sessões do mesmo link
+        history = self.mgr.load_history()
+        self.assertEqual(len(history), 3)
+        self.assertTrue(all(h["video_url"] == video_url for h in history))
+
+        # O vídeo NÃO deve estar registrado na lista de vídeos dos Shinpans
+        is_sh, _ = self.mgr.is_video_reviewed_by_shinpan(video_url=video_url)
+        self.assertFalse(is_sh)
+
+    def test_shinpan_and_dan_interoperability_on_same_video(self):
+        """Valida que um vídeo avaliado por Dan pode receber 1 Decisão dos Shinpans, e depois continuar recebendo avaliações por Dan livremente."""
+        video_url = "https://www.youtube.com/watch?v=interop_kendo_match"
+        video_name = "Combate de Exemplo Interoperabilidade"
+        cfg = {
+            "name": "Treino Geral (Normal)",
+            "min_total_score": 0.65,
+            "weights": {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15},
+            "sub_thresholds": {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45}
+        }
+
+        # 1. Avaliação prévia por 4º Dan
+        cfg, _ = self.mgr.save_review_session(
+            video_name=video_name,
+            profile_key="normal",
+            reviewer_dan=4,
+            review_items=[{"event_id": "dan_ev", "label": "TP", "strike_type": "MEN", "reviewer_dan": 4}],
+            current_profile_config=cfg,
+            video_url=video_url
+        )
+
+        # 2. Primeira Decisão dos Shinpans para este vídeo -> PERMITIDA
+        cfg, sh_rec = self.mgr.save_review_session(
+            video_name=video_name,
+            profile_key="normal",
+            reviewer_dan="shinpan",
+            review_items=[{"event_id": "sh_ev", "label": "TP", "strike_type": "MEN", "reviewer_dan": "shinpan"}],
+            current_profile_config=cfg,
+            video_url=video_url
+        )
+        self.assertEqual(sh_rec["reviewer_dan"], "shinpan")
+
+        # 3. Segunda Decisão dos Shinpans para este vídeo -> BLOQUEADA!
+        with self.assertRaises(DuplicateShinpanReviewError):
+            self.mgr.save_review_session(
+                video_name=video_name,
+                profile_key="normal",
+                reviewer_dan="shinpan",
+                review_items=[{"event_id": "sh_ev2", "label": "TP", "strike_type": "KOTE", "reviewer_dan": "shinpan"}],
+                current_profile_config=cfg,
+                video_url=video_url
+            )
+
+        # 4. Avaliação posterior por 8º Dan no mesmo vídeo -> PERMITIDA SEM QUALQUER RESTRIÇÃO!
+        cfg, dan8_rec = self.mgr.save_review_session(
+            video_name=video_name,
+            profile_key="normal",
+            reviewer_dan=8,
+            review_items=[{"event_id": "dan8_ev", "label": "TP", "strike_type": "TSUKI", "reviewer_dan": 8}],
+            current_profile_config=cfg,
+            video_url=video_url
+        )
+        self.assertEqual(dan8_rec["reviewer_dan"], 8)
+
+    def test_reset_clears_shinpan_video_registry(self):
+        """Valida que reset_all_training_data limpa o registro de vídeos dos Shinpans."""
+        video_url = "https://www.youtube.com/watch?v=video_to_reset"
+        cfg = {
+            "name": "Treino Geral (Normal)",
+            "min_total_score": 0.65,
+            "weights": {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15},
+            "sub_thresholds": {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45}
+        }
+        self.mgr.save_review_session(
+            video_name="Vídeo Reset",
+            profile_key="normal",
+            reviewer_dan="shinpan",
+            review_items=[{"event_id": "sh_1", "label": "TP", "strike_type": "MEN", "reviewer_dan": "shinpan"}],
+            current_profile_config=cfg,
+            video_url=video_url
+        )
+        self.assertTrue(self.mgr.is_video_reviewed_by_shinpan(video_url=video_url)[0])
+
+        # Executa o reset do treinamento
+        self.mgr.reset_all_training_data()
+
+        # O registro deve estar limpo
+        self.assertFalse(self.mgr.is_video_reviewed_by_shinpan(video_url=video_url)[0])
+        self.assertEqual(len(self.mgr.load_shinpan_reviewed_videos()), 0)
+
+    def test_export_and_import_package_with_shinpan_registry(self):
+        """Valida que export_training_package e import_training_package persistem e restauram a lista de vídeos dos Shinpans."""
+        video_url = "https://www.youtube.com/watch?v=package_video_test"
+        cfg = {
+            "name": "Treino Geral (Normal)",
+            "min_total_score": 0.65,
+            "weights": {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15},
+            "sub_thresholds": {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45}
+        }
+        self.mgr.save_review_session(
+            video_name="Vídeo Pacote",
+            profile_key="normal",
+            reviewer_dan="shinpan",
+            review_items=[{"event_id": "sh_1", "label": "TP", "strike_type": "MEN", "reviewer_dan": "shinpan"}],
+            current_profile_config=cfg,
+            video_url=video_url
+        )
+
+        pkg = self.mgr.export_training_package()
+        self.assertIn("shinpan_reviewed_videos", pkg)
+        self.assertEqual(len(pkg["shinpan_reviewed_videos"]), 1)
+        self.assertEqual(pkg["shinpan_reviewed_videos"][0]["video_identifier"], "youtube:package_video_test")
+
+        # Limpa o estado
+        self.mgr.reset_all_training_data()
+        self.assertFalse(self.mgr.is_video_reviewed_by_shinpan(video_url=video_url)[0])
+
+        # Importa o pacote de volta
+        imp_summary = self.mgr.import_training_package(pkg)
+        self.assertEqual(imp_summary["status"], "success")
+
+        # O vídeo deve estar registrado novamente
+        is_re_reviewed, rec = self.mgr.is_video_reviewed_by_shinpan(video_url=video_url)
+        self.assertTrue(is_re_reviewed)
+        self.assertIsNotNone(rec)
+        assert rec is not None
+        self.assertEqual(rec["video_identifier"], "youtube:package_video_test")
 
 if __name__ == "__main__":
     unittest.main()
