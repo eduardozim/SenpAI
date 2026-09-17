@@ -9,8 +9,11 @@ from src.engine.feedback_manager import (
     FeedbackManager,
     DAN_NAMES,
     DuplicateShinpanReviewError,
-    normalize_video_identifier
+    normalize_video_identifier,
+    SHINPAN_REV_KEY,
+    SHINPAN_NAME
 )
+from src.engine.auto_trainer import AutoTrainingEngine
 
 class TestDanTrainingGovernance(unittest.TestCase):
     def setUp(self):
@@ -18,22 +21,46 @@ class TestDanTrainingGovernance(unittest.TestCase):
         self.test_history_path = "data/test_training_history.json"
         self.test_profiles_path = "config/test_calibration_profiles.json"
         self.test_shinpan_registry_path = "data/test_shinpan_reviewed_videos.json"
+        self.test_kb_path = "config/test_dan_gov_kb.json"
+        self.test_checkpoint_path = "data/test_dan_gov_checkpoint.json"
 
-        for p in [self.test_dataset_path, self.test_history_path, self.test_profiles_path, self.test_shinpan_registry_path]:
+        for p in [
+            self.test_dataset_path,
+            self.test_history_path,
+            self.test_profiles_path,
+            self.test_shinpan_registry_path,
+            self.test_kb_path,
+            self.test_checkpoint_path
+        ]:
             if os.path.exists(p):
-                os.remove(p)
+                try:
+                    os.remove(p)
+                except Exception:
+                    pass
 
         self.mgr = FeedbackManager(
             dataset_path=self.test_dataset_path,
             history_path=self.test_history_path,
             profiles_path=self.test_profiles_path,
-            shinpan_registry_path=self.test_shinpan_registry_path
+            shinpan_registry_path=self.test_shinpan_registry_path,
+            knowledge_base_path=self.test_kb_path,
+            checkpoint_path=self.test_checkpoint_path
         )
 
     def tearDown(self):
-        for p in [self.test_dataset_path, self.test_history_path, self.test_profiles_path, self.test_shinpan_registry_path]:
+        for p in [
+            self.test_dataset_path,
+            self.test_history_path,
+            self.test_profiles_path,
+            self.test_shinpan_registry_path,
+            self.test_kb_path,
+            self.test_checkpoint_path
+        ]:
             if os.path.exists(p):
-                os.remove(p)
+                try:
+                    os.remove(p)
+                except Exception:
+                    pass
 
     def test_save_review_session_with_dan(self):
         """Valida o salvamento de sessão de revisão com Dan, calculando métricas e histórico de auditoria."""
@@ -669,6 +696,151 @@ class TestDanTrainingGovernance(unittest.TestCase):
         self.assertIsNotNone(rec)
         assert rec is not None
         self.assertEqual(rec["video_identifier"], "youtube:package_video_test")
+
+    def test_export_and_import_complete_package_with_dan_shinpan_streaming_and_auto_trainer(self):
+        """
+        Valida que export_training_package exporta TODOS os dados aprendidos:
+        1. Revisões por Dan (1º ao 8º Dan) com URLs/links;
+        2. Decisões dos Shinpans, preservando links de streaming (YouTube, Web Streaming);
+        3. Treinamentos automáticos por IA (ai_knowledge_base, 14 modalidades, acurácia, princípios, fontes);
+        4. Reimportação com carregar treinamento baixado reconstitui integralmente o sistema.
+        """
+        cfg = {
+            "name": "Treino Geral (Normal)",
+            "min_total_score": 0.65,
+            "weights": {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15},
+            "sub_thresholds": {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45}
+        }
+
+        # 1. Salvar revisão humana por 6º Dan em vídeo de combate
+        self.mgr.save_review_session(
+            video_name="Final_Mundial_Kendo.mp4",
+            profile_key="normal",
+            reviewer_dan=6,
+            review_items=[
+                {"event_id": "dan_hit_1", "label": "TP", "strike_type": "MEN", "timestamp": "01:15.000", "notes": "Excelente Ki-Ken-Tai-Ichi"}
+            ],
+            current_profile_config=cfg,
+            video_url="https://youtube.com/watch?v=dan_review_test"
+        )
+
+        # 2. Salvar Decisão dos Shinpans com link de streaming do YouTube
+        yt_stream = "https://www.youtube.com/watch?v=live_shinpan_stream_youtube"
+        self.mgr.save_review_session(
+            video_name="Live_YouTube_Final",
+            profile_key="normal",
+            reviewer_dan="shinpan",
+            review_items=[
+                {"event_id": "sh_hit_yt", "label": "TP", "strike_type": "KOTE", "timestamp": "02:30.000"}
+            ],
+            current_profile_config=cfg,
+            video_url=yt_stream
+        )
+
+        # 3. Salvar Decisão dos Shinpans com link de streaming Web (RTSP/HLS)
+        web_stream = "rtsp://stream.kendo-tv.org/live/cam_a"
+        self.mgr.save_review_session(
+            video_name="RTSP_Live_CamA",
+            profile_key="normal",
+            reviewer_dan="shinpan",
+            review_items=[
+                {"event_id": "sh_hit_rtsp", "label": "TP", "strike_type": "DO", "timestamp": "03:45.000"}
+            ],
+            current_profile_config=cfg,
+            video_url=web_stream
+        )
+
+        # 4. Criar motor de auto-treinamento e executar treinamento de IA
+        auto_engine = AutoTrainingEngine(
+            knowledge_base_path=self.test_kb_path,
+            profiles_path=self.test_profiles_path,
+            history_path=self.test_history_path,
+            feedback_path=self.test_dataset_path,
+            checkpoint_path=self.test_checkpoint_path
+        )
+        auto_engine.retrain_detection_model(
+            effective_scope="modality_suburi",
+            sources_consulted=[
+                {
+                    "title": "Manual FIK Suburi Master",
+                    "type": "Manual Oficial",
+                    "principles": ["Hasuji Estrito no Suburi (FIK Teste)"]
+                }
+            ],
+            intensity="profundo"
+        )
+
+        kb_before = auto_engine.load_knowledge_base()
+        suburi_acc_before = float(kb_before["learned_parameters"]["training_modalities"]["suburi"]["current_accuracy"])
+        self.assertGreater(suburi_acc_before, 40.0)
+
+        # 5. Exportar pacote completo
+        pkg = self.mgr.export_training_package(auto_trainer_instance=auto_engine)
+
+        self.assertEqual(pkg["package_version"], "2.0")
+        self.assertEqual(pkg["summary"]["shinpan_reviewed_videos_count"], 2)
+        self.assertEqual(pkg["summary"]["average_reviewer_dan"], 6.0)
+        self.assertIn("ai_knowledge_base", pkg)
+        self.assertIsNotNone(pkg["ai_knowledge_base"])
+        self.assertIn("shinpan_reviewed_videos", pkg)
+        self.assertEqual(len(pkg["shinpan_reviewed_videos"]), 2)
+
+        # Verificar presença dos links de streaming
+        shinpan_urls = [sv.get("video_url") for sv in pkg["shinpan_reviewed_videos"]]
+        self.assertIn(yt_stream, shinpan_urls)
+        self.assertIn(web_stream, shinpan_urls)
+
+        # 6. Resetar todo o sistema (como o usuário faz no botão Apagar Treinamento)
+        self.mgr.reset_all_training_data()
+        auto_engine.reset_knowledge_base()
+
+        # Validar estado zerado
+        self.assertEqual(self.mgr.get_training_metrics()["total_trainings_count"], 0)
+        self.assertFalse(self.mgr.is_video_reviewed_by_shinpan(video_url=yt_stream)[0])
+        self.assertFalse(self.mgr.is_video_reviewed_by_shinpan(video_url=web_stream)[0])
+
+        kb_cleared = auto_engine.load_knowledge_base()
+        suburi_acc_cleared = float(kb_cleared["learned_parameters"]["training_modalities"]["suburi"]["current_accuracy"])
+        self.assertLess(suburi_acc_cleared, suburi_acc_before)
+
+        # 7. Importar o pacote baixado (recarregar treinamento)
+        import_summary = self.mgr.import_training_package(pkg, auto_trainer_instance=auto_engine)
+
+        self.assertEqual(import_summary["status"], "success")
+        self.assertGreaterEqual(import_summary["shinpan_videos_imported"], 2)
+        self.assertTrue(import_summary["knowledge_base_updated"])
+        self.assertEqual(import_summary["average_dan_now"], "6.0º Dan (6º Dan (Rokudan))")
+
+        # 8. Validar que as decisões de Shinpans e links de streaming foram integralmente restaurados
+        is_sh_yt, rec_yt = self.mgr.is_video_reviewed_by_shinpan(video_url=yt_stream)
+        self.assertTrue(is_sh_yt)
+        self.assertIsNotNone(rec_yt)
+        self.assertEqual(rec_yt["video_identifier"], "youtube:live_shinpan_stream_youtube")
+
+        is_sh_rtsp, rec_rtsp = self.mgr.is_video_reviewed_by_shinpan(video_url=web_stream)
+        self.assertTrue(is_sh_rtsp)
+        self.assertIsNotNone(rec_rtsp)
+
+        # Governança: tentativa de adicionar o mesmo link de streaming como Shinpan deve ser bloqueada
+        with self.assertRaises(DuplicateShinpanReviewError):
+            self.mgr.save_review_session(
+                video_name="Live_YouTube_Final_Repetida",
+                profile_key="normal",
+                reviewer_dan="shinpan",
+                review_items=[{"event_id": "sh_rep", "label": "TP", "strike_type": "MEN"}],
+                current_profile_config=cfg,
+                video_url=yt_stream
+            )
+
+        # 9. Validar que a Base de Conhecimento e aprendizado de IA foram restaurados
+        kb_restored = auto_engine.load_knowledge_base()
+        suburi_acc_restored = float(kb_restored["learned_parameters"]["training_modalities"]["suburi"]["current_accuracy"])
+        self.assertEqual(suburi_acc_restored, suburi_acc_before)
+        self.assertIn(
+            "Hasuji Estrito no Suburi (FIK Teste)",
+            kb_restored["learned_parameters"]["training_modalities"]["suburi"]["principles_learned"]
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

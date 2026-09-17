@@ -123,7 +123,8 @@ class FeedbackManager:
         profiles_path: str = "config/calibration_profiles.json",
         models_dir: str = "models",
         knowledge_base_path: str = "config/ai_knowledge_base.json",
-        shinpan_registry_path: str = "data/shinpan_reviewed_videos.json"
+        shinpan_registry_path: str = "data/shinpan_reviewed_videos.json",
+        checkpoint_path: str = "data/auto_training_checkpoint.json"
     ):
         self.dataset_path = dataset_path
         self.history_path = history_path
@@ -131,6 +132,7 @@ class FeedbackManager:
         self.models_dir = models_dir
         self.knowledge_base_path = knowledge_base_path
         self.shinpan_registry_path = shinpan_registry_path
+        self.checkpoint_path = checkpoint_path
         self._ensure_files_exist()
 
     def _ensure_files_exist(self):
@@ -148,6 +150,11 @@ class FeedbackManager:
         if not os.path.exists(self.shinpan_registry_path):
             with open(self.shinpan_registry_path, "w", encoding="utf-8") as f:
                 json.dump([], f, indent=2, ensure_ascii=False)
+
+        os.makedirs(os.path.dirname(self.profiles_path), exist_ok=True)
+        if not os.path.exists(self.profiles_path):
+            with open(self.profiles_path, "w", encoding="utf-8") as f:
+                json.dump(DEFAULT_CALIBRATION_PROFILES, f, indent=2, ensure_ascii=False)
 
     def load_feedback(self) -> List[Dict[str, Any]]:
         if os.path.exists(self.dataset_path):
@@ -170,7 +177,7 @@ class FeedbackManager:
     def load_shinpan_reviewed_videos(self) -> List[Dict[str, Any]]:
         """
         Carrega a lista de links/arquivos de vídeos com Decisão dos Shinpans já registrada.
-        Sincroniza retroativamente com registros de training_history.json caso algum
+        Sincroniza retroativamente com registros de training_history.json e feedback_dataset.json caso algum
         vídeo histórico de Shinpans ainda não esteja presente no arquivo exclusivo.
         """
         entries: List[Dict[str, Any]] = []
@@ -203,6 +210,30 @@ class FeedbackManager:
                         "reviewer_dan_name": SHINPAN_NAME,
                         "profile_key": h.get("profile_key", "normal"),
                         "items_count": h.get("items_count", 0)
+                    }
+                    entries.append(new_rec)
+                    registered_ids.add(canon_id)
+                    history_added = True
+
+        # Sincronização retroativa complementar com feedback_dataset.json
+        feedbacks = self.load_feedback()
+        for fb in feedbacks:
+            is_sh = bool(fb.get("is_shinpan_decision") or is_shinpan_reviewer(fb.get("reviewer_dan")))
+            if is_sh:
+                v_url = fb.get("video_url") or fb.get("streaming_url") or ""
+                v_name = fb.get("video_name") or ""
+                canon_id = normalize_video_identifier(v_url) if v_url else normalize_video_identifier(v_name)
+                if canon_id and canon_id not in registered_ids:
+                    new_rec = {
+                        "video_identifier": canon_id,
+                        "video_url": v_url or v_name,
+                        "video_name": v_name,
+                        "session_id": fb.get("id", ""),
+                        "reviewed_at": fb.get("review_date", ""),
+                        "reviewer_dan": SHINPAN_REV_KEY,
+                        "reviewer_dan_name": SHINPAN_NAME,
+                        "profile_key": fb.get("profile_key", "normal"),
+                        "items_count": 1
                     }
                     entries.append(new_rec)
                     registered_ids.add(canon_id)
@@ -309,7 +340,8 @@ class FeedbackManager:
         is_edited: bool = False,
         is_included: bool = False,
         decision_category: str = "",
-        is_shinpan_decision: Optional[bool] = None
+        is_shinpan_decision: Optional[bool] = None,
+        video_url: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Adiciona ou atualiza uma anotação de feedback no dataset com registro de Dan ou Decisão dos Shinpans.
@@ -336,6 +368,7 @@ class FeedbackManager:
             "id": f"{video_name}_{event_id}_{len(data)+1}",
             "id_event": event_id,
             "video_name": video_name,
+            "video_url": video_url or "",
             "profile_key": profile_key,
             "label": label,
             "decision_category": decision_category,
@@ -415,6 +448,7 @@ class FeedbackManager:
 
         saved_entries = []
         for item in review_items:
+            item_url = video_url or item.get("video_url") or item.get("streaming_url") or ""
             entry = self.save_feedback(
                 video_name=video_name,
                 profile_key=profile_key,
@@ -429,7 +463,8 @@ class FeedbackManager:
                 is_edited=item.get("is_edited", False),
                 is_included=item.get("is_included", False),
                 decision_category=str(item.get("decision_category") or item.get("category") or ""),
-                is_shinpan_decision=is_shinpan
+                is_shinpan_decision=is_shinpan,
+                video_url=item_url
             )
             saved_entries.append(entry)
 
@@ -838,10 +873,161 @@ class FeedbackManager:
 
         log_event("WARNING", "TREINAMENTO APAGADO (RESET): Todo o histórico de revisões, dataset de feedbacks, registro de vídeos dos Shinpans e calibrações foram restaurados ao estágio inicial de fábrica.", "feedback_manager")
 
-    def export_training_package(self) -> Dict[str, Any]:
+    def _merge_ai_knowledge_base(
+        self,
+        imported_kb: Dict[str, Any],
+        imported_checkpoint: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
-        Exporta o pacote de treinamento atual contendo todos os arquivos de revisão,
-        marcações por Dan, histórico de treinamentos, registro de vídeos dos Shinpans e perfis calibrados.
+        Mescla uma base de conhecimento importada diretamente no arquivo de configuração
+        self.knowledge_base_path de forma cumulativa e segura.
+        """
+        if not isinstance(imported_kb, dict):
+            return {"status": "skipped", "reason": "invalid_kb_format"}
+
+        current_kb = {}
+        if os.path.exists(self.knowledge_base_path):
+            try:
+                with open(self.knowledge_base_path, "r", encoding="utf-8") as f:
+                    current_kb = json.load(f)
+            except Exception:
+                current_kb = {}
+
+        if not current_kb:
+            current_kb = json.loads(json.dumps(imported_kb))
+            os.makedirs(os.path.dirname(self.knowledge_base_path), exist_ok=True)
+            with open(self.knowledge_base_path, "w", encoding="utf-8") as f:
+                json.dump(current_kb, f, indent=2, ensure_ascii=False)
+            return {"status": "success", "imported": True, "created_new": True}
+
+        # 1. Mesclar fontes indexadas
+        existing_sources = current_kb.setdefault("sources", {})
+        imported_sources = imported_kb.get("sources", {})
+        sources_added = 0
+        if isinstance(imported_sources, dict):
+            for s_key, s_val in imported_sources.items():
+                if s_key not in existing_sources and not any(
+                    isinstance(es, dict) and es.get("title") == (s_val.get("title") if isinstance(s_val, dict) else "")
+                    for es in existing_sources.values()
+                ):
+                    existing_sources[s_key] = s_val
+                    sources_added += 1
+        elif isinstance(imported_sources, list):
+            for s_val in imported_sources:
+                if isinstance(s_val, dict):
+                    stitle = s_val.get("title", "")
+                    skey = stitle.lower().replace(" ", "_")[:40] if stitle else f"src_imp_{random.randint(1000, 9999)}"
+                    if skey not in existing_sources and not any(
+                        isinstance(es, dict) and es.get("title") == stitle
+                        for es in existing_sources.values()
+                    ):
+                        existing_sources[skey] = s_val
+                        sources_added += 1
+
+        current_kb["sources"] = existing_sources
+        current_kb["total_web_sources_indexed"] = len(existing_sources)
+
+        # 2. Mesclar parâmetros aprendidos por modalidade
+        cur_learned = current_kb.setdefault("learned_parameters", {})
+        cur_mods = cur_learned.setdefault("training_modalities", {})
+        imp_learned = imported_kb.get("learned_parameters", {})
+        imp_mods = imp_learned.get("training_modalities", {}) if isinstance(imp_learned, dict) else {}
+
+        modalities_updated = 0
+        if isinstance(imp_mods, dict):
+            for mod_k, imp_data in imp_mods.items():
+                if not isinstance(imp_data, dict):
+                    continue
+                if mod_k not in cur_mods:
+                    cur_mods[mod_k] = json.loads(json.dumps(imp_data))
+                    modalities_updated += 1
+                else:
+                    cur_m = cur_mods[mod_k]
+                    cur_acc = float(cur_m.get("current_accuracy", 0.0))
+                    imp_acc = float(imp_data.get("current_accuracy", 0.0))
+                    if imp_acc > cur_acc:
+                        cur_m["current_accuracy"] = imp_acc
+                        cur_m["last_calibrated"] = imp_data.get("last_calibrated", cur_m.get("last_calibrated", ""))
+                        cur_m["mastery_level"] = imp_data.get("mastery_level", cur_m.get("mastery_level", ""))
+                        modalities_updated += 1
+
+                    cur_principles = cur_m.setdefault("principles_learned", [])
+                    imp_principles = imp_data.get("principles_learned", [])
+                    if isinstance(imp_principles, list):
+                        for p in imp_principles:
+                            if p and p not in cur_principles:
+                                cur_principles.append(p)
+
+                    cur_web = cur_m.setdefault("web_sources", [])
+                    imp_web = imp_data.get("web_sources", [])
+                    if isinstance(imp_web, list):
+                        for ws in imp_web:
+                            if isinstance(ws, dict):
+                                w_title = ws.get("title", "")
+                                if w_title and not any(isinstance(cw, dict) and cw.get("title") == w_title for cw in cur_web):
+                                    cur_web.append(ws)
+
+                    cur_evo = cur_m.setdefault("evolution_log", [])
+                    imp_evo = imp_data.get("evolution_log", [])
+                    if isinstance(imp_evo, list):
+                        for el in imp_evo:
+                            if isinstance(el, dict):
+                                el_note = el.get("note", "")
+                                if el_note and not any(isinstance(ce, dict) and ce.get("note") == el_note for ce in cur_evo):
+                                    cur_evo.append(el)
+
+                    cur_m["sessions_count"] = max(int(cur_m.get("sessions_count", 0)), int(imp_data.get("sessions_count", 0)))
+
+                    for param_key in ["movement_weight", "precision_weight", "constancy_weight", "cadence_tolerance_pct", "posture_strictness"]:
+                        if param_key in imp_data and imp_acc >= cur_acc:
+                            cur_m[param_key] = imp_data[param_key]
+
+        # 3. Mesclar princípios gerais de Kendo
+        cur_gen = cur_learned.setdefault("general_kendo_principles", [])
+        imp_gen = imp_learned.get("general_kendo_principles", []) if isinstance(imp_learned, dict) else []
+        if isinstance(imp_gen, list):
+            for gp in imp_gen:
+                if gp and gp not in cur_gen:
+                    cur_gen.append(gp)
+
+        # 4. Total de sessões e datas
+        imp_sessions = int(imported_kb.get("training_sessions_completed", 0))
+        cur_sessions = int(current_kb.get("training_sessions_completed", 0))
+        current_kb["training_sessions_completed"] = max(cur_sessions, imp_sessions)
+        current_kb["last_retrained_at"] = imported_kb.get("last_retrained_at", datetime.datetime.now().isoformat())
+
+        os.makedirs(os.path.dirname(self.knowledge_base_path), exist_ok=True)
+        with open(self.knowledge_base_path, "w", encoding="utf-8") as f:
+            json.dump(current_kb, f, indent=2, ensure_ascii=False)
+
+        # 5. Checkpoint
+        if imported_checkpoint and isinstance(imported_checkpoint, dict):
+            ckpt_path = getattr(self, "checkpoint_path", "data/auto_training_checkpoint.json")
+            if not os.path.exists(ckpt_path):
+                try:
+                    os.makedirs(os.path.dirname(ckpt_path), exist_ok=True)
+                    with open(ckpt_path, "w", encoding="utf-8") as f:
+                        json.dump(imported_checkpoint, f, indent=2, ensure_ascii=False)
+                except Exception:
+                    pass
+
+        return {
+            "status": "success",
+            "sources_added": sources_added,
+            "modalities_updated": modalities_updated,
+            "total_sources_now": len(existing_sources),
+            "sessions_completed": current_kb["training_sessions_completed"]
+        }
+
+    def export_training_package(self, auto_trainer_instance: Optional[Any] = None) -> Dict[str, Any]:
+        """
+        Exporta o pacote de treinamento completo contendo:
+        1. Todas as anotações e revisões por Dan (1º ao 8º Dan) e Shinpans;
+        2. Histórico completo de treinamentos (humanos e automáticos);
+        3. Registro de todos os vídeos e links de streaming com Decisão dos Shinpans homologada;
+        4. Perfis calibrados do modelo de detecção;
+        5. Base de conhecimento completa de IA (ai_knowledge_base: 14 modalidades, princípios, acurácia, fontes web);
+        6. Checkpoint de auto-treinamento (se existir).
         """
         data = self.load_feedback()
         history = self.load_history()
@@ -856,37 +1042,88 @@ class FeedbackManager:
             except Exception:
                 pass
 
+        # Obter base de conhecimento da IA
+        ai_kb = None
+        if auto_trainer_instance is not None and hasattr(auto_trainer_instance, "load_knowledge_base"):
+            try:
+                ai_kb = auto_trainer_instance.load_knowledge_base()
+            except Exception:
+                pass
+
+        if ai_kb is None and os.path.exists(self.knowledge_base_path):
+            try:
+                with open(self.knowledge_base_path, "r", encoding="utf-8") as f:
+                    ai_kb = json.load(f)
+            except Exception:
+                pass
+
+        # Obter checkpoint de auto-treinamento
+        auto_ckpt = None
+        if auto_trainer_instance is not None and hasattr(auto_trainer_instance, "load_checkpoint"):
+            try:
+                auto_ckpt = auto_trainer_instance.load_checkpoint()
+            except Exception:
+                pass
+
+        ckpt_path = getattr(self, "checkpoint_path", "data/auto_training_checkpoint.json")
+        if auto_ckpt is None and os.path.exists(ckpt_path):
+            try:
+                with open(ckpt_path, "r", encoding="utf-8") as f:
+                    auto_ckpt = json.load(f)
+            except Exception:
+                pass
+
         now_iso = datetime.datetime.now().isoformat(timespec="seconds")
+
+        # Contagem de sessões automáticas
+        auto_trainings_count = sum(1 for h in history if h.get("is_auto_training") or str(h.get("video_name", "")).startswith("AI_Auto_Trainer_"))
+        indexed_sources_count = len(ai_kb.get("sources", {})) if (ai_kb and isinstance(ai_kb.get("sources"), dict)) else 0
 
         pkg = {
             "system_name": "SenpAI",
-            "package_version": "1.0",
+            "package_version": "2.0",
             "exported_at": now_iso,
             "summary": {
                 "total_trainings_performed": metrics["total_trainings_count"],
                 "average_reviewer_dan": metrics["average_dan_level"],
                 "average_dan_label": metrics["average_dan_label"],
                 "total_review_entries": len(data),
-                "shinpan_reviewed_videos_count": len(shinpan_videos)
+                "shinpan_reviewed_videos_count": len(shinpan_videos),
+                "auto_trainings_count": auto_trainings_count,
+                "indexed_sources_count": indexed_sources_count
             },
             "review_items": data,
             "training_history": history,
             "shinpan_reviewed_videos": shinpan_videos,
-            "calibration_profiles": profiles
+            "calibration_profiles": profiles,
+            "ai_knowledge_base": ai_kb,
+            "auto_training_checkpoint": auto_ckpt
         }
 
-        log_event("INFO", f"PACOTE DE TREINAMENTO EXPORTADO: Pacote gerado com {len(data)} itens de revisão, {len(history)} treinamentos e {len(shinpan_videos)} vídeos com Decisão dos Shinpans registrados.", "feedback_manager")
+        log_event(
+            "INFO",
+            f"PACOTE DE TREINAMENTO EXPORTADO: Pacote v2.0 gerado com {len(data)} itens de revisão, "
+            f"{len(history)} sessões de treino, {len(shinpan_videos)} vídeos/links de streaming dos Shinpans e Base de Conhecimento de IA.",
+            "feedback_manager"
+        )
         return pkg
 
-    def import_training_package(self, package_data: Any) -> Dict[str, Any]:
+    def import_training_package(
+        self,
+        package_data: Any,
+        auto_trainer_instance: Optional[Any] = None
+    ) -> Dict[str, Any]:
         """
-        Importa um pacote de treinamento ou lista de revisões baixados anteriormente.
-        Mescla os arquivos de revisão, atualiza o histórico e recalibra os modelos.
+        Importa um pacote de treinamento (v2.0, v1.0 ou lista de revisões) baixados anteriormente.
+        Mescla revisões por Dan, histórico de treinamentos, links de streaming com Decisão dos Shinpans,
+        perfis de calibração e a base de conhecimento de IA (treinamentos automáticos).
         """
         imported_items = []
         imported_history = []
         imported_shinpan_videos = []
         imported_profiles = {}
+        imported_kb = None
+        imported_ckpt = None
 
         if isinstance(package_data, list):
             for idx, item in enumerate(package_data):
@@ -911,11 +1148,28 @@ class FeedbackManager:
 
             if "calibration_profiles" in package_data and isinstance(package_data["calibration_profiles"], dict):
                 imported_profiles = package_data["calibration_profiles"]
+
+            if "ai_knowledge_base" in package_data and isinstance(package_data["ai_knowledge_base"], dict):
+                imported_kb = package_data["ai_knowledge_base"]
+            elif "knowledge_base" in package_data and isinstance(package_data["knowledge_base"], dict):
+                imported_kb = package_data["knowledge_base"]
+
+            if "auto_training_checkpoint" in package_data and isinstance(package_data["auto_training_checkpoint"], dict):
+                imported_ckpt = package_data["auto_training_checkpoint"]
+            elif "checkpoint" in package_data and isinstance(package_data["checkpoint"], dict):
+                imported_ckpt = package_data["checkpoint"]
         else:
             raise ValueError("Formato de arquivo JSON não reconhecido.")
 
-        if not imported_items and not imported_history and not imported_profiles and not imported_shinpan_videos:
-            raise ValueError("O arquivo JSON não contém itens de revisão nem histórico válidos.")
+        if not imported_items and not imported_history and not imported_profiles and not imported_shinpan_videos and not imported_kb:
+            raise ValueError("O arquivo JSON não contém itens de revisão, histórico nem base de conhecimento válidos.")
+
+        # Captura IDs de vídeos dos Shinpans já registrados ANTES da importação
+        pre_registered_video_ids = {
+            v.get("video_identifier")
+            for v in self.load_shinpan_reviewed_videos()
+            if v.get("video_identifier")
+        }
 
         # 1. Carregar e mesclar revisões no dataset
         current_data = self.load_feedback()
@@ -954,11 +1208,15 @@ class FeedbackManager:
         current_history = self.load_history()
         existing_hist_ids = {h.get("id") for h in current_history if "id" in h and h.get("id")}
         new_history_count = 0
+        auto_trainings_imported = 0
+
         for h_item in imported_history:
             if not isinstance(h_item, dict):
                 continue
             h_id = h_item.get("id") or f"train_imp_{len(current_history)+1}"
             h_item["id"] = h_id
+            if h_item.get("is_auto_training") or str(h_item.get("video_name", "")).startswith("AI_Auto_Trainer_"):
+                auto_trainings_imported += 1
             if h_id not in existing_hist_ids:
                 current_history.append(h_item)
                 existing_hist_ids.add(h_id)
@@ -967,9 +1225,10 @@ class FeedbackManager:
         with open(self.history_path, "w", encoding="utf-8") as f:
             json.dump(current_history, f, indent=2, ensure_ascii=False)
 
-        # 2.1. Mesclar vídeos de Shinpans importados e sincronizar com histórico
+        # 2.1. Mesclar vídeos e links de streaming com Decisão dos Shinpans
         current_shinpan_videos = self.load_shinpan_reviewed_videos()
         registered_video_ids = {v.get("video_identifier") for v in current_shinpan_videos if v.get("video_identifier")}
+
         for sv in imported_shinpan_videos:
             if isinstance(sv, dict):
                 sv_id = sv.get("video_identifier") or normalize_video_identifier(sv.get("video_url") or sv.get("video_name"))
@@ -977,6 +1236,51 @@ class FeedbackManager:
                     sv["video_identifier"] = sv_id
                     current_shinpan_videos.append(sv)
                     registered_video_ids.add(sv_id)
+
+        # Sincronização adicional a partir do histórico importado
+        for h in current_history:
+            if h.get("is_shinpan_decision") or is_shinpan_reviewer(h.get("reviewer_dan")):
+                v_url = h.get("video_url") or h.get("streaming_url") or ""
+                v_name = h.get("video_name") or ""
+                canon_id = normalize_video_identifier(v_url) if v_url else normalize_video_identifier(v_name)
+                if canon_id and canon_id not in registered_video_ids:
+                    current_shinpan_videos.append({
+                        "video_identifier": canon_id,
+                        "video_url": v_url or v_name,
+                        "video_name": v_name,
+                        "session_id": h.get("id", ""),
+                        "reviewed_at": h.get("timestamp", ""),
+                        "reviewer_dan": SHINPAN_REV_KEY,
+                        "reviewer_dan_name": SHINPAN_NAME,
+                        "profile_key": h.get("profile_key", "normal"),
+                        "items_count": h.get("items_count", 0)
+                    })
+                    registered_video_ids.add(canon_id)
+
+        # Sincronização adicional a partir dos itens de revisão importados
+        for itm in current_data:
+            if itm.get("is_shinpan_decision") or is_shinpan_reviewer(itm.get("reviewer_dan")):
+                v_url = itm.get("video_url") or itm.get("streaming_url") or ""
+                v_name = itm.get("video_name") or ""
+                canon_id = normalize_video_identifier(v_url) if v_url else normalize_video_identifier(v_name)
+                if canon_id and canon_id not in registered_video_ids:
+                    current_shinpan_videos.append({
+                        "video_identifier": canon_id,
+                        "video_url": v_url or v_name,
+                        "video_name": v_name,
+                        "session_id": itm.get("id", ""),
+                        "reviewed_at": itm.get("review_date", ""),
+                        "reviewer_dan": SHINPAN_REV_KEY,
+                        "reviewer_dan_name": SHINPAN_NAME,
+                        "profile_key": itm.get("profile_key", "normal"),
+                        "items_count": 1
+                    })
+                    registered_video_ids.add(canon_id)
+
+        shinpan_imported_count = len([
+            v for v in current_shinpan_videos
+            if v.get("video_identifier") not in pre_registered_video_ids
+        ])
 
         with open(self.shinpan_registry_path, "w", encoding="utf-8") as f:
             json.dump(current_shinpan_videos, f, indent=2, ensure_ascii=False)
@@ -992,6 +1296,7 @@ class FeedbackManager:
                 "reviewer_dan_name": first_name,
                 "is_shinpan_decision": first_is_shinpan,
                 "video_name": imported_items[0].get("video_name", "imported_package"),
+                "video_url": imported_items[0].get("video_url") or imported_items[0].get("streaming_url") or "",
                 "profile_key": imported_items[0].get("profile_key", "normal"),
                 "items_count": len(imported_items),
                 "optimization_summary": {"status": "success", "imported": True}
@@ -1021,15 +1326,37 @@ class FeedbackManager:
         with open(self.profiles_path, "w", encoding="utf-8") as f:
             json.dump(profiles_to_use, f, indent=2, ensure_ascii=False)
 
+        # 4. Mesclar Base de Conhecimento e Treinamentos Automáticos por IA
+        kb_merge_res = {}
+        kb_updated = False
+        if imported_kb and isinstance(imported_kb, dict):
+            if auto_trainer_instance is not None and hasattr(auto_trainer_instance, "merge_knowledge_data"):
+                kb_merge_res = auto_trainer_instance.merge_knowledge_data(imported_kb, imported_checkpoint=imported_ckpt)
+                kb_updated = True
+            else:
+                kb_merge_res = self._merge_ai_knowledge_base(imported_kb, imported_checkpoint=imported_ckpt)
+                kb_updated = True
+
         updated_metrics = self.get_training_metrics()
 
-        log_event("INFO", f"PACOTE DE TREINAMENTO CARREGADO E RECALIBRADO: {new_added_count} novos itens de revisão e {new_history_count} treinamentos integrados. Nível Dan Médio atual: {updated_metrics['average_dan_label']}.", "feedback_manager")
+        log_event(
+            "INFO",
+            f"PACOTE DE TREINAMENTO CARREGADO E RECALIBRADO: {new_added_count} novos itens de revisão, "
+            f"{new_history_count} treinamentos, {shinpan_imported_count} vídeos/links de streaming dos Shinpans integrados "
+            f"e Base de Conhecimento {'atualizada' if kb_updated else 'mantida'}. Nível Dan Médio: {updated_metrics['average_dan_label']}.",
+            "feedback_manager"
+        )
 
         return {
             "status": "success",
             "imported_items_count": len(imported_items),
             "new_items_added": new_added_count,
             "imported_trainings_count": new_history_count,
+            "shinpan_videos_imported": shinpan_imported_count,
+            "shinpan_videos_total": len(current_shinpan_videos),
+            "auto_trainings_imported": auto_trainings_imported,
+            "knowledge_base_updated": kb_updated,
+            "knowledge_merge_summary": kb_merge_res,
             "total_trainings_now": updated_metrics["total_trainings_count"],
             "average_dan_now": updated_metrics["average_dan_label"]
         }

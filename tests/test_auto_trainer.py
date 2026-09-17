@@ -393,7 +393,46 @@ class TestAutoTrainer(unittest.TestCase):
         gen_principles = self.engine.get_general_kendo_principles()
         self.assertGreaterEqual(len(gen_principles), 4)
 
+    def test_export_and_merge_knowledge_data(self):
+        """Valida a exportação e mesclagem cumulativa da Base de Conhecimento do Auto-Trainer."""
+        # Treinar suburi para elevar acurácia
+        self.engine.retrain_detection_model("modality_suburi", sources_consulted=[{
+            "title": "Manual FIK Teste",
+            "type": "Manual Oficial",
+            "principles": ["Hasuji Estrito no Suburi"]
+        }])
+
+        exp_data = self.engine.export_knowledge_data()
+        self.assertIn("ai_knowledge_base", exp_data)
+        self.assertIn("sources", exp_data["ai_knowledge_base"])
+
+        kb_suburi = exp_data["ai_knowledge_base"]["learned_parameters"]["training_modalities"]["suburi"]
+        suburi_acc = kb_suburi["current_accuracy"]
+
+        # Resetar a base
+        self.engine.reset_knowledge_base()
+        kb_fresh = self.engine.load_knowledge_base()
+        self.assertLess(
+            kb_fresh["learned_parameters"]["training_modalities"]["suburi"]["current_accuracy"],
+            suburi_acc
+        )
+
+        # Mesclar os dados exportados
+        merge_res = self.engine.merge_knowledge_data(exp_data["ai_knowledge_base"], exp_data.get("auto_training_checkpoint"))
+        self.assertEqual(merge_res["status"], "success")
+
+        kb_restored = self.engine.load_knowledge_base()
+        self.assertEqual(
+            kb_restored["learned_parameters"]["training_modalities"]["suburi"]["current_accuracy"],
+            suburi_acc
+        )
+        self.assertIn(
+            "Hasuji Estrito no Suburi",
+            kb_restored["learned_parameters"]["training_modalities"]["suburi"]["principles_learned"]
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

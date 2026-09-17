@@ -713,6 +713,165 @@ class AutoTrainingEngine:
         log_event("INFO", f"Checkpoint consolidado com sucesso. {new_sources_count} novas fontes integradas à Base de Conhecimento.", "auto_trainer")
         return ckpt
 
+    def export_knowledge_data(self) -> Dict[str, Any]:
+        """
+        Exporta todos os dados aprendidos pelo motor de treinamento automático:
+        - Base de conhecimento completa (14 modalidades, acurácia aprendida, matrizes biomecânicas, princípios e fontes);
+        - Checkpoint de treinamento consolidado ou pendente;
+        - Estatísticas consolidadas de evolução.
+        """
+        kb = self.load_knowledge_base()
+        ckpt = self.load_checkpoint()
+        stats = self.get_evolution_statistics()
+        return {
+            "ai_knowledge_base": kb,
+            "auto_training_checkpoint": ckpt,
+            "evolution_statistics": stats,
+            "exported_at": datetime.datetime.now().isoformat()
+        }
+
+    def merge_knowledge_data(
+        self,
+        imported_kb: Dict[str, Any],
+        imported_checkpoint: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Mescla uma base de conhecimento importada com a base local atual de forma segura e cumulativa:
+        - Mescla fontes web indexadas (adiciona novas referências técnicas sem duplicações);
+        - Mescla parâmetros das 14 modalidades pedagógicas (preserva a maior acurácia aprendida,
+          acumula princípios sem duplicatas, acrescenta logs de evolução e referências web);
+        - Mescla princípios universais de Kendo (KENDO_GENERAL_PRINCIPLES);
+        - Atualiza o total de sessões executadas e timestamps de retreinamento.
+        """
+        if not isinstance(imported_kb, dict):
+            return {"status": "skipped", "reason": "invalid_kb_format"}
+
+        current_kb = self.load_knowledge_base()
+
+        # 1. Mesclar fontes indexadas
+        existing_sources = current_kb.setdefault("sources", {})
+        imported_sources = imported_kb.get("sources", {})
+        sources_added = 0
+        if isinstance(imported_sources, dict):
+            for s_key, s_val in imported_sources.items():
+                if s_key not in existing_sources and not any(
+                    isinstance(es, dict) and es.get("title") == (s_val.get("title") if isinstance(s_val, dict) else "")
+                    for es in existing_sources.values()
+                ):
+                    existing_sources[s_key] = s_val
+                    sources_added += 1
+        elif isinstance(imported_sources, list):
+            for s_val in imported_sources:
+                if isinstance(s_val, dict):
+                    stitle = s_val.get("title", "")
+                    skey = stitle.lower().replace(" ", "_")[:40] if stitle else f"src_imp_{random.randint(1000, 9999)}"
+                    if skey not in existing_sources and not any(
+                        isinstance(es, dict) and es.get("title") == stitle
+                        for es in existing_sources.values()
+                    ):
+                        existing_sources[skey] = s_val
+                        sources_added += 1
+
+        current_kb["sources"] = existing_sources
+        current_kb["total_web_sources_indexed"] = len(existing_sources)
+
+        # 2. Mesclar parâmetros aprendidos por modalidade
+        cur_learned = current_kb.setdefault("learned_parameters", {})
+        cur_mods = cur_learned.setdefault("training_modalities", {})
+        imp_learned = imported_kb.get("learned_parameters", {})
+        imp_mods = imp_learned.get("training_modalities", {}) if isinstance(imp_learned, dict) else {}
+
+        modalities_updated = 0
+        if isinstance(imp_mods, dict):
+            for mod_k, imp_data in imp_mods.items():
+                if not isinstance(imp_data, dict):
+                    continue
+                if mod_k not in cur_mods:
+                    cur_mods[mod_k] = json.loads(json.dumps(imp_data))
+                    modalities_updated += 1
+                else:
+                    cur_m = cur_mods[mod_k]
+                    # Preserva a maior acurácia aprendida
+                    cur_acc = float(cur_m.get("current_accuracy", 0.0))
+                    imp_acc = float(imp_data.get("current_accuracy", 0.0))
+                    if imp_acc > cur_acc:
+                        cur_m["current_accuracy"] = imp_acc
+                        cur_m["last_calibrated"] = imp_data.get("last_calibrated", cur_m.get("last_calibrated", ""))
+                        cur_m["mastery_level"] = imp_data.get("mastery_level", cur_m.get("mastery_level", ""))
+                        modalities_updated += 1
+
+                    # Mesclar princípios aprendidos (sem duplicações)
+                    cur_principles = cur_m.setdefault("principles_learned", [])
+                    imp_principles = imp_data.get("principles_learned", [])
+                    if isinstance(imp_principles, list):
+                        for p in imp_principles:
+                            if p and p not in cur_principles:
+                                cur_principles.append(p)
+
+                    # Mesclar referências web da modalidade
+                    cur_web = cur_m.setdefault("web_sources", [])
+                    imp_web = imp_data.get("web_sources", [])
+                    if isinstance(imp_web, list):
+                        for ws in imp_web:
+                            if isinstance(ws, dict):
+                                w_title = ws.get("title", "")
+                                if w_title and not any(isinstance(cw, dict) and cw.get("title") == w_title for cw in cur_web):
+                                    cur_web.append(ws)
+
+                    # Mesclar log de evolução
+                    cur_evo = cur_m.setdefault("evolution_log", [])
+                    imp_evo = imp_data.get("evolution_log", [])
+                    if isinstance(imp_evo, list):
+                        for el in imp_evo:
+                            if isinstance(el, dict):
+                                el_note = el.get("note", "")
+                                if el_note and not any(isinstance(ce, dict) and ce.get("note") == el_note for ce in cur_evo):
+                                    cur_evo.append(el)
+
+                    # Atualizar contagem de sessões de treinamento
+                    cur_m["sessions_count"] = max(int(cur_m.get("sessions_count", 0)), int(imp_data.get("sessions_count", 0)))
+
+                    # Tolerâncias e pesos se calibrados
+                    for param_key in ["movement_weight", "precision_weight", "constancy_weight", "cadence_tolerance_pct", "posture_strictness"]:
+                        if param_key in imp_data and imp_acc >= cur_acc:
+                            cur_m[param_key] = imp_data[param_key]
+
+        # 3. Mesclar princípios universais de Kendo
+        cur_gen = cur_learned.setdefault("general_kendo_principles", list(KENDO_GENERAL_PRINCIPLES))
+        imp_gen = imp_learned.get("general_kendo_principles", []) if isinstance(imp_learned, dict) else []
+        if isinstance(imp_gen, list):
+            for gp in imp_gen:
+                if gp and gp not in cur_gen:
+                    cur_gen.append(gp)
+
+        # 4. Atualizar total de sessões e datas
+        imp_sessions = int(imported_kb.get("training_sessions_completed", 0))
+        cur_sessions = int(current_kb.get("training_sessions_completed", 0))
+        current_kb["training_sessions_completed"] = max(cur_sessions, imp_sessions)
+        current_kb["last_retrained_at"] = imported_kb.get("last_retrained_at", datetime.datetime.now().isoformat())
+
+        self.save_knowledge_base(current_kb)
+
+        # 5. Checkpoint se fornecido e aplicável
+        if imported_checkpoint and isinstance(imported_checkpoint, dict):
+            existing_ckpt = self.load_checkpoint()
+            if not existing_ckpt or existing_ckpt.get("consolidated") is False:
+                self.save_checkpoint(imported_checkpoint)
+
+        log_event(
+            "INFO",
+            f"BASE DE CONHECIMENTO MESCLADA COM SUCESSO: {sources_added} novas fontes adicionadas, {modalities_updated} modalidades com acurácia atualizada.",
+            "auto_trainer"
+        )
+
+        return {
+            "status": "success",
+            "sources_added": sources_added,
+            "modalities_updated": modalities_updated,
+            "total_sources_now": len(existing_sources),
+            "sessions_completed": current_kb["training_sessions_completed"]
+        }
+
     def diagnose_latent_need(self, strategy: str = "auto") -> Dict[str, Any]:
         """
         Diagnostica a necessidade mais latente de treinamento no sistema.

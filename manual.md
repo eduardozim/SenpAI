@@ -1,6 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
-> **Arquitetura, Implementação, Algoritmos e Log de Mudanças**
+> **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
+> **Versão Oficial do Sistema**: `v2.3.1` *(Alinhada com o rodapé oficial da plataforma)*
 
 ---
 
@@ -343,10 +344,14 @@ Gerencia o ciclo completo de auditoria, revisão por Dan e otimização adaptati
   - Medição em tempo real do espaço em disco ocupado pelo ecossistema de treinamento do sistema.
   - Discriminação detalhada por categoria: **Datasets & Histórico** (`data/`), **Modelos de IA & Pesos Neurais** (`models/`, ex: YOLOv8-Pose) e **Memória de Conhecimento & Calibração** (`config/`).
   - Painel com cards visuais e listagem expansível com caminhos físicos, status e tamanho de cada arquivo no disco.
-- **Pacotes de Treinamento (Exportação e Importação)**:
-  - `export_training_package()`: Exporta um arquivo `.json` contendo todas as marcações com o Dan do revisor (ou flag `is_shinpan_decision`) e as datas dos treinamentos realizados.
-  - `import_training_package()`: Importa arquivos `.json` previamente baixados, mesclando dados e recalibrando o modelo automaticamente, restaurando integralmente o histórico de Shinpans e Dans.
-  - `reset_all_training_data()`: Apaga os dados de treinamento e restaura o sistema ao estágio inicial.
+- **Pacotes de Treinamento Completos (Exportação e Importação Unificada)**:
+  - `export_training_package()`: Exporta um pacote consolidado `.json` (v2.0) contendo:
+    1. **Revisões por Dan** (1º ao 8º Dan) com data, scores, tipos de golpe e notas;
+    2. **Decisões dos Shinpans**, preservando integralmente todos os links de streaming homologados (YouTube, stream web RTSP/HLS/HTTP, uploads), IDs canônicos e sessões;
+    3. **Perfis de Calibração** recalibrados e adaptados;
+    4. **Treinamentos Automáticos por IA**: exporta a Base de Conhecimento completa (`ai_knowledge_base.json`), contemplando as 14 modalidades pedagógicas, matrizes biomecânicas, acurácias aprendidas, princípios técnicos consolidados, fontes web mineradas, checkpoints e histórico de evolução.
+  - `import_training_package()`: Importa pacotes `.json` previamente baixados (v2.0, v1.0 ou listas brutas), mesclando cumulativamente todos os dados: restaura as revisões humanas, registra os links de streaming dos Shinpans assegurando governança anti-duplicidade, mescla fontes e acurácias na base de conhecimento da IA e retreina o modelo imediatamente.
+  - `reset_all_training_data()`: Apaga os dados de treinamento e restaura o sistema ao estágio inicial de fábrica.
 
 ### 4.5. Treinamento Automático por Inteligência Artificial ([auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py) & [ai_knowledge_base.json](file:///d:/Projetos/SenpAI/Dev/config/ai_knowledge_base.json))
 
@@ -526,7 +531,7 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_video_downloader.py` (12 testes)**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
 - **`test_video_player_controls.py` (5 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
 
-Total de **143 testes automatizados** distribuídos em 17 módulos, executados e aprovados com 100% de sucesso.
+Total de **157 testes automatizados** distribuídos em 17 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -534,7 +539,20 @@ Total de **143 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v2.3.0]` — 2026-09-13 *(Versão Atual)*
+### `[v2.3.1]` — 2026-09-16 *(Versão Atual)*
+
+- **Exportação e Importação Unificada de Treinamento ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py) & [auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py))**:
+  - **Pacote Completo de Treinamento (v2.0)**: A opção `📥 Baixar Treinamento Atual` agora exporta integralmente em um único arquivo `.json`:
+    1. Todas as revisões humanas por Dan (1º ao 8º Dan) com notas, scores, tipos de golpe e links de vídeo;
+    2. Todas as Decisões dos Shinpans com persistência completa de links de streaming (YouTube watch/shorts, URLs de stream web RTSP/HLS/HTTP e arquivos locais) e seus identificadores canônicos;
+    3. Perfis calibrados de arbitragem (`normal`, `rigido`, `permissivo`);
+    4. Todo o aprendizado acumulado pelo Treinamento Automático de IA: Base de Conhecimento (`ai_knowledge_base.json`), calibração das 14 modalidades pedagógicas de Kendo, princípios técnicos assimilados, fontes web indexadas, logs de evolução e checkpoints.
+  - **Restauração e Retreinamento Completo**: A opção `📤 Carregar Treinamento Baixado` reconstitui integralmente o ecossistema de aprendizado: reimporta marcações de Dan, cadastra links de streaming homologados aplicando governança anti-duplicidade imediata, mescla de forma cumulativa as fontes e modalidades da Base de Conhecimento e retreina os modelos.
+  - **157 testes automatizados** validados com 100% de aprovação (incluindo testes dedicados em `tests/test_dan_training_governance.py` e `tests/test_auto_trainer.py`).
+
+---
+
+### `[v2.3.0]` — 2026-09-13
 
 - **Módulo de Decisão dos Shinpans & Linha do Tempo Dedicada ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py) & [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py))**:
   - **Opção Regulamentar "Decisão dos Shinpans"**: Inclusão da opção arbitral no seletor de revisores, permitindo que a arbitragem de Shiai registre exclusivamente os golpes válidos (Ippon / Yūko-datotsu) concedidos pelos três árbitros em quadra.
@@ -1106,7 +1124,7 @@ Total de **143 testes automatizados** distribuídos em 17 módulos, executados e
 > [!IMPORTANT]
 > **AVISO LEGAL E TERMOS DE PROTEÇÃO INTELECTUAL**
 > 
-> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo.**  
+> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v2.3.1`.**  
 > **TODOS OS DIREITOS DE USO E CÓPIA RESERVADOS.**
 > 
 > 1. **Titularidade**: Todo o código-fonte, arquitetura de visão computacional, algoritmos biomecânicos de *Ki-Ken-Tai-Ichi*, modelos de detecção postural, pesos de rede neural, perfis de calibração heurística, identidade visual, interfaces e documentações pertencem exclusivamente aos desenvolvedores e detentores do projeto SenpAI.

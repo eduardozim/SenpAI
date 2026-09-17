@@ -816,7 +816,7 @@ def render_global_footer():
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                     <span style="font-size: 18px;">⚔️</span>
                     <span style="font-weight: 800; color: #E2E8F0; font-size: 13px;">SenpAI • 先輩 AI</span>
-                    <span style="color: #6366F1; font-weight: 700; font-size: 11px; background: rgba(99, 102, 241, 0.12); padding: 2px 8px; border-radius: 9999px;">v2.3.0</span>
+                    <span style="color: #6366F1; font-weight: 700; font-size: 11px; background: rgba(99, 102, 241, 0.12); padding: 2px 8px; border-radius: 9999px;">v2.3.1</span>
                 </div>
                 <div style="color: #94A3B8; font-size: 11.5px; line-height: 1.5;">
                     Plataforma de Visão Computacional e Arbitragem Automatizada de Kendo (FIK & AJKF Standards).
@@ -1387,8 +1387,8 @@ elif nav_page == "settings":
 
         with act_col2:
             st.markdown("**📥 Baixar Treinamento Atual**")
-            st.caption("Baixa pacote contendo todas as revisões, Dan dos revisores e datas dos treinamentos.")
-            pkg_data = feedback_mgr.export_training_package()
+            st.caption("Exporta pacote (.json) completo com revisões por Dan, Decisão dos Shinpans (incluindo links de streaming), calibrações e treinamento automático por IA (Base de Conhecimento e 14 modalidades).")
+            pkg_data = feedback_mgr.export_training_package(auto_trainer_instance=auto_trainer)
             pkg_json_str = json.dumps(pkg_data, indent=2, ensure_ascii=False)
             st.download_button(
                 label="📥 Baixar Treinamento (.json)",
@@ -1401,15 +1401,23 @@ elif nav_page == "settings":
 
         with act_col3:
             st.markdown("**📤 Carregar Treinamento Baixado**")
-            st.caption("Importa arquivos de revisão previamente baixados para recalibrar o modelo.")
+            st.caption("Importa pacote de treinamento previamente baixado para restaurar revisões, links de streaming e aprendizado da IA.")
             imported_file = st.file_uploader("Selecione pacote (.json)", type=["json"], key="import_pkg_file_tab")
             if imported_file is not None:
                 if st.button("📤 Importar e Retreinar Modelo", type="primary", width="stretch", key="btn_import_train_tab"):
                     try:
                         imported_file.seek(0)
                         pkg_content = json.loads(imported_file.read().decode("utf-8"))
-                        import_res = feedback_mgr.import_training_package(pkg_content)
-                        st.success(f"🎉 Pacote importado com sucesso! {import_res['new_items_added']} novos itens integrados. Novo Dan médio: {import_res['average_dan_now']}.")
+                        import_res = feedback_mgr.import_training_package(pkg_content, auto_trainer_instance=auto_trainer)
+                        success_msg = (
+                            f"🎉 Pacote importado com sucesso!\n"
+                            f"• {import_res['new_items_added']} novas revisões por Dan/Shinpans integradas.\n"
+                            f"• {import_res.get('shinpan_videos_imported', 0)} links de streaming / vídeos de Shinpans registrados.\n"
+                            f"• {import_res.get('imported_trainings_count', 0)} sessões no histórico de treinamento.\n"
+                            f"• Base de Conhecimento de IA e 14 modalidades pedagógicas recalibradas.\n"
+                            f"• Dan Médio Atual: {import_res['average_dan_now']}."
+                        )
+                        st.success(success_msg)
                         st.rerun()
                     except Exception as ex:
                         st.error(f"❌ Erro ao importar pacote de treinamento: {ex}")
