@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "last_updated": "2026-09-14T17:50:55.477185",
+  "last_updated": "2026-09-16T23:13:27.936950",
   "total_web_sources_indexed": 3,
   "sources": {
     "fik_regulations": {
@@ -78,6 +78,7 @@
     }
   },
   "learned_parameters": {
+    "auto_learning_sequence_step": 0,
     "general_kendo_principles": [
       "Ki-Ken-Tai-Ichi (気剣体一致): Unidade completa e simultânea de espírito (Ki), espada (Ken) e corpo/pés (Tai).",
       "Maai (間合い): Domínio da distância espacial e temporal (Toma, Issoku-itto-no-maai e Chikama).",
@@ -134,7 +135,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -178,7 +179,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -221,7 +222,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -264,7 +265,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -307,7 +308,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -349,7 +350,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -391,7 +392,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -433,7 +434,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -475,7 +476,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -518,7 +519,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -561,7 +562,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -604,7 +605,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -646,7 +647,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -688,7 +689,7 @@
         ],
         "evolution_log": [
           {
-            "date": "14/09/2026",
+            "date": "16/09/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
