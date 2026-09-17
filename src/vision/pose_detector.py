@@ -477,19 +477,6 @@ class PoseDetector:
                     current_frame=current_frame_idx
                 )
 
-        # 5. HUD / Banner Superior de Status
-        if sonkyo_status or match_timer_str:
-            overlay_h = 42
-            overlay = out.copy()
-            cv2.rectangle(overlay, (0, 0), (w, overlay_h), (15, 23, 42), -1)
-            cv2.addWeighted(overlay, 0.80, out, 0.20, 0, out)
-            cv2.line(out, (0, overlay_h), (w, overlay_h), (59, 130, 246), 2)
-
-            info_text = f"⚔️ SENPAI | {sonkyo_status or 'COMBATE ATIVO'}"
-            if match_timer_str:
-                info_text += f" | ⏱️ {match_timer_str}"
-            cv2.putText(out, info_text, (20, 27), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (255, 255, 255), 2, cv2.LINE_AA)
-
         return out
 
     def release(self):

@@ -138,7 +138,7 @@ KENDO_MODALITY_KNOWLEDGE_BASE: Dict[str, Dict[str, Any]] = {
     "kirikaeshi": {
         "name": "Kirikaeshi (切り返し)",
         "japanese": "切り返し",
-        "category": "Ritmo, Precisão e Resistência",
+        "category": "Sequência clássica de golpes contínuos",
         "key_principles": [
             "Cadência Contínua e Respiração: Execução ininterrupta de cortes Shōmen e Sayū-men a 45° de Hasuji em respiração única (Iki-tsugi).",
             "Taiatari (体当たり): Contato e choque corporal pelo centro sem colapsar a postura e sem recuar os ombros.",

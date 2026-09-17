@@ -1099,6 +1099,21 @@ Total de **143 testes automatizados** distribuídos em 17 módulos, executados e
 - Gerador sintético de vídeos de teste de Kendo ([demo_generator.py](file:///d:/Projetos/SenpAI/Dev/src/utils/demo_generator.py)).
 - CLI principal para execução do pipeline ([main.py](file:///d:/Projetos/SenpAI/Dev/main.py)).
 
+---
+
+## 7. Direitos de Uso, Cópia e Propriedade Intelectual
+
+> [!IMPORTANT]
+> **AVISO LEGAL E TERMOS DE PROTEÇÃO INTELECTUAL**
+> 
+> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo.**  
+> **TODOS OS DIREITOS DE USO E CÓPIA RESERVADOS.**
+> 
+> 1. **Titularidade**: Todo o código-fonte, arquitetura de visão computacional, algoritmos biomecânicos de *Ki-Ken-Tai-Ichi*, modelos de detecção postural, pesos de rede neural, perfis de calibração heurística, identidade visual, interfaces e documentações pertencem exclusivamente aos desenvolvedores e detentores do projeto SenpAI.
+> 2. **Restrições de Uso**: É estritamente proibida a reprodução, cópia, duplicação, distribuição comercial, engenharia reversa, descompilação ou criação de obras derivadas, no todo ou em parte, sem autorização prévia e expressa por escrito.
+> 3. **Conformidade Normativa**: O sistema foi concebido e estruturado em estrita conformidade com as diretrizes e regulamentações técnicas da **International Kendo Federation (FIK)** e da **All Japan Kendo Federation (AJKF/ZNKR)**.
+
+
 
 
 

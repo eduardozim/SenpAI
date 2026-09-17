@@ -724,8 +724,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">⚔️ SenpAI (先輩 AI)</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Sistema de Visão Computacional para Análise de Lutas de Kendo, Detecção de Golpes e Avaliação de Yuko-Datotsu</div>', unsafe_allow_html=True)
+
+#st.markdown('<div class="main-title">⚔️ SenpAI (先輩 AI)</div>', unsafe_allow_html=True)
+#st.markdown('<div class="sub-title">Sistema de Visão Computacional para Análise de Lutas de Kendo, Detecção de Golpes e Avaliação de Yuko-Datotsu</div>', unsafe_allow_html=True)
+
 
 # Verificação e Alerta de Ambiente Virtual Python
 venv_status = get_virtual_environment_info()
@@ -749,19 +751,17 @@ if not venv_status["is_virtual_env"]:
         """
     )
 
-def render_welcome_home_page():
+def render_hero_banner():
     """
-    Renderiza a Página Inicial de Boas-Vindas do SenpAI:
-    - Informações básicas e objetivos da plataforma.
-    - Apresentação visual e conceitual dos 3 Modos de Operação.
-    - Demonstrativo passo a passo de como iniciar o uso.
-    - Atalhos diretos de ação e acesso a documentações oficiais.
+    Renderiza o Hero Banner oficial de boas-vindas do SenpAI:
+    - Identidade visual com gradiente escuro e bordas em índigo.
+    - Título e subtítulo com diretrizes FIK e AJKF/ZNKR.
+    - Badges dinâmicos de conformidade e status de aceleração de hardware (GPU/CPU).
     """
     saved_hw = get_processing_device()
     dev_pref = st.session_state.get("device_preference", saved_hw)
     effective_dev, dev_msg, dev_gpu = get_effective_device(dev_pref)
 
-    # 1. HERO BANNER DE BOAS-VINDAS
     st.markdown(
         f"""
         <div style="background: linear-gradient(135deg, #090D16 0%, #1E1B4B 50%, #0F172A 100%); border: 2px solid #6366F1; border-radius: 14px; padding: 24px 28px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(99, 102, 241, 0.25);">
@@ -789,10 +789,62 @@ def render_welcome_home_page():
                     </span>
                 </div>
             </div>
+            <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(99, 102, 241, 0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 11.5px; color: #94A3B8;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span>⚖️</span>
+                    <span><b>© 2026 SenpAI (先輩 AI)</b> • Todos os direitos de uso e cópia reservados.</span>
+                </div>
+                <div style="color: #818CF8; font-size: 11px;">
+                    🔒 Protegido por Direitos Autorais • Proibida reprodução não autorizada
+                </div>
+            </div>
         </div>
         """,
         unsafe_allow_html=True
     )
+
+def render_global_footer():
+    """
+    Renderiza o rodapé global com informações de direitos autorais,
+    propriedade intelectual e reserva de direitos de uso e cópia.
+    """
+    st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div style="border-top: 1px solid #1E293B; padding-top: 20px; padding-bottom: 28px; margin-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #64748B;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                    <span style="font-size: 18px;">⚔️</span>
+                    <span style="font-weight: 800; color: #E2E8F0; font-size: 13px;">SenpAI • 先輩 AI</span>
+                    <span style="color: #6366F1; font-weight: 700; font-size: 11px; background: rgba(99, 102, 241, 0.12); padding: 2px 8px; border-radius: 9999px;">v2.3.0</span>
+                </div>
+                <div style="color: #94A3B8; font-size: 11.5px; line-height: 1.5;">
+                    Plataforma de Visão Computacional e Arbitragem Automatizada de Kendo (FIK & AJKF Standards).
+                </div>
+            </div>
+            <div style="text-align: right; line-height: 1.5;">
+                <div style="color: #CBD5E1; font-weight: 600; font-size: 12px;">
+                    ⚖️ <b>© 2026 SenpAI. Todos os direitos de uso e cópia reservados.</b>
+                </div>
+                <div style="color: #64748B; font-size: 11px;">
+                    É expressamente proibida a reprodução, cópia, distribuição ou engenharia reversa sem autorização prévia por escrito.
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+def render_welcome_home_page():
+    """
+    Renderiza a Página Inicial de Boas-Vindas do SenpAI:
+    - Informações básicas e objetivos da plataforma.
+    - Apresentação visual e conceitual dos 3 Modos de Operação.
+    - Demonstrativo passo a passo de como iniciar o uso.
+    - Atalhos diretos de ação e acesso a documentações oficiais.
+    """
+    # 1. HERO BANNER DE BOAS-VINDAS
+    render_hero_banner()
 
     # 2. BARRA DE ATALHOS RÁPIDOS DE INÍCIO
     col_cta1, col_cta2, col_cta3 = st.columns([1.6, 1.6, 1.2])
@@ -1054,30 +1106,7 @@ nav_page = st.sidebar.radio(
 )
 st.session_state["nav_page_selection"] = nav_page
 
-if nav_page == "home":
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🚀 Acesso Rápido")
-    st.sidebar.caption("Atalhos de navegação:")
-    if st.sidebar.button("⚔️ Ir para Análise de Lutas", width="stretch", key="sb_btn_home_to_analysis"):
-        st.session_state["nav_page_selection"] = "analysis"
-        st.session_state["sidebar_nav_radio"] = "analysis"
-        st.rerun()
-    if st.sidebar.button("⚙️ Ir para Configurações", width="stretch", key="sb_btn_home_to_settings"):
-        st.session_state["nav_page_selection"] = "settings"
-        st.session_state["sidebar_nav_radio"] = "settings"
-        st.rerun()
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 📚 Manuais do SenpAI")
-    sb_man_str = get_documentation_content("manual.md")
-    st.sidebar.download_button(
-        "📖 Baixar Manual (manual.md)",
-        data=sb_man_str,
-        file_name="manual.md",
-        mime="text/markdown",
-        width="stretch",
-        key="sb_dl_manual_home"
-    )
-elif nav_page == "settings":
+if nav_page == "settings":
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 📚 Documentação Rápida")
     st.sidebar.caption("Baixe ou consulte os manuais oficiais:")
@@ -1099,8 +1128,17 @@ elif nav_page == "settings":
         width="stretch",
         key="sb_dl_readme"
     )
+    st.sidebar.markdown("---")
 
-st.sidebar.markdown("---")
+st.sidebar.markdown(
+    """
+    <div style="font-size: 10.5px; color: #64748B; text-align: center; margin-top: 24px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); line-height: 1.4;">
+        <div><b>© 2026 SenpAI</b></div>
+        <div>Todos os direitos de uso e cópia reservados.</div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # ==============================================================================
@@ -1113,6 +1151,7 @@ if nav_page == "home":
 # PÁGINA 1: MENU DE CONFIGURAÇÕES (LAYOUT EM GUIAS / TABS)
 # ==============================================================================
 elif nav_page == "settings":
+    render_hero_banner()
     st.header("⚙️ Configurações Gerais do Sistema")
     st.markdown("Gerencie os parâmetros de aceleração de hardware, governança de modelos, perfis de calibração, ferramentas de diagnóstico e consulte a documentação oficial.")
 
@@ -2418,6 +2457,9 @@ elif nav_page == "analysis":
             key=f"disabled_w_zanshin_{profile_choice}"
         )
 
+    # HERO BANNER DE BOAS-VINDAS
+    render_hero_banner()
+
     # BANNER DO MODO ATIVO
     if app_mode == "recorded":
         st.markdown('<div class="mode-banner-recorded">📹 <b>Modo de Detecção Gravada Ativo:</b> Análise de vídeos pré-gravados de combates de Kendo, detecção de Yuko-Datotsu e relatórios diagnósticos.</div>', unsafe_allow_html=True)
@@ -2430,7 +2472,7 @@ elif nav_page == "analysis":
     # MODO 3: DETECÇÃO EM TEMPO REAL MULTI-CÂMERAS (1 A 4 CÂMERAS)
     # ==========================================================================
     if app_mode == "realtime":
-        def render_live_score_html(score_shiro: int, score_aka: int, total_shiro: int, total_aka: int, modality_label: str = "Avaliando movimentação...") -> str:
+        def render_live_score_html(score_shiro: int, score_aka: int, total_shiro: int, total_aka: int, modality_label: Optional[str] = None) -> str:
             total_strikes = total_shiro + total_aka
             total_ippon = score_shiro + score_aka
             shiro_sub = f"{score_shiro} Ippon{'s' if score_shiro != 1 else ''} / {total_shiro} Golpe{'s' if total_shiro != 1 else ''}"
@@ -2442,10 +2484,6 @@ elif nav_page == "analysis":
                 f'<span style="color: #38BDF8; font-size: 11px; font-weight: 700; background: rgba(56,189,248,0.12); padding: 2px 8px; border-radius: 9999px;">'
                 f'Total: {total_strikes} Golpe{"s" if total_strikes != 1 else ""} ({total_ippon} Ippon{"s" if total_ippon != 1 else ""})'
                 f'</span>'
-                f'</div>'
-                f'<div style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 6px; padding: 5px 9px; margin-bottom: 8px; font-size: 11px; color: #C7D2FE; display: flex; justify-content: space-between; align-items: center;">'
-                f'<span>🎓 <b>Modalidade Reconhecida:</b> <b style="color: #FFFFFF;">{modality_label}</b></span>'
-                f'<span style="font-size: 10px; color: #A5B4FC; background: rgba(99,102,241,0.25); padding: 1px 6px; border-radius: 4px;">IA Ativa</span>'
                 f'</div>'
                 f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">'
                 f'<div style="background: rgba(255, 255, 255, 0.05); border: 1.5px solid #94A3B8; border-radius: 8px; padding: 8px 10px; text-align: center;">'
@@ -2722,8 +2760,7 @@ elif nav_page == "analysis":
                                 frame,
                                 aka_landmarks=aka_lm,
                                 shiro_landmarks=shiro_lm,
-                                discarded_items=disc,
-                                sonkyo_status="🔴 AO VIVO | ⚪ SHIRO (ESQUERDA) ⇄ AKA (DIREITA) 🔴"
+                                discarded_items=disc
                             )
                             active_lm = aka_lm or shiro_lm
                             live_pose_histories[0].append(active_lm)
@@ -3119,7 +3156,7 @@ elif nav_page == "analysis":
                     st.markdown(f'<div style="background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.88rem; color: #cbd5e1;">💻 <b>Processamento por CPU:</b> MediaPipe Pose (TFLite CPU)</div>', unsafe_allow_html=True)
 
                 if app_mode == "training":
-                    st.markdown("##### 🥋 Modalidade de Treino & Aprendizado (14 Modalidades Oficiais)")
+                    st.markdown("##### 🥋 Modalidade de Treino & Aprendizado")
                     mod_keys = ["auto"] + list(TRAINING_MODALITIES_METADATA.keys())
                     selected_mod_key_raw = st.selectbox(
                         "Tipo de Treinamento:",
@@ -3802,52 +3839,6 @@ elif nav_page == "analysis":
                     else:
                         res = st.session_state["analysis_result"]
                         sonkyo_info = res.get("sonkyo_analysis", {})
-
-                        # Banner de Reconhecimento da Modalidade de Treinamento no Vídeo
-                        train_data = res.get("training_analysis", {})
-                        if train_data:
-                            t_mod_name = train_data.get("modality_name", "Treinamento de Kendo")
-                            t_mod_cat = train_data.get("modality_category", "Geral")
-                            t_conf_pct = int(train_data.get("detection_confidence", 0.8) * 100)
-                            t_det_m = train_data.get("detection_method", "AUTO_DETECTED")
-                            t_just = train_data.get("justification", "")
-                            t_learned_pr = train_data.get("learned_principles", [])
-                            t_web_src = train_data.get("web_sources", [])
-
-                            st.markdown(
-                                f"""
-                                <div style="background: linear-gradient(135deg, #090D16 0%, #1E1B4B 100%); border: 2px solid #6366F1; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; box-shadow: 0 4px 18px rgba(99, 102, 241, 0.25);">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(99, 102, 241, 0.3); padding-bottom: 6px; margin-bottom: 8px;">
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span style="font-size: 22px;">🎓</span>
-                                            <div>
-                                                <div style="color: #A5B4FC; font-size: 10px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;">MODALIDADE DE TREINAMENTO RECONHECIDA NO VÍDEO</div>
-                                                <div style="color: #FFFFFF; font-size: 17px; font-weight: 900; font-family: monospace;">
-                                                    {t_mod_name} <span style="font-size: 13px; color: #CBD5E1; font-weight: 500;">— {t_mod_cat}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div style="text-align: right;">
-                                            <span style="background: rgba(99, 102, 241, 0.25); color: #C7D2FE; border: 1px solid #6366F1; padding: 2px 8px; border-radius: 16px; font-size: 11px; font-weight: 700;">
-                                                {'🔍 IA Reconheceu' if t_det_m == 'AUTO_DETECTED' else '⚙️ Selecionado'} ({t_conf_pct}% Confiança)
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div style="color: #94A3B8; font-size: 12px;">
-                                        💡 <b>Diagnóstico da IA:</b> {t_just}
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                            if t_learned_pr:
-                                with st.expander(f"📖 Princípios do Kendo Aprendidos pela IA para {t_mod_name}", expanded=False):
-                                    for pr in t_learned_pr:
-                                        st.markdown(f"- 🥋 **{pr}**")
-                                    if t_web_src:
-                                        st.markdown("**Fontes Web Mineradas:**")
-                                        for ws in t_web_src:
-                                            st.markdown(f"- 🌐 [{ws.get('title', 'Fonte')}]({ws.get('url', '#')})")
 
                         # Montagem da lista unificada e cronológica de golpes
                         combined_strikes = []
@@ -4960,6 +4951,12 @@ elif nav_page == "analysis":
 else:
     # Estado inicial ou fallback se nenhuma página específica for selecionada
     render_welcome_home_page()
+
+# ==============================================================================
+# RODAPÉ GLOBAL DO SISTEMA (DIREITOS DE USO E CÓPIA RESERVADOS)
+# ==============================================================================
+render_global_footer()
+
 
 
 

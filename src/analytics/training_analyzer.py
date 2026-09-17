@@ -4,7 +4,7 @@ Analisa e classifica as 14 modalidades oficiais de treinamento de Kendo (com Kan
 1. Ashi-sabaki (足捌き) - Deslocamentos de pés (okuri-ashi, ayumi-ashi, hiraki-ashi, tsugi-ashi)
 2. Suburi (素振り) - Cortes repetidos no ar (jōge-buri, naname-buri, shōmen-uchi, sayū-men)
 3. Kihon (基本) - Fundamentos de postura, distância (maai), guarda (kamae), golpe e zanshin
-4. Kirikaeshi (切り返し) - Sequência de golpes para desenvolver ritmo, precisão, respiração e resistência
+4. Kirikaeshi (切り返し) - Sequência clássica de golpes contínuos
 5. Uchikomi-geiko (打込稽古) - Execução de golpes em oportunidades oferecidas pelo parceiro (motodachi)
 6. Kakari-geiko (掛稽古) - Ataques contínuos e intensos durante períodos curtos
 7. Yakusoku-geiko (約束稽古) - Exercícios combinados com ações previamente definidas
@@ -69,7 +69,7 @@ TRAINING_MODALITIES_METADATA: Dict[str, Dict[str, Any]] = {
         "key": "kirikaeshi",
         "name": "Kirikaeshi (切り返し)",
         "japanese": "切り返し",
-        "category": "Ritmo, Precisão e Resistência",
+        "category": "Sequência clássica de golpes contínuos",
         "description": "Sequência clássica de golpes contínuos: Shōmen inicial, cortes Sayū-men alternados (avançando e recuando), Taiatari e Shōmen final.",
         "focus_areas": ["Ângulo de 45° no Sayu-men", "Ritmo ininterrupto", "Controle de respiração", "Potência e flexibilidade de ombros"],
         "solo_or_pair": "pair",

@@ -247,7 +247,24 @@ Opções disponíveis:
 - Contato e Distância (Maai): Proximidade física e alcance entre os combatentes no impacto (rejeição de golpes fora de alcance).
 - Fumikomi (Tai): Sincronismo entre o impacto do pé no solo e a aceleração dos pulsos.
 - Postura Corporal (Tai): Alinhamento da coluna e estabilidade no momento do golpe.
-- Zanshin (Ki): Manutenção da prontidão e postura nos frames após o impacto.
-
 Para documentação técnica completa, detalhamento dos algoritmos e histórico de
 mudanças, consulte o arquivo manual.md.
+
+-------------------------------------------------------------------------------
+7. DIREITOS DE USO, CÓPIA E PROPRIEDADE INTELECTUAL
+-------------------------------------------------------------------------------
+
+(C) 2026 SenpAI (先輩 AI) - Plataforma Inteligente de Kendo.
+TODOS OS DIREITOS DE USO E CÓPIA RESERVADOS.
+
+Este software, seus algoritmos de visão computacional, modelos heurísticos e
+neurais, perfis de calibração biomecânica, interfaces visuais e documentações
+associadas constituem propriedade intelectual protegida pelas leis de direitos
+autorais e tratados internacionais.
+
+É expressamente proibida a reprodução, cópia, modificação, redistribuição,
+comercialização ou engenharia reversa, no todo ou em parte, por qualquer meio
+ou processo, sem a prévia e expressa autorização por escrito dos detentores
+dos direitos. Desenvolvido em estrita observância às diretrizes regulamentares
+da International Kendo Federation (FIK) e All Japan Kendo Federation (AJKF/ZNKR).
+

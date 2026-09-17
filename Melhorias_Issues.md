@@ -10,7 +10,7 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
 
 3. **Modo de Treinamento & Aprendizado**
   - **Treinamento em tempo real**: Permitir analise do treinamento em tempo real
-  - **Upload Sem Restrição de Tamanho**: Suporte a uploads de vídeos locais longos de keiko e exames sem limite de tamanho.
+
 
 ---
 
@@ -122,28 +122,6 @@ A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais d
 
 ---
 
-## 🐛 Issues & Bugs Conhecidos
-
-- **Processamento & Hardware**:
-  - Vazamento de memória (memory leak) durante o processamento de vídeos longos ou transmissões ao vivo.
-  - Configuração de limpeza de arquivos temporários
-- **Processamento em tempo real**:
-  - ~~Delay na recepção de vídeo via RTSP causando falha de sincronização com cameras locais (webcam)~~ *(Resolvido via `ThreadedVideoStream` com buffer size 1 e descarte de frames defasados)*
-- **Vídeo, Marcações e Sincronização**:
-  - Dessincronização entre o vídeo original, as marcações e os clipes gerados.
-  - Divergência entre os timestamps no frontend e os números de frames analisados no backend.
-  - Tratamento insuficiente de vídeos com FPS variável, rotações de orientação ou codecs diversos.
-  - ~~Erros na captura e aquisição de imagens em tempo real via webcam e transmissões RTSP.~~ *(Resolvido com otimização FFmpeg TCP, `probe_stream_connection` e leitor assíncrono)*
-  - ~~Perda de conexão e dessincronização em transmissões de múltiplas câmeras via RTSP.~~ *(Resolvido com reconexão resiliente e threads assíncronas dedicadas)*
-- **Rastreamento de Atletas & Plano de Fundo**:
-  - ~~Falha na persistência ou troca acidental de identidade entre os Kenshi Aka e Shiro durante a luta.~~ *(Resolvido: Barreira física anti-teleporte espacial no `CombatantTracker` quando `pair_dist > 0.15`, calibração com altura baseline >= 0.38 prevenindo falso oclusor ao levantar do Sonkyō, e limiar de área de fita >= 2.5% em HSV refinado eliminando ruídos em reflexos de verniz e cadeiras. Zero trocas em 100 frames).*
-  - ~~Falha na detecção de elementos de distorção da detecção (Shinpan, Espectadores na frente da câmera ou mesas ao fundo).~~ *(Resolvido com classificação geométrica de planos no `classify_plane`: descarte de árbitro em 1º plano com pés na borda `ground_y >= 0.94` ou altura excessiva `> 0.68`, e descarte de mesários e público ao fundo `ground_y < 0.68 and height < 0.22` ou `ground_y < 0.60`. De 3 a 7 pessoas externas filtradas por frame sem poluir os combatentes).*
-  - ~~Captura residual de Shinpans (~10% das marcações) e público em momentos de Tsubazeria (corpo a corpo).~~ *(Resolvido com Subnúcleo Especializado de Rastreamento de Árbitros (`classify_shinpan` e dicionário `shinpans`): discriminação por mãos separadas portando bandeiras (`hand_dist >= 0.09` vs empunhadura Tsuka `<= 0.065`), cabeça descoberta sem elmo Men (`RIGHT_EAR`/`LEFT_EAR`), zonas perimetrais da FIK (`SHINPAN_LEFT`, `SHINPAN_CENTER`, `SHINPAN_RIGHT`), delimitação mais justa do Shiaijo (`0.18 <= ground_x <= 0.82`) e bloqueio de reintegração em `LOCKED_COMBAT` durante Tsubazeria, onde o oponente ocluso é mantido inercialmente (`get_persisted_landmarks`) em vez de capturar o árbitro na borda. Falsas capturas caíram de 112 para **ZERO** absoluto em 1.200 frames do vídeo de teste).*
-- **Processamento & Performance GPU (Fim do gargalo de lentidão 2x)**:
-  - ~~Lentidão excessiva (~4.7 FPS) e subutilização da GPU por gargalo em Hough Transforms de CPU.~~ *(Resolvido: Remoção de Hough Transforms no pré-filtro de candidatos com pontuação puramente geométrica por esqueletos em microssegundos; ROI reduzida de 160px no `ShinaiTracker`; inferência YOLOv8-Pose em FP16 nativo CUDA com `torch.inference_mode()` e cuDNN benchmark. Throughput saltou de 4.7 FPS para **34+ FPS no NVIDIA RTX 4050**, mais de 7x de aceleração).*
-
----
-
 ## 📱 Módulo Mobile (SenpAI Companion App)
 
 O **SenpAI Mobile** foi concebido como uma extensão portátil e interativa do ecossistema SenpAI, conectando praticantes (*Kenshi*), professores (*Sensei*) e árbitros (*Shinpan*) ao poder de processamento de visão computacional e IA do sistema.
@@ -179,8 +157,21 @@ O **SenpAI Mobile** foi concebido como uma extensão portátil e interativa do e
 
 ---
 
-## 🔬 Calibração de Precisão & Mitigação de Falsos Positivos (Concluído)
-- **Reformulação da Acurácia Básica (< 50%)**: Eliminação de valores iniciais inflados (75%-93%). O modelo cru sem treino agora assume baselines honestas de fábrica (32% a 46.5%), refletindo o estado preliminar com alto índice de falsos positivos até calibração pelo auto-treinamento e feedbacks.
-- **Priorização de Feedback Real**: Priorização da taxa real de acerto anotada pelos Shinpans (`precision_pct` do `FeedbackManager`) sobre estimativas teóricas quando houver dados reais.
-- **Supressão de Disparos Múltiplos (Debounce Temporal de Golpes)**: Elevação do `min_event_gap_frames` do `EventSpotter` de 15 para 35 frames (~1.2s a 30 FPS) e implementação de Non-Maximum Suppression (NMS) temporal, impedindo que oscilações na subida e descida da Shinai no mesmo ataque sejam fatiadas e detectadas como 2 ou 3 golpes.
-- **Discriminação de Contato Físico (Maai)**: Verificação de distância relativa entre os combatentes no instante do impacto. Golpes desferidos no ar a distâncias excessivas (> 0.48 de afastamento horizontal) são classificados como fora do Maai (sem contato) e descartados como Ippon, eliminando a inflação desmedida do placar em vídeos de Shiai.
+## 🐛 Issues & Bugs Conhecidos
+
+- **Processamento & Hardware**:
+  - Vazamento de memória (memory leak) durante o processamento de vídeos longos ou transmissões ao vivo.
+  - Configuração de limpeza de arquivos temporários
+- **Processamento em tempo real**:
+  - Delay na recepção de vídeo via RTSP causando falha de sincronização com cameras locais (webcam)
+- **Vídeo, Marcações e Sincronização**:
+  - Dessincronização entre o vídeo original, as marcações e os clipes gerados.
+  - Divergência entre os timestamps no frontend e os números de frames analisados no backend.
+  - Tratamento insuficiente de vídeos com FPS variável, rotações de orientação ou codecs diversos.
+  - Erros na captura e aquisição de imagens em tempo real via webcam e transmissões RTSP.
+- **Rastreamento de Atletas & Plano de Fundo**:
+  - Falha na persistência ou troca acidental de identidade entre os Kenshi Aka e Shiro durante a luta.
+  - Falha na detecção de elementos de distorção da detecção (Shinpan, Espectadores na frente da câmera ou mesas ao fundo).
+  - Captura residual de Shinpans (~10% das marcações) e público em momentos de Tsubazeria (corpo a corpo).
+- **Processamento & Performance GPU (Fim do gargalo de lentidão 2x)**:
+  - Lentidão excessiva (~4.7 FPS) e subutilização da GPU por gargalo em Hough Transforms de CPU.
