@@ -104,6 +104,7 @@ class PoseDetector:
                         )
                         models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models"))
                         fallback_path = os.path.join(models_dir, "yolov8n-pose.pt")
+                        self._create_model_file_from_fallback(model_target, fallback_path)
                         self.yolo_model = YOLO(fallback_path)
                     
                     self.yolo_model.to("cuda:0")
@@ -148,10 +149,39 @@ class PoseDetector:
                         logger.warning(f"[PoseDetector] Falha ao carregar '{model_target}' em CPU: {load_err}. Usando yolov8n-pose.pt.")
                         models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models"))
                         fallback_path = os.path.join(models_dir, "yolov8n-pose.pt")
+                        self._create_model_file_from_fallback(model_target, fallback_path)
                         self.yolo_model = YOLO(fallback_path)
                     self.yolo_model.to("cpu")
                 except Exception as e:
                     logger.warning(f"[PoseDetector] Fallback YOLO em CPU indisponível: {e}")
+
+    def _create_model_file_from_fallback(self, model_target: str, fallback_path: str) -> bool:
+        """
+        No caso de erro ao carregar o modelo (ex: arquivo ausente ou inacessível no disco),
+        cria automaticamente o arquivo de modelo no caminho de destino a partir do modelo base seguro
+        (yolov8n-pose.pt ou candidato compatível em models/), garantindo persistência e estabilidade.
+        """
+        try:
+            models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models"))
+            # Se fallback_path não existir diretamente, procurar candidato alternativo válido em models/
+            if not os.path.exists(fallback_path):
+                for cand in ["yolov8n-pose.pt", "yolo11n-pose.pt", "yolo12n-pose.pt", "yolov26n-pose.pt"]:
+                    cand_path = os.path.join(models_dir, cand)
+                    if os.path.exists(cand_path):
+                        fallback_path = cand_path
+                        break
+
+            if os.path.exists(fallback_path) and not os.path.exists(model_target):
+                import shutil
+                os.makedirs(os.path.dirname(model_target), exist_ok=True)
+                shutil.copy2(fallback_path, model_target)
+                logger.info(
+                    f"[PoseDetector] Arquivo de modelo '{model_target}' criado com sucesso a partir de '{fallback_path}'."
+                )
+                return True
+        except Exception as create_err:
+            logger.warning(f"[PoseDetector] Não foi possível criar automaticamente o arquivo de modelo '{model_target}': {create_err}")
+        return False
 
     def _resolve_model_path_or_name(self) -> str:
         """
@@ -304,17 +334,20 @@ class PoseDetector:
             results = self.pose.process(frame_rgb)
 
             landmarks_dict = None
-            if results and results.pose_landmarks:
+            pose_lms: Any = getattr(results, "pose_landmarks", None) if results else None
+            if pose_lms is not None:
                 if self.mp_drawing and self.mp_pose:
+                    connections = list(self.mp_pose.POSE_CONNECTIONS) if hasattr(self.mp_pose, "POSE_CONNECTIONS") else None
                     self.mp_drawing.draw_landmarks(
                         annotated_frame,
-                        results.pose_landmarks,
-                        self.mp_pose.POSE_CONNECTIONS,
+                        pose_lms,
+                        connections,
                         landmark_drawing_spec=self.mp_drawing_styles.get_default_pose_landmarks_style() if self.mp_drawing_styles else None
                     )
                 landmarks_dict = {}
-                for idx, lm in enumerate(results.pose_landmarks.landmark):
-                    name = self.mp_pose.PoseLandmark(idx).name if self.mp_pose else f"LANDMARK_{idx}"
+                lms_list: Any = getattr(pose_lms, "landmark", [])
+                for idx, lm in enumerate(lms_list):
+                    name = self.mp_pose.PoseLandmark(idx).name if self.mp_pose is not None else f"LANDMARK_{idx}"
                     landmarks_dict[name] = {
                         "x": lm.x,
                         "y": lm.y,
@@ -391,8 +424,9 @@ class PoseDetector:
             left_crop = frame[:, :left_w]
             frame_rgb_l = cv2.cvtColor(left_crop, cv2.COLOR_BGR2RGB)
             res_l = self.pose.process(frame_rgb_l)
-            if res_l.pose_landmarks:
-                lm_l = self._extract_landmarks_dict(res_l.pose_landmarks, left_w, h, offset_x=0, offset_y=0, orig_w=w, orig_h=h)
+            lms_l: Any = getattr(res_l, "pose_landmarks", None) if res_l else None
+            if lms_l is not None:
+                lm_l = self._extract_landmarks_dict(lms_l, left_w, h, offset_x=0, offset_y=0, orig_w=w, orig_h=h)
                 if not self._is_duplicate(lm_l, candidates):
                     candidates.append(lm_l)
 
@@ -401,8 +435,9 @@ class PoseDetector:
             right_crop = frame[:, right_offset:]
             frame_rgb_r = cv2.cvtColor(right_crop, cv2.COLOR_BGR2RGB)
             res_r = self.pose.process(frame_rgb_r)
-            if res_r.pose_landmarks:
-                lm_r = self._extract_landmarks_dict(res_r.pose_landmarks, right_w, h, offset_x=right_offset, offset_y=0, orig_w=w, orig_h=h)
+            lms_r: Any = getattr(res_r, "pose_landmarks", None) if res_r else None
+            if lms_r is not None:
+                lm_r = self._extract_landmarks_dict(lms_r, right_w, h, offset_x=right_offset, offset_y=0, orig_w=w, orig_h=h)
                 if not self._is_duplicate(lm_r, candidates):
                     candidates.append(lm_r)
 
@@ -416,8 +451,9 @@ class PoseDetector:
             orig_h = h
 
         landmarks_dict = {}
-        for idx, lm in enumerate(pose_landmarks.landmark):
-            name = self.mp_pose.PoseLandmark(idx).name
+        lms_list: Any = getattr(pose_landmarks, "landmark", [])
+        for idx, lm in enumerate(lms_list):
+            name = self.mp_pose.PoseLandmark(idx).name if self.mp_pose is not None else f"LANDMARK_{idx}"
             px_global = int(lm.x * w + offset_x)
             py_global = int(lm.y * h + offset_y)
             x_norm = float(px_global / max(1, orig_w))
@@ -538,7 +574,7 @@ class PoseDetector:
         return out
 
     def release(self):
-        if hasattr(self, "pose"):
+        if hasattr(self, "pose") and self.pose is not None:
             self.pose.close()
 
 

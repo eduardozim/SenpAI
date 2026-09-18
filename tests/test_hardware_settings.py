@@ -182,6 +182,39 @@ class TestHardwareAndSettings(unittest.TestCase):
         self.assertEqual(pipeline.pose_detector.model_name, "yolov26")
         self.assertIn("device_status_message", dir(pipeline))
 
+    def test_pose_detector_creates_model_file_on_load_error(self):
+        """Valida que no caso de erro de carregamento (arquivo ausente), o arquivo de modelo é automaticamente criado."""
+        det = PoseDetector(device="cpu", model_name="yolov8")
+        models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models"))
+        test_missing_model = os.path.join(models_dir, "yolo_temp_test_model.pt")
+        fallback_model = os.path.join(models_dir, "yolov8n-pose.pt")
+        
+        # Garantir que o arquivo temporário não exista
+        if os.path.exists(test_missing_model):
+            os.remove(test_missing_model)
+            
+        try:
+            created = det._create_model_file_from_fallback(test_missing_model, fallback_model)
+            self.assertTrue(created)
+            self.assertTrue(os.path.exists(test_missing_model))
+            self.assertEqual(os.path.getsize(test_missing_model), os.path.getsize(fallback_model))
+        finally:
+            if os.path.exists(test_missing_model):
+                os.remove(test_missing_model)
+
+    def test_all_catalog_model_files_exist_in_models_dir(self):
+        """Garante que os arquivos de modelo de todos os modelos do catálogo (v8, v11, v12, v26) existem em models/."""
+        models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "models"))
+        for m_id, info in VISION_MODELS_CATALOG.items():
+            weights_file = info["weights_file"]
+            fpath = os.path.join(models_dir, weights_file)
+            self.assertTrue(
+                os.path.exists(fpath),
+                f"Arquivo de modelo '{weights_file}' para o modelo '{m_id}' deve existir em models/."
+            )
+            self.assertGreater(os.path.getsize(fpath), 1000)
+
 
 if __name__ == "__main__":
     unittest.main()
+
