@@ -43,6 +43,11 @@ runs/
 weights/
 .ultralytics/
 
+# Modelos neurais devem ser armazenados exclusivamente em models/ (proibidos na raiz)
+/*.pt
+/*.onnx
+/*.bin
+
 # Checkpoints e modelos customizados gerados durante o treino
 models/checkpoints/
 models/trained/

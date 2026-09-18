@@ -102,9 +102,8 @@ class PoseDetector:
                             f"[PoseDetector] Falha ao carregar modelo '{model_target}': {load_err}. "
                             f"Ativando fallback seguro para YOLOv8-Pose."
                         )
-                        fallback_path = os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n-pose.pt")
-                        if not os.path.exists(fallback_path):
-                            fallback_path = "yolov8n-pose.pt"
+                        models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models"))
+                        fallback_path = os.path.join(models_dir, "yolov8n-pose.pt")
                         self.yolo_model = YOLO(fallback_path)
                     
                     self.yolo_model.to("cuda:0")
@@ -147,9 +146,8 @@ class PoseDetector:
                         self.yolo_model = YOLO(model_target)
                     except Exception as load_err:
                         logger.warning(f"[PoseDetector] Falha ao carregar '{model_target}' em CPU: {load_err}. Usando yolov8n-pose.pt.")
-                        fallback_path = os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n-pose.pt")
-                        if not os.path.exists(fallback_path):
-                            fallback_path = "yolov8n-pose.pt"
+                        models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models"))
+                        fallback_path = os.path.join(models_dir, "yolov8n-pose.pt")
                         self.yolo_model = YOLO(fallback_path)
                     self.yolo_model.to("cpu")
                 except Exception as e:
@@ -157,30 +155,38 @@ class PoseDetector:
 
     def _resolve_model_path_or_name(self) -> str:
         """
-        Localiza o arquivo de pesos do modelo selecionado (models/<weights_file> ou raiz)
-        ou retorna o identificador compatível para o Ultralytics.
-        Garante fallback seguro para yolov8n-pose.pt caso o arquivo alvo não exista.
+        Localiza o arquivo de pesos do modelo selecionado exclusivamente na pasta models/
+        (ex: models/<weights_file>).
+        Garante que nenhum modelo seja lido da raiz e que novos downloads do Ultralytics
+        sejam salvos estritamente dentro da pasta models/.
         """
         weights_file = self.model_info.get("weights_file", "yolov8n-pose.pt")
+        models_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models"))
+        os.makedirs(models_dir, exist_ok=True)
 
-        # 1. Checar na pasta models/
-        candidate1 = os.path.join(os.path.dirname(__file__), "..", "..", "models", weights_file)
-        if os.path.exists(candidate1):
-            return candidate1
+        target_path = os.path.join(models_dir, weights_file)
 
-        # 2. Checar na raiz do projeto
-        if os.path.exists(weights_file):
-            return weights_file
+        # Salvaguarda de migração: se o arquivo de modelo existir na raiz, mover para models/
+        if not os.path.exists(target_path) and os.path.exists(weights_file):
+            try:
+                import shutil
+                shutil.move(weights_file, target_path)
+                logger.info(f"[PoseDetector] Modelo '{weights_file}' migrado com sucesso da raiz para '{models_dir}'.")
+            except Exception as e:
+                logger.warning(f"[PoseDetector] Falha ao migrar '{weights_file}' da raiz: {e}")
 
-        # 3. Se for yolov8n-pose.pt padrão e existir na pasta models ou raiz
-        v8_candidate = os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n-pose.pt")
-        if os.path.exists(v8_candidate):
+        # Se o arquivo de modelo já existe dentro de models/, utilizá-lo
+        if os.path.exists(target_path):
+            return target_path
+
+        # Se for o baseline yolov8 e existir em models/, retorná-lo
+        v8_candidate = os.path.join(models_dir, "yolov8n-pose.pt")
+        if self.model_name == "yolov8" and os.path.exists(v8_candidate):
             return v8_candidate
-        if os.path.exists("yolov8n-pose.pt"):
-            return "yolov8n-pose.pt"
 
-        # 4. Retornar o nome do arquivo para tentativa de carregamento/download pelo Ultralytics
-        return weights_file
+        # Retornar o caminho absoluto dentro da pasta models/
+        # Ao receber um caminho contendo a pasta models/, o Ultralytics salvará qualquer download direto em models/
+        return target_path
 
     def _single_yolo_result_to_landmarks(self, res, w: int, h: int) -> List[Dict[str, Any]]:
         """Converte as predições de múltiplos esqueletos de um resultado YOLOv8-Pose para o formato de landmarks do SenpAI."""

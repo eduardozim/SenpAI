@@ -148,12 +148,30 @@ class TestHardwareAndSettings(unittest.TestCase):
         self.assertIn("Nenhuma GPU NVIDIA encontrada", res["message"])
 
     def test_pose_detector_vision_model_resolution(self):
-        """Valida que o PoseDetector aceita e armazena os metadados do modelo de visão selecionado."""
+        """Valida que o PoseDetector aceita e armazena os metadados do modelo de visão selecionado e direciona para a pasta models/."""
         detector = PoseDetector(device="cpu", model_name="yolov11")
         self.assertEqual(detector.model_name, "yolov11")
         self.assertEqual(detector.model_info["name"], "YOLOv11 Pose")
         path = detector._resolve_model_path_or_name()
         self.assertTrue(len(path) > 0)
+        norm_parts = os.path.normpath(path).split(os.sep)
+        self.assertIn("models", norm_parts, f"Caminho do modelo '{path}' deve estar estritamente dentro da pasta models/.")
+
+    def test_all_catalog_models_stored_only_in_models_dir(self):
+        """Valida que todos os modelos do catálogo (yolov8, yolov11, yolov12, yolov26) são direcionados exclusivamente para models/."""
+        for m_id in ["yolov8", "yolov11", "yolov12", "yolov26"]:
+            det = PoseDetector(device="cpu", model_name=m_id)
+            target_path = det._resolve_model_path_or_name()
+            norm_target = os.path.normpath(target_path)
+            self.assertIn("models", norm_target.split(os.sep), f"Modelo {m_id} não aponta para a pasta models/: {target_path}")
+            self.assertFalse(norm_target.endswith(os.sep + "yolov8n-pose.pt") and "models" not in norm_target)
+
+    def test_no_model_weights_in_project_root(self):
+        """Garante que nenhum arquivo de modelo (.pt, .onnx, .engine, .bin) resida na raiz do projeto."""
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        for ext in [".pt", ".onnx", ".engine", ".bin"]:
+            root_files = [f for f in os.listdir(root_dir) if f.lower().endswith(ext) and os.path.isfile(os.path.join(root_dir, f))]
+            self.assertEqual(root_files, [], f"Arquivos de modelos proibidos encontrados na raiz: {root_files}")
 
     def test_pipeline_device_and_vision_model_integration(self):
         """Verifica a inicialização e integração conjunta do dispositivo de hardware e modelo de visão no SenpAIPipeline."""

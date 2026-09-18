@@ -554,33 +554,34 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
     - **Aba de Hardware**: Card de status consolidado no topo da aba combinando o acelerador selecionado (`🚀 GPU Habilitada` ou `💻 GPU Desabilitada`) lado a lado com o modelo de visão neural ativo.
     - **Barra Lateral (Sidebar)**: Seção `⚡ Aceleração & Modelo` exibindo status em tempo real (`🚀 GPU Habilitada` / `💻 GPU Desabilitada`), GPU física detectada e modelo ativo.
     - **Painel de Avaliação & Análise**: Card informativo antes do disparo de análise exibindo simultaneamente o acelerador e o modelo de visão computacional em execução.
-  - **Catálogo Detalhado de Modelos de Visão Computacional**:
+  - **Catálogo Detalhado de Modelos de Visão Computacional (Armazenamento Exclusivo em `models/`)**:
+    - **Diretório Canônico Obrigatório**: Todos os modelos neurais (YOLOv8, YOLOv11, YOLOv12, YOLOv26 e futuros pesos `.pt`, `.onnx`, `.engine`, `.bin`) são armazenados **estritamente na pasta `models/`**. Nenhum arquivo de modelo reside na raiz do projeto.
     1. **YOLOv8-Pose (Baseline Homologado)**:
-       - *Pesos Neurais*: `yolov8n-pose.pt` (3.3M parâmetros | Latência: < 12ms em GPU CUDA FP16).
-       - *Visão Geral*: Modelo baseline do SenpAI com pesos neurais já integrados localmente. Oferece alta velocidade de inferência, baixo consumo de VRAM e excelente equilíbrio de rastreamento em movimentos rápidos de artes marciais.
-       - *Vantagens*: Estabilidade comprovada em toda a suíte de testes; Pesos locais embutidos sem dependência de download externo; Excelente latência tanto em GPU quanto em CPU; Compatibilidade universal com versões de PyTorch e drivers NVIDIA.
+       - *Pesos Neurais*: `models/yolov8n-pose.pt` (3.3M parâmetros | Latência: < 12ms em GPU CUDA FP16).
+       - *Visão Geral*: Modelo baseline do SenpAI com pesos neurais já integrados localmente na pasta `models/`. Oferece alta velocidade de inferência, baixo consumo de VRAM e excelente equilíbrio de rastreamento em movimentos rápidos de artes marciais.
+       - *Vantagens*: Estabilidade comprovada em toda a suíte de testes; Pesos locais embutidos em `models/` sem dependência de download externo; Excelente latência tanto em GPU quanto em CPU; Compatibilidade universal com versões de PyTorch e drivers NVIDIA.
        - *Foco no Kendo*: Rastreamento equilibrado de postura corporal, Sonkyō e deslocamentos com Shinai.
     2. **YOLOv11-Pose (C3k2 & C2PSA Architecture)**:
-       - *Pesos Neurais*: `yolo11n-pose.pt` (2.6M parâmetros | Latência: < 10ms em GPU CUDA FP16).
-       - *Visão Geral*: Arquitetura de última geração da Ultralytics baseada em blocos C3k2 e atenção espacial C2PSA. Otimizado para máxima precisão em oclusões parciais, comum em combates próximos (Tsubazeriai).
+       - *Pesos Neurais*: `models/yolo11n-pose.pt` (2.6M parâmetros | Latência: < 10ms em GPU CUDA FP16).
+       - *Visão Geral*: Arquitetura de última geração da Ultralytics baseada em blocos C3k2 e atenção espacial C2PSA, com download direcionado automaticamente para `models/`. Otimizado para máxima precisão em oclusões parciais, comum em combates próximos (Tsubazeriai).
        - *Vantagens*: Blocos C3k2 com atenção espacial aprimorada; Alta resiliência em oclusões corporais e cruzamentos de braços e pernas; Melhor extração de features em resoluções 1080p e 4K; 15% menor overhead computacional por FLOP comparado a gerações anteriores.
        - *Foco no Kendo*: Precisão crítica na detecção de cotovelos, empunhadura do Shinai e postura de Kamae.
     3. **YOLOv12-Pose (Attention-Centric & Flash Processing)**:
-       - *Pesos Neurais*: `yolov12n-pose.pt` (2.8M parâmetros | Latência: < 11ms em GPU CUDA FP16).
+       - *Pesos Neurais*: `models/yolo12n-pose.pt` (2.8M parâmetros | Latência: < 11ms em GPU CUDA FP16).
        - *Visão Geral*: Modelo state-of-the-art centrado em mecanismos de auto-atenção pura (FlashAttention/A2) para estimativa de pose, oferecendo máxima taxa de acerto em poses extremas e trocas rápidas de direção.
        - *Vantagens*: Camadas de atenção global com inferência ultra-reativa; Rastreamento contínuo em investidas repentinas (Tobikomi-men); Redução de falsos positivos em keypoints articulares sob iluminação adversa; Otimizado para Tensor Cores modernos.
        - *Foco no Kendo*: Fixação temporal de keypoints em ataques de alta velocidade e saltos com Fumikomi.
     4. **YOLOv26-Pose (Next-Gen Neural Matrix)**:
-       - *Pesos Neurais*: `yolov26n-pose.pt` (4.1M parâmetros | Latência: < 14ms em GPU CUDA FP16).
+       - *Pesos Neurais*: `models/yolov26n-pose.pt` (4.1M parâmetros | Latência: < 14ms em GPU CUDA FP16).
        - *Visão Geral*: Versão conceitual de alta densidade neural voltada para análises laboratoriais e streaming multi-câmera simultâneo, com refinamento submétrico de pontos anatômicos.
        - *Vantagens*: Arquitetura neural de densidade estendida para máxima granularidade biomecânica; Refinamento submétrico na detecção do pé de ataque (Fumikomi-ashi) e postura pélvica; Análise multi-atleta simultânea sem degradação de confiança; Suporte a quantização INT8/FP8.
        - *Foco no Kendo*: Análise biomecânica refinada para pesquisa científica e arbitragem de alto escalão.
   - **Mecanismo de Resiliência & Fallback Automático**:
-    - O módulo `PoseDetector` implementa o método de busca inteligente `_resolve_model_path_or_name()`. Caso o arquivo de pesos selecionado não esteja no disco local ou ocorra indisponibilidade de download, o sistema efetua fallback transparente para o modelo local `yolov8n-pose.pt`, mantendo a estabilidade operacional sem jamais interromper o pipeline.
+    - O módulo `PoseDetector` implementa o método de busca inteligente `_resolve_model_path_or_name()`. O carregamento e downloads externos são direcionados exclusivamente para a pasta `models/`. Caso o arquivo de pesos selecionado não esteja no disco local ou ocorra indisponibilidade de download, o sistema efetua fallback transparente para o modelo local `models/yolov8n-pose.pt`, mantendo a estabilidade operacional sem jamais interromper o pipeline nem salvar arquivos na raiz.
   - **Integração CLI (`main.py`)**:
     - Adicionado suporte ao argumento `--model {yolov8,yolov11,yolov12,yolov26}` na CLI, possibilitando execução direta por linha de comando combinada com `--device {cpu,gpu}`.
   - **Suíte de Testes Automatizados**:
-    - 10 testes unitários em `tests/test_hardware_settings.py` cobrindo validação de chaves do catálogo, persistência e recuperação no `settings.json`, fallback gracioso para entradas inválidas, resolução de modelo no `PoseDetector` e instanciação no `SenpAIPipeline`. Todos aprovados com 100% de sucesso.
+    - Testes unitários em `tests/test_hardware_settings.py` cobrindo validação de chaves do catálogo, armazenamento exclusivo em `models/`, ausência de modelos na raiz, persistência e recuperação no `settings.json`, fallback gracioso para entradas inválidas, resolução de modelo no `PoseDetector` e instanciação no `SenpAIPipeline`. Todos aprovados com 100% de sucesso.
 
 ---
 

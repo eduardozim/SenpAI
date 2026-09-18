@@ -673,7 +673,7 @@ class FeedbackManager:
         Calcula o espaço em disco ocupado atualmente pelo treinamento do sistema:
         - Datasets de Feedback e Marcações de Revisão (data/feedback_dataset.json)
         - Histórico de Treinamento e Sessões de Retreinamento (data/training_history.json)
-        - Pesos de Modelos de Rede Neural de IA (models/ e raiz, ex: yolov8n-pose.pt)
+        - Pesos de Modelos de Rede Neural de IA (exclusivamente em models/, ex: models/yolov8n-pose.pt)
         - Base de Conhecimento e Memória da IA (config/ai_knowledge_base.json)
         - Perfis de Calibração e Aprendizado Biomecânico (config/calibration_profiles.json)
 
@@ -749,7 +749,21 @@ class FeedbackManager:
             except Exception:
                 pass
 
-        # 2. Modelos de Rede Neural de IA (models/)
+        # 2. Modelos de Rede Neural de IA (exclusivamente na pasta models/)
+        # Salvaguarda: se qualquer modelo existir indevidamente na raiz, migrá-lo para models/
+        if os.path.isdir(target_models_dir):
+            for candidate_root in ["yolov8n-pose.pt", "yolo11n-pose.pt", "yolo12n-pose.pt", "yolov26n-pose.pt"]:
+                if os.path.isfile(candidate_root):
+                    try:
+                        import shutil
+                        dest_p = os.path.join(target_models_dir, candidate_root)
+                        if not os.path.exists(dest_p):
+                            shutil.move(candidate_root, dest_p)
+                        else:
+                            os.remove(candidate_root)
+                    except Exception:
+                        pass
+
         model_seen = set()
         if os.path.isdir(target_models_dir):
             try:
@@ -761,6 +775,17 @@ class FeedbackManager:
                         sz = os.path.getsize(fpath)
                         models_bytes += sz
                         model_seen.add(fname)
+                        
+                        desc_name = "Rede Neural YOLO / Pose Estimation"
+                        if "yolov8" in fname.lower():
+                            desc_name = "Rede Neural YOLOv8-Pose (Baseline)"
+                        elif "11" in fname.lower():
+                            desc_name = "Rede Neural YOLOv11-Pose (Otimizado)"
+                        elif "12" in fname.lower():
+                            desc_name = "Rede Neural YOLOv12-Pose (Anti-Oclusão)"
+                        elif "26" in fname.lower():
+                            desc_name = "Rede Neural YOLOv26-Pose (Next-Gen 2026)"
+
                         files_detail.append({
                             "name": fname,
                             "path": fpath.replace("\\", "/"),
@@ -768,27 +793,11 @@ class FeedbackManager:
                             "category_key": "models",
                             "bytes": sz,
                             "formatted": self._format_bytes(sz),
-                            "description": "Rede Neural YOLOv8 / Pose Estimation",
+                            "description": desc_name,
                             "exists": True
                         })
             except Exception:
                 pass
-
-        # Se yolov8n-pose.pt estiver na raiz do projeto e ainda não contabilizado em models/
-        root_model = "yolov8n-pose.pt"
-        if "yolov8n-pose.pt" not in model_seen and os.path.isfile(root_model):
-            sz = os.path.getsize(root_model)
-            models_bytes += sz
-            files_detail.append({
-                "name": root_model,
-                "path": root_model,
-                "category": "Modelos de IA & Pesos Neurais",
-                "category_key": "models",
-                "bytes": sz,
-                "formatted": self._format_bytes(sz),
-                "description": "Rede Neural YOLOv8 / Pose Estimation",
-                "exists": True
-            })
 
         # 3. Base de Conhecimento e Calibração (config/)
         config_paths = [self.profiles_path, target_kb_path]
