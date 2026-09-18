@@ -153,6 +153,11 @@ Opções disponíveis:
   --device DISPOSITIVO    Dispositivo de processamento:
                           - cpu        : Somente CPU (Padrão)
                           - gpu        : GPU NVIDIA CUDA (quando houver, com fallback para CPU)
+  --model MODELO          Modelo neural de visão computacional:
+                          - yolov8     : YOLOv8 Pose (Baseline Estável & Consolidado)
+                          - yolov11    : YOLOv11 Pose (Otimizado C3k2 & Alta Velocidade)
+                          - yolov12    : YOLOv12 Pose (Atenção Centrada & Anti-Oclusão no Tsubazeriai)
+                          - yolov26    : YOLOv26 Pose (Next-Gen Ultra AI 2026 - Arbitragem FIK)
   --mode MODO             Modo de operação:
                           - user       : Análise padrão (Padrão)
                           - learning   : Ativa recursos para registro de feedback

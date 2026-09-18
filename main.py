@@ -23,7 +23,7 @@ if sys.stdout.encoding != 'utf-8':
 from src.pipeline import SenpAIPipeline
 from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager
-from src.utils.settings_manager import get_processing_device
+from src.utils.settings_manager import get_processing_device, get_vision_model
 from src.utils.hardware import validate_and_setup_gpu_requirements
 from src.utils.environment import validate_virtual_environment, get_virtual_environment_info
 
@@ -45,6 +45,7 @@ def main():
         print(f"[SenpAI - Ambiente] {venv_msg}")
 
     default_device = get_processing_device()
+    default_model = get_vision_model()
 
     parser = argparse.ArgumentParser(description="SenpAI - AI Kendo Match Analysis System")
     parser.add_argument("--video", type=str, help="Caminho para o arquivo de vídeo de luta (.mp4, .avi)")
@@ -55,6 +56,8 @@ def main():
                         help="Modo de operação: 'recorded' (Detecção Gravada), 'training' (Treinamento & Aprendizado) ou 'realtime' (Detecção em Tempo Real)")
     parser.add_argument("--device", type=str, default=default_device, choices=["cpu", "gpu"],
                         help="Dispositivo de processamento: 'cpu' (somente CPU) ou 'gpu' (GPU NVIDIA quando disponível)")
+    parser.add_argument("--model", type=str, default=default_model, choices=["yolov8", "yolov11", "yolov12", "yolov26"],
+                        help="Modelo de visão computacional: 'yolov8', 'yolov11', 'yolov12' ou 'yolov26'")
     parser.add_argument("--optimize-profile", action="store_true",
                         help="Executa otimização por reforço no perfil selecionado usando o dataset de feedback registrado")
     parser.add_argument("--demo", action="store_true", help="Gera um vídeo sintético de demonstração e executa o teste")
@@ -75,7 +78,7 @@ def main():
 
     if args.optimize_profile:
         print(f"[SenpAI - Treinamento] Otimizando o perfil '{args.profile}' com base no histórico de feedback...")
-        pipeline_temp = SenpAIPipeline(calibration_profile=args.profile, device_preference=args.device)
+        pipeline_temp = SenpAIPipeline(calibration_profile=args.profile, device_preference=args.device, vision_model=args.model)
         curr_cfg = pipeline_temp.calibrator.active_config
         new_cfg, opt_stats = feedback_mgr.optimize_profile_config(args.profile, curr_cfg)
         
@@ -98,13 +101,14 @@ def main():
     print(f"[SenpAI] Modo de Operação: '{active_mode.upper()}'")
     print(f"[SenpAI] Aplicando perfil de calibração: '{args.profile}'")
     print(f"[SenpAI] Preferência de Hardware Solicitada: '{args.device.upper()}'")
+    print(f"[SenpAI] Modelo de Visão Computacional: '{args.model.upper()}'")
 
     if args.device == "gpu":
         gpu_val = validate_and_setup_gpu_requirements(auto_install=True)
         print(f"[SenpAI - Hardware Check] {gpu_val['message']}")
 
-    pipeline = SenpAIPipeline(calibration_profile=args.profile, device_preference=args.device)
-    print(f"[SenpAI] Status de Hardware: {pipeline.device_status_message}")
+    pipeline = SenpAIPipeline(calibration_profile=args.profile, device_preference=args.device, vision_model=args.model)
+    print(f"[SenpAI] Status de Hardware & Modelo: {pipeline.device_status_message} (Modelo: {pipeline.vision_model_info['name']})")
     
     def on_progress(p):
         print(f"\rProgress: {int(p * 100)}%", end="", flush=True)

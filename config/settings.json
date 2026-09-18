@@ -1,3 +1,4 @@
 {
-  "processing_device": "gpu"
+  "processing_device": "gpu",
+  "vision_model": "yolov26"
 }

@@ -22,6 +22,7 @@ from src.analytics.training_analyzer import TrainingAnalyzer
 from src.engine.calibrator import CalibrationEngine
 from src.engine.reporter import DiagnosticReporter
 from src.utils.hardware import get_effective_device, ensure_browser_compatible_video, get_optimal_batch_size
+from src.utils.settings_manager import get_vision_model, get_vision_model_info
 from src.utils.logger_manager import log_event
 
 
@@ -109,12 +110,20 @@ class AsyncVideoBatchReader:
 
 
 class SenpAIPipeline:
-    def __init__(self, calibration_profile: str = "normal", device_preference: str = "cpu", custom_batch_size: Optional[int] = None):
+    def __init__(
+        self,
+        calibration_profile: str = "normal",
+        device_preference: str = "cpu",
+        custom_batch_size: Optional[int] = None,
+        vision_model: Optional[str] = None
+    ):
         self.device_preference = device_preference
+        self.vision_model = (vision_model or get_vision_model()).lower().strip()
+        self.vision_model_info = get_vision_model_info(self.vision_model)
         self.effective_device, self.device_status_message, self.gpu_info = get_effective_device(device_preference)
         self.batch_size = get_optimal_batch_size(self.effective_device, custom_batch_size)
         
-        self.pose_detector = PoseDetector(device=self.effective_device)
+        self.pose_detector = PoseDetector(device=self.effective_device, model_name=self.vision_model)
         self.shinai_tracker = ShinaiTracker()
         self.combatant_tracker = CombatantTracker()
         self.sonkyo_detector = SonkyoDetector()

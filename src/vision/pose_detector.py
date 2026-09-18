@@ -23,6 +23,8 @@ except ImportError:
 
 from typing import Dict, List, Optional, Tuple, Any
 
+from src.utils.settings_manager import get_vision_model, get_vision_model_info
+
 logger = logging.getLogger(__name__)
 
 # Suprime logs de avisos benignos do Ultralytics
@@ -50,8 +52,16 @@ COCO_INDEX_TO_LANDMARK = {
 }
 
 class PoseDetector:
-    def __init__(self, min_detection_confidence: float = 0.6, min_tracking_confidence: float = 0.6, device: str = "cpu"):
+    def __init__(
+        self,
+        min_detection_confidence: float = 0.6,
+        min_tracking_confidence: float = 0.6,
+        device: str = "cpu",
+        model_name: Optional[str] = None
+    ):
         self.device = device.lower().strip() if device else "cpu"
+        self.model_name = (model_name or get_vision_model()).lower().strip()
+        self.model_info = get_vision_model_info(self.model_name)
         self.use_gpu = False
         self.yolo_model = None
         self.torch_device = None
@@ -83,12 +93,20 @@ class PoseDetector:
                     except Exception:
                         pass
 
-                    # Localizar modelo YOLOv8-pose
-                    model_path = os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n-pose.pt")
-                    if not os.path.exists(model_path):
-                        model_path = "yolov8n-pose.pt"
+                    # Localizar e carregar modelo YOLO selecionado com fallback
+                    model_target = self._resolve_model_path_or_name()
+                    try:
+                        self.yolo_model = YOLO(model_target)
+                    except Exception as load_err:
+                        logger.warning(
+                            f"[PoseDetector] Falha ao carregar modelo '{model_target}': {load_err}. "
+                            f"Ativando fallback seguro para YOLOv8-Pose."
+                        )
+                        fallback_path = os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n-pose.pt")
+                        if not os.path.exists(fallback_path):
+                            fallback_path = "yolov8n-pose.pt"
+                        self.yolo_model = YOLO(fallback_path)
                     
-                    self.yolo_model = YOLO(model_path)
                     self.yolo_model.to("cuda:0")
                     if hasattr(self.yolo_model.model, "half"):
                         try:
@@ -101,7 +119,10 @@ class PoseDetector:
                     _ = self.yolo_model(dummy, device="cuda:0", verbose=False)
                     
                     gpu_name = torch.cuda.get_device_name(0)
-                    logger.info(f"[PoseDetector] 🚀 Aceleração Nativa NVIDIA CUDA ativada com sucesso: {gpu_name} (YOLOv8-Pose FP16 + cuDNN Benchmark)")
+                    logger.info(
+                        f"[PoseDetector] 🚀 Aceleração Nativa NVIDIA CUDA ativada com sucesso: {gpu_name} "
+                        f"({self.model_info['name']} FP16 + cuDNN Benchmark)"
+                    )
                 else:
                     logger.warning("[PoseDetector] GPU solicitada, mas PyTorch CUDA não está disponível. Fallback para CPU.")
             except Exception as e:
@@ -109,7 +130,7 @@ class PoseDetector:
 
         if not self.use_gpu:
             if self.mp_pose is not None:
-                logger.info("[PoseDetector] Inicializando detector MediaPipe Pose em modo CPU.")
+                logger.info(f"[PoseDetector] Inicializando detector MediaPipe Pose em modo CPU (Modelo preferencial: {self.model_info['name']}).")
                 self.pose = self.mp_pose.Pose(
                     static_image_mode=False,
                     model_complexity=1, # Otimizado para CPU
@@ -118,17 +139,48 @@ class PoseDetector:
                     min_tracking_confidence=min_tracking_confidence
                 )
             else:
-                logger.info("[PoseDetector] MediaPipe Pose indisponível. Inicializando fallback YOLO em CPU.")
+                logger.info(f"[PoseDetector] MediaPipe Pose indisponível. Inicializando fallback YOLO em CPU ({self.model_info['name']}).")
                 try:
                     from ultralytics import YOLO
-                    model_path = os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n-pose.pt")
-                    if not os.path.exists(model_path):
-                        model_path = "yolov8n-pose.pt"
-                    if os.path.exists(model_path):
-                        self.yolo_model = YOLO(model_path)
-                        self.yolo_model.to("cpu")
+                    model_target = self._resolve_model_path_or_name()
+                    try:
+                        self.yolo_model = YOLO(model_target)
+                    except Exception as load_err:
+                        logger.warning(f"[PoseDetector] Falha ao carregar '{model_target}' em CPU: {load_err}. Usando yolov8n-pose.pt.")
+                        fallback_path = os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n-pose.pt")
+                        if not os.path.exists(fallback_path):
+                            fallback_path = "yolov8n-pose.pt"
+                        self.yolo_model = YOLO(fallback_path)
+                    self.yolo_model.to("cpu")
                 except Exception as e:
                     logger.warning(f"[PoseDetector] Fallback YOLO em CPU indisponível: {e}")
+
+    def _resolve_model_path_or_name(self) -> str:
+        """
+        Localiza o arquivo de pesos do modelo selecionado (models/<weights_file> ou raiz)
+        ou retorna o identificador compatível para o Ultralytics.
+        Garante fallback seguro para yolov8n-pose.pt caso o arquivo alvo não exista.
+        """
+        weights_file = self.model_info.get("weights_file", "yolov8n-pose.pt")
+
+        # 1. Checar na pasta models/
+        candidate1 = os.path.join(os.path.dirname(__file__), "..", "..", "models", weights_file)
+        if os.path.exists(candidate1):
+            return candidate1
+
+        # 2. Checar na raiz do projeto
+        if os.path.exists(weights_file):
+            return weights_file
+
+        # 3. Se for yolov8n-pose.pt padrão e existir na pasta models ou raiz
+        v8_candidate = os.path.join(os.path.dirname(__file__), "..", "..", "models", "yolov8n-pose.pt")
+        if os.path.exists(v8_candidate):
+            return v8_candidate
+        if os.path.exists("yolov8n-pose.pt"):
+            return "yolov8n-pose.pt"
+
+        # 4. Retornar o nome do arquivo para tentativa de carregamento/download pelo Ultralytics
+        return weights_file
 
     def _single_yolo_result_to_landmarks(self, res, w: int, h: int) -> List[Dict[str, Any]]:
         """Converte as predições de múltiplos esqueletos de um resultado YOLOv8-Pose para o formato de landmarks do SenpAI."""

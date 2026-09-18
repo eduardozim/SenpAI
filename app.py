@@ -50,7 +50,10 @@ from src.utils.hardware import (
     detect_nvidia_gpu, get_effective_device, check_cuda_framework_support,
     validate_and_setup_gpu_requirements, detect_connected_cameras
 )
-from src.utils.settings_manager import load_settings, save_settings, get_processing_device, set_processing_device
+from src.utils.settings_manager import (
+    load_settings, save_settings, get_processing_device, set_processing_device,
+    get_vision_model, set_vision_model, get_vision_model_info, VISION_MODELS_CATALOG
+)
 from src.utils.logger_manager import (
     setup_system_logger, get_log_summary, get_memory_logs,
     get_debug_log_file_content, clear_debug_logs, run_system_diagnostic_check, log_event
@@ -762,6 +765,12 @@ def render_hero_banner():
     dev_pref = st.session_state.get("device_preference", saved_hw)
     effective_dev, dev_msg, dev_gpu = get_effective_device(dev_pref)
 
+    saved_model = get_vision_model()
+    active_model_id = st.session_state.get("vision_model_preference", saved_model)
+    active_model_info = get_vision_model_info(active_model_id)
+
+    gpu_label = "GPU Habilitada" if effective_dev == "gpu" else "GPU Desabilitada (CPU)"
+
     st.markdown(
         f"""
         <div style="background: linear-gradient(135deg, #090D16 0%, #1E1B4B 50%, #0F172A 100%); border: 2px solid #6366F1; border-radius: 14px; padding: 24px 28px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(99, 102, 241, 0.25);">
@@ -785,7 +794,7 @@ def render_hero_banner():
                         🏛️ FIK & AJKF Standards
                     </span>
                     <span style="background: rgba(34, 197, 94, 0.15); color: #4ADE80; border: 1px solid #22C55E; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;">
-                        ⚡ Hardware: {effective_dev.upper()} ({'GPU Ativa' if effective_dev == 'gpu' else 'CPU'})
+                        ⚡ Hardware: {effective_dev.upper()} ({gpu_label}) &nbsp;|&nbsp; 🧠 {active_model_info['name']}
                     </span>
                 </div>
             </div>
@@ -816,7 +825,7 @@ def render_global_footer():
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                     <span style="font-size: 18px;">⚔️</span>
                     <span style="font-weight: 800; color: #E2E8F0; font-size: 13px;">SenpAI • 先輩 AI</span>
-                    <span style="color: #6366F1; font-weight: 700; font-size: 11px; background: rgba(99, 102, 241, 0.12); padding: 2px 8px; border-radius: 9999px;">v2.3.1</span>
+                    <span style="color: #6366F1; font-weight: 700; font-size: 11px; background: rgba(99, 102, 241, 0.12); padding: 2px 8px; border-radius: 9999px;">v2.3.2</span>
                 </div>
                 <div style="color: #94A3B8; font-size: 11.5px; line-height: 1.5;">
                     Plataforma de Visão Computacional e Arbitragem Automatizada de Kendo (FIK & AJKF Standards).
@@ -1194,6 +1203,7 @@ elif nav_page == "settings":
 
     saved_sys_settings = load_settings()
     default_device_pref = st.session_state.get("device_preference", saved_sys_settings.get("processing_device", "cpu"))
+    default_vision_pref = st.session_state.get("vision_model_preference", saved_sys_settings.get("vision_model", "yolov8"))
 
     tab_hw, tab_train, tab_calib, tab_diag, tab_docs = st.tabs([
         "🖥️ Processamento & Hardware",
@@ -1207,53 +1217,173 @@ elif nav_page == "settings":
     # GUIA 1: PROCESSAMENTO & HARDWARE
     # --------------------------------------------------------------------------
     with tab_hw:
-        st.markdown("### 🖥️ Aceleração de Hardware & Seleção de Dispositivo")
-        st.caption("Configure o dispositivo de inferência para os modelos neurais (CPU ou GPU NVIDIA CUDA com aceleração FP16).")
+        st.markdown("### 🖥️ Aceleração de Hardware & Modelos de Visão Computacional")
+        st.caption("Configure o dispositivo de processamento (CPU ou GPU NVIDIA CUDA) e selecione o modelo de visão computacional com base nas necessidades de velocidade e precisão no Kendo.")
 
-        col_hw1, col_hw2 = st.columns([1, 1])
+        # ======================================================================
+        # CARD DE STATUS INTEGRADO (GPU HABILITADA/DESABILITADA + MODELO DE VISÃO ATIVO)
+        # ======================================================================
+        current_hw_pref = st.session_state.get("device_preference", default_device_pref)
+        current_model_pref = st.session_state.get("vision_model_preference", default_vision_pref)
+        eff_dev, eff_msg, eff_gpu = get_effective_device(current_hw_pref)
+        curr_model_info = get_vision_model_info(current_model_pref)
+
+        gpu_is_enabled = (eff_dev == "gpu")
+        hw_status_title = "🟢 GPU NVIDIA Habilitada & Pronta" if gpu_is_enabled else "💻 GPU Desabilitada (Modo CPU Ativo)"
+        hw_status_border = "#22C55E" if gpu_is_enabled else "#64748B"
+        hw_badge_color = "#4ADE80" if gpu_is_enabled else "#94A3B8"
+        hw_badge_bg = "rgba(34, 197, 94, 0.2)" if gpu_is_enabled else "rgba(148, 163, 184, 0.2)"
+
+        st.markdown(
+            f"""
+            <div style="background: linear-gradient(135deg, #0B0F19 0%, #1E1B4B 50%, #0F172A 100%); border: 1.5px solid {hw_status_border}; border-radius: 12px; padding: 18px 22px; margin-bottom: 22px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+                            <span style="font-size: 1.5rem;">{'⚡' if gpu_is_enabled else '💻'}</span>
+                            <span style="font-size: 1.12rem; font-weight: 800; color: #FFFFFF; font-family: 'Segoe UI', system-ui, sans-serif;">{hw_status_title}</span>
+                            <span style="background: {hw_badge_bg}; color: {hw_badge_color}; border: 1px solid {hw_status_border}; padding: 2px 10px; border-radius: 9999px; font-size: 0.76rem; font-weight: 700;">
+                                {'ACELERAÇÃO CUDA FP16' if gpu_is_enabled else 'PROCESSAMENTO CPU'}
+                            </span>
+                        </div>
+                        <div style="font-size: 0.86rem; color: #CBD5E1; margin-left: 34px;">
+                            {f"<b>Placa:</b> {eff_gpu.get('gpu_name', 'NVIDIA GPU')} &nbsp;|&nbsp; <b>VRAM:</b> {eff_gpu.get('memory_total', 'N/A')} &nbsp;|&nbsp; <b>Driver:</b> {eff_gpu.get('driver_version', 'N/A')}" if gpu_is_enabled else "Nenhum acelerador dedicado ativado para inferência. Execução via MediaPipe Pose (TFLite CPU)."}
+                        </div>
+                    </div>
+                    <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #334155; border-radius: 8px; padding: 10px 16px; text-align: right; min-width: 260px;">
+                        <div style="font-size: 0.74rem; color: #94A3B8; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Modelo de Visão em Execução</div>
+                        <div style="font-size: 1.05rem; font-weight: 800; color: {curr_model_info['color']}; margin-top: 2px;">
+                            {curr_model_info['icon']} {curr_model_info['name']}
+                        </div>
+                        <div style="font-size: 0.78rem; color: #CBD5E1; margin-top: 2px;">
+                            <span style="background: rgba(99, 102, 241, 0.2); color: #C7D2FE; padding: 1px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 600;">{curr_model_info['badge']}</span>
+                            &nbsp;•&nbsp; <code>{curr_model_info['weights_file']}</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        col_hw1, col_hw2 = st.columns([1, 1], gap="medium")
 
         with col_hw1:
-            st.markdown("**Seletor do Modo de Processamento:**")
+            st.markdown("#### ⚙️ Seleção de Hardware & Modelo")
+            
+            # 1. Seletor de Hardware
+            st.markdown("**1. Dispositivo de Processamento (Acelerador):**")
             selected_hw_option = st.radio(
                 "Escolha o acelerador:",
                 options=["cpu", "gpu"],
                 index=0 if default_device_pref == "cpu" else 1,
                 format_func=lambda x: {
-                    "cpu": "💻 Processamento por CPU somente",
-                    "gpu": "⚡ Processamento por GPU (quando houver)"
+                    "cpu": "💻 Processamento por CPU somente (GPU Desabilitada)",
+                    "gpu": "⚡ Processamento por GPU NVIDIA CUDA (GPU Habilitada)"
                 }[x],
-                help="• CPU Somente: Utiliza o processador da máquina.\n• GPU (quando houver): Processa via GPU NVIDIA se disponível no computador (RTX/GTX), ou faz fallback automático para CPU."
+                help="• CPU Somente: Desabilita o uso de GPU e processa via CPU.\n• GPU: Habilita aceleração nativa via GPU NVIDIA CUDA FP16 (RTX/GTX) ou realiza fallback automático para CPU caso não haja placa.",
+                key="radio_hw_device"
             )
 
-            if st.button("💾 Salvar Configurações de Hardware", type="primary", width="stretch", key="btn_save_hw_tab"):
+            st.markdown("---")
+
+            # 2. Seletor de Modelo de Visão
+            st.markdown("**2. Seleção do Modelo de Visão Computacional:**")
+            model_keys = list(VISION_MODELS_CATALOG.keys())
+            model_index = model_keys.index(default_vision_pref) if default_vision_pref in model_keys else 0
+            
+            selected_model_option = st.radio(
+                "Escolha a arquitetura neural:",
+                options=model_keys,
+                index=model_index,
+                format_func=lambda k: f"{VISION_MODELS_CATALOG[k]['icon']} {VISION_MODELS_CATALOG[k]['name']} — {VISION_MODELS_CATALOG[k]['badge']}",
+                help="Alterne entre os modelos para diferentes balanços de velocidade, precisão anatômica e resiliência a oclusões.",
+                key="radio_vision_model"
+            )
+
+            st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
+            if st.button("💾 Salvar Configurações de Hardware & Modelo de Visão", type="primary", width="stretch", key="btn_save_hw_tab"):
                 selected_hw_str = str(selected_hw_option or "cpu")
+                selected_model_str = str(selected_model_option or "yolov8")
+
                 set_processing_device(selected_hw_str)
+                set_vision_model(selected_model_str)
                 st.session_state["device_preference"] = selected_hw_str
-                st.success("✅ Configurações de hardware salvas com sucesso!")
+                st.session_state["vision_model_preference"] = selected_model_str
+
+                saved_info = get_vision_model_info(selected_model_str)
+                st.success(f"✅ Configurações salvas com sucesso! Hardware: {selected_hw_str.upper()} ({'GPU Habilitada' if selected_hw_str == 'gpu' else 'GPU Desabilitada'}) | Modelo: {saved_info['name']}.")
+                st.rerun()
 
         with col_hw2:
-            st.markdown("**Status e Diagnóstico de Hardware em Tempo Real:**")
-            gpu_check_info = detect_nvidia_gpu()
-            cuda_fw = check_cuda_framework_support()
+            st.markdown("#### 📋 Descritivo Técnico & Vantagens do Modelo")
+            
+            # Recupera dados do modelo atualmente selecionado no rádio em tempo real
+            chosen_model_key = str(selected_model_option or "yolov8")
+            chosen_info = get_vision_model_info(chosen_model_key)
+            latency_display = chosen_info['specs']['target_latency'].replace('<', '&lt;')
 
-            if gpu_check_info["has_nvidia_gpu"]:
-                st.success(f"🟢 **Placa NVIDIA Aceleradora Detectada:** {gpu_check_info['gpu_name']}")
-                st.caption(f"Driver: {gpu_check_info['driver_version']} | VRAM: {gpu_check_info['memory_total']}")
+            # Container com o descritivo de vantagens
+            advantages_html = "".join([
+                f'<div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; color: #E2E8F0;">'
+                f'<span style="color: {chosen_info["color"]}; font-weight: 800; font-size: 1rem;">✔</span>'
+                f'<div>{adv}</div>'
+                f'</div>'
+                for adv in chosen_info["advantages"]
+            ])
 
-                if cuda_fw["torch_cuda"]:
-                    st.info(f"✅ **Ambiente PyTorch CUDA Ativo:** Dispositivo `{cuda_fw['torch_device_name']}` pronto para inferência rápida.")
+            card_html = (
+                f'<div style="background: rgba(15, 23, 42, 0.85); border: 1.5px solid {chosen_info["color"]}; border-radius: 12px; padding: 20px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25); margin-bottom: 16px;">'
+                f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">'
+                f'<div style="display: flex; align-items: center; gap: 10px;">'
+                f'<span style="font-size: 1.6rem;">{chosen_info["icon"]}</span>'
+                f'<div>'
+                f'<div style="font-weight: 800; font-size: 1.12rem; color: #FFFFFF;">{chosen_info["full_name"]}</div>'
+                f'<div style="font-size: 0.8rem; color: #94A3B8;">Pesos: <code>{chosen_info["weights_file"]}</code></div>'
+                f'</div>'
+                f'</div>'
+                f'<span style="background: rgba(99, 102, 241, 0.2); color: #C7D2FE; border: 1px solid {chosen_info["color"]}; font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 9999px;">'
+                f'{chosen_info["badge"]}'
+                f'</span>'
+                f'</div>'
+                f'<div style="font-size: 0.88rem; color: #E2E8F0; line-height: 1.5; margin-bottom: 14px; background: rgba(30, 41, 59, 0.5); border-left: 3px solid {chosen_info["color"]}; padding: 8px 12px; border-radius: 0 6px 6px 0;">'
+                f'<b>Visão Geral:</b> {chosen_info["summary"]}'
+                f'</div>'
+                f'<div style="font-weight: 700; color: #F8FAFC; font-size: 0.88rem; margin-bottom: 10px;">'
+                f'⚡ Vantagens Técnicas & Funcionais:'
+                f'</div>'
+                f'{advantages_html}'
+                f'<div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(148, 163, 184, 0.2); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.78rem; color: #94A3B8;">'
+                f'<div>🥋 <b>Foco no Kendo:</b> {chosen_info["kendo_focus"]}</div>'
+                f'<div>📊 Parâmetros: <b>{chosen_info["specs"]["parameters"]}</b> | Latência: <b>{latency_display}</b></div>'
+                f'</div>'
+                f'</div>'
+            )
+            st.html(card_html)
+
+            # Diagnóstico de Hardware em Tempo Real
+            with st.expander("🔍 Detalhes de Hardware & Diagnóstico CUDA", expanded=False):
+                gpu_check_info = detect_nvidia_gpu()
+                cuda_fw = check_cuda_framework_support()
+
+                if gpu_check_info["has_nvidia_gpu"]:
+                    st.success(f"🟢 **Placa NVIDIA Aceleradora Detectada:** {gpu_check_info['gpu_name']}")
+                    st.caption(f"Driver: {gpu_check_info['driver_version']} | VRAM: {gpu_check_info['memory_total']}")
+
+                    if cuda_fw["torch_cuda"]:
+                        st.info(f"✅ **Ambiente PyTorch CUDA Ativo:** Dispositivo `{cuda_fw['torch_device_name']}` pronto para inferência rápida com {chosen_info['name']}.")
+                    else:
+                        st.warning("⚠️ **Dependências CUDA incompletas:** Suporte PyTorch CUDA não detectado.")
+                        if st.button("🚀 Instalar Requisitos CUDA para GPU NVIDIA", width="stretch", key="btn_install_cuda_tab"):
+                            with st.spinner(f"Instalando pacotes PyTorch CUDA para {gpu_check_info['gpu_name']}..."):
+                                install_res = validate_and_setup_gpu_requirements(auto_install=True)
+                                if install_res["cuda_ready"]:
+                                    st.success("✅ Pacotes CUDA instalados com sucesso!")
+                                    st.rerun()
+                                else:
+                                    st.error(install_res["message"])
                 else:
-                    st.warning("⚠️ **Dependências CUDA incompletas:** Suporte PyTorch CUDA não detectado.")
-                    if st.button("🚀 Instalar Requisitos CUDA para GPU NVIDIA", width="stretch", key="btn_install_cuda_tab"):
-                        with st.spinner(f"Instalando pacotes PyTorch CUDA para {gpu_check_info['gpu_name']}..."):
-                            install_res = validate_and_setup_gpu_requirements(auto_install=True)
-                            if install_res["cuda_ready"]:
-                                st.success("✅ Pacotes CUDA instalados com sucesso!")
-                                st.rerun()
-                            else:
-                                st.error(install_res["message"])
-            else:
-                st.info("💻 **Computador rodando em Modo CPU.** Nenhuma GPU NVIDIA dedicada detectada.")
+                    st.info("💻 **Computador rodando em Modo CPU.** Nenhuma GPU NVIDIA dedicada detectada.")
 
     # --------------------------------------------------------------------------
     # GUIA 2: GOVERNANÇA DE TREINAMENTO & PAINEL DE REVISÃO POR DAN
@@ -2353,33 +2483,44 @@ elif nav_page == "analysis":
     st.session_state["previous_app_mode"] = app_mode
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### ⚡ Aceleração de Hardware")
+    st.sidebar.markdown("### ⚡ Aceleração & Modelo")
     saved_hw_device = get_processing_device()
     dev_pref_current = st.session_state.get("device_preference", saved_hw_device)
     effective_dev, dev_msg, dev_gpu = get_effective_device(dev_pref_current)
+
+    saved_vis_model = get_vision_model()
+    vis_model_current = st.session_state.get("vision_model_preference", saved_vis_model)
+    vis_info = get_vision_model_info(vis_model_current)
 
     if effective_dev == "gpu":
         st.sidebar.markdown(
             f"""
             <div style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 6px; padding: 6px 10px; margin-bottom: 4px;">
-                <div style="font-weight: 700; color: #4ade80; font-size: 0.86rem;">🚀 Aceleração Ativada</div>
-                <div style="font-size: 0.78rem; color: #e2e8f0; font-weight: 600;">{dev_gpu.get('gpu_name', 'NVIDIA GPU')}</div>
-                <div style="font-size: 0.72rem; color: #94a3b8;">⚡ YOLOv8-Pose (CUDA)</div>
+                <div style="font-weight: 700; color: #4ade80; font-size: 0.86rem; display: flex; align-items: center; justify-content: space-between;">
+                    <span>🚀 GPU Habilitada</span>
+                    <span style="font-size: 0.68rem; background: rgba(34, 197, 94, 0.2); padding: 1px 6px; border-radius: 4px;">CUDA</span>
+                </div>
+                <div style="font-size: 0.78rem; color: #e2e8f0; font-weight: 600; margin-top: 2px;">{dev_gpu.get('gpu_name', 'NVIDIA GPU')}</div>
+                <div style="font-size: 0.73rem; color: #A5B4FC; font-weight: 600; margin-top: 2px;">🧠 {vis_info['name']} (FP16)</div>
             </div>
             """,
             unsafe_allow_html=True
         )
     else:
         st.sidebar.markdown(
-            """
+            f"""
             <div style="background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 6px; padding: 6px 10px; margin-bottom: 4px;">
-                <div style="font-weight: 700; color: #cbd5e1; font-size: 0.86rem;">💻 Aceleração Desativada</div>
-                <div style="font-size: 0.78rem; color: #94a3b8;">Processamento por CPU (MediaPipe)</div>
+                <div style="font-weight: 700; color: #cbd5e1; font-size: 0.86rem; display: flex; align-items: center; justify-content: space-between;">
+                    <span>💻 GPU Desabilitada</span>
+                    <span style="font-size: 0.68rem; background: rgba(148, 163, 184, 0.2); padding: 1px 6px; border-radius: 4px;">CPU</span>
+                </div>
+                <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 2px;">Processamento via CPU (MediaPipe)</div>
+                <div style="font-size: 0.73rem; color: #cbd5e1; font-weight: 600; margin-top: 2px;">🧠 Modelo: {vis_info['name']}</div>
             </div>
             """,
             unsafe_allow_html=True
         )
-    st.sidebar.caption("⚙️ *Para alterar acelerador, acesse Menu de Configurações.*")
+    st.sidebar.caption("⚙️ *Para alterar acelerador ou modelo, acesse Menu de Configurações.*")
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 🎛️ Calibração de Sensibilidade")
@@ -2631,9 +2772,11 @@ elif nav_page == "analysis":
 
         if run_live_detection:
             dev_pref = st.session_state.get("device_preference", get_processing_device())
+            vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
             pipeline = SenpAIPipeline(
                 calibration_profile=profile_choice if profile_choice != "custom" else "normal",
-                device_preference=dev_pref
+                device_preference=dev_pref,
+                vision_model=vis_pref
             )
 
             active_profile_str = profile_choice if profile_choice != "custom" else "normal"
@@ -3158,10 +3301,23 @@ elif nav_page == "analysis":
 
                 dev_pref = st.session_state.get("device_preference", get_processing_device())
                 effective_dev, dev_msg, dev_gpu = get_effective_device(dev_pref)
+                vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
+                vis_info_exec = get_vision_model_info(vis_pref)
+
                 if effective_dev == "gpu":
-                    st.markdown(f'<div style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.88rem; color: #4ade80;">🚀 <b>Aceleração GPU Ativa:</b> {dev_gpu.get("gpu_name", "NVIDIA GPU")} (YOLOv8-Pose CUDA)</div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div style="background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.4); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.88rem; color: #4ade80;">'
+                        f'🚀 <b>GPU Habilitada:</b> {dev_gpu.get("gpu_name", "NVIDIA GPU")} &nbsp;|&nbsp; 🧠 <b>Modelo:</b> {vis_info_exec["name"]} (CUDA FP16)'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
                 else:
-                    st.markdown(f'<div style="background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.88rem; color: #cbd5e1;">💻 <b>Processamento por CPU:</b> MediaPipe Pose (TFLite CPU)</div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div style="background: rgba(148, 163, 184, 0.12); border: 1px solid rgba(148, 163, 184, 0.3); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 0.88rem; color: #cbd5e1;">'
+                        f'💻 <b>GPU Desabilitada (Modo CPU):</b> MediaPipe Pose &nbsp;|&nbsp; 🧠 <b>Modelo Preferencial:</b> {vis_info_exec["name"]}'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
 
                 if app_mode == "training":
                     st.markdown("##### 🥋 Modalidade de Treino & Aprendizado")
@@ -3224,9 +3380,11 @@ elif nav_page == "analysis":
                 # 2. Se o usuário clicar em Iniciar Análise
                 if start_btn and video_file_path and not is_running:
                     dev_pref = st.session_state.get("device_preference", get_processing_device())
+                    vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
                     pipeline = SenpAIPipeline(
                         calibration_profile=profile_choice if profile_choice != "custom" else "normal",
-                        device_preference=dev_pref
+                        device_preference=dev_pref,
+                        vision_model=vis_pref
                     )
                     
                     if profile_choice == "custom":
@@ -3643,9 +3801,11 @@ elif nav_page == "analysis":
                     with col_rep1:
                         if st.button("🔄 Reprocessar Analise com Aprendizado de Sonkyō", type="primary", width="stretch", key="btn_reprocess_sonkyo_learning"):
                             dev_pref = st.session_state.get("device_preference", get_processing_device())
+                            vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
                             pipeline = SenpAIPipeline(
                                 calibration_profile=profile_choice if profile_choice != "custom" else "normal",
-                                device_preference=dev_pref
+                                device_preference=dev_pref,
+                                vision_model=vis_pref
                             )
                             if profile_choice == "custom":
                                 pipeline.calibrator.update_custom_settings(
