@@ -85,7 +85,7 @@ VISION_MODELS_CATALOG: Dict[str, Dict[str, Any]] = {
     "yolov26": {
         "id": "yolov26",
         "name": "YOLOv26 Pose",
-        "full_name": "SenpAI Next-Gen YOLOv26 Pose (Arbitragem de Elite 2026)",
+        "full_name": "SenpAI Next-Gen YOLOv26 Pose (Análise de Elite 2026)",
         "badge": "Next-Gen AI 2026",
         "weights_file": "yolov26n-pose.pt",
         "icon": "👑",
@@ -96,7 +96,7 @@ VISION_MODELS_CATALOG: Dict[str, Dict[str, Any]] = {
             "Antecipação Cinemática de Golpe: Prediz vetores de ataque antes do impacto físico no Men/Kote/Do.",
             "Sincronização Ki-Ken-Tai-Ichi: Mede intervalos de milissegundos entre som, shinai e pé de apoio.",
             "Aceleração Quântica / TensorRT: Pipeline otimizado para máxima performance em GPUs RTX série 40/50.",
-            "Arbitragem de Alto Rendimento: Concebido para grandes campeonatos mundiais e decisões milimétricas."
+            "Análise de Alto Rendimento: Concebido para grandes campeonatos mundiais e decisões milimétricas."
         ],
         "kendo_focus": "Validação oficial estrita de Yuko-Datotsu e Ki-Ken-Tai-Ichi em torneios internacionais.",
         "specs": {

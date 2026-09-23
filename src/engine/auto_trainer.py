@@ -1614,7 +1614,7 @@ class AutoTrainingEngine:
     ) -> Dict[str, Any]:
         """
         Executa o retreinamento automático do modelo de detecção de golpes e calibração de postura:
-        1. Otimiza os perfis de arbitragem (normal, rigido, permissivo) com base nos feedbacks e manuais;
+        1. Otimiza os perfis de análise (normal, rigido, permissivo) com base nos feedbacks e manuais;
         2. Refina pesos de Ki-Ken-Tai-Ichi e limiares de Fumikomi e Zanshin;
         3. Recalibra os vetores de avaliação dos 3 Pilares nas 14 Modalidades Pedagógicas;
         4. Persiste a nova versão calibrada dos perfis e base de conhecimento.

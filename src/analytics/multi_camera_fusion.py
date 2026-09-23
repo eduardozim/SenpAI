@@ -1,5 +1,5 @@
 """
-Motor de Fusão e Consenso Multi-Câmeras para Arbitragem de Kendo (ShinpanAI).
+Motor de Fusão e Consenso Multi-Câmeras para Análise de Kendo (ShinpanAI).
 Implementa a validação conjunta de técnicas (Yuko-Datotsu) baseada no conjunto de imagens
 das câmeras ativas, com escalonamento de quórum e confirmação em múltiplos ângulos de visão.
 """

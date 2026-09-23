@@ -786,7 +786,7 @@ def render_hero_banner():
                         </div>
                     </div>
                     <div style="color: #E2E8F0; font-size: 15px; font-weight: 500; margin-top: 6px; max-width: 840px; line-height: 1.5;">
-                        Sistema de Visão Computacional, Arbitragem Automatizada e Avaliação Biomecânica de <i>Yuko-Datotsu</i> e <i>Ki-Ken-Tai-Ichi</i> em estrita conformidade com as diretrizes da <b>FIK (International Kendo Federation)</b> e <b>AJKF/ZNKR</b>.
+                        Sistema de Visão Computacional, Análise Automatizada e Avaliação Biomecânica de <i>Yuko-Datotsu</i> e <i>Ki-Ken-Tai-Ichi</i> em estrita conformidade com as diretrizes da <b>FIK (International Kendo Federation)</b> e <b>AJKF/ZNKR</b>.
                     </div>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
@@ -800,7 +800,6 @@ def render_hero_banner():
             </div>
             <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(99, 102, 241, 0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 11.5px; color: #94A3B8;">
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <span>⚖️</span>
                     <span><b>© 2026 SenpAI (先輩 AI)</b> • Todos os direitos de uso e cópia reservados.</span>
                 </div>
                 <div style="color: #818CF8; font-size: 11px;">
@@ -823,17 +822,16 @@ def render_global_footer():
         <div style="border-top: 1px solid #1E293B; padding-top: 20px; padding-bottom: 28px; margin-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #64748B;">
             <div>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                    <span style="font-size: 18px;">⚔️</span>
                     <span style="font-weight: 800; color: #E2E8F0; font-size: 13px;">SenpAI • 先輩 AI</span>
-                    <span style="color: #6366F1; font-weight: 700; font-size: 11px; background: rgba(99, 102, 241, 0.12); padding: 2px 8px; border-radius: 9999px;">v2.3.2</span>
+                    <span style="color: #6366F1; font-weight: 700; font-size: 11px; background: rgba(99, 102, 241, 0.12); padding: 2px 8px; border-radius: 9999px;">v 0.2.3.2</span>
                 </div>
                 <div style="color: #94A3B8; font-size: 11.5px; line-height: 1.5;">
-                    Plataforma de Visão Computacional e Arbitragem Automatizada de Kendo (FIK & AJKF Standards).
+                    Plataforma de Visão Computacional e Análise Automatizada de Kendo (FIK & AJKF Standards).
                 </div>
             </div>
             <div style="text-align: right; line-height: 1.5;">
                 <div style="color: #CBD5E1; font-weight: 600; font-size: 12px;">
-                    ⚖️ <b>© 2026 SenpAI. Todos os direitos de uso e cópia reservados.</b>
+                    <b>© 2026 SenpAI. Todos os direitos de uso e cópia reservados.</b>
                 </div>
                 <div style="color: #64748B; font-size: 11px;">
                     É expressamente proibida a reprodução, cópia, distribuição ou engenharia reversa sem autorização prévia por escrito.
@@ -874,7 +872,7 @@ def render_welcome_home_page():
     st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
 
     # 3. DEMONSTRATIVO: COMO INICIAR O USO EM 4 PASSOS
-    st.markdown("### 🚀 Guia Rápido: Como Iniciar o Uso")
+    st.markdown("### Guia Rápido: Como Iniciar o Uso")
     st.markdown("Siga o passo a passo abaixo para realizar sua primeira análise de combate ou treinamento no SenpAI:")
 
     step_c1, step_c2, step_c3, step_c4 = st.columns(4)
@@ -904,7 +902,7 @@ def render_welcome_home_page():
                 </div>
                 <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Escolha do Modo</div>
                 <div style="color: #94A3B8; font-size: 12px; line-height: 1.4;">
-                    Escolha entre <b>🔴 Tempo Real</b>, <b>📹 Detecção Gravada</b> ou <b>🎓 Treinamento</b>, além do perfil de sensibilidade da arbitragem.
+                    Escolha entre <b>🔴 Tempo Real</b>, <b>📹 Detecção Gravada</b> ou <b>🎓 Treinamento</b>, além do perfil de sensibilidade da análise.
                 </div>
             </div>
             """,
@@ -946,7 +944,7 @@ def render_welcome_home_page():
     st.markdown("---")
 
     # 4. OS 3 MODOS / NODOS PRINCIPAIS DE OPERAÇÃO
-    st.markdown("### 🥋 Os 3 Modos Principais de Operação do SenpAI")
+    st.markdown("### Os 3 Modos Principais de Operação do SenpAI")
     st.markdown("O sistema foi arquitetado em três fluxos complementares para cobrir desde campeonatos oficiais até o aprendizado pedagógico no dojo:")
 
     mode_c1, mode_c2, mode_c3 = st.columns(3)
@@ -979,7 +977,7 @@ def render_welcome_home_page():
                     <span style="font-size: 24px;">📹</span>
                     <div style="color: #FFFFFF; font-weight: 800; font-size: 16px;">Detecção Gravada</div>
                 </div>
-                <div style="color: #7DD3FC; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px;">Shiai Oficial & Arbitragem por IA</div>
+                <div style="color: #7DD3FC; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px;">Shiai Oficial & Análise por IA</div>
                 <div style="color: #CBD5E1; font-size: 12.5px; line-height: 1.5; margin-bottom: 12px;">
                     Análise aprofundada de arquivos de vídeo e transmissões gravadas (YouTube ou upload local sem restrição de tamanho). Delimita a luta estritamente entre o Sonkyō inicial e final.
                 </div>
@@ -1017,14 +1015,14 @@ def render_welcome_home_page():
     st.markdown("---")
 
     # 5. INTELIGÊNCIA ARTIFICIAL, AUTO-TREINAMENTO E GOVERNANÇA
-    st.markdown("### 🧠 Inteligência Artificial Transparente & Governança por Dan")
+    st.markdown("### Inteligência Artificial Transparente & Governança por Dan")
     info_col1, info_col2 = st.columns([1.5, 1.0])
     with info_col1:
         st.markdown(
             """
             <div style="background: #0B1120; border: 1px solid #334155; border-radius: 10px; padding: 16px 20px;">
                 <div style="color: #F8FAFC; font-weight: 700; font-size: 15px; margin-bottom: 6px;">
-                    🔬 Calibração Realista (< 50% na Fase Inicial)
+                    - Calibração Realista (< 50% na Fase Inicial)
                 </div>
                 <div style="color: #CBD5E1; font-size: 13px; line-height: 1.5; margin-bottom: 10px;">
                     O SenpAI adota uma postura ética de honestidade empírica: modelos de visão computacional em estado bruto sem calibração prévia possuem acurácia preliminar em torno de <b>32% a 46%</b> devido à velocidade dos ataques e propensão a falsos positivos em combates dinâmicos.
@@ -1067,7 +1065,7 @@ def render_welcome_home_page():
 
 
 # --- SIDEBAR: NAVEGAÇÃO PRINCIPAL ---
-st.sidebar.markdown("## 📌 Navegação")
+st.sidebar.markdown("## Navegação")
 
 # Indicador de Status do Ambiente Virtual na Barra Lateral
 if venv_status["is_virtual_env"]:
@@ -1108,7 +1106,7 @@ nav_page = st.sidebar.radio(
     key="sidebar_nav_radio",
     on_change=on_sidebar_nav_change,
     format_func=lambda x: {
-        "home": "🏠 Início / Visão Geral",
+        "home": "🏠 Início",
         "analysis": "⚔️ Análise de Lutas",
         "settings": "⚙️ Menu de Configurações"
     }[x]
@@ -2171,11 +2169,11 @@ elif nav_page == "settings":
             st.caption(f"🕒 **Última Recalibração do Modelo:** `{evo_stats.get('last_retrained_at', 'N/A')}`")
 
     # --------------------------------------------------------------------------
-    # GUIA 3: PERFIS DE CALIBRAÇÃO & CRITÉRIOS DE ARBITRAGEM
+    # GUIA 3: PERFIS DE CALIBRAÇÃO & CRITÉRIOS DE ANÁLISE
     # --------------------------------------------------------------------------
     with tab_calib:
         st.markdown("### 🎛️ Perfis de Calibração & Critérios Técnicos")
-        st.caption("Consulte os perfis de rigor de arbitragem e os pesos de validação de Ki-Ken-Tai-Ichi aplicados na detecção de Ippon.")
+        st.caption("Consulte os perfis de rigor de análise e os pesos de validação de Ki-Ken-Tai-Ichi aplicados na detecção de Ippon.")
 
         calib_file_path = "config/calibration_profiles.json"
         calib_data = {}
@@ -2449,7 +2447,7 @@ elif nav_page == "settings":
 # ==============================================================================
 elif nav_page == "analysis":
     # --- SIDEBAR DA ANÁLISE: SELEÇÃO DOS 3 MODOS DE OPERAÇÃO ---
-    st.sidebar.markdown("### 🕹️ Modo de Operação")
+    st.sidebar.markdown("### Modo de Operação")
     app_mode_raw = st.sidebar.radio(
         "Selecione o Modo de Operação",
         options=["realtime", "recorded", "training"],
@@ -2483,7 +2481,7 @@ elif nav_page == "analysis":
     st.session_state["previous_app_mode"] = app_mode
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### ⚡ Aceleração & Modelo")
+    st.sidebar.markdown("### Aceleração & Modelo")
     saved_hw_device = get_processing_device()
     dev_pref_current = st.session_state.get("device_preference", saved_hw_device)
     effective_dev, dev_msg, dev_gpu = get_effective_device(dev_pref_current)
@@ -2523,7 +2521,7 @@ elif nav_page == "analysis":
     st.sidebar.caption("⚙️ *Para alterar acelerador ou modelo, acesse Menu de Configurações.*")
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🎛️ Calibração de Sensibilidade")
+    st.sidebar.markdown("### Calibração de Sensibilidade")
     profile_options = ["permissivo", "normal", "rigido", "custom"]
     profile_idx_arg: Optional[int] = None if "sidebar_profile_selector" in st.session_state else (profile_options.index("normal") if app_mode == "training" else 1)
 
@@ -2563,7 +2561,7 @@ elif nav_page == "analysis":
         w_posture = float(weights.get("posture", 0.20))
         w_zanshin = float(weights.get("zanshin", 0.15))
 
-        st.sidebar.markdown("#### 🔒 Limiares do Perfil (Fixos)")
+        st.sidebar.markdown("#### Limiares do Perfil (Fixos)")
         st.sidebar.slider(
             "Pontuação Mínima Global para Ponto Válido (%)",
             min_value=30,
@@ -2750,10 +2748,10 @@ elif nav_page == "analysis":
 
         with col_rt_diagram:
             diagram_map = {
-                1: ("assets/camera_layouts/1camdisp.png", "📐 Posicionamento: 1 Câmera (Visão Lateral Principal)"),
-                2: ("assets/camera_layouts/2camdisp.png", "📐 Posicionamento: 2 Câmeras (Visões Laterais Opostas em Linha)"),
-                3: ("assets/camera_layouts/3camdisp.png", "📐 Posicionamento: 3 Câmeras em Pirâmide (Topo/Frontal + 2 Laterais)"),
-                4: ("assets/camera_layouts/4camdisp.png", "📐 Posicionamento: 4 Câmeras em Quadrado 2x2 (4 Cantos do Shiai-jo)")
+                1: ("assets/camera_layouts/1camdisp.png", "Posicionamento: 1 Câmera (Visão Lateral Principal)"),
+                2: ("assets/camera_layouts/2camdisp.png", "Posicionamento: 2 Câmeras (Visões Laterais Opostas em Linha)"),
+                3: ("assets/camera_layouts/3camdisp.png", "Posicionamento: 3 Câmeras em Pirâmide (Topo/Frontal + 2 Laterais)"),
+                4: ("assets/camera_layouts/4camdisp.png", "Posicionamento: 4 Câmeras em Quadrado 2x2 (4 Cantos do Shiai-jo)")
             }
             img_rel_path, img_title = diagram_map[num_cameras]
             img_filename = img_rel_path if os.path.exists(img_rel_path) else os.path.basename(img_rel_path)
@@ -3074,13 +3072,13 @@ elif nav_page == "analysis":
     # MODOS 1 E 2: DETECÇÃO GRAVADA & TREINAMENTO & APRENDIZADO
     # ==========================================================================
     else:
-        expander_title = "🥋 Carregar Vídeo de Treinamento & Aprendizado" if app_mode == "training" else "📹 Carregar Vídeo da Luta"
+        expander_title = "🎓 Carregar Vídeo de Treinamento & Aprendizado" if app_mode == "training" else "📹 Carregar Vídeo da Luta"
         with st.expander(expander_title, expanded=("analysis_result" not in st.session_state)):
             col_in1, col_in2 = st.columns([1, 1])
             video_file_path = st.session_state.get("video_file_path", None)
             
             with col_in1:
-                st.subheader("🥋 Carregar Vídeo de Treino" if app_mode == "training" else "📹 Carregar Vídeo")
+                st.subheader("🎓 Carregar Vídeo de Treino" if app_mode == "training" else "📹 Carregar Vídeo")
                 source_choice = st.radio(
                     "Selecione a Origem do Vídeo:",
                     ["📁 Fazer Upload de Arquivo", "🌐 Link do YouTube / Streaming Web"],
@@ -3296,7 +3294,7 @@ elif nav_page == "analysis":
                         )
 
             with col_in2:
-                st.subheader("🥋 Executar Análise de Treinamento" if app_mode == "training" else "⚡ Executar Análise de Combate")
+                st.subheader("🎓 Executar Análise de Treinamento" if app_mode == "training" else "⚡ Executar Análise de Combate")
                 st.markdown("Inicie o rastreamento de pose, identificação da modalidade e avaliação dos 3 Pilares (Movimentação, Precisão, Constância):" if app_mode == "training" else "Inicie o rastreamento de pose, detecção de impactos e avaliação de Yuko-Datotsu:")
 
                 dev_pref = st.session_state.get("device_preference", get_processing_device())
@@ -3320,7 +3318,7 @@ elif nav_page == "analysis":
                     )
 
                 if app_mode == "training":
-                    st.markdown("##### 🥋 Modalidade de Treino & Aprendizado")
+                    st.markdown("##### 🎓 Modalidade de Treino & Aprendizado")
                     mod_keys = ["auto"] + list(TRAINING_MODALITIES_METADATA.keys())
                     selected_mod_key_raw = st.selectbox(
                         "Tipo de Treinamento:",

@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v2.3.2` *(Alinhada com o rodapé oficial da plataforma)*
+> **Versão Oficial do Sistema**: `v 0.2.3.2`
 
 ---
 
@@ -542,7 +542,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v2.3.2]` — 2026-09-17 *(Versão Atual)*
+### `[v 0.2.3.2]` — 2026-09-17 *(Versão Atual)*
 
 - **Seletor de Modelos de Visão Computacional & Integração de Hardware ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py), [settings_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/settings_manager.py), [pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py) & [main.py](file:///d:/Projetos/SenpAI/Dev/main.py))**:
   - **Menu de Configurações (`Processamento e Hardware`)**:
@@ -585,7 +585,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v2.3.1]` — 2026-09-16
+### `[v 0.2.3.1]` — 2026-09-16
 
 - **Exportação e Importação Unificada de Treinamento ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py) & [auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py))**:
   - **Pacote Completo de Treinamento (v2.0)**: A opção `📥 Baixar Treinamento Atual` agora exporta integralmente em um único arquivo `.json`:
@@ -598,7 +598,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v2.3.0]` — 2026-09-13
+### `[v 0.2.3.0]` — 2026-09-13
 
 - **Módulo de Decisão dos Shinpans & Linha do Tempo Dedicada ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py) & [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py))**:
   - **Opção Regulamentar "Decisão dos Shinpans"**: Inclusão da opção arbitral no seletor de revisores, permitindo que a arbitragem de Shiai registre exclusivamente os golpes válidos (Ippon / Yūko-datotsu) concedidos pelos três árbitros em quadra.
@@ -624,7 +624,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
   - Suíte completa de **143 testes automatizados** aprovados com 100% de sucesso (`Ran 143 tests, OK`).
   - Adicionados testes de transição de estado e calibração arbitral em `test_dan_training_governance.py`.
 
-### `[v2.3.0]` — 2026-09-14
+### `[v 0.2.3.0]` — 2026-09-14
 
 - **Reformulação do Treinamento Automático Inteligente por IA & Reconhecimento Transversal de Modalidades ([auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py), [training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - **Reconhecimento Transversal da Modalidade do Vídeo em Qualquer Módulo de Análise**:
@@ -652,7 +652,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v2.2.0]` — 2026-09-11
+### `[v 0.2.2.0]` — 2026-09-11
 
 - **Otimização de Rastreamento dos Kendocas & Supressão Visual de Shinpans ([combatant_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/combatant_tracker.py) & [pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py))**:
   - **Limpeza Visual do Vídeo Anotado**: O método `draw_combatants_overlay` agora suprime por padrão (`show_discarded=False`) a renderização de caixas cinzas e tags `[2º PLANO DESCARTADO]` / `[OCLUSÃO DESCARTADA]` ao redor de árbitros (Shinpans) e pessoas externas. O vídeo final concentra-se estritamente nos dois atletas (`🔴 AKA` e `⚪ SHIRO`) e nos traçados de seus Shinai.
@@ -668,7 +668,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v2.1.0]` — 2026-09-09
+### `[v 0.2.1.0]` — 2026-09-09
 
 - **Controles Interativos de Reprodução de Vídeo & VAR ([video_player_controls.py](file:///d:/Projetos/SenpAI/Dev/src/utils/video_player_controls.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - Implementado componente interativo de reprodução de vídeo integrado diretamente abaixo do player no Modo de Detecção Gravada via `render_video_playback_controls()`.
@@ -689,7 +689,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v2.0.0]` — 2026-09-08
+### `[v 0.2.0.0]` — 2026-09-08
 
 - **Página Inicial de Boas-Vindas (Home) e Regra de Visibilidade Estrita ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - Implementada a tela de abertura padrão do sistema através da função `render_welcome_home_page()`, carregada automaticamente ao inicializar o SenpAI (`st.session_state["nav_page_selection"] = "home"`).
@@ -721,7 +721,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.9.1]` — 2026-09-02
+### `[v 0.1.9.1]` — 2026-09-02
 
 - **Contador de Pontos e Placar ao Vivo no Modo Realtime ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - Inclusão do painel de **Contador de Pontos & Placar (Ippon ao Vivo)** posicionado no topo da lista de golpes no Modo de Detecção em Tempo Real.
@@ -736,7 +736,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.9.0]` — 2026-08-31
+### `[v 0.1.9.0]` — 2026-08-31
 
 - **Análise Integral de Yūko-Datotsu em Tempo Real para Golpes Ippon e Não-Ippon ([multi_camera_fusion.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/multi_camera_fusion.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - **Acompanhamento Biomecânico de Cada Marcação de Golpe**:
@@ -752,7 +752,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.8.1]` — 2026-08-31
+### `[v 0.1.8.1]` — 2026-08-31
 
 - **Discriminação de Árbitros (Shinpans) & Seleção Ótima de Dupla de Kenshis ([combatant_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/combatant_tracker.py))**:
   - **Score de Características de Kenshi (`compute_kenshi_feature_score`)**:
@@ -770,7 +770,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.8.0]` — 2026-08-30
+### `[v 0.1.8.0]` — 2026-08-30
 
 - **Treinamento Automático por Inteligência Artificial (Web & Vídeo Knowledge Ingestion)**:
   - **Motor Central Autônomo ([auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py))**:
@@ -797,7 +797,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.7.1]` — 2026-08-30
+### `[v 0.1.7.1]` — 2026-08-30
 
 - **Tipagem Estrita, Estabilidade de Execução e Correção de Linter/Pyright no Web Dashboard ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - **Estreitamento de Tipos em Widgets Streamlit (`Type Narrowing`)**:
@@ -826,7 +826,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.7.0]` — 2026-08-20
+### `[v 0.1.7.0]` — 2026-08-20
 
 - **Consenso & Validação de Golpes por Conjunto Multi-Câmeras (`MultiCameraFusionEngine`)**:
   - Implementada a regra central: *"A definição de haver ou não o golpe deve ser tomado com base no conjunto das imagens das câmeras. Quanto mais câmeras, mais necessária a confirmação em imagens/frames da realização da técnica."*
@@ -842,7 +842,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.6.1]` — 2026-08-19
+### `[v 0.1.6.1]` — 2026-08-19
 
 - **Padronização das Marcações Katakana no Placar Oficial (Sanbon-shobu)**:
   - Mapeamento estrito e exclusivo dos caracteres Katakana oficiais da arbitragem de Kendo no painel de Pontuação Final ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)):
@@ -865,7 +865,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.6.0]` — 2026-08-18
+### `[v 0.1.6.0]` — 2026-08-18
 
 - **Relatório Descritivo de Testes Automatizados & Retenção Única de Log**:
   - Criado o runner customizado ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py)) e script de execução na raiz ([run_tests.py](file:///d:/Projetos/SenpAI/Dev/run_tests.py)).
@@ -897,7 +897,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.6.2]` — 2026-08-25
+### `[v 0.1.6.2]` — 2026-08-25
 
 - **Suporte a Links do YouTube, Streaming Web e Seleção de Qualidade no Modo de Detecção Gravada**:
   - Inclusão do seletor visual de origem de vídeo no painel de carregamento ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)), permitindo alternar facilmente entre:
@@ -920,7 +920,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
   - Criação do módulo [test_video_downloader.py](file:///d:/Projetos/SenpAI/Dev/tests/test_video_downloader.py) com 12 testes cobrindo validação de URLs, formatação de tempo, sanitização de nomes, extração de metadados mockados, rejeição de streams ao vivo, limites de duração, seletores de formato para cada qualidade (baixa, média, alta), persistência de cache por qualidade e integração de ponta a ponta com o [SenpAIPipeline](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py).
   - Suíte completa de 64 testes executada com 100% de sucesso.
 
-### `[v1.6.1]` — 2026-08-20
+### `[v 0.1.6.1]` — 2026-08-20
 
 - **Menu de Configurações em Layout de Guias (Tabs)**:
   - Reestruturação completa da página de configurações ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)) com navegação modular em 4 guias especializadas via `st.tabs`:
@@ -933,7 +933,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.5.0]` — 2026-08-15
+### `[v 0.1.5.0]` — 2026-08-15
 
 - **Sistema de Diagnóstico, Alertas e Log de Debug do Sistema**:
   - Criado o módulo central de logging e diagnóstico ([logger_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/logger_manager.py)) com retenção em arquivo ([`logs/senpai_debug.log`](file:///d:/Projetos/SenpAI/Dev/logs/senpai_debug.log)) e buffer em memória.
@@ -952,7 +952,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
   - Tabela de treinamentos por Dan convertida para Markdown nativo, eliminando erros de pré-carregamento de módulos JS/CSS do navegador (Vite preload helper).
 - **Testes Automatizados**: Suíte de testes em [test_logger_manager.py](file:///d:/Projetos/SenpAI/Dev/tests/test_logger_manager.py) e testes de importação expandidos em [test_dan_training_governance.py](file:///d:/Projetos/SenpAI/Dev/tests/test_dan_training_governance.py) (19 testes automatizados com 100% de aprovação).
 
-### `[v1.4.12]` — 2026-08-17
+### `[v 0.1.4.12]` — 2026-08-17
 
 - **Otimização de Espaço e Remoção de Texto de Diagnóstico do Sonkyō**:
   - **Layout Compacto de Sonkyō ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
@@ -963,7 +963,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.11]` — 2026-08-17
+### `[v 0.1.4.11]` — 2026-08-17
 
 - **Placar Oficial Eletrônico, Detecção de Flag Dorsal e Inversão Aka/Shiro**:
   - **Placar Oficial Eletrônico (Sanbon-shobu Scoreboard) ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py) e [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py))**:
@@ -977,7 +977,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.10]` — 2026-08-17
+### `[v 0.1.4.10]` — 2026-08-17
 
 - **Correção de AttributeError & Otimização de Performance e Memória**:
   - **Correção de `AttributeError` em Edição de Sonkyō ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**: Corrigida a verificação condicional em `initial_edit` e `final_edit` quando são `None`, garantindo que os timestamps padrão sejam lidos sem exceções de runtime.
@@ -990,7 +990,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.9]` — 2026-08-17
+### `[v 0.1.4.9]` — 2026-08-17
 
 - **Inclusão Automática de Sonkyō no Início e Fim da Gravação**:
   - **Garantia de Delimitação Ritual**: Quando a análise de visão computacional não detecta com alta confiança os rituais de Sonkyō nos primeiros ou últimos segundos da gravação, o sistema ([sonkyo_detector.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/sonkyo_detector.py)) **atribui automaticamente os movimentos de Sonkyō no início (00:00.000) e no encerramento do vídeo**.
@@ -1000,7 +1000,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.8]` — 2026-08-17
+### `[v 0.1.4.8]` — 2026-08-17
 
 - **Edição Interativa de Sonkyō, Reprocessamento e Aprendizado Contínuo**:
   - **Edição de Momentos de Sonkyō**: No Modo de Detecção Gravada ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)), é possível editar com precisão os tempos de início e fim tanto do Sonkyō Inicial quanto do Sonkyō Final (ou definir intervalos manuais caso não tenham sido detectados automaticamente).
@@ -1013,7 +1013,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.7]` — 2026-08-17
+### `[v 0.1.4.7]` — 2026-08-17
 
 - **Refinamento do Indicador de Aceleração de Hardware**:
   - **Sidebar Exclusiva para Status Visual**: A barra lateral ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)) agora exibe apenas o **card de indicação em tempo real** do estado do acelerador (`🚀 Aceleração Ativada` com nome da GPU NVIDIA e framework CUDA ou `💻 Aceleração Desativada` em CPU), mantendo o layout limpo e intuitivo.
@@ -1022,7 +1022,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.6]` — 2026-08-17
+### `[v 0.1.4.6]` — 2026-08-17
 
 - **Aceleração Nativa com GPU NVIDIA CUDA (YOLOv8-Pose)**:
   - **Motor de Inferência GPU de Alta Velocidade**: O módulo [pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py) foi atualizado para utilizar o modelo **YOLOv8-Pose em PyTorch CUDA (`cuda:0`)** sobre a placa NVIDIA GeForce RTX 4050.
@@ -1033,7 +1033,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.5]` — 2026-08-17
+### `[v 0.1.4.5]` — 2026-08-17
 
 - **Aprimoramento Robusto da Detecção de Sonkyō & Filtragem de Planos**:
   - **Resiliência a Oclusões por Hakama / Kendogi**: O estimador biomecânico ([sonkyo_detector.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/sonkyo_detector.py)) agora utiliza múltiplos sinais (rebaixamento de quadril, proporção tronco-altura, compressão vertical relativa e inclinação de coluna), operando com precisão mesmo quando joelhos ou tornozelos estão parcialmente oclusos.
@@ -1044,7 +1044,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.4]` — 2026-08-17
+### `[v 0.1.4.4]` — 2026-08-17
 
 - **Correção Crítica de Vazamento de Arquivos Temporários (`[Errno 28] No space left on device`)**:
   - Identificada e corrigida a criação repetitiva de arquivos temporários (`tempfile.NamedTemporaryFile`) a cada ciclo de atualização (`rerun`) do Streamlit no [app.py](file:///d:/Projetos/SenpAI/Dev/app.py).
@@ -1054,7 +1054,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.3]` — 2026-08-17
+### `[v 0.1.4.3]` — 2026-08-17
 
 - **Cronômetro em Tempo Real e Persistência do Tempo de Processamento (Detecção Gravada)**:
   - Inclusão do **cronômetro dinâmico em tempo real** exibido durante o processamento do vídeo no [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) (`MM:SS.s` e segundos decorridos).
@@ -1066,7 +1066,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.2]` — 2026-08-17
+### `[v 0.1.4.2]` — 2026-08-17
 
 - **Apresentação de Eventos de Sonkyō na Detecção Gravada**:
   - Inclusão dos eventos de **Sonkyō Inicial** (Abertura / Início do Combate) e **Sonkyō Final** (Encerramento / Fechamento do Combate) diretamente na lista de eventos apresentados no container de resultados (`col_results`) do [app.py](file:///d:/Projetos/SenpAI/Dev/app.py).
@@ -1075,7 +1075,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.1]` — 2026-08-17
+### `[v 0.1.4.1]` — 2026-08-17
 
 - **Botão de Interromper Processamento na Detecção Gravada**:
   - Inclusão do botão `⏹️ Interromper Processamento` no painel de execução de vídeo no [app.py](file:///d:/Projetos/SenpAI/Dev/app.py).
@@ -1087,7 +1087,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.4.0]` — 2026-08-15
+### `[v 0.1.4.0]` — 2026-08-15
 
 - **Modo de Detecção Gravada - Edição de Golpes por Dan**:
   - Adicionado o botão `✏️ Habilitar Edição dos Golpes Detectados`.
@@ -1111,7 +1111,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.3.0]` — 2026-08-12
+### `[v 0.1.3.0]` — 2026-08-12
 
 - **Menu de Configurações Centralizado**: Implementado no [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) com seletor de acelerador de hardware (CPU Somente vs GPU NVIDIA quando disponível).
 - **Módulo de Hardware e Configurações**: Detecção dinâmica multi-nível de GPU NVIDIA e resolução de fallback transparente para CPU ([hardware.py](file:///d:/Projetos/SenpAI/Dev/src/utils/hardware.py) e [settings_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/settings_manager.py)).
@@ -1120,7 +1120,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.2.1]` — 2026-08-06
+### `[v 0.1.2.1]` — 2026-08-06
 
 > [!NOTE]
 > **Melhorias na Interface Web**
@@ -1132,7 +1132,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.2.0]` — 2026-08-06
+### `[v 0.1.2.0]` — 2026-08-06
 
 > [!NOTE]
 > **Adicionado**
@@ -1146,7 +1146,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.1.0]` — 2026-08-01
+### `[v 0.1.1.0]` — 2026-08-01
 
 - **Dashboard Web Interativo** desenvolvido em Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)) com estilização CSS customizada.
 - Suporte ao perfil `custom` com sliders dinâmicos para ajuste manual de limiares e pesos de Ki-Ken-Tai-Ichi.
@@ -1155,7 +1155,7 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v1.0.0]` — 2026-07-25
+### `[v 0.1.0.0]` — 2026-08-01
 
 - **Lançamento inicial** da arquitetura base do SenpAI.
 - Módulos de Visão Computacional ([pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py), [shinai_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/shinai_tracker.py)) baseados em MediaPipe Pose.
