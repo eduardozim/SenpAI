@@ -182,7 +182,7 @@ def get_base_ydl_opts(timeout: int = 20, client_list: Optional[list] = None) -> 
         }
     }
     
-    clients = client_list or ["android", "ios", "mweb", "web"]
+    clients = client_list or ["android"]
     opts["extractor_args"] = {
         "youtube": {
             "player_client": clients,
@@ -373,48 +373,56 @@ def download_video_stream(
     format_choice = get_format_selector(quality_tag)
     
     client_strategies = [
-        ["android", "ios", "mweb", "web"],
-        ["ios", "mweb"],
         ["android"],
-        ["web_embedded", "tv"],
+        ["android", "web"],
         ["web"],
+        ["mweb"],
+        ["ios"],
     ]
 
     download_success = False
     last_error_msg = ""
 
     for attempt_idx, clients in enumerate(client_strategies):
-        ydl_opts = get_base_ydl_opts(timeout=25, client_list=clients)
-        ydl_opts.update({
-            "format": format_choice,
-            "outtmpl": outtmpl_pattern,
-            "progress_hooks": [_yt_progress_hook],
-            "merge_output_format": "mp4",
-        })
+        format_candidates = [format_choice]
+        if format_choice != "best/bestvideo+bestaudio/worst":
+            format_candidates.append("best/bestvideo+bestaudio/worst")
 
-        try:
-            log_event(
-                "INFO",
-                f"Tentando download de vídeo do YouTube ({quality_tag}, estratégia #{attempt_idx + 1}: {clients}): {url}",
-                "video_downloader"
-            )
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([url.strip()])
-            download_success = True
-            break
-        except yt_dlp.utils.DownloadError as e:
-            err_str = str(e)
-            last_error_msg = err_str
-            log_event(
-                "WARNING",
-                f"Tentativa #{attempt_idx + 1} de download falhou ({clients}): {err_str}",
-                "video_downloader"
-            )
-            # Se não for erro de permissão/bloqueio 403, interrompe tentativas
-            if not any(token in err_str.lower() for token in ["403", "forbidden", "unable to download", "bot", "token", "sabr"]):
+        for fmt_try in format_candidates:
+            ydl_opts = get_base_ydl_opts(timeout=25, client_list=clients)
+            ydl_opts.update({
+                "format": fmt_try,
+                "outtmpl": outtmpl_pattern,
+                "progress_hooks": [_yt_progress_hook],
+                "merge_output_format": "mp4",
+            })
+
+            try:
+                log_event(
+                    "INFO",
+                    f"Tentando download de vídeo do YouTube ({quality_tag}, estratégia #{attempt_idx + 1}: {clients}, formato: {fmt_try}): {url}",
+                    "video_downloader"
+                )
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([url.strip()])
+                download_success = True
                 break
-        except Exception as e:
-            last_error_msg = str(e)
+            except yt_dlp.utils.DownloadError as e:
+                err_str = str(e)
+                last_error_msg = err_str
+                log_event(
+                    "WARNING",
+                    f"Tentativa #{attempt_idx + 1} ({clients}, {fmt_try}) falhou: {err_str}",
+                    "video_downloader"
+                )
+                # Se o formato específico falhou, tenta o formato fallback
+                if "Requested format is not available" in err_str and fmt_try != format_candidates[-1]:
+                    continue
+            except Exception as e:
+                last_error_msg = str(e)
+                break
+
+        if download_success:
             break
 
     if not download_success:
