@@ -127,6 +127,76 @@ def sanitize_filename(name: str, max_length: int = 40) -> str:
     return clean[:max_length] if clean else "video"
 
 
+def get_cookie_file_path() -> Optional[str]:
+    """
+    Retorna o caminho de um arquivo de cookies do YouTube se disponível.
+    Procura em:
+    - cookies.txt na raiz do projeto, config/ ou data/
+    - Variável de ambiente YOUTUBE_COOKIES
+    - Segredos do Streamlit (st.secrets['YOUTUBE_COOKIES'] ou st.secrets['cookies'])
+    """
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    for cand in [
+        os.path.join(base_dir, "cookies.txt"),
+        os.path.join(base_dir, "config", "cookies.txt"),
+        os.path.join(base_dir, "data", "cookies.txt"),
+    ]:
+        if os.path.exists(cand) and os.path.getsize(cand) > 10:
+            return cand
+
+    cookie_content = os.environ.get("YOUTUBE_COOKIES", "")
+    if not cookie_content:
+        try:
+            import streamlit as st
+            cookie_content = st.secrets.get("YOUTUBE_COOKIES", "") or st.secrets.get("cookies", "")
+        except Exception:
+            pass
+
+    if cookie_content and len(str(cookie_content).strip()) > 10:
+        tmp_cookie = os.path.join(tempfile.gettempdir(), "senpai_yt_cookies.txt")
+        try:
+            with open(tmp_cookie, "w", encoding="utf-8") as f:
+                f.write(str(cookie_content).strip())
+            return tmp_cookie
+        except Exception:
+            pass
+
+    return None
+
+
+def get_base_ydl_opts(timeout: int = 20, client_list: Optional[list] = None) -> Dict[str, Any]:
+    """Retorna opções base para yt-dlp otimizadas contra restrições de IP de datacenter."""
+    opts: Dict[str, Any] = {
+        "quiet": True,
+        "no_warnings": True,
+        "socket_timeout": timeout,
+        "nocheckcertificate": True,
+        "geo_bypass": True,
+        "http_headers": {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+            ),
+            "Accept": "*/*",
+            "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        }
+    }
+    
+    clients = client_list or ["android", "ios", "mweb", "web"]
+    opts["extractor_args"] = {
+        "youtube": {
+            "player_client": clients,
+            "skip": ["translated_subs", "dash_manifest"],
+        }
+    }
+
+    cookie_file = get_cookie_file_path()
+    if cookie_file:
+        opts["cookiefile"] = cookie_file
+
+    return opts
+
+
 def extract_video_info(url: str, timeout: int = 15) -> Dict[str, Any]:
     """
     Extrai metadados do vídeo sem efetuar o download completo.
@@ -145,13 +215,11 @@ def extract_video_info(url: str, timeout: int = 15) -> Dict[str, Any]:
     if not validate_video_url(url):
         raise VideoDownloadError("URL de vídeo inválida ou em formato não reconhecido.")
     
-    ydl_opts = {
+    ydl_opts = get_base_ydl_opts(timeout=timeout)
+    ydl_opts.update({
         "skip_download": True,
-        "quiet": True,
-        "no_warnings": True,
-        "socket_timeout": timeout,
         "extract_flat": False,
-    }
+    })
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -190,6 +258,10 @@ def extract_video_info(url: str, timeout: int = 15) -> Dict[str, Any]:
             raise VideoDownloadError("Vídeo indisponível ou excluído no YouTube.")
         elif "Sign in" in msg:
             raise VideoDownloadError("Este vídeo requer login para visualização.")
+        elif any(token in msg.lower() for token in ["403", "forbidden"]):
+            raise VideoDownloadError(
+                "O YouTube bloqueou o acesso ao vídeo pelo servidor em nuvem (HTTP 403: Forbidden - Detecção de IP Datacenter do YouTube)."
+            )
         else:
             raise VideoDownloadError(f"Erro ao obter informações do vídeo: {msg}")
     except Exception as e:
@@ -296,53 +368,87 @@ def download_video_stream(
         elif status == "finished":
             progress_callback(0.98, "Finalizando processamento do arquivo de vídeo...")
 
-    # 3. Configurações de Download com seletor de formato por qualidade
+    # 3. Configurações de Download com seletor de formato por qualidade e estratégias de clientes
     outtmpl_pattern = os.path.join(output_dir, f"yt_{video_id}_{quality_tag}_{safe_title}.%(ext)s")
     format_choice = get_format_selector(quality_tag)
     
-    ydl_opts = {
-        "format": format_choice,
-        "outtmpl": outtmpl_pattern,
-        "quiet": True,
-        "no_warnings": True,
-        "progress_hooks": [_yt_progress_hook],
-        "merge_output_format": "mp4",
-        "nocheckcertificate": True,
-    }
+    client_strategies = [
+        ["android", "ios", "mweb", "web"],
+        ["ios", "mweb"],
+        ["android"],
+        ["web_embedded", "tv"],
+        ["web"],
+    ]
 
-    try:
-        log_event("INFO", f"Iniciando download de vídeo do YouTube ({quality_tag}): {url}", "video_downloader")
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url.strip()])
-            
-        # Localiza o arquivo baixado
-        actual_file_path = None
-        for ext in ["mp4", "mkv", "webm", "avi"]:
-            cand = os.path.join(output_dir, f"yt_{video_id}_{quality_tag}_{safe_title}.{ext}")
-            if os.path.exists(cand) and os.path.getsize(cand) > 0:
-                actual_file_path = cand
+    download_success = False
+    last_error_msg = ""
+
+    for attempt_idx, clients in enumerate(client_strategies):
+        ydl_opts = get_base_ydl_opts(timeout=25, client_list=clients)
+        ydl_opts.update({
+            "format": format_choice,
+            "outtmpl": outtmpl_pattern,
+            "progress_hooks": [_yt_progress_hook],
+            "merge_output_format": "mp4",
+        })
+
+        try:
+            log_event(
+                "INFO",
+                f"Tentando download de vídeo do YouTube ({quality_tag}, estratégia #{attempt_idx + 1}: {clients}): {url}",
+                "video_downloader"
+            )
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url.strip()])
+            download_success = True
+            break
+        except yt_dlp.utils.DownloadError as e:
+            err_str = str(e)
+            last_error_msg = err_str
+            log_event(
+                "WARNING",
+                f"Tentativa #{attempt_idx + 1} de download falhou ({clients}): {err_str}",
+                "video_downloader"
+            )
+            # Se não for erro de permissão/bloqueio 403, interrompe tentativas
+            if not any(token in err_str.lower() for token in ["403", "forbidden", "unable to download", "bot", "token", "sabr"]):
                 break
-                
-        if not actual_file_path:
-            # Procura por qualquer arquivo iniciado com yt_{video_id}_{quality_tag}
-            for f in os.listdir(output_dir):
-                if f.startswith(f"yt_{video_id}_{quality_tag}"):
-                    actual_file_path = os.path.join(output_dir, f)
-                    break
+        except Exception as e:
+            last_error_msg = str(e)
+            break
 
-        if not actual_file_path or not os.path.exists(actual_file_path):
-            raise VideoDownloadError("Download concluído, mas o arquivo de vídeo não foi encontrado no disco.")
+    if not download_success:
+        log_event("ERROR", f"Falha definitiva no download de vídeo do YouTube ({url}): {last_error_msg}", "video_downloader")
+        if any(token in last_error_msg.lower() for token in ["403", "forbidden", "unable to download video data"]):
+            raise VideoDownloadError(
+                "O YouTube bloqueou o download direto através dos servidores em nuvem do Streamlit (HTTP 403: Forbidden - Detecção de IP Datacenter do YouTube).\n\n"
+                "💡 Como prosseguir:\n"
+                "1. 📁 Baixe o vídeo em seu computador e utilize a aba 'Upload de Arquivo Local' acima (suporta arquivos MP4 de até 50 GB com carregamento instantâneo).\n"
+                "2. 🍪 Se preferir usar link direto, configure seus cookies do YouTube no painel do Streamlit Cloud ('Settings' -> 'Secrets' -> YOUTUBE_COOKIES)."
+            )
+        raise VideoDownloadError(f"Falha ao baixar vídeo do YouTube: {last_error_msg}")
 
-        log_event("INFO", f"Download concluído com sucesso ({quality_tag}): {actual_file_path}", "video_downloader")
-        if progress_callback:
-            progress_callback(1.0, "Download concluído com sucesso!")
+    # Localiza o arquivo baixado
+    actual_file_path = None
+    for ext in ["mp4", "mkv", "webm", "avi"]:
+        cand = os.path.join(output_dir, f"yt_{video_id}_{quality_tag}_{safe_title}.{ext}")
+        if os.path.exists(cand) and os.path.getsize(cand) > 0:
+            actual_file_path = cand
+            break
             
-        info = _enrich_with_actual_file_info(actual_file_path, info, quality_tag)
-        return actual_file_path, info
+    if not actual_file_path:
+        # Procura por qualquer arquivo iniciado com yt_{video_id}_{quality_tag}
+        for f in os.listdir(output_dir):
+            if f.startswith(f"yt_{video_id}_{quality_tag}"):
+                actual_file_path = os.path.join(output_dir, f)
+                break
 
-    except yt_dlp.utils.DownloadError as e:
-        log_event("ERROR", f"Falha no download de vídeo do YouTube ({url}): {str(e)}", "video_downloader")
-        raise VideoDownloadError(f"Falha ao baixar vídeo do YouTube: {str(e)}")
-    except Exception as e:
-        log_event("ERROR", f"Erro inesperado no download: {str(e)}", "video_downloader")
-        raise VideoDownloadError(f"Erro inesperado ao baixar vídeo: {str(e)}")
+    if not actual_file_path or not os.path.exists(actual_file_path):
+        raise VideoDownloadError("Download concluído, mas o arquivo de vídeo não foi encontrado no disco.")
+
+    log_event("INFO", f"Download concluído com sucesso ({quality_tag}): {actual_file_path}", "video_downloader")
+    if progress_callback:
+        progress_callback(1.0, "Download concluído com sucesso!")
+        
+    info = _enrich_with_actual_file_info(actual_file_path, info, quality_tag)
+    return actual_file_path, info

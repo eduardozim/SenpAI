@@ -3248,7 +3248,14 @@ elif nav_page == "analysis":
                                 st.toast(f"✅ Vídeo '{extracted_info.get('title', 'Kendo')}' carregado com sucesso!", icon="🎥")
                                 st.rerun()
                             except VideoDownloadError as e:
-                                st.error(f"❌ {str(e)}")
+                                err_str = str(e)
+                                st.error(f"❌ {err_str}")
+                                if "403" in err_str or "Forbidden" in err_str or "Datacenter" in err_str:
+                                    st.warning(
+                                        "💡 **Dica de Nuvem (Streamlit Cloud):** Como o IP compartilhado do datacenter em nuvem é frequentemente bloqueado pelo YouTube, "
+                                        "você pode baixar o vídeo diretamente no seu computador e enviá-lo pela aba **'📁 Upload de Arquivo Local'** acima "
+                                        "(o SenpAI aceita vídeos MP4/AVI/MOV de alta resolução sem qualquer restrição)."
+                                    )
                             except Exception as e:
                                 st.error(f"❌ Erro ao carregar vídeo do YouTube: {str(e)}")
 
