@@ -144,6 +144,18 @@ def get_cookie_file_path() -> Optional[str]:
         if os.path.exists(cand) and os.path.getsize(cand) > 10:
             return cand
 
+    # 2. Verificar se há cookies no session_state do Streamlit
+    try:
+        import streamlit as st
+        cookie_session = st.session_state.get("youtube_cookies_text", "")
+        if cookie_session and len(str(cookie_session).strip()) > 10:
+            tmp_cookie = os.path.join(tempfile.gettempdir(), "senpai_yt_session_cookies.txt")
+            with open(tmp_cookie, "w", encoding="utf-8") as f:
+                f.write(str(cookie_session).strip())
+            return tmp_cookie
+    except Exception:
+        pass
+
     cookie_content = os.environ.get("YOUTUBE_COOKIES", "")
     if not cookie_content:
         try:
@@ -256,8 +268,11 @@ def extract_video_info(url: str, timeout: int = 15) -> Dict[str, Any]:
             raise VideoDownloadError("Este vídeo é privado e não pode ser acessado.")
         elif "Video unavailable" in msg:
             raise VideoDownloadError("Vídeo indisponível ou excluído no YouTube.")
-        elif "Sign in" in msg:
-            raise VideoDownloadError("Este vídeo requer login para visualização.")
+        elif "sign in to confirm" in msg.lower() or "bot" in msg.lower():
+            raise VideoDownloadError(
+                "O YouTube bloqueou o acesso anônimo neste servidor em nuvem (Erro: 'Sign in to confirm you're not a bot'). "
+                "Utilize a aba '📁 Upload de Arquivo Local' para analisar o vídeo diretamente ou forneça um arquivo cookies.txt na seção de autenticação."
+            )
         elif any(token in msg.lower() for token in ["403", "forbidden"]):
             raise VideoDownloadError(
                 "O YouTube bloqueou o acesso ao vídeo pelo servidor em nuvem (HTTP 403: Forbidden - Detecção de IP Datacenter do YouTube)."
@@ -427,12 +442,12 @@ def download_video_stream(
 
     if not download_success:
         log_event("ERROR", f"Falha definitiva no download de vídeo do YouTube ({url}): {last_error_msg}", "video_downloader")
-        if any(token in last_error_msg.lower() for token in ["403", "forbidden", "unable to download video data"]):
+        if any(token in last_error_msg.lower() for token in ["403", "forbidden", "unable to download video data", "sign in to confirm", "bot"]):
             raise VideoDownloadError(
-                "O YouTube bloqueou o download direto através dos servidores em nuvem do Streamlit (HTTP 403: Forbidden - Detecção de IP Datacenter do YouTube).\n\n"
-                "💡 Como prosseguir:\n"
-                "1. 📁 Baixe o vídeo em seu computador e utilize a aba 'Upload de Arquivo Local' acima (suporta arquivos MP4 de até 50 GB com carregamento instantâneo).\n"
-                "2. 🍪 Se preferir usar link direto, configure seus cookies do YouTube no painel do Streamlit Cloud ('Settings' -> 'Secrets' -> YOUTUBE_COOKIES)."
+                "O YouTube bloqueou o download anônimo através do servidor em nuvem (Erro: 'Sign in to confirm you're not a bot').\n\n"
+                "📌 Como prosseguir:\n"
+                "1. 📁 **Mais rápido e direto**: Baixe o vídeo no seu dispositivo e envie o arquivo .mp4 pela aba '📁 Upload de Arquivo Local' acima (suporta até 50 GB sem bloqueios).\n"
+                "2. 🍪 **Download por link**: Utilize a seção '🍪 Autenticação / Cookies do YouTube' abaixo enviando o arquivo cookies.txt do seu navegador ou configurando o secret YOUTUBE_COOKIES."
             )
         raise VideoDownloadError(f"Falha ao baixar vídeo do YouTube: {last_error_msg}")
 
