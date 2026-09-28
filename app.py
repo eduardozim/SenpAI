@@ -3247,7 +3247,11 @@ elif nav_page == "analysis":
                         if uploaded_cookie_file is not None:
                             try:
                                 cookie_data = uploaded_cookie_file.read().decode("utf-8", errors="ignore")
-                                if cookie_data:
+                                if cookie_data and len(cookie_data.strip()) > 10:
+                                    tmp_cookie = os.path.join(tempfile.gettempdir(), "senpai_yt_session_cookies.txt")
+                                    with open(tmp_cookie, "w", encoding="utf-8") as f:
+                                        f.write(cookie_data.strip())
+                                    st.session_state["youtube_cookies_path"] = tmp_cookie
                                     st.session_state["youtube_cookies_text"] = cookie_data
                                     st.success("✅ Cookies carregados para esta sessão! Agora clique em 'Carregar Vídeo do Link' acima.")
                             except Exception as ce:
@@ -3267,10 +3271,12 @@ elif nav_page == "analysis":
                             
                             try:
                                 with st.spinner(f"⏳ Conectando e baixando vídeo ({QUALITY_LABELS.get(selected_quality, selected_quality)})..."):
+                                    cookie_path = st.session_state.get("youtube_cookies_path")
                                     dl_path, extracted_info = download_video_stream(
                                         url=yt_url_input,
                                         quality=selected_quality,
-                                        progress_callback=_ui_progress
+                                        progress_callback=_ui_progress,
+                                        cookie_file=cookie_path
                                     )
                                 st.session_state["video_file_path"] = dl_path
                                 st.session_state["youtube_video_info"] = extracted_info
@@ -3284,9 +3290,9 @@ elif nav_page == "analysis":
                             except VideoDownloadError as e:
                                 err_str = str(e)
                                 st.error(f"❌ {err_str}")
-                                if any(tok in err_str.lower() for tok in ["403", "forbidden", "datacenter", "sign in", "bot"]):
+                                if any(tok in err_str.lower() for tok in ["403", "forbidden", "datacenter", "sign in", "bot", "format", "bloqueou"]):
                                     st.warning(
-                                        "💡 **Dica de Nuvem (Streamlit Cloud):** Para não depender de cookies ou bloqueios do YouTube na nuvem, "
+                                        "💡 **Dica de Nuvem (Streamlit Cloud):** Para não depender de cookies ou bloqueios de IP do YouTube na nuvem, "
                                         "você pode baixar o vídeo no seu dispositivo e enviá-lo instantaneamente pela aba **'📁 Upload de Arquivo Local'** acima "
                                         "(o SenpAI aceita vídeos MP4/AVI/MOV de até 50 GB sem qualquer bloqueio)."
                                     )
