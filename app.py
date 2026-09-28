@@ -3221,44 +3221,6 @@ elif nav_page == "analysis":
                         st.toast("Vídeo descarregado com sucesso!", icon="🗑️")
                         st.rerun()
 
-                    with st.expander("🍪 Autenticação / Cookies do YouTube (Necessário para Servidores em Nuvem)", expanded=False):
-                        st.markdown(
-                            """
-                            <div style="font-size: 0.84rem; color: #94a3b8; line-height: 1.5; margin-bottom: 8px;">
-                                <b>Por que isso ocorre no Streamlit Cloud?</b><br>
-                                Servidores de nuvem pública compartilham faixas de IP de datacenter que o YouTube bloqueia com 
-                                <i>'Sign in to confirm you're not a bot'</i>.<br><br>
-                                <b>Opção 1 (Recomendada / Sem configuração):</b> Baixe o vídeo no seu computador/celular e use a aba 
-                                <b>'📁 Upload de Arquivo Local'</b> ao lado (suporta até 50 GB instantaneamente).<br><br>
-                                <b>Opção 2 (Download direto com Cookies):</b> Exporte os cookies do YouTube com a extensão 
-                                <a href="https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" target="_blank" style="color: #60a5fa; text-decoration: underline;">Get cookies.txt LOCALLY</a>
-                                e faça o upload do arquivo <code>cookies.txt</code> abaixo:
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                        has_cookie = bool(st.session_state.get("youtube_cookies_text"))
-                        uploaded_cookie_file = st.file_uploader(
-                            "Anexar arquivo cookies.txt",
-                            type=["txt"],
-                            key="yt_cookies_file_uploader",
-                            help="Arquivo Netscape cookies.txt exportado do seu navegador para autenticar requisições no YouTube"
-                        )
-                        if uploaded_cookie_file is not None:
-                            try:
-                                cookie_data = uploaded_cookie_file.read().decode("utf-8", errors="ignore")
-                                if cookie_data and len(cookie_data.strip()) > 10:
-                                    tmp_cookie = os.path.join(tempfile.gettempdir(), "senpai_yt_session_cookies.txt")
-                                    with open(tmp_cookie, "w", encoding="utf-8") as f:
-                                        f.write(cookie_data.strip())
-                                    st.session_state["youtube_cookies_path"] = tmp_cookie
-                                    st.session_state["youtube_cookies_text"] = cookie_data
-                                    st.success("✅ Cookies carregados para esta sessão! Agora clique em 'Carregar Vídeo do Link' acima.")
-                            except Exception as ce:
-                                st.error(f"Erro ao carregar cookies: {ce}")
-                        elif has_cookie:
-                            st.caption("🟢 Cookies ativos para esta sessão.")
-
                     if load_yt_btn and yt_url_input:
                         if not validate_video_url(yt_url_input):
                             st.error("❌ Link inválido. Forneça uma URL válida do YouTube (ex: youtube.com/watch?v=... ou youtu.be/...) ou streaming de vídeo.")
@@ -3271,12 +3233,10 @@ elif nav_page == "analysis":
                             
                             try:
                                 with st.spinner(f"⏳ Conectando e baixando vídeo ({QUALITY_LABELS.get(selected_quality, selected_quality)})..."):
-                                    cookie_path = st.session_state.get("youtube_cookies_path")
                                     dl_path, extracted_info = download_video_stream(
                                         url=yt_url_input,
                                         quality=selected_quality,
-                                        progress_callback=_ui_progress,
-                                        cookie_file=cookie_path
+                                        progress_callback=_ui_progress
                                     )
                                 st.session_state["video_file_path"] = dl_path
                                 st.session_state["youtube_video_info"] = extracted_info
@@ -3288,14 +3248,7 @@ elif nav_page == "analysis":
                                 st.toast(f"✅ Vídeo '{extracted_info.get('title', 'Kendo')}' carregado com sucesso!", icon="🎥")
                                 st.rerun()
                             except VideoDownloadError as e:
-                                err_str = str(e)
-                                st.error(f"❌ {err_str}")
-                                if any(tok in err_str.lower() for tok in ["403", "forbidden", "datacenter", "sign in", "bot", "format", "bloqueou"]):
-                                    st.warning(
-                                        "💡 **Dica de Nuvem (Streamlit Cloud):** Para não depender de cookies ou bloqueios de IP do YouTube na nuvem, "
-                                        "você pode baixar o vídeo no seu dispositivo e enviá-lo instantaneamente pela aba **'📁 Upload de Arquivo Local'** acima "
-                                        "(o SenpAI aceita vídeos MP4/AVI/MOV de até 50 GB sem qualquer bloqueio)."
-                                    )
+                                st.error(f"❌ {str(e)}")
                             except Exception as e:
                                 st.error(f"❌ Erro ao carregar vídeo do YouTube: {str(e)}")
 

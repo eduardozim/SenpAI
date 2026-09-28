@@ -129,13 +129,8 @@ def sanitize_filename(name: str, max_length: int = 40) -> str:
 
 def get_cookie_file_path(custom_file: Optional[str] = None) -> Optional[str]:
     """
-    Retorna o caminho de um arquivo de cookies do YouTube se disponível.
-    Procura em:
-    - Caminho explicitamente informado (custom_file)
-    - cookies.txt na raiz do projeto, config/ ou data/
-    - st.session_state do Streamlit (quando em execução web interativa)
-    - Variável de ambiente YOUTUBE_COOKIES
-    - Segredos do Streamlit (st.secrets['YOUTUBE_COOKIES'] ou st.secrets['cookies'])
+    Retorna o caminho de um arquivo de cookies do YouTube se disponível silenciosamente no ambiente.
+    Nunca bloqueia nem obriga o usuário a fornecer cookies.
     """
     if custom_file and os.path.exists(custom_file) and os.path.getsize(custom_file) > 10:
         return custom_file
@@ -149,7 +144,6 @@ def get_cookie_file_path(custom_file: Optional[str] = None) -> Optional[str]:
         if os.path.exists(cand) and os.path.getsize(cand) > 10:
             return cand
 
-    # Verificar se há cookies no session_state do Streamlit (apenas se em runtime ativo para evitar warning em testes)
     try:
         import streamlit as st
         if hasattr(st, "runtime") and st.runtime.exists():
@@ -187,14 +181,14 @@ def get_base_ydl_opts(
     client_list: Optional[list] = None,
     cookie_file: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Retorna opções base para yt-dlp otimizadas contra restrições de IP de datacenter."""
+    """Retorna opções base para yt-dlp otimizadas para extração automática sem bloqueios."""
     opts: Dict[str, Any] = {
         "quiet": True,
         "no_warnings": True,
         "socket_timeout": timeout,
         "nocheckcertificate": True,
         "geo_bypass": True,
-        "js_runtimes": ["deno", "nodejs", "node", "quickjs"],
+        "js_runtimes": {"node": {}, "deno": {}},
         "http_headers": {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -209,13 +203,7 @@ def get_base_ydl_opts(
     if resolved_cookie:
         opts["cookiefile"] = resolved_cookie
 
-    if client_list:
-        clients = client_list
-    elif resolved_cookie:
-        clients = ["web", "mweb"]
-    else:
-        clients = ["android", "android_vr", "web"]
-
+    clients = client_list or ["visionos", "android"]
     opts["extractor_args"] = {
         "youtube": {
             "player_client": clients,
@@ -228,7 +216,7 @@ def get_base_ydl_opts(
 
 def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] = None) -> Dict[str, Any]:
     """
-    Extrai metadados do vídeo sem efetuar o download completo.
+    Extrai metadados do vídeo de forma automática e resiliente contra restrições de IP de datacenter.
     
     Retorna um dicionário contendo:
     - id: ID do vídeo
@@ -240,65 +228,76 @@ def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] =
     - resolution: Resolução estimada (ex: '1280x720')
     - fps: FPS estimado (float)
     - webpage_url: URL limpa da página
+    - is_live: Indica se é live não finalizada
     """
     if not validate_video_url(url):
         raise VideoDownloadError("URL de vídeo inválida ou em formato não reconhecido.")
     
-    ydl_opts = get_base_ydl_opts(timeout=timeout, cookie_file=cookie_file)
-    ydl_opts.update({
-        "skip_download": True,
-        "extract_flat": False,
-    })
-    
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url.strip(), download=False)
-            if not info:
-                raise VideoDownloadError("Não foi possível extrair informações deste link de vídeo.")
-            
-            # Se for playlist, pega o primeiro item
-            if "entries" in info and info["entries"]:
-                info = info["entries"][0]
+    # Clientes com extração InnerTube direta (visionos e android não exigem PO tokens web de datacenter)
+    client_strategies = [
+        ["visionos", "android"],
+        ["visionos"],
+        ["android", "android_vr"],
+        ["default"],
+    ]
+
+    last_error_msg = ""
+
+    for clients in client_strategies:
+        ydl_opts = get_base_ydl_opts(timeout=timeout, client_list=clients, cookie_file=cookie_file)
+        ydl_opts.update({
+            "skip_download": True,
+            "extract_flat": False,
+        })
+        
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url.strip(), download=False)
+                if not info:
+                    continue
                 
-            duration = float(info.get("duration") or 0.0)
-            width = info.get("width") or 0
-            height = info.get("height") or 0
-            fps = float(info.get("fps") or 30.0)
-            
-            resolution = f"{width}x{height}" if width and height else "HD"
-            
-            return {
-                "id": info.get("id", "video"),
-                "title": info.get("title", "Vídeo de Kendo"),
-                "duration_seconds": duration,
-                "duration_formatted": format_video_duration(duration),
-                "uploader": info.get("uploader", info.get("channel", "Canal do YouTube")),
-                "thumbnail": info.get("thumbnail", ""),
-                "resolution": resolution,
-                "fps": fps,
-                "webpage_url": info.get("webpage_url", url.strip()),
-                "is_live": bool(info.get("is_live", False)),
-            }
-    except yt_dlp.utils.DownloadError as e:
-        msg = str(e)
-        if "Private video" in msg:
-            raise VideoDownloadError("Este vídeo é privado e não pode ser acessado.")
-        elif "Video unavailable" in msg:
-            raise VideoDownloadError("Vídeo indisponível ou excluído no YouTube.")
-        elif any(token in msg.lower() for token in [
-            "requested format is not available", "only images are available",
-            "sign in to confirm", "bot", "403", "forbidden"
-        ]):
-            raise VideoDownloadError(
-                "O YouTube bloqueou a disponibilização dos fluxos deste vídeo para o servidor em nuvem (Restrição de Datacenter: 'Requested format is not available / Bot Detection').\n\n"
-                "📌 Soluções disponíveis:\n"
-                "1. 📁 **Opção recomendada e imediata**: Baixe o vídeo no seu dispositivo (computador/celular) e utilize a aba '📁 Upload de Arquivo Local' acima (suporta arquivos MP4 de até 50 GB sem bloqueios).\n"
-                "2. 🍪 **Download por link**: Abra a seção '🍪 Autenticação / Cookies do YouTube' abaixo e envie o arquivo cookies.txt do seu navegador ou adicione YOUTUBE_COOKIES nos Secrets do Streamlit Cloud."
-            )
-        else:
-            raise VideoDownloadError(f"Erro ao obter informações do vídeo: {msg}")
-    except Exception as e:
-        raise VideoDownloadError(f"Erro inesperado ao acessar o link: {str(e)}")
+                if "entries" in info and info["entries"]:
+                    info = info["entries"][0]
+                    
+                duration = float(info.get("duration") or 0.0)
+                width = info.get("width") or 0
+                height = info.get("height") or 0
+                fps = float(info.get("fps") or 30.0)
+                
+                resolution = f"{width}x{height}" if width and height else "HD"
+                
+                return {
+                    "id": info.get("id", "video"),
+                    "title": info.get("title", "Vídeo de Kendo"),
+                    "duration_seconds": duration,
+                    "duration_formatted": format_video_duration(duration),
+                    "uploader": info.get("uploader", info.get("channel", "Canal do YouTube")),
+                    "thumbnail": info.get("thumbnail", ""),
+                    "resolution": resolution,
+                    "fps": fps,
+                    "webpage_url": info.get("webpage_url", url.strip()),
+                    "is_live": bool(info.get("is_live", False)),
+                }
+        except yt_dlp.utils.DownloadError as e:
+            last_error_msg = str(e)
+            if "Private video" in last_error_msg:
+                raise VideoDownloadError("Este vídeo é privado e não pode ser acessado.")
+            elif "Video unavailable" in last_error_msg:
+                raise VideoDownloadError("Vídeo indisponível ou excluído no YouTube.")
+            continue
+        except Exception as e:
+            last_error_msg = str(e)
+            continue
+
+    if any(token in last_error_msg.lower() for token in [
+        "requested format is not available", "only images are available",
+        "sign in to confirm", "bot", "403", "forbidden"
+    ]):
+        raise VideoDownloadError(
+            "Não foi possível obter informações deste vídeo através do servidor em nuvem. "
+            "Você pode carregar o arquivo diretamente pela aba '📁 Upload de Arquivo Local'."
+        )
+    raise VideoDownloadError(f"Erro ao obter informações do vídeo: {last_error_msg}")
 
 
 QUALITY_LABELS = {
@@ -333,7 +332,8 @@ def download_video_stream(
     cookie_file: Optional[str] = None
 ) -> Tuple[str, Dict[str, Any]]:
     """
-    Faz o download do vídeo de streaming / YouTube no formato MP4 otimizado para OpenCV.
+    Faz o download do vídeo de streaming / YouTube no formato MP4 otimizado para OpenCV,
+    executando fallback automático de clientes InnerTube (visionos + android) e formatos sem necessidade de cookies manuais.
     
     Parâmetros:
     - url: Link do YouTube ou streaming de vídeo.
@@ -341,7 +341,7 @@ def download_video_stream(
     - progress_callback: Função para atualização de progresso na interface.
     - quality: Nível de qualidade desejado ('baixa', 'media', 'alta'). Padrão: 'media'.
     - max_duration_seconds: Duração máxima permitida para o vídeo.
-    - cookie_file: Caminho opcional para arquivo de cookies do YouTube.
+    - cookie_file: Caminho opcional para arquivo de cookies (caso configurado).
     
     Retorna:
     - target_file_path (str): Caminho local do arquivo .mp4 salvo
@@ -403,40 +403,40 @@ def download_video_stream(
         elif status == "finished":
             progress_callback(0.98, "Finalizando processamento do arquivo de vídeo...")
 
-    # 3. Configurações de Download com seletor de formato por qualidade e estratégias de clientes
+    # 3. Configurações de Download com seletor de formato por qualidade e estratégias automáticas
     outtmpl_pattern = os.path.join(output_dir, f"yt_{video_id}_{quality_tag}_{safe_title}.%(ext)s")
     format_choice = get_format_selector(quality_tag)
     
-    has_cookies = bool(get_cookie_file_path(cookie_file))
-    if has_cookies:
-        client_strategies = [
-            ["web"],
-            ["mweb"],
-            ["web_safari"],
-            ["default"],
-            ["android"],
-        ]
-    else:
-        client_strategies = [
-            ["android"],
-            ["android_vr"],
-            ["visionos"],
-            ["mweb"],
-            ["web"],
-        ]
+    # Estratégias automáticas de clientes para contornar qualquer bloqueio de IP sem exigir cookies manuais
+    client_strategies = [
+        ["visionos", "android"],
+        ["android", "android_vr"],
+        ["visionos"],
+        ["android"],
+        ["default"],
+    ]
 
     download_success = False
     last_error_msg = ""
 
     for attempt_idx, clients in enumerate(client_strategies):
-        format_candidates = [format_choice]
-        if format_choice != "best/bestvideo+bestaudio/worst":
-            format_candidates.append("best/bestvideo+bestaudio/worst")
-        format_candidates.append("worst/worstvideo+worstaudio/worst")
-        format_candidates.append("best")
+        format_candidates = [
+            format_choice,
+            "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            "best/bestvideo+bestaudio/worst",
+            "18/22/best",
+            "worst/worstvideo+worstaudio/worst"
+        ]
+        # Remove duplicados preservando a ordem
+        seen = set()
+        unique_fmts = []
+        for f in format_candidates:
+            if f not in seen:
+                seen.add(f)
+                unique_fmts.append(f)
 
-        for fmt_try in format_candidates:
-            ydl_opts = get_base_ydl_opts(timeout=25, client_list=clients, cookie_file=cookie_file)
+        for fmt_try in unique_fmts:
+            ydl_opts = get_base_ydl_opts(timeout=30, client_list=clients, cookie_file=cookie_file)
             ydl_opts.update({
                 "format": fmt_try,
                 "outtmpl": outtmpl_pattern,
@@ -447,7 +447,7 @@ def download_video_stream(
             try:
                 log_event(
                     "INFO",
-                    f"Tentando download de vídeo do YouTube ({quality_tag}, estratégia #{attempt_idx + 1}: {clients}, formato: {fmt_try}): {url}",
+                    f"Tentando download automático do YouTube ({quality_tag}, clientes: {clients}, formato: {fmt_try}): {url}",
                     "video_downloader"
                 )
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -459,7 +459,7 @@ def download_video_stream(
                 last_error_msg = err_str
                 log_event(
                     "WARNING",
-                    f"Tentativa #{attempt_idx + 1} ({clients}, {fmt_try}) falhou: {err_str}",
+                    f"Tentativa com clientes {clients} e formato {fmt_try} falhou: {err_str}",
                     "video_downloader"
                 )
                 continue
@@ -473,14 +473,12 @@ def download_video_stream(
     if not download_success:
         log_event("ERROR", f"Falha definitiva no download de vídeo do YouTube ({url}): {last_error_msg}", "video_downloader")
         if any(token in last_error_msg.lower() for token in [
-            "403", "forbidden", "unable to download", "sign in to confirm", "bot",
-            "requested format is not available", "only images are available", "sabr"
+            "requested format is not available", "only images are available",
+            "sign in to confirm", "bot", "403", "forbidden"
         ]):
             raise VideoDownloadError(
-                "O YouTube bloqueou a disponibilização dos fluxos de vídeo para este servidor em nuvem (Restrição de Datacenter: 'Requested format is not available / Bot Detection').\n\n"
-                "📌 Soluções disponíveis:\n"
-                "1. 📁 **Opção recomendada e imediata**: Baixe o vídeo no seu dispositivo (computador/celular) e envie o arquivo .mp4 pela aba '📁 Upload de Arquivo Local' acima (suporta arquivos MP4 de até 50 GB sem bloqueios).\n"
-                "2. 🍪 **Download por link**: Abra a seção '🍪 Autenticação / Cookies do YouTube' abaixo e envie o arquivo cookies.txt do seu navegador ou adicione YOUTUBE_COOKIES nos Secrets do Streamlit Cloud."
+                "Não foi possível obter um fluxo de vídeo compatível para este link no servidor em nuvem. "
+                "Experimente alternar o nível de qualidade ('Alta' ou 'Baixa') ou carregue o arquivo pela aba '📁 Upload de Arquivo Local'."
             )
         raise VideoDownloadError(f"Falha ao baixar vídeo do YouTube: {last_error_msg}")
 
@@ -493,9 +491,8 @@ def download_video_stream(
             break
             
     if not actual_file_path:
-        # Procura por qualquer arquivo iniciado com yt_{video_id}_{quality_tag}
         for f in os.listdir(output_dir):
-            if f.startswith(f"yt_{video_id}_{quality_tag}"):
+            if f.startswith(f"yt_{video_id}_{quality_tag}") and os.path.getsize(os.path.join(output_dir, f)) > 0:
                 actual_file_path = os.path.join(output_dir, f)
                 break
 
