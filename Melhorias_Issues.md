@@ -1,16 +1,16 @@
 # Melhorias & Issues
 
-## 🎯 Visão da Versão Final: 3 Modos de Operação (Nodos)
+## 🎯 Visão da Versão Final: 2 Modos de Operação (Grandes Módulos)
 
-A versão final do **SenpAI** será organizada em **3 Nodos / Modos Principais de Operação**:
+A organização oficial do **SenpAI** estrutura o sistema em **2 Modos Principais de Operação**:
 
-1. **Modo de Detecção em Tempo Real**
+1. **Modo de Análise de Lutas (Combate / Shiai)**
+   - **Modo de Detecção em Tempo Real**: Multi-câmeras simultâneas (1 a 4 câmeras RTSP / Webcams), fusão geométrica de consenso, detecção de Ippon/Yuko-Datotsu instantânea e placar oficial Sanbon-Shobu ao vivo.
+   - **Modo de Detecção Gravada**: Análise detalhada de vídeos de combate (upload ou links do YouTube), delimitação por Sonkyō, avaliação dos critérios de Ki-Ken-Tai-Ichi, revisão quadro a quadro com anotações por Dan/Shinpans e exportação para Excel.
 
-2. **Modo de Detecção Gravada**
-
-3. **Modo de Treinamento & Aprendizado**
-  - **Treinamento em tempo real**: Permitir analise do treinamento em tempo real
-
+2. **Modo de Treinamento & Aprendizado (Dojo / Keiko / Evolução)**
+   - **Modo de Análise de Vídeos Gravados**: Reconhecimento das 14 modalidades oficiais de Kendo (Suburi, Kihon, Kata, Kirikaeshi, etc.), avaliação dos 3 Pilares Fundamentais (Movimentação, Precisão, Constância), relatórios pedagógicos individuais e consolidados (.MD e .JSON).
+   - **Modo de Análise em Tempo Real (Webcam / RTSP)**: Análise ao vivo na mesma dinâmica do tempo real, com feeds multi-câmeras (1 a 4 câmeras), HUD dinâmico dos 3 Pilares, contagem automática de repetições, cadência (CPM), biofeedback corretivo instantâneo e geração de relatórios de sessão ao vivo.
 
 ---
 

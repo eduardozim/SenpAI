@@ -304,6 +304,20 @@ Motor de Reconhecimento, Análise Biomecânica e Diagnóstico Pedagógico de Tre
   - **Exportação de Relatório Individual em Markdown (`.md`)**: Gera um dossiê técnico pedagógico contendo notas percentuais dos 3 Pilares, sub-métricas, pontos fortes observados, pontos de atenção biomecânica e plano prescritivo de exercícios do Kendo.
   - **Exportação Consolidada da Sessão em JSON**: Estrutura completa de dados para integração com sistemas de dojo e gestão de atletas.
 
+#### `LiveTrainingSessionManager` ([training_live_manager.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_live_manager.py))
+Gerenciador de Sessão de Treinamento em Tempo Real para dojos e academias com câmeras RTSP e Webcams:
+- **Máquina de Estados de Golpes e Repetições (`LiveStrikeState`)**:
+  - Transições contínuas de estado (`IDLE` -> `FURIKABURI` -> `RECOVERY`) monitorando elevação de punhos acima da cabeça, aceleração descendente de corte e retorno à guarda Kamae.
+  - Contador incremental de repetições com cadência dinâmica em Golpes por Minuto (**CPM** - *Cuts Per Minute*).
+- **Rastreamento Biomecânico Contínuo**:
+  - Cálculo instantâneo da verticalidade da coluna (*Shisei*) a partir do vetor quadril-ombros.
+  - Nivelamento e simetria de ombros para detecção precoce de assimetria ou rotação inadequada de tronco durante a execução dos cortes.
+  - Emissão de biofeedback em tempo real com alertas visuais destacados (ex: alerta de tronco inclinado à frente ou ombro direito descompensado).
+- **HUD Dinâmico dos 3 Pilares em HTML (`render_live_hud_html`)**:
+  - Painel de telemetria visual embutido sobre o feed com pontuações percentuais consolidadas dos 3 Pilares (**Movimentação**, **Precisão**, **Constância**), cadência atual e alertas pedagógicos imediatos.
+- **Relatório Consolidado de Fim de Sessão (`generate_final_session_report`)**:
+  - Compilação automática de estatísticas completas ao encerrar a transmissão ao vivo, com cálculo da média e estabilidade da cadência, pontuações finais dos 3 Pilares, diagnósticos de postura e planos prescritivos exportáveis em **Markdown (`.md`)** e **JSON**.
+
 ---
 
 ### 4.3. Engine de Calibração ([calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py) & [calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))
@@ -405,11 +419,17 @@ A interface web conta com uma arquitetura de navegação com visibilidade estrit
   - **Hero Banner Institucional**: Apresentação de conformidade com normas FIK (Artigos 12 a 24) e AJKF/ZNKR, com detecção em tempo real de hardware ativo (GPU NVIDIA CUDA com FP16 Tensor Cores ou CPU).
   - **Barra de Atalhos de Ação Rápida**: Botões para transição imediata para a Análise de Lutas, acesso ao Menu de Configurações e download direto da documentação oficial (`manual.md`).
   - **Guia Demonstrativo em 4 Passos (*Como Iniciar o Uso*)**:
-    1. *Navegação no Menu*: Orientações sobre a barra lateral.
-    2. *Escolha do Modo*: Seleção entre Tempo Real, Detecção Gravada e Treinamento.
-    3. *Vídeo ou Câmera*: Upload de arquivos locais, inserção de URLs ou geração de vídeo sintético de demonstração em 3 segundos.
-    4. *Diagnósticos & Exportação*: Como revisar os eventos no player, avaliar os critérios de *Ki-Ken-Tai-Ichi* e exportar dados em Excel/JSON.
-  - **Apresentação dos 3 Modos de Operação**: Detalhamento em cards estilizados do Modo em Tempo Real (multi-câmeras), Detecção Gravada (arbitragem oficial e rituais de Sonkyō) e Treinamento & Aprendizado (14 modalidades de dojo).
+    1. *Navegação no Menu*: Seleção primária na barra lateral entre **⚔️ Análise de Lutas** ou **🎓 Treinamento e Aprendizado**.
+    2. *Escolha do Submodo*: Seleção entre **🔴 Tempo Real** (câmeras ao vivo / RTSP) ou **📹 Vídeo Gravado** (arquivos locais / YouTube).
+    3. *Vídeo ou Câmera*: Configuração dos feeds RTSP/Webcam ou upload de arquivos e vídeo sintético de demonstração.
+    4. *Diagnósticos & Exportação*: Acompanhamento ao vivo com telemetria dos 3 Pilares e exportação completa em Markdown/JSON/Excel.
+  - **Apresentação dos 2 Modos de Operação Principais**:
+    - **1. ⚔️ Modo de Análise de Lutas (Combate / Shiai)**:
+      - *🔴 Detecção em Tempo Real*: Fusão multi-câmera síncrona (1 a 4 câmeras RTSP ou Webcams), feed ao vivo com placar Sanbon-shobu e detecção de Ippons segundo as regras oficiais da FIK.
+      - *📹 Detecção Gravada*: Upload local, YouTube ou vídeo de demonstração, análise de Yūko-Datotsu (Ki-Ken-Tai-Ichi), rituais de Sonkyō, VAR interativo quadro a quadro, governança por Dan e retreinamento via planilha Excel.
+    - **2. 🎓 Modo de Treinamento e Aprendizado (Dojo / Keiko)**:
+      - *📹 Análise de Vídeo Gravado*: Avaliação diagnóstica pós-treino nas 14 modalidades oficiais do Kendo com cálculo dos 3 Pilares Fundamentais (Movimentação, Precisão, Constância) e exportação em Markdown e JSON.
+      - *🔴 Análise em Tempo Real*: Monitoramento ao vivo de dojos via câmeras RTSP ou Webcams, com contagem de repetições/golpes, cadência dinâmica em Golpes por Minuto (CPM), HUD em tempo real dos 3 Pilares e biofeedback postural.
   - **Transparência de Inteligência Artificial & Governança por Dan**: Esclarecimento didático sobre a calibração inicial realista (< 50%) e a governança com auditoria de árbitros (1º ao 8º Dan).
 
 ---
@@ -533,8 +553,9 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_training_modes.py` (7 testes)**: Valida as 14 modalidades pedagógicas de treino, cálculo dos 3 Pilares (Movimentação, Precisão, Constância) e perfil do Kendoca.
 - **`test_video_downloader.py` (12 testes)**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
 - **`test_video_player_controls.py` (5 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
+- **`test_training_live_manager.py` (5 testes)**: Valida a máquina de estados de golpes em tempo real (`LiveStrikeState`), rastreamento biomecânico contínuo da coluna (*Shisei*) e simetria de ombros, contagem de repetições, cadência em Golpes por Minuto (CPM), renderização do HUD em tempo real dos 3 Pilares e geração de relatórios de sessão em Markdown e JSON.
 
-Total de **157 testes automatizados** distribuídos em 17 módulos, executados e aprovados com 100% de sucesso.
+Total de **169 testes automatizados** distribuídos em 18 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -542,7 +563,24 @@ Total de **157 testes automatizados** distribuídos em 17 módulos, executados e
 
 ---
 
-### `[v 0.2.3.2]` — 2026-09-17 *(Versão Atual)*
+### `[v 0.2.4.0]` — 2026-09-28 *(Versão Atual)*
+
+- **Reorganização Hierárquica em 2 Modos de Operação Principais ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py), [training_live_manager.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_live_manager.py), [manual.md](file:///d:/Projetos/SenpAI/Dev/manual.md))**:
+  - **Reestruturação Estratégica da Experiência do Usuário (UI/UX)**:
+    - Transição da seleção plana anterior para uma arquitetura em 2 pilares de atuação do SenpAI:
+      1. **⚔️ Modo de Análise de Lutas (Combate / Shiai)**: Foco regulamentar na arbitragem de lutas oficiais da FIK, englobando os submodos **🔴 Detecção em Tempo Real** (multi-câmeras síncronas) e **📹 Detecção Gravada** (análise de Yūko-Datotsu, Sonkyō, VAR e governança por Dan).
+      2. **🎓 Modo de Treinamento & Aprendizado (Dojo / Keiko)**: Foco pedagógico nas 14 modalidades oficiais do Kendo e nos 3 Pilares Fundamentais (Movimentação, Precisão, Constância), englobando os submodos **📹 Análise de Vídeo Gravado** e o inédito **🔴 Análise em Tempo Real**.
+    - Transição limpa de estado com reset inteligente de análises prévias ao alternar entre modos e submodos.
+  - **Treinamento e Aprendizado em Tempo Real com Câmeras RTSP e Webcams**:
+    - Suporte a arranjo multi-câmera (1 a 4 câmeras simultâneas com teste de probe/ping e diagramas táticos de posicionamento no dojo).
+    - Painel de telemetria com HUD dinâmico em tempo real exibindo as pontuações consolidadas dos 3 Pilares (**Movimentação**, **Precisão**, **Constância**).
+    - Máquina de estados de corte (`LiveStrikeState`) para contagem automatizada de repetições e cadência contínua em Golpes por Minuto (**CPM** - *Cuts Per Minute*).
+    - Rastreamento biomecânico contínuo da verticalidade da coluna (*Shisei*) e simetria de ombros com emissão de alertas imediatos de biofeedback.
+    - Feed de repetições ao vivo e compilação de relatório final de fechamento de sessão com download em Markdown (`.md`) e JSON.
+  - **Suíte de Testes Expandida**:
+    - Inclusão do módulo `test_training_live_manager.py` com 5 testes unitários dedicados, elevando a suíte de testes do projeto para **169 testes automatizados com 100% de aprovação**.
+
+### `[v 0.2.3.2]` — 2026-09-17
 
 - **Seletor de Modelos de Visão Computacional & Integração de Hardware ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py), [settings_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/settings_manager.py), [pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py) & [main.py](file:///d:/Projetos/SenpAI/Dev/main.py))**:
   - **Menu de Configurações (`Processamento e Hardware`)**:

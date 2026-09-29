@@ -170,65 +170,54 @@ Opções disponíveis:
 -------------------------------------------------------------------------------
 
 0. PÁGINA INICIAL / VISÃO GERAL (home):
-   Ponto de partida do sistema carregado na inicialização. Permanece visível
-   exclusivamente quando nem a Análise de Lutas nem o Menu de Configurações
-   estiverem selecionados. Apresenta:
+   Ponto de partida do sistema carregado na inicialização. Apresenta:
    - Visão geral institucional e conformidade com diretrizes da FIK e AJKF/ZNKR.
    - Indicador de status de aceleração de hardware em tempo real (GPU NVIDIA CUDA / CPU).
    - Demonstrativo passo a passo de como iniciar o uso em 4 etapas didáticas.
-   - Apresentação visual e comparativa dos 3 Modos Principais de Operação.
+   - Apresentação visual e comparativa dos 2 Grandes Modos de Operação do SenpAI.
    - Explicabilidade da Calibração Realista (< 50% na fase inicial) e governança por Dan.
-   - Atalhos diretos de ação rápida para Análise de Lutas, Configurações e download do manual.
+   - Atalhos diretos de ação rápida para Análise de Lutas, Treinamento & Aprendizado e Configurações.
 
-1. MODO DE DETECÇÃO GRAVADA (recorded):
-   Análise biomecânica completa de combates gravados. Inclui detecção e delimitação
-   temporal da luta por Sonkyō, pontuação ponderada de Yuko-Datotsu (Ki-Ken-Tai-Ichi),
-   validação geométrica de contato (Maai), eliminação de falsos positivos via NMS,
-   placar eletrônico oficial (Aka vs Shiro com caracteres Katakana: メ, コ, ド, ツ),
-   destaque de golpes pontuados na Linha do Tempo (メ MEN, コ KOTE, ド DO, ツ TSUKI),
-   mesa de corte e controles interativos VAR (Play/Pause, saltos finos de ±1s/±5s/±10s,
-   velocidades de 0.1x a 2.0x e seek direto no DOM sincronizado com a Linha do Tempo),
-   gestão de golpes via planilha Excel (exportação detalhada em .xlsx, template em
-   branco e importação com retreinamento adaptativo da IA por Dan), modo oficial
-   de "Decisão dos Shinpans" com linha do tempo liberada para inclusão exclusiva
-   de Ippons de Shiai, edição e confirmação de golpes por Dan na interface (Shodan
-   a Hachidan), corte automático de clipes e relatórios diagnósticos de combate.
+1. MODO DE ANÁLISE DE LUTAS (match):
+   Dedicado ao combate competitivo oficial (Shiai-geiko). Avalia a validade de cada
+   golpe com base nas 5 condições de Yūko-Datotsu da FIK, delimita o tempo de combate
+   por Sonkyō e gerencia o placar Sanbon-Shobu (Aka vs Shiro). Possui 2 formatos:
+
+   A) Detecção em Tempo Real (realtime):
+      - Suporta de 1 a 4 câmeras simultâneas (Webcams locais ou Streams RTSP / Câmeras IP).
+      - Validação de consenso multi-câmeras em background com quórum escalonado e descarte silencioso de falsos positivos.
+      - Placar oficial instantâneo (Sanbon-Shobu) com Ippons e golpes ao vivo.
+      - Histórico de golpes em ordem invertida (mais recentes no topo) com cards explicativos de Ki-Ken-Tai-Ichi.
+
+   B) Detecção Gravada (recorded):
+      - Análise biomecânica completa de vídeos gravados (upload local ou YouTube).
+      - Delimitação temporal estrita entre Sonkyō inicial e final.
+      - Placar eletrônico oficial com caracteres Katakana (メ, コ, ド, ツ).
+      - Linha do tempo interativa com controles VAR (saltos ±1s/±5s/±10s e velocidades de 0.1x a 2.0x).
+      - Gestão de golpes via Excel (.xlsx) com importação e retreinamento adaptativo por Dan.
+      - Modo "Decisão dos Shinpans" e edição de golpes na interface (1º Dan Shodan a 8º Dan Hachidan).
 
 2. MODO DE TREINAMENTO & APRENDIZADO (training):
    Projetado para instrutores e atletas para refinamento técnico e preparação para exames.
-   - Layout Ergonômico Lado a Lado: O painel de avaliação pedagógica fica perfeitamente posicionado
-     ao lado do vídeo, sem a Linha do Tempo de arbitragem competitiva, oferecendo visualização direta e focada.
-   - Suporte a Inversão de Lados dos Kendocas: Botão de alternância instantânea da ordem de exibição dos atletas.
-   - 14 Modalidades Oficiais de Treinamento com Kanjis:
-     1. Ashi-sabaki (足捌き) — Deslocamentos fundamentais (okuri-ashi, ayumi-ashi, hiraki-ashi, tsugi-ashi).
-     2. Suburi (素振り) — Golpes repetidos no ar (jōge-buri, naname-buri, shōmen-uchi, sayū-men).
-     3. Kihon (基本) — Fundamentos de postura (shisei), distância (maai), guarda (kamae), golpe e zanshin.
-     4. Kirikaeshi (切り返し) — Sequência de golpes para ritmo, precisão, respiração e resistência.
-     5. Uchikomi-geiko (打込稽古) — Execução de golpes em oportunidades oferecidas pelo motodachi.
-     6. Kakari-geiko (掛稽古) — Ataques contínuos e intensos durante períodos curtos.
-     7. Yakusoku-geiko (約束稽古) — Exercícios combinados com ações previamente definidas.
-     8. Waza-geiko (技稽古) — Técnicas ofensivas e contra-ataques (debana, nuki, kaeshi, suriage, hiki-waza).
-     9. Oji-waza (応じ技) — Técnicas de resposta direta ao ataque do oponente.
-     10. Ji-geiko (地稽古) — Combate livre aplicando fundamentos e técnicas.
-     11. Shiai-geiko (試合稽古) — Simulação de luta com regras, arbitragem e pontuação.
-     12. Nihon Kendō Kata (日本剣道形) — Formas tradicionais praticadas com bokutō.
-     13. Bokutō ni yoru Kendō Kihon Waza Keiko Hō (木刀による剣道基本技稽古法) — Fundamentos técnicos com espada de madeira.
-     14. Shinsa (審査) — Avaliação para exame de graduação (postura, técnica, etiqueta, kiai e zanshin).
-   - Avaliação dos 3 Pilares:
-     • Movimentação (35%): Postura (Shisei), nivelamento de ombros, base de pés (Ashi) e amplitude.
-     • Precisão (35%): Trajetória no alvo, sincronismo Ki-Ken-Tai-Ichi e controle de linha central.
-     • Constância (30%): Regularidade do ritmo, resistência à fadiga e adequação à cadência.
-   - Rastreamento Individual e Nomeação: Nomeação interativa por Kenshi com emissão de Relatório Individual em Markdown (.md) e dados da sessão em JSON.
-   - Diagnósticos Pedagógicos: Pontos Fortes, Pontos de Atenção e Prescrições Práticas de Exercícios do Dojo.
+   Reconhece as 14 modalidades oficiais de Kendo e avalia os 3 Pilares Fundamentais:
+   • Movimentação (35%): Postura (Shisei), nivelamento de ombros e base de pés.
+   • Precisão (35%): Trajetória no alvo, Ki-Ken-Tai-Ichi e linha central.
+   • Constância (30%): Regularidade rítmica, cadência (CPM) e resistência à fadiga.
+   Possui 2 formatos:
 
-3. MODO DE DETECÇÃO EM TEMPO REAL (realtime):
-   Processamento instantâneo via Webcam ou streams RTSP/RTCP de 1 a 4 câmeras IP simultâneas.
-   - Conta com validação de consenso multi-câmeras em background baseada no conjunto
-     de imagens/frames (com quórum escalonado e descarte silencioso de falsos positivos).
-   - Painel do Contador de Pontos no topo da lista: placar dinâmico com contagem de Ippons
-     e total de golpes para Shiro (⚪) e Aka (🔴), além do total consolidado da sessão.
-   - Lista de golpes em ordem invertida: os golpes mais recentes aparecem sempre no topo,
-     com cards detalhados dos 4 pilares de Ki-Ken-Tai-Ichi e relatório técnico expansível em HTML.
+   A) Análise de Vídeos Gravados (recorded):
+      - Rastreamento individual e nomeação de cada Kendoca presente.
+      - Diagnósticos pedagógicos: Pontos Fortes, Pontos de Atenção e Prescrições de Exercícios do Dojo.
+      - Emissão de relatórios individuais em Markdown (.md) e dados da sessão em JSON (.json).
+      - Layout ergonômico lado a lado e botão de inversão de lados dos atletas.
+
+   B) Análise em Tempo Real (realtime):
+      - Executada na mesma dinâmica do modo de detecção em tempo real via Webcams ou streams RTSP (1 a 4 câmeras simultâneas).
+      - Configuração e teste de câmeras com detecção automática de dispositivos e diagramas de layout no Dojo.
+      - HUD dinâmico dos 3 Pilares atualizado continuamente com scores e barras visuais.
+      - Contagem automática de repetições / cortes com cálculo de cadência em tempo real (CPM).
+      - Biofeedback postural instantâneo (alertas de Shisei ereto, calcanhar suspenso, alinhamento de ombros).
+      - Geração e download de Relatório Consolidado de Treinamento da Sessão Ao Vivo (.md e .json).
 
 -------------------------------------------------------------------------------
 5. PERFIS DE CALIBRAÇÃO (SENSIBILIDADE)

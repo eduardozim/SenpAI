@@ -1,9 +1,8 @@
 """
 SenpAI - Web Dashboard Interativo de Análise de Kendo (Streamlit App)
-Suporta 3 Modos Principais de Operação:
-1. 📹 Modo de Detecção Gravada
-2. 🎓 Modo de Treinamento & Aprendizado
-3. 🔴 Modo de Detecção em Tempo Real (Webcam / Stream RTSP/RTCP)
+Suporta 2 Modos Principais de Operação:
+1. ⚔️ Modo de Análise de Lutas (Tempo Real Multi-Câmeras e Detecção Gravada)
+2. 🎓 Modo de Treinamento & Aprendizado (Vídeos Gravados e Tempo Real Multi-Câmeras)
 """
 
 import streamlit as st
@@ -46,6 +45,7 @@ from src.analytics.training_analyzer import (
     KendokaTrainingProfile,
     TrainingSessionResult
 )
+from src.analytics.training_live_manager import LiveTrainingSessionManager
 from src.utils.hardware import (
     detect_nvidia_gpu, get_effective_device, check_cuda_framework_support,
     validate_and_setup_gpu_requirements, detect_connected_cameras
@@ -846,7 +846,7 @@ def render_welcome_home_page():
     """
     Renderiza a Página Inicial de Boas-Vindas do SenpAI:
     - Informações básicas e objetivos da plataforma.
-    - Apresentação visual e conceitual dos 3 Modos de Operação.
+    - Apresentação visual e conceitual dos 2 Modos de Operação (Lutas e Treinamento).
     - Demonstrativo passo a passo de como iniciar o uso.
     - Atalhos diretos de ação e acesso a documentações oficiais.
     """
@@ -854,26 +854,28 @@ def render_welcome_home_page():
     render_hero_banner()
 
     # 2. BARRA DE ATALHOS RÁPIDOS DE INÍCIO
-    col_cta1, col_cta2, col_cta3 = st.columns([1.6, 1.6, 1.2])
+    col_cta1, col_cta2, col_cta3, col_cta4 = st.columns([1.5, 1.5, 1.3, 1.1])
     with col_cta1:
-        if st.button("⚔️ Iniciar Análise de Lutas Agora", width="stretch", type="primary", key="home_btn_analysis"):
-            st.session_state["nav_page_selection"] = "analysis"
-            st.session_state["sidebar_nav_radio"] = "analysis"
+        if st.button("⚔️ Modo de Análise de Lutas", width="stretch", type="primary", key="home_btn_analysis"):
+            st.session_state["nav_page_target"] = "match"
             st.rerun()
     with col_cta2:
-        if st.button("⚙️ Abrir Menu de Configurações", width="stretch", key="home_btn_settings"):
-            st.session_state["nav_page_selection"] = "settings"
-            st.session_state["sidebar_nav_radio"] = "settings"
+        if st.button("🎓 Treinamento & Aprendizado", width="stretch", type="primary", key="home_btn_training"):
+            st.session_state["nav_page_target"] = "training"
             st.rerun()
     with col_cta3:
+        if st.button("⚙️ Configurações", width="stretch", key="home_btn_settings"):
+            st.session_state["nav_page_target"] = "settings"
+            st.rerun()
+    with col_cta4:
         man_doc = get_documentation_content("manual.md")
-        st.download_button("📖 Baixar Manual (.md)", data=man_doc, file_name="manual.md", mime="text/markdown", width="stretch", key="home_btn_dl_man")
+        st.download_button("📖 Manual (.md)", data=man_doc, file_name="manual.md", mime="text/markdown", width="stretch", key="home_btn_dl_man")
 
     st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
 
     # 3. DEMONSTRATIVO: COMO INICIAR O USO EM 4 PASSOS
     st.markdown("### Guia Rápido: Como Iniciar o Uso")
-    st.markdown("Siga o passo a passo abaixo para realizar sua primeira análise de combate ou treinamento no SenpAI:")
+    st.markdown("Siga o passo a passo abaixo para operar o SenpAI em qualquer um dos 2 Modos de Operação:")
 
     step_c1, step_c2, step_c3, step_c4 = st.columns(4)
     with step_c1:
@@ -886,7 +888,7 @@ def render_welcome_home_page():
                 </div>
                 <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Navegação no Menu</div>
                 <div style="color: #94A3B8; font-size: 12px; line-height: 1.4;">
-                    No menu lateral à esquerda, selecione <b>⚔️ Análise de Lutas</b> para operar o sistema ou <b>⚙️ Configurações</b> para ajustar parâmetros.
+                    No menu lateral à esquerda, selecione <b>⚔️ Modo de Análise de Lutas</b> ou <b>🎓 Modo de Treinamento & Aprendizado</b>.
                 </div>
             </div>
             """,
@@ -900,9 +902,9 @@ def render_welcome_home_page():
                     <span style="background: #6366F1; color: #FFFFFF; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">2</span>
                     <span style="font-size: 20px;">🕹️</span>
                 </div>
-                <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Escolha do Modo</div>
+                <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Formato de Entrada</div>
                 <div style="color: #94A3B8; font-size: 12px; line-height: 1.4;">
-                    Escolha entre <b>🔴 Tempo Real</b>, <b>📹 Detecção Gravada</b> ou <b>🎓 Treinamento</b>, além do perfil de sensibilidade da análise.
+                    Escolha entre <b>🔴 Tempo Real</b> (Webcam / RTSP) ou <b>📹 Vídeo Gravado</b> (upload local, link ou vídeo demo).
                 </div>
             </div>
             """,
@@ -916,9 +918,9 @@ def render_welcome_home_page():
                     <span style="background: #10B981; color: #FFFFFF; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">3</span>
                     <span style="font-size: 20px;">📹</span>
                 </div>
-                <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Vídeo ou Câmera</div>
+                <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Vídeo ou Câmeras</div>
                 <div style="color: #94A3B8; font-size: 12px; line-height: 1.4;">
-                    Faça upload de vídeo local, insira link ou conecte câmeras. <i>Dica:</i> Use <b>"Gerar Vídeo Demonstrativo"</b> para testar em 3 segundos!
+                    Conecte de 1 a 4 câmeras simultâneas com teste de ping ou carregue vídeos. Use <b>"Gerar Vídeo Demonstrativo"</b> para teste instantâneo!
                 </div>
             </div>
             """,
@@ -934,7 +936,7 @@ def render_welcome_home_page():
                 </div>
                 <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Diagnósticos & Exportação</div>
                 <div style="color: #94A3B8; font-size: 12px; line-height: 1.4;">
-                    Analise os golpes com HUD de Sonkyō, métricas de Ki-Ken-Tai-Ichi, faça revisões quadro a quadro e exporte relatórios em Excel/JSON.
+                    Visualize placar Sanbon-Shobu, linha do tempo de Ippons, HUD dos 3 Pilares e exporte relatórios consolidados em Excel, Markdown e JSON.
                 </div>
             </div>
             """,
@@ -943,28 +945,32 @@ def render_welcome_home_page():
 
     st.markdown("---")
 
-    # 4. OS 3 MODOS / NODOS PRINCIPAIS DE OPERAÇÃO
-    st.markdown("### Os 3 Modos Principais de Operação do SenpAI")
-    st.markdown("O sistema foi arquitetado em três fluxos complementares para cobrir desde campeonatos oficiais até o aprendizado pedagógico no dojo:")
+    # 4. OS 2 MODOS PRINCIPAIS DE OPERAÇÃO
+    st.markdown("### Os 2 Grandes Modos de Operação do SenpAI")
+    st.markdown("O sistema foi arquitetado em dois grandes módulos operacionais independentes e especializados:")
 
-    mode_c1, mode_c2, mode_c3 = st.columns(3)
+    mode_c1, mode_c2 = st.columns(2)
     with mode_c1:
         st.markdown(
             """
-            <div style="background: linear-gradient(180deg, #1E1B4B 0%, #0F172A 100%); border: 1.5px solid #4F46E5; border-radius: 12px; padding: 18px; height: 100%; box-shadow: 0 4px 16px rgba(79, 70, 229, 0.15);">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                    <span style="font-size: 24px;">🔴</span>
-                    <div style="color: #FFFFFF; font-weight: 800; font-size: 16px;">Modo em Tempo Real</div>
+            <div style="background: linear-gradient(180deg, #1E1B4B 0%, #0F172A 100%); border: 2px solid #6366F1; border-radius: 14px; padding: 22px; height: 100%; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.20);">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 30px;">⚔️</span>
+                    <div>
+                        <div style="color: #FFFFFF; font-weight: 900; font-size: 18px;">Modo de Análise de Lutas</div>
+                        <div style="color: #A5B4FC; font-size: 11px; font-weight: 700; text-transform: uppercase;">Shiai Oficial • Arbitragem • Yūko-Datotsu</div>
+                    </div>
                 </div>
-                <div style="color: #A5B4FC; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px;">Multi-Câmeras & Baixa Latência</div>
-                <div style="color: #CBD5E1; font-size: 12.5px; line-height: 1.5; margin-bottom: 12px;">
-                    Projetado para campeonatos e transmissão direta. Suporta até 4 fontes de vídeo simultâneas (Webcams, RTSP, Câmeras IP) com fusão geométrica de consenso entre ângulos para superar oclusões e pontos cegos.
+                <div style="color: #CBD5E1; font-size: 13px; line-height: 1.5; margin-bottom: 14px;">
+                    Dedicado ao combate competitivo oficial (Shiai-geiko). Avalia a validade de cada golpe com base nas 5 condições de <i>Yūko-Datotsu</i> da FIK, delimita o tempo de combate por <i>Sonkyō</i> e gerencia o placar <i>Sanbon-Shobu</i>.
                 </div>
-                <ul style="color: #94A3B8; font-size: 12px; margin: 0; padding-left: 18px; line-height: 1.5;">
-                    <li>Placar oficial instantâneo (Sanbon-Shobu)</li>
-                    <li>Reconexão automática e tolerância a falhas</li>
-                    <li>Notificações imediatas de golpes confirmados</li>
-                </ul>
+                <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px;">
+                    <div style="color: #F8FAFC; font-weight: 700; font-size: 12px; margin-bottom: 4px;">📡 Formatos Suportados:</div>
+                    <ul style="color: #94A3B8; font-size: 12px; margin: 0; padding-left: 18px; line-height: 1.5;">
+                        <li><b>🔴 Detecção em Tempo Real:</b> 1 a 4 câmeras simultâneas (Webcams / RTSP / Câmeras IP) com fusão geométrica e consenso multicâmera.</li>
+                        <li><b>📹 Detecção Gravada:</b> Vídeos pré-gravados, upload local sem limite, YouTube e linha do tempo com governança por Dan e exportação Excel.</li>
+                    </ul>
+                </div>
             </div>
             """,
             unsafe_allow_html=True
@@ -972,41 +978,24 @@ def render_welcome_home_page():
     with mode_c2:
         st.markdown(
             """
-            <div style="background: linear-gradient(180deg, #1E293B 0%, #0F172A 100%); border: 1.5px solid #38BDF8; border-radius: 12px; padding: 18px; height: 100%; box-shadow: 0 4px 16px rgba(56, 189, 248, 0.15);">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                    <span style="font-size: 24px;">📹</span>
-                    <div style="color: #FFFFFF; font-weight: 800; font-size: 16px;">Detecção Gravada</div>
+            <div style="background: linear-gradient(180deg, #064E3B 0%, #0F172A 100%); border: 2px solid #10B981; border-radius: 14px; padding: 22px; height: 100%; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.20);">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span style="font-size: 30px;">🎓</span>
+                    <div>
+                        <div style="color: #FFFFFF; font-weight: 900; font-size: 18px;">Modo de Treinamento & Aprendizado</div>
+                        <div style="color: #6EE7B7; font-size: 11px; font-weight: 700; text-transform: uppercase;">Dojo • Keiko • Evolução do Praticante</div>
+                    </div>
                 </div>
-                <div style="color: #7DD3FC; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px;">Shiai Oficial & Análise por IA</div>
-                <div style="color: #CBD5E1; font-size: 12.5px; line-height: 1.5; margin-bottom: 12px;">
-                    Análise aprofundada de arquivos de vídeo e transmissões gravadas (YouTube ou upload local sem restrição de tamanho). Delimita a luta estritamente entre o Sonkyō inicial e final.
+                <div style="color: #CBD5E1; font-size: 13px; line-height: 1.5; margin-bottom: 14px;">
+                    Focado na evolução biomecânica e pedagógica de praticantes e senseis. Reconhece as 14 modalidades oficiais de Kendo (Suburi, Kihon, Kirikaeshi, Kata, etc.) e avalia com rigor os <b>3 Pilares (Movimentação, Precisão, Constância)</b>.
                 </div>
-                <ul style="color: #94A3B8; font-size: 12px; margin: 0; padding-left: 18px; line-height: 1.5;">
-                    <li>Associação contínua de Kenshi Aka (Vermelho) e Shiro (Branco)</li>
-                    <li>Validação de contato físico (Maai) e Ki-Ken-Tai-Ichi</li>
-                    <li>Revisão quadro a quadro com anotações por Dan</li>
-                </ul>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    with mode_c3:
-        st.markdown(
-            """
-            <div style="background: linear-gradient(180deg, #064E3B 0%, #0F172A 100%); border: 1.5px solid #10B981; border-radius: 12px; padding: 18px; height: 100%; box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                    <span style="font-size: 24px;">🎓</span>
-                    <div style="color: #FFFFFF; font-weight: 800; font-size: 16px;">Treinamento & Aprendizado</div>
+                <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px;">
+                    <div style="color: #F8FAFC; font-weight: 700; font-size: 12px; margin-bottom: 4px;">📡 Formatos Suportados:</div>
+                    <ul style="color: #94A3B8; font-size: 12px; margin: 0; padding-left: 18px; line-height: 1.5;">
+                        <li><b>📹 Análise de Vídeos Gravados:</b> Rastreamento detalhado por Kendoka, diagnósticos com prescrições de treinos e relatórios individuais (.MD e .JSON).</li>
+                        <li><b>🔴 Análise em Tempo Real (Webcam / RTSP):</b> Análise ao vivo na mesma dinâmica do tempo real, com HUD dos 3 Pilares, contagem de repetições, cadência (CPM) e biofeedback postural instantâneo.</li>
+                    </ul>
                 </div>
-                <div style="color: #6EE7B7; font-size: 11px; font-weight: 700; text-transform: uppercase; margin-bottom: 10px;">Dojo, Keiko & Preparação para Exames</div>
-                <div style="color: #CBD5E1; font-size: 12.5px; line-height: 1.5; margin-bottom: 12px;">
-                    Focado na evolução técnica de praticantes e alunos. Suporta 14 modalidades oficiais de Kendo (Suburi, Kihon, Kata, Kirikaeshi, etc.) com acompanhamento individual de cada Kendoca presente.
-                </div>
-                <ul style="color: #94A3B8; font-size: 12px; margin: 0; padding-left: 18px; line-height: 1.5;">
-                    <li>Avaliação dos 3 Pilares (Movimentação, Precisão, Constância)</li>
-                    <li>Cadência rítmica (CPM) e desvio padrão de fadiga</li>
-                    <li>Exportação de relatórios diagnósticos individualizados</li>
-                </ul>
             </div>
             """,
             unsafe_allow_html=True
@@ -1059,8 +1048,7 @@ def render_welcome_home_page():
         st.caption("🥋 *SenpAI • Desenvolvido para a comunidade de Kendo com rigor técnico, respeito ao Budo e tecnologia de ponta.*")
     with f_col2:
         if st.button("🚀 Ir para Análise de Lutas ➔", width="stretch", type="primary", key="home_bottom_cta"):
-            st.session_state["nav_page_selection"] = "analysis"
-            st.session_state["sidebar_nav_radio"] = "analysis"
+            st.session_state["nav_page_target"] = "match"
             st.rerun()
 
 
@@ -1087,31 +1075,57 @@ else:
         unsafe_allow_html=True
     )
 
-# Inicializar seleção da página com "home" como estado inicial padrão
-if "nav_page_selection" not in st.session_state:
-    st.session_state["nav_page_selection"] = "home"
+# Suporte à navegação programática externa (botões da Home, atalhos, etc.)
+if "nav_page_target" in st.session_state:
+    target_page = st.session_state.pop("nav_page_target")
+    st.session_state["sidebar_nav_radio"] = target_page
+    st.session_state["nav_page_selection"] = target_page
 
-page_nav_options = ["home", "analysis", "settings"]
-current_nav_val = st.session_state.get("nav_page_selection", "home")
-if current_nav_val not in page_nav_options:
+page_nav_options = ["home", "match", "training", "settings"]
+
+# Inicializar seleção da página com "home" como estado inicial padrão
+if "sidebar_nav_radio" not in st.session_state:
+    if "nav_page_selection" in st.session_state:
+        st.session_state["sidebar_nav_radio"] = st.session_state["nav_page_selection"]
+    else:
+        st.session_state["sidebar_nav_radio"] = "home"
+
+current_nav_val = st.session_state.get("sidebar_nav_radio", "home")
+if current_nav_val == "analysis":
+    current_nav_val = "match"
+    st.session_state["sidebar_nav_radio"] = "match"
+elif current_nav_val not in page_nav_options:
     current_nav_val = "home"
+    st.session_state["sidebar_nav_radio"] = "home"
 
 def on_sidebar_nav_change():
     st.session_state["nav_page_selection"] = st.session_state.get("sidebar_nav_radio", "home")
 
 nav_page = st.sidebar.radio(
-    "Selecione a Página",
+    "Navegação Principal",
     options=page_nav_options,
     index=page_nav_options.index(current_nav_val),
     key="sidebar_nav_radio",
     on_change=on_sidebar_nav_change,
     format_func=lambda x: {
         "home": "🏠 Início",
-        "analysis": "⚔️ Análise de Lutas",
+        "match": "⚔️ Modo de Análise de Lutas",
+        "training": "🎓 Modo de Treinamento & Aprendizado",
         "settings": "⚙️ Menu de Configurações"
     }[x]
 )
 st.session_state["nav_page_selection"] = nav_page
+
+def render_sidebar_footer():
+    st.sidebar.markdown(
+        """
+        <div style="font-size: 10.5px; color: #64748B; text-align: center; margin-top: 24px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); line-height: 1.4;">
+            <div><b>© 2026 SenpAI</b></div>
+            <div>Todos os direitos de uso e cópia reservados.</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 if nav_page == "settings":
     st.sidebar.markdown("---")
@@ -1137,15 +1151,8 @@ if nav_page == "settings":
     )
     st.sidebar.markdown("---")
 
-st.sidebar.markdown(
-    """
-    <div style="font-size: 10.5px; color: #64748B; text-align: center; margin-top: 24px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); line-height: 1.4;">
-        <div><b>© 2026 SenpAI</b></div>
-        <div>Todos os direitos de uso e cópia reservados.</div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+if nav_page in ["home", "settings"]:
+    render_sidebar_footer()
 
 
 # ==============================================================================
@@ -2404,7 +2411,7 @@ elif nav_page == "settings":
             st.markdown("#### 📖 Manual do Usuário e Técnico do SenpAI (`manual.md`)")
             doc_c1, doc_c2 = st.columns([3, 1])
             with doc_c1:
-                st.caption("Guia abrangente cobrindo instalação, aceleração GPU/CPU, 3 modos de operação (Gravado, Tempo Real e Treino), 14 modalidades pedagógicas e governança de IA.")
+                st.caption("Guia abrangente cobrindo instalação, aceleração GPU/CPU, os 2 grandes modos de operação (Análise de Lutas e Treinamento & Aprendizado, ambos com suporte a Tempo Real e Gravado), 14 modalidades pedagógicas e governança de IA.")
             with doc_c2:
                 m_content = get_documentation_content("manual.md")
                 st.download_button(
@@ -2443,42 +2450,62 @@ elif nav_page == "settings":
 
 
 # ==============================================================================
-# PÁGINA 2: ANÁLISE DE LUTAS (PÁGINA PRINCIPAL)
+# PÁGINAS DE OPERAÇÃO: ANÁLISE DE LUTAS & TREINAMENTO E APRENDIZADO
 # ==============================================================================
-elif nav_page == "analysis":
-    # --- SIDEBAR DA ANÁLISE: SELEÇÃO DOS 3 MODOS DE OPERAÇÃO ---
-    st.sidebar.markdown("### Modo de Operação")
-    app_mode_raw = st.sidebar.radio(
-        "Selecione o Modo de Operação",
-        options=["realtime", "recorded", "training"],
-        format_func=lambda x: {
-            "realtime": "🔴 Modo de Detecção em Tempo Real",
-            "recorded": "📹 Modo de Detecção Gravada",
-            "training": "🎓 Modo de Treinamento & Aprendizado"
-        }[x]
-    )
-    app_mode: str = str(app_mode_raw or "realtime")
+elif nav_page in ["match", "training", "analysis"]:
+    # Determinar modo de operação diretamente a partir da Navegação Principal
+    operation_mode = "training" if nav_page == "training" else "match"
+    st.session_state["current_operation_mode"] = operation_mode
 
-    # Limpar análise anterior automaticamente sempre que houver mudança de modo de operação
+    # --- SELEÇÃO DO FORMATO DE ANÁLISE / ENTRADA ---
+    st.sidebar.markdown("#### Formato de Análise")
+    if operation_mode == "match":
+        match_sub_raw = st.sidebar.radio(
+            "Formato de Entrada:",
+            options=["realtime", "recorded"],
+            index=0 if st.session_state.get("match_submode_radio", "realtime") == "realtime" else 1,
+            format_func=lambda x: {
+                "realtime": "🔴 Detecção em Tempo Real (Webcam / RTSP)",
+                "recorded": "📹 Detecção Gravada (Arquivo / YouTube / Demo)"
+            }[x],
+            key="match_submode_radio"
+        )
+        app_mode = "realtime" if match_sub_raw == "realtime" else "recorded"
+    else:
+        training_sub_raw = st.sidebar.radio(
+            "Formato de Entrada:",
+            options=["recorded", "realtime"],
+            index=0 if st.session_state.get("training_submode_radio", "recorded") == "recorded" else 1,
+            format_func=lambda x: {
+                "recorded": "📹 Análise de Vídeo Gravado (Arquivo / YouTube / Demo)",
+                "realtime": "🔴 Análise em Tempo Real (Webcam / RTSP)"
+            }[x],
+            key="training_submode_radio"
+        )
+        app_mode = "training" if training_sub_raw == "recorded" else "training_realtime"
+
+    # Limpar análise anterior automaticamente sempre que houver mudança de modo ou formato
+    current_mode_id = f"{operation_mode}_{app_mode}"
     previous_mode_raw = st.session_state.get("previous_app_mode")
     previous_mode: Optional[str] = str(previous_mode_raw) if previous_mode_raw else None
-    if previous_mode is not None and previous_mode != app_mode:
+    if previous_mode is not None and previous_mode != current_mode_id:
         clear_previous_analysis()
         mode_labels = {
-            "realtime": "Tempo Real",
-            "recorded": "Detecção Gravada",
-            "training": "Treinamento & Aprendizado"
+            "match_realtime": "Análise de Lutas (Tempo Real)",
+            "match_recorded": "Análise de Lutas (Vídeo Gravado)",
+            "training_training": "Treinamento & Aprendizado (Vídeo Gravado)",
+            "training_training_realtime": "Treinamento & Aprendizado (Tempo Real)"
         }
         prev_lbl = mode_labels.get(previous_mode, previous_mode)
-        new_lbl = mode_labels.get(app_mode, app_mode)
+        new_lbl = mode_labels.get(current_mode_id, current_mode_id)
         log_event("INFO", f"Modo de operação alterado de '{prev_lbl}' para '{new_lbl}'. Análise anterior limpa com sucesso.", "app")
         st.toast(f"🧹 Modo alterado para {new_lbl}. Análise anterior limpa!", icon="🔄")
 
     # No Modo de Treinamento & Aprendizado, a calibração de sensibilidade é sempre por padrão 'normal' (Treino Geral / Keiko)
-    if app_mode == "training" and (previous_mode != "training" or "sidebar_profile_selector" not in st.session_state):
+    if "training" in app_mode and ("training" not in (previous_mode or "") or "sidebar_profile_selector" not in st.session_state):
         st.session_state["sidebar_profile_selector"] = "normal"
 
-    st.session_state["previous_app_mode"] = app_mode
+    st.session_state["previous_app_mode"] = current_mode_id
 
     st.sidebar.markdown("---")
     st.sidebar.markdown("### Aceleração & Modelo")
@@ -2604,19 +2631,23 @@ elif nav_page == "analysis":
             key=f"disabled_w_zanshin_{profile_choice}"
         )
 
+    render_sidebar_footer()
+
     # HERO BANNER DE BOAS-VINDAS
     render_hero_banner()
 
     # BANNER DO MODO ATIVO
     if app_mode == "recorded":
-        st.markdown('<div class="mode-banner-recorded">📹 <b>Modo de Detecção Gravada Ativo:</b> Análise de vídeos pré-gravados de combates de Kendo, detecção de Yuko-Datotsu e relatórios diagnósticos.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="mode-banner-recorded">📹 <b>Modo de Análise de Lutas (Detecção Gravada):</b> Análise aprofundada de vídeos pré-gravados de combates de Kendo, detecção de Yuko-Datotsu, delimitação por Sonkyō e relatórios diagnósticos.</div>', unsafe_allow_html=True)
+    elif app_mode == "realtime":
+        st.markdown('<div class="mode-banner-realtime">🔴 <b>Modo de Análise de Lutas (Detecção em Tempo Real):</b> Processamento instantâneo de combate ao vivo via Webcam ou Câmeras IP (RTSP/RTCP) com sinalização em tempo real e placar Sanbon-Shobu.</div>', unsafe_allow_html=True)
     elif app_mode == "training":
-        st.markdown('<div class="mode-banner-training">🎓 <b>Modo de Treinamento & Aprendizado Ativo:</b> Anotação por reforço (TP, FP, FN), calibração por Dan/nível de graduação e otimização adaptativa dos perfis técnicos.</div>', unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="mode-banner-realtime">🔴 <b>Modo de Detecção em Tempo Real Ativo:</b> Processamento instantâneo de vídeo ao vivo via Webcam ou Câmeras IP (RTSP/RTCP) com sinalização em tempo real.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="mode-banner-training">🎓 <b>Modo de Treinamento & Aprendizado (Vídeos Gravados):</b> Avaliação minuciosa dos 3 Pilares (Movimentação, Precisão, Constância), rastreamento dos Kendokas, diagnósticos pedagógicos e relatórios.</div>', unsafe_allow_html=True)
+    else:  # training_realtime
+        st.markdown('<div class="mode-banner-training">🔴 <b>Modo de Treinamento & Aprendizado (Tempo Real Multi-Câmeras):</b> Avaliação biomecânica do treino ao vivo via Webcam ou Câmeras IP (RTSP/RTCP), HUD dinâmico dos 3 Pilares, cadência rítmica e biofeedback instantâneo.</div>', unsafe_allow_html=True)
 
     # ==========================================================================
-    # MODO 3: DETECÇÃO EM TEMPO REAL MULTI-CÂMERAS (1 A 4 CÂMERAS)
+    # MODO 1A: ANÁLISE DE LUTAS EM TEMPO REAL MULTI-CÂMERAS (1 A 4 CÂMERAS)
     # ==========================================================================
     if app_mode == "realtime":
         def render_live_score_html(score_shiro: int, score_aka: int, total_shiro: int, total_aka: int, modality_label: Optional[str] = None) -> str:
@@ -3069,7 +3100,426 @@ elif nav_page == "analysis":
 
 
     # ==========================================================================
-    # MODOS 1 E 2: DETECÇÃO GRAVADA & TREINAMENTO & APRENDIZADO
+    # MODO 2B: ANÁLISE DE TREINAMENTO EM TEMPO REAL MULTI-CÂMERAS (WEBCAM / RTSP)
+    # ==========================================================================
+    elif app_mode == "training_realtime":
+        st.subheader("🔴 Análise de Treinamento em Tempo Real Multi-Câmeras (1 a 4 Câmeras)")
+        st.markdown(
+            "Avaliação biomecânica do treinamento ao vivo no Dojo via Webcam ou câmeras IP (RTSP/RTCP), "
+            "com detecção contínua da modalidade, HUD instantâneo dos **3 Pilares (Movimentação, Precisão, Constância)**, "
+            "contagem de repetições e biofeedback pedagógico."
+        )
+
+        detected_cams = detect_connected_cameras()
+
+        col_rt_config, col_rt_diagram = st.columns([6, 5])
+
+        with col_rt_config:
+            st.markdown("##### 📹 1. Seleção e Configuração das Câmeras de Treino")
+            num_cams_raw = st.radio(
+                "Quantidade de Câmeras Simultâneas no Dojo:",
+                options=[1, 2, 3, 4],
+                index=0,
+                horizontal=True,
+                key="train_rt_num_cameras_radio",
+                format_func=lambda x: f"{x} Câmera{'s' if x > 1 else ''}"
+            )
+            num_cameras: int = int(num_cams_raw or 1)
+
+            st.markdown("**Configuração Individual por Câmera:**")
+            cam_configs = []
+
+            for k in range(num_cameras):
+                st.markdown(f"**📷 Câmera {k + 1}:**")
+                row_c1, row_c2 = st.columns([1.2, 2.2])
+
+                with row_c1:
+                    src_type = st.selectbox(
+                        f"Tipo de Fonte (Câmera {k + 1}):",
+                        options=["webcam", "rtsp"],
+                        index=0,
+                        key=f"train_rt_src_type_{k}",
+                        format_func=lambda x: "🎥 Webcam Local" if x == "webcam" else "📡 Stream RTSP / IP",
+                        label_visibility="collapsed"
+                    )
+                with row_c2:
+                    if src_type == "webcam":
+                        webcam_opts = [c["label"] for c in detected_cams] + ["➕ Outro Índice Manual..."]
+                        default_idx = min(k, len(detected_cams) - 1) if detected_cams else 0
+                        selected_cam_label = st.selectbox(
+                            f"Dispositivo de Vídeo (Câmera {k + 1}):",
+                            options=webcam_opts,
+                            index=default_idx,
+                            key=f"train_rt_webcam_select_{k}",
+                            label_visibility="collapsed"
+                        )
+                        if selected_cam_label == "➕ Outro Índice Manual...":
+                            cam_idx_val = st.number_input(
+                                f"Índice Numérico (Câmera {k + 1}):",
+                                min_value=0,
+                                max_value=10,
+                                value=k,
+                                key=f"train_rt_manual_idx_{k}",
+                                label_visibility="collapsed"
+                            )
+                            cam_val = cam_idx_val
+                            cam_name_display = f"Webcam (Índice {cam_val})"
+                        else:
+                            found_cam = next((c for c in detected_cams if c["label"] == selected_cam_label), None)
+                            cam_val = found_cam["index"] if found_cam else k
+                            cam_name_display = found_cam["name"] if found_cam else f"Webcam {k}"
+                    else:
+                        col_rtsp_txt, col_rtsp_test = st.columns([2.3, 1.2])
+                        with col_rtsp_txt:
+                            rtsp_val = st.text_input(
+                                f"Endereço Stream RTSP/RTCP (Câmera {k + 1}):",
+                                value=f"rtsp://192.168.1.{100 + k}:554/live.sdp",
+                                key=f"train_rt_rtsp_url_{k}",
+                                placeholder="rtsp://192.168.1.100:554/live.sdp ou http://192.168.1.50:8080/video",
+                                label_visibility="collapsed"
+                            )
+                        with col_rtsp_test:
+                            test_btn = st.button("🔍 Testar", key=f"train_btn_test_rtsp_cam_{k}", use_container_width=True)
+
+                        cam_val = normalize_stream_source(rtsp_val)
+                        cam_name_display = f"RTSP (Cam {k + 1})"
+
+                        if test_btn:
+                            with st.spinner(f"📡 Testando conexão com Câmera {k + 1}..."):
+                                diag = probe_stream_connection(cam_val, timeout_seconds=3.5)
+                                if diag["success"]:
+                                    st.success(f"✅ {diag['message']}")
+                                    if diag["frame_rgb"] is not None:
+                                        st.image(
+                                            diag["frame_rgb"],
+                                            caption=f"📷 Amostra Capturada (Câmera {k + 1}) — {diag['resolution'][0]}x{diag['resolution'][1]}",
+                                            width=260
+                                        )
+                                else:
+                                    st.error(f"❌ {diag['message']}")
+                                    st.info("💡 **Dicas de Conexão RTSP/IP:**\n- **Smartphone (IP Webcam / DroidCam)**: `http://192.168.X.X:8080/video`\n- **Câmera IP RTSP**: `rtsp://192.168.X.X:554/live.sdp`\n- **RTSP com Autenticação**: `rtsp://admin:senha@192.168.X.X:554/stream1`\n- Certifique-se de que a câmera e o computador estão na mesma rede Wi-Fi/Ethernet.")
+
+                    cam_configs.append({
+                        "id": k + 1,
+                        "type": src_type,
+                        "source": cam_val,
+                        "label": cam_name_display
+                    })
+
+        with col_rt_diagram:
+            diagram_map = {
+                1: ("assets/camera_layouts/1camdisp.png", "Posicionamento: 1 Câmera (Visão Lateral Principal)"),
+                2: ("assets/camera_layouts/2camdisp.png", "Posicionamento: 2 Câmeras (Visões Laterais Opostas em Linha)"),
+                3: ("assets/camera_layouts/3camdisp.png", "Posicionamento: 3 Câmeras em Pirâmide (Topo/Frontal + 2 Laterais)"),
+                4: ("assets/camera_layouts/4camdisp.png", "Posicionamento: 4 Câmeras em Quadrado 2x2 (4 Cantos do Shiai-jo)")
+            }
+            img_rel_path, img_title = diagram_map[num_cameras]
+            img_filename = img_rel_path if os.path.exists(img_rel_path) else os.path.basename(img_rel_path)
+            st.markdown(f"##### {img_title}")
+            if os.path.exists(img_filename):
+                st.image(img_filename, caption=f"Disposição recomendada para {num_cameras} câmera{'s' if num_cameras > 1 else ''}", width="stretch")
+            else:
+                st.info(f"Instruções de posicionamento no Dojo para {num_cameras} câmera(s).")
+
+        st.markdown("---")
+        st.markdown("##### 🥋 2. Parâmetros do Treinamento Ao Vivo")
+        col_tp1, col_tp2, col_tp3 = st.columns([2.2, 1.8, 1.2])
+
+        with col_tp1:
+            mod_options = ["auto"] + list(TRAINING_MODALITIES_METADATA.keys())
+            selected_train_mod = st.selectbox(
+                "Modalidade de Treinamento:",
+                options=mod_options,
+                format_func=lambda k: "🔍 Detecção Inteligente Automática pela IA" if k == "auto" else f"{TRAINING_MODALITIES_METADATA[k]['name']} — {TRAINING_MODALITIES_METADATA[k]['category']}",
+                index=0,
+                key="live_train_modality_select"
+            )
+        with col_tp2:
+            kendoka_name_val = st.text_input(
+                "Nome do Kendoka Praticante:",
+                value=st.session_state.get("live_kendoka_name_val", "Kendoka Praticante"),
+                key="live_train_kendoka_name_input"
+            )
+            st.session_state["live_kendoka_name_val"] = kendoka_name_val
+        with col_tp3:
+            target_dan_val = st.selectbox(
+                "Graduação Alvo:",
+                options=[1, 2, 3, 4, 5, 6, 7, 8],
+                index=2,
+                format_func=lambda d: f"{d}º Dan",
+                key="live_train_target_dan_select"
+            )
+
+        st.markdown("---")
+        col_ctrl1, col_ctrl2 = st.columns([1.2, 1])
+        with col_ctrl1:
+            run_live_training = st.checkbox("▶️ Iniciar Análise de Treinamento Ao Vivo Multi-Câmeras", value=False, key="run_live_training_checkbox")
+        with col_ctrl2:
+            st.caption("💡 *Marque para ativar o rastreamento biomecânico e contagem contínua. Desmarque a qualquer momento para finalizar e obter o relatório.*")
+
+        if run_live_training:
+            dev_pref = st.session_state.get("device_preference", get_processing_device())
+            vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
+            pipeline = SenpAIPipeline(
+                calibration_profile="normal",
+                device_preference=dev_pref,
+                vision_model=vis_pref
+            )
+
+            live_train_mgr = LiveTrainingSessionManager(
+                modality_override=selected_train_mod if selected_train_mod != "auto" else None,
+                kendoka_name=kendoka_name_val,
+                target_dan=target_dan_val,
+                training_analyzer=pipeline.training_analyzer
+            )
+
+            col_live_cams, col_live_feed = st.columns([7, 5])
+
+            with col_live_feed:
+                st.markdown("##### 🎓 Painel de Treinamento Ao Vivo")
+                train_fps_metric = st.empty()
+                live_train_hud_ph = st.empty()
+                st.markdown("**Histórico de Repetições e Ações Técnicas:**")
+                train_events_container = st.container(height=380)
+                with train_events_container:
+                    train_events_placeholder = st.empty()
+                    train_events_placeholder.caption("🥋 *Inicie os movimentos e golpes para detecção das repetições...*")
+
+            with col_live_cams:
+                st.markdown(f"##### 🎥 Feeds de Vídeo ({num_cameras} Câmera{'s' if num_cameras > 1 else ''})")
+                frame_placeholders = []
+                if num_cameras == 1:
+                    frame_placeholders.append(st.empty())
+                elif num_cameras == 2:
+                    c1, c2 = st.columns(2)
+                    frame_placeholders.append(c1.empty())
+                    frame_placeholders.append(c2.empty())
+                elif num_cameras == 3:
+                    top_col1, top_col2, top_col3 = st.columns([1, 6, 1])
+                    top_ph = top_col2.empty()
+                    bot_col1, bot_col2 = st.columns(2)
+                    bot1_ph = bot_col1.empty()
+                    bot2_ph = bot_col2.empty()
+                    frame_placeholders.extend([top_ph, bot1_ph, bot2_ph])
+                elif num_cameras == 4:
+                    r1_c1, r1_c2 = st.columns(2)
+                    r2_c1, r2_c2 = st.columns(2)
+                    frame_placeholders.extend([r1_c1.empty(), r1_c2.empty(), r2_c1.empty(), r2_c2.empty()])
+
+            streams = []
+            for cfg in cam_configs:
+                src = cfg["source"]
+                stream = ThreadedVideoStream(
+                    src=src,
+                    name=f"TrainCam{cfg['id']}-{cfg['label']}",
+                    max_reconnect_attempts=5,
+                    reconnect_delay=1.5,
+                    auto_start=True
+                )
+                streams.append(stream)
+
+            with st.spinner("📡 Estabelecendo conexão com as fontes de vídeo de treino (Webcam / RTSP)..."):
+                deadline = time.time() + 5.0
+                while time.time() < deadline:
+                    if any(s.is_connected() for s in streams):
+                        break
+                    time.sleep(0.1)
+
+            open_indices = [i for i, s in enumerate(streams) if s.is_connected()]
+            if not open_indices:
+                err_details = []
+                for i, s in enumerate(streams):
+                    msg = s.error_message or "Não respondeu no tempo limite de conexão (5s)."
+                    err_details.append(f"- **Câmera {i + 1} ({cam_configs[i]['label']})**: {msg}")
+                err_text = "\n".join(err_details)
+                st.error(f"❌ Não foi possível conectar a nenhuma das câmeras de treino configuradas:\n{err_text}")
+                for s in streams:
+                    try:
+                        s.stop()
+                    except Exception:
+                        pass
+            else:
+                live_pose_histories = [[] for _ in range(num_cameras)]
+                latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
+                frame_count = 0
+                start_time = time.time()
+                current_fps = 30.0
+
+                live_train_hud_ph.html(live_train_mgr.render_live_hud_html())
+
+                while run_live_training:
+                    any_frame_read = False
+
+                    for k in range(num_cameras):
+                        stream = streams[k]
+                        ret, frame = stream.read(copy=False)
+                        if not ret or frame is None:
+                            if stream.status in ["INITIALIZING", "RECONNECTING"]:
+                                status_icon = "🟡"
+                                status_msg = "Reconectando..." if stream.status == "RECONNECTING" else "Conectando stream..."
+                            else:
+                                status_icon = "🔴"
+                                status_msg = "Sem sinal"
+                            prev_frame = latest_drawn_frames[k]
+                            if prev_frame is not None:
+                                frame_rgb = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2RGB)
+                                frame_placeholders[k].image(
+                                    frame_rgb,
+                                    caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {status_msg})",
+                                    channels="RGB",
+                                    width="stretch"
+                                )
+                            continue
+
+                        any_frame_read = True
+
+                        if num_cameras == 1:
+                            candidates, _ = pipeline.pose_detector.process_frame_candidates(frame)
+                            aka_lm, shiro_lm, disc = pipeline.combatant_tracker.associate_and_filter(
+                                candidates,
+                                frame=frame,
+                                return_persisted=True
+                            )
+                            drawn_frame = pipeline.pose_detector.draw_combatants_overlay(
+                                frame,
+                                aka_landmarks=aka_lm,
+                                shiro_landmarks=shiro_lm,
+                                discarded_items=disc
+                            )
+                            active_lm = aka_lm or shiro_lm
+                            live_pose_histories[0].append(active_lm)
+                            latest_drawn_frames[0] = drawn_frame
+                        else:
+                            landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
+                            live_pose_histories[k].append(landmarks)
+                            latest_drawn_frames[k] = drawn_frame
+
+                        frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
+                        cam_stats = stream.get_stats()
+                        stream_fps_val = cam_stats.get("fps", 30.0)
+                        status_icon = "🟢" if stream.is_connected() else "🔴"
+                        frame_placeholders[k].image(
+                            frame_rgb,
+                            caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {stream_fps_val:.1f} FPS)",
+                            channels="RGB",
+                            width="stretch"
+                        )
+
+                    if not any_frame_read:
+                        time.sleep(0.01)
+                        if all(s.status == "DISCONNECTED" for s in streams):
+                            st.warning("⚠️ Transmissão de treino interrompida. Conexões de câmera perdidas.")
+                            break
+                        continue
+
+                    # Processar passo de treino ao vivo
+                    step_data = live_train_mgr.process_live_frame(
+                        live_pose_histories=live_pose_histories,
+                        fps=current_fps or 30.0,
+                        current_frame_idx=frame_count
+                    )
+
+                    frame_count += 1
+                    elapsed = max(0.001, time.time() - start_time)
+                    active_cams_now = sum(1 for s in streams if s.is_connected())
+                    current_fps = (frame_count * max(1, active_cams_now)) / elapsed if elapsed > 0 else 0.0
+
+                    if frame_count % 3 == 0:
+                        train_fps_metric.metric(
+                            "Desempenho da Transmissão de Treino",
+                            f"{current_fps:.1f} FPS",
+                            f"Câmeras Ativas: {active_cams_now}/{num_cameras}"
+                        )
+                        live_train_hud_ph.html(live_train_mgr.render_live_hud_html())
+
+                    if step_data.get("new_rep_detected") or (frame_count % 30 == 0 and live_train_mgr.rep_history):
+                        rep_cards = []
+                        for r_item in live_train_mgr.rep_history[:12]:
+                            rep_cards.append(
+                                f"""<div style="background: #1E293B; border-left: 4px solid #6366F1; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; font-size: 11.5px;">
+                                    <div style="display: flex; justify-content: space-between; font-weight: 700;">
+                                        <span style="color: #F8FAFC;">Repetição #{r_item['rep_number']} ({r_item['timestamp']})</span>
+                                        <span style="color: #38BDF8;">{r_item['status']} • {r_item['quality_score']}%</span>
+                                    </div>
+                                    <div style="color: #94A3B8; font-size: 11px; margin-top: 2px;">{html.escape(r_item['feedback'])}</div>
+                                </div>"""
+                            )
+                        train_events_placeholder.markdown("".join(rep_cards), unsafe_allow_html=True)
+
+                for s in streams:
+                    try:
+                        s.stop()
+                    except Exception:
+                        pass
+
+                st.session_state["last_live_training_report"] = live_train_mgr.generate_final_session_report()
+                st.toast("✅ Sessão de treinamento ao vivo finalizada!", icon="🎓")
+
+        # Exibir relatório pós-sessão se disponível
+        if not run_live_training and "last_live_training_report" in st.session_state:
+            rep = st.session_state["last_live_training_report"]
+            st.markdown("---")
+            st.markdown(
+                f"""
+                <div style="background: linear-gradient(135deg, #090D16 0%, #1E1B4B 100%); border: 2px solid #10B981; border-radius: 12px; padding: 16px 20px; margin-bottom: 14px; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.25);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(16, 185, 129, 0.35); padding-bottom: 8px; margin-bottom: 10px;">
+                        <span style="color: #A7F3D0; font-size: 14px; font-weight: 800; letter-spacing: 0.8px;">✅ RESUMO CONSOLIDADO DA SESSÃO AO VIVO</span>
+                        <span style="color: #FFFFFF; font-size: 12px; font-weight: 600;">⏱️ Duração: {rep['duration_seconds']:.1f}s</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px;">
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 8px; padding: 10px; text-align: center;">
+                            <div style="color: #94A3B8; font-size: 10px; font-weight: 700;">TOTAL DE REPETIÇÕES</div>
+                            <div style="color: #FFFFFF; font-size: 26px; font-weight: 900; font-family: monospace;">{rep['total_reps']}</div>
+                            <div style="color: #38BDF8; font-size: 10px;">{rep['cadence_cpm']} CPM</div>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 8px; padding: 10px; text-align: center;">
+                            <div style="color: #94A3B8; font-size: 10px; font-weight: 700;">🏃 MOVIMENTAÇÃO</div>
+                            <div style="color: #4ADE80; font-size: 26px; font-weight: 900; font-family: monospace;">{rep['average_movement']}%</div>
+                            <div style="color: #94A3B8; font-size: 10px;">Shisei & Pés</div>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 8px; padding: 10px; text-align: center;">
+                            <div style="color: #94A3B8; font-size: 10px; font-weight: 700;">🎯 PRECISÃO</div>
+                            <div style="color: #38BDF8; font-size: 26px; font-weight: 900; font-family: monospace;">{rep['average_precision']}%</div>
+                            <div style="color: #94A3B8; font-size: 10px;">Ki-Ken-Tai-Ichi</div>
+                        </div>
+                        <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid #334155; border-radius: 8px; padding: 10px; text-align: center;">
+                            <div style="color: #94A3B8; font-size: 10px; font-weight: 700;">⏱️ CONSTÂNCIA</div>
+                            <div style="color: #FBBF24; font-size: 26px; font-weight: 900; font-family: monospace;">{rep['average_constancy']}%</div>
+                            <div style="color: #94A3B8; font-size: 10px;">Ritmo & Fadiga</div>
+                        </div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+            col_down1, col_down2, col_down3 = st.columns([1.5, 1.5, 1])
+            with col_down1:
+                st.download_button(
+                    "📥 Baixar Relatório da Sessão (.md)",
+                    data=rep.get("markdown_report", ""),
+                    file_name=f"relatorio_treino_aovivo_{int(time.time())}.md",
+                    mime="text/markdown",
+                    width="stretch",
+                    key="btn_dl_live_train_md"
+                )
+            with col_down2:
+                st.download_button(
+                    "📥 Baixar Dados da Sessão (.json)",
+                    data=json.dumps(rep, indent=2, ensure_ascii=False),
+                    file_name=f"dados_treino_aovivo_{int(time.time())}.json",
+                    mime="application/json",
+                    width="stretch",
+                    key="btn_dl_live_train_json"
+                )
+            with col_down3:
+                if st.button("🧹 Nova Sessão", key="btn_clear_live_train_rep", width="stretch"):
+                    st.session_state.pop("last_live_training_report", None)
+                    st.rerun()
+
+
+    # ==========================================================================
+    # MODOS 1 E 2: FORMATO GRAVADO (LUTAS & TREINAMENTO)
     # ==========================================================================
     else:
         expander_title = "🎓 Carregar Vídeo de Treinamento & Aprendizado" if app_mode == "training" else "📹 Carregar Vídeo da Luta"
