@@ -141,6 +141,8 @@ class PoseDetector:
             else:
                 logger.info(f"[PoseDetector] MediaPipe Pose indisponível. Inicializando fallback YOLO em CPU ({self.model_info['name']}).")
                 try:
+                    import torch
+                    self.torch = torch
                     from ultralytics import YOLO
                     model_target = self._resolve_model_path_or_name()
                     try:
