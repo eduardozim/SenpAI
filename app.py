@@ -65,7 +65,13 @@ from src.utils.video_downloader import (
     validate_video_url, extract_video_info, download_video_stream,
     format_video_duration, VideoDownloadError, QUALITY_LABELS
 )
-from src.utils.environment import get_virtual_environment_info, is_in_virtual_environment
+from src.utils.environment import (
+    get_virtual_environment_info, is_in_virtual_environment, get_execution_environment_info
+)
+from src.utils.webrtc_manager import (
+    HAS_WEBRTC, webrtc_streamer, WebRtcMode, get_rtc_configuration,
+    SenpAIMatchWebRtcProcessor, SenpAITrainingWebRtcProcessor
+)
 from src.utils.stream_capture import (
     ThreadedVideoStream, probe_stream_connection, normalize_stream_source, apply_ffmpeg_network_optimizations
 )
@@ -1070,6 +1076,29 @@ else:
         """
         <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #ef4444; border-radius: 6px; padding: 6px 10px; margin-bottom: 8px;">
             <div style="font-weight: 700; color: #f87171; font-size: 0.78rem;">🚨 Venv Não Identificado (Global)</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+# Indicador de Modo de Execução (Local vs Servidor Web / Nuvem)
+runtime_env_info = get_execution_environment_info()
+if runtime_env_info["is_cloud"]:
+    st.sidebar.markdown(
+        f"""
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px;">
+            <div style="font-size: 0.76rem; color: #38bdf8; font-weight: 600;">🌐 Servidor Web ({runtime_env_info['provider_label']})</div>
+            <div style="font-size: 0.70rem; color: #94a3b8; margin-top: 1px;">Captura de câmeras via WebRTC no navegador</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    st.sidebar.markdown(
+        f"""
+        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px;">
+            <div style="font-size: 0.76rem; color: #34d399; font-weight: 600;">💻 Execução Local ({runtime_env_info['provider_label']})</div>
+            <div style="font-size: 0.70rem; color: #94a3b8; margin-top: 1px;">Acesso direto a Webcams USB e acelerador</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -2683,9 +2712,42 @@ elif nav_page in ["match", "training", "analysis"]:
         # Obter lista de câmeras detectadas no sistema
         detected_cams = detect_connected_cameras()
 
+        # Identificação e Adaptação Automática de Modo de Execução (Local vs Nuvem/Web)
+        runtime_env = get_execution_environment_info()
+        is_cloud_env = runtime_env["is_cloud"]
+
         col_rt_config, col_rt_diagram = st.columns([6, 5])
 
         with col_rt_config:
+            if is_cloud_env:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(56, 189, 248, 0.12); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                        <div style="font-weight: 700; color: #38bdf8; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
+                            <span>🌐</span> <b>Modo Servidor Web Detectado ({runtime_env['provider_label']})</b>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 0.80rem; margin-top: 4px; line-height: 1.4;">
+                            Para capturar a webcam deste computador pelo navegador, a fonte <b>'🌐 Câmera do Navegador (WebRTC)'</b> foi selecionada por padrão.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(16, 185, 129, 0.12); border: 1.5px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                        <div style="font-weight: 700; color: #4ade80; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
+                            <span>💻</span> <b>Modo Local Detectado ({runtime_env['provider_label']})</b>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 0.80rem; margin-top: 4px; line-height: 1.4;">
+                            Acesso direto às Webcams USB locais e fluxos de alta performance com aceleração de hardware ativados.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
             st.markdown("##### 📹 1. Seleção e Configuração das Câmeras")
             num_cams_raw = st.radio(
                 "Quantidade de Câmeras Simultâneas:",
@@ -2700,21 +2762,41 @@ elif nav_page in ["match", "training", "analysis"]:
             st.markdown("**Configuração Individual por Câmera:**")
             cam_configs = []
 
+            src_options = ["webrtc", "rtsp", "webcam"] if is_cloud_env else ["webcam", "rtsp", "webrtc"]
+
             for k in range(num_cameras):
                 st.markdown(f"**📷 Câmera {k + 1}:**")
-                row_c1, row_c2 = st.columns([1.2, 2.2])
+                row_c1, row_c2 = st.columns([1.3, 2.1])
 
                 with row_c1:
                     src_type = st.selectbox(
                         f"Tipo de Fonte (Câmera {k + 1}):",
-                        options=["webcam", "rtsp"],
+                        options=src_options,
                         index=0,
                         key=f"rt_src_type_row_{k}",
-                        format_func=lambda x: "🎥 Webcam Local" if x == "webcam" else "📡 Stream RTSP / IP",
+                        format_func=lambda x: {
+                            "webrtc": "🌐 Câmera do Navegador (WebRTC)",
+                            "webcam": "🎥 Webcam Local (OpenCV USB)",
+                            "rtsp": "📡 Stream RTSP / IP"
+                        }[x],
                         label_visibility="collapsed"
                     )
                 with row_c2:
-                    if src_type == "webcam":
+                    if src_type == "webrtc":
+                        st.markdown(
+                            """
+                            <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 6px; padding: 6px 10px;">
+                                <div style="font-size: 0.78rem; color: #38bdf8; font-weight: 600;">🌐 Câmera Local via Navegador (WebRTC)</div>
+                                <div style="font-size: 0.72rem; color: #94a3b8;">Captura direta da webcam deste computador pelo browser.</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        cam_val = "webrtc"
+                        cam_name_display = f"WebRTC Navegador (Câmera {k + 1})"
+                    elif src_type == "webcam":
+                        if is_cloud_env:
+                            st.caption("⚠️ **Aviso de Nuvem:** Esta opção busca portas USB do servidor em nuvem. Para usar a câmera deste computador, selecione **'🌐 Câmera do Navegador (WebRTC)'**.")
                         webcam_opts = [c["label"] for c in detected_cams] + ["➕ Outro Índice Manual..."]
                         default_idx = min(k, len(detected_cams) - 1) if detected_cams else 0
                         selected_cam_label = st.selectbox(
@@ -2792,37 +2874,120 @@ elif nav_page in ["match", "training", "analysis"]:
             else:
                 st.info(f"Instruções de posicionamento no Shiai-jo para {num_cameras} câmera(s).")
 
-        st.markdown("---")
-        col_ctrl1, col_ctrl2 = st.columns([1, 1])
-        with col_ctrl1:
-            run_live_detection = st.checkbox("▶️ Iniciar Transmissão Ao Vivo Multi-Câmeras", value=False, key="run_multi_live_detection")
-        with col_ctrl2:
-            st.caption("💡 *Marque para ativar o processamento em tempo real de todas as câmeras. Desmarque a qualquer momento para pausar.*")
+        has_webrtc_cam = any(c["type"] == "webrtc" for c in cam_configs)
 
-        if run_live_detection:
-            dev_pref = st.session_state.get("device_preference", get_processing_device())
-            vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
-            pipeline = SenpAIPipeline(
-                calibration_profile=profile_choice if profile_choice != "custom" else "normal",
-                device_preference=dev_pref,
-                vision_model=vis_pref
-            )
-
-            active_profile_str = profile_choice if profile_choice != "custom" else "normal"
-            pipeline.multicam_fusion.profile_name = active_profile_str
+        # Transmissão via WebRTC no Navegador (Prioritária quando rodando em Nuvem/Web)
+        if has_webrtc_cam:
+            st.markdown("---")
+            st.markdown("##### 🌐 Transmissão Ao Vivo via Navegador (WebRTC)")
+            st.caption("Pressione **'START'** no player abaixo para autorizar e iniciar a captura da sua webcam pelo navegador. A IA do SenpAI processará os movimentos e projetará o HUD biomecânico em tempo real.")
 
             col_live_cams, col_live_feed = st.columns([7, 5])
-
             with col_live_feed:
                 st.markdown("##### 📊 Feed de Golpes & Painel de Métricas")
                 fps_metric = st.empty()
                 strike_alert_box = st.empty()
-                live_score_placeholder = st.empty()
+                live_score_ph = st.empty()
+                live_score_ph.html(render_live_score_html(0, 0, 0, 0, "Kendo Shiai"))
                 st.markdown("**Histórico de Golpes Detectados na Sessão:**")
                 live_events_container = st.container(height=420)
                 with live_events_container:
                     live_events_placeholder = st.empty()
-                    live_events_placeholder.caption("🥋 *Aguardando detecção de golpes em tempo real...*")
+                    live_events_placeholder.caption("🥋 *Inicie a câmera e execute os golpes para avaliação em tempo real...*")
+
+            with col_live_cams:
+                dev_pref = st.session_state.get("device_preference", get_processing_device())
+                vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
+                active_profile_str = profile_choice if profile_choice != "custom" else "normal"
+
+                pipeline_inst = SenpAIPipeline(
+                    calibration_profile=active_profile_str,
+                    device_preference=dev_pref,
+                    vision_model=vis_pref
+                )
+                pipeline_inst.multicam_fusion.profile_name = active_profile_str
+
+                webrtc_ctx = webrtc_streamer(
+                    key="match_webrtc_live_streamer",
+                    mode=WebRtcMode.SENDRECV,
+                    rtc_configuration=get_rtc_configuration(),
+                    video_processor_factory=lambda: SenpAIMatchWebRtcProcessor(
+                        pipeline=pipeline_inst,
+                        profile_name=active_profile_str
+                    ),
+                    media_stream_constraints={"video": True, "audio": False},
+                    async_processing=True,
+                )
+
+                if webrtc_ctx.video_processor:
+                    snap = webrtc_ctx.video_processor.get_snapshot()
+                    fps_metric.metric("Desempenho da Transmissão (WebRTC)", f"{snap['fps']:.1f} FPS", f"Quadros: {snap['frame_count']}")
+                    live_score_ph.html(render_live_score_html(
+                        snap["score_shiro"],
+                        snap["score_aka"],
+                        snap["total_shiro_strikes"],
+                        snap["total_aka_strikes"],
+                        snap["live_modality_name"]
+                    ))
+                    if snap["latest_strike_alert"]:
+                        al = snap["latest_strike_alert"]
+                        strike_alert_box.markdown(
+                            f"""
+                            <div style="background: rgba(15, 23, 42, 0.95); border: 2px solid {al['badge_color']}; border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="color: {al['badge_color']}; font-weight: 800;">{al['status_text']}</span>
+                                    <span style="color: #94A3B8; font-size: 11px;">⏱️ {al['timestamp']}</span>
+                                </div>
+                                <div style="font-size: 1.1rem; font-weight: 800; color: #FFFFFF; margin-top: 4px;">{al['competitor']} — {al['tech']} ({al['score']}%)</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    if snap["strike_events"]:
+                        events_html = []
+                        for ev in snap["strike_events"]:
+                            events_html.append(
+                                f"""<div style="background: #1E293B; border-left: 4px solid {ev['badge_color']}; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; font-size: 11.5px;">
+                                    <div style="display: flex; justify-content: space-between; font-weight: 700;">
+                                        <span style="color: #F8FAFC;">{ev['competitor']} — {ev['tech']}</span>
+                                        <span style="color: {ev['status_color']};">{ev['status_text']} • {ev['score']}%</span>
+                                    </div>
+                                    <div style="color: #94A3B8; font-size: 10.5px;">Alvo: {ev['sub_target']}% | Fumikomi: {ev['sub_fumi']}% | Postura: {ev['sub_posture']}% | Zanshin: {ev['sub_zanshin']}%</div>
+                                </div>"""
+                            )
+                        live_events_placeholder.markdown("".join(events_html), unsafe_allow_html=True)
+        else:
+            st.markdown("---")
+            col_ctrl1, col_ctrl2 = st.columns([1, 1])
+            with col_ctrl1:
+                run_live_detection = st.checkbox("▶️ Iniciar Transmissão Ao Vivo Multi-Câmeras", value=False, key="run_multi_live_detection")
+            with col_ctrl2:
+                st.caption("💡 *Marque para ativar o processamento em tempo real de todas as câmeras. Desmarque a qualquer momento para pausar.*")
+
+            if run_live_detection:
+                dev_pref = st.session_state.get("device_preference", get_processing_device())
+                vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
+                pipeline = SenpAIPipeline(
+                    calibration_profile=profile_choice if profile_choice != "custom" else "normal",
+                    device_preference=dev_pref,
+                    vision_model=vis_pref
+                )
+
+                active_profile_str = profile_choice if profile_choice != "custom" else "normal"
+                pipeline.multicam_fusion.profile_name = active_profile_str
+
+                col_live_cams, col_live_feed = st.columns([7, 5])
+
+                with col_live_feed:
+                    st.markdown("##### 📊 Feed de Golpes & Painel de Métricas")
+                    fps_metric = st.empty()
+                    strike_alert_box = st.empty()
+                    live_score_placeholder = st.empty()
+                    st.markdown("**Histórico de Golpes Detectados na Sessão:**")
+                    live_events_container = st.container(height=420)
+                    with live_events_container:
+                        live_events_placeholder = st.empty()
+                        live_events_placeholder.caption("🥋 *Aguardando detecção de golpes em tempo real...*")
 
             with col_live_cams:
                 st.markdown(f"##### 🎥 Feeds de Vídeo ({num_cameras} Câmera{'s' if num_cameras > 1 else ''})")
@@ -3112,9 +3277,42 @@ elif nav_page in ["match", "training", "analysis"]:
 
         detected_cams = detect_connected_cameras()
 
+        # Identificação e Adaptação Automática de Modo de Execução (Local vs Nuvem/Web)
+        runtime_env = get_execution_environment_info()
+        is_cloud_env = runtime_env["is_cloud"]
+
         col_rt_config, col_rt_diagram = st.columns([6, 5])
 
         with col_rt_config:
+            if is_cloud_env:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(56, 189, 248, 0.12); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                        <div style="font-weight: 700; color: #38bdf8; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
+                            <span>🌐</span> <b>Modo Servidor Web Detectado ({runtime_env['provider_label']})</b>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 0.80rem; margin-top: 4px; line-height: 1.4;">
+                            Para capturar a webcam deste computador pelo navegador, a fonte <b>'🌐 Câmera do Navegador (WebRTC)'</b> foi selecionada por padrão.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(16, 185, 129, 0.12); border: 1.5px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                        <div style="font-weight: 700; color: #4ade80; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
+                            <span>💻</span> <b>Modo Local Detectado ({runtime_env['provider_label']})</b>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 0.80rem; margin-top: 4px; line-height: 1.4;">
+                            Acesso direto às Webcams USB locais e fluxos de treino em tempo real com alta performance.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
             st.markdown("##### 📹 1. Seleção e Configuração das Câmeras de Treino")
             num_cams_raw = st.radio(
                 "Quantidade de Câmeras Simultâneas no Dojo:",
@@ -3129,21 +3327,41 @@ elif nav_page in ["match", "training", "analysis"]:
             st.markdown("**Configuração Individual por Câmera:**")
             cam_configs = []
 
+            src_options = ["webrtc", "rtsp", "webcam"] if is_cloud_env else ["webcam", "rtsp", "webrtc"]
+
             for k in range(num_cameras):
                 st.markdown(f"**📷 Câmera {k + 1}:**")
-                row_c1, row_c2 = st.columns([1.2, 2.2])
+                row_c1, row_c2 = st.columns([1.3, 2.1])
 
                 with row_c1:
                     src_type = st.selectbox(
                         f"Tipo de Fonte (Câmera {k + 1}):",
-                        options=["webcam", "rtsp"],
+                        options=src_options,
                         index=0,
                         key=f"train_rt_src_type_{k}",
-                        format_func=lambda x: "🎥 Webcam Local" if x == "webcam" else "📡 Stream RTSP / IP",
+                        format_func=lambda x: {
+                            "webrtc": "🌐 Câmera do Navegador (WebRTC)",
+                            "webcam": "🎥 Webcam Local (OpenCV USB)",
+                            "rtsp": "📡 Stream RTSP / IP"
+                        }[x],
                         label_visibility="collapsed"
                     )
                 with row_c2:
-                    if src_type == "webcam":
+                    if src_type == "webrtc":
+                        st.markdown(
+                            """
+                            <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 6px; padding: 6px 10px;">
+                                <div style="font-size: 0.78rem; color: #38bdf8; font-weight: 600;">🌐 Câmera Local via Navegador (WebRTC)</div>
+                                <div style="font-size: 0.72rem; color: #94a3b8;">Captura direta da webcam deste computador pelo browser.</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        cam_val = "webrtc"
+                        cam_name_display = f"WebRTC Navegador (Câmera {k + 1})"
+                    elif src_type == "webcam":
+                        if is_cloud_env:
+                            st.caption("⚠️ **Aviso de Nuvem:** Esta opção busca portas USB do servidor em nuvem. Para usar a câmera deste computador, selecione **'🌐 Câmera do Navegador (WebRTC)'**.")
                         webcam_opts = [c["label"] for c in detected_cams] + ["➕ Outro Índice Manual..."]
                         default_idx = min(k, len(detected_cams) - 1) if detected_cams else 0
                         selected_cam_label = st.selectbox(
@@ -3237,10 +3455,9 @@ elif nav_page in ["match", "training", "analysis"]:
         with col_tp2:
             kendoka_name_val = st.text_input(
                 "Nome do Kendoka Praticante:",
-                value=st.session_state.get("live_kendoka_name_val", "Kendoka Praticante"),
+                value="Kendoka Praticante",
                 key="live_train_kendoka_name_input"
             )
-            st.session_state["live_kendoka_name_val"] = kendoka_name_val
         with col_tp3:
             target_dan_val = st.selectbox(
                 "Graduação Alvo:",
@@ -3250,40 +3467,106 @@ elif nav_page in ["match", "training", "analysis"]:
                 key="live_train_target_dan_select"
             )
 
-        st.markdown("---")
-        col_ctrl1, col_ctrl2 = st.columns([1.2, 1])
-        with col_ctrl1:
-            run_live_training = st.checkbox("▶️ Iniciar Análise de Treinamento Ao Vivo Multi-Câmeras", value=False, key="run_live_training_checkbox")
-        with col_ctrl2:
-            st.caption("💡 *Marque para ativar o rastreamento biomecânico e contagem contínua. Desmarque a qualquer momento para finalizar e obter o relatório.*")
+        has_webrtc_cam = any(c["type"] == "webrtc" for c in cam_configs)
 
-        if run_live_training:
-            dev_pref = st.session_state.get("device_preference", get_processing_device())
-            vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
-            pipeline = SenpAIPipeline(
-                calibration_profile="normal",
-                device_preference=dev_pref,
-                vision_model=vis_pref
-            )
-
-            live_train_mgr = LiveTrainingSessionManager(
-                modality_override=selected_train_mod if selected_train_mod != "auto" else None,
-                kendoka_name=kendoka_name_val,
-                target_dan=target_dan_val,
-                training_analyzer=pipeline.training_analyzer
-            )
+        # Transmissão de Treinamento via WebRTC no Navegador (Prioritária na Nuvem/Web)
+        if has_webrtc_cam:
+            st.markdown("---")
+            st.markdown("##### 🌐 Transmissão Ao Vivo via Navegador (WebRTC)")
+            st.caption("Pressione **'START'** no player abaixo para autorizar e iniciar a captura da sua webcam pelo navegador. A IA do SenpAI avaliará seus movimentos com biofeedback instantâneo.")
 
             col_live_cams, col_live_feed = st.columns([7, 5])
-
             with col_live_feed:
                 st.markdown("##### 🎓 Painel de Treinamento Ao Vivo")
                 train_fps_metric = st.empty()
-                live_train_hud_ph = st.empty()
+                train_hud_ph = st.empty()
                 st.markdown("**Histórico de Repetições e Ações Técnicas:**")
                 train_events_container = st.container(height=380)
                 with train_events_container:
-                    train_events_placeholder = st.empty()
-                    train_events_placeholder.caption("🥋 *Inicie os movimentos e golpes para detecção das repetições...*")
+                    train_events_ph = st.empty()
+                    train_events_ph.caption("🥋 *Inicie a câmera e execute os movimentos para contagem de repetições...*")
+
+            with col_live_cams:
+                dev_pref = st.session_state.get("device_preference", get_processing_device())
+                vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
+
+                pipeline_inst = SenpAIPipeline(
+                    calibration_profile="normal",
+                    device_preference=dev_pref,
+                    vision_model=vis_pref
+                )
+
+                live_train_mgr = LiveTrainingSessionManager(
+                    modality_override=selected_train_mod if selected_train_mod != "auto" else None,
+                    kendoka_name=kendoka_name_val,
+                    target_dan=target_dan_val,
+                    training_analyzer=pipeline_inst.training_analyzer
+                )
+
+                webrtc_ctx = webrtc_streamer(
+                    key="train_webrtc_live_streamer",
+                    mode=WebRtcMode.SENDRECV,
+                    rtc_configuration=get_rtc_configuration(),
+                    video_processor_factory=lambda: SenpAITrainingWebRtcProcessor(
+                        pipeline=pipeline_inst,
+                        live_train_mgr=live_train_mgr
+                    ),
+                    media_stream_constraints={"video": True, "audio": False},
+                    async_processing=True,
+                )
+
+                if webrtc_ctx.video_processor:
+                    snap = webrtc_ctx.video_processor.get_snapshot()
+                    train_fps_metric.metric("Desempenho da Transmissão (WebRTC)", f"{snap['fps']:.1f} FPS", f"Quadros: {snap['frame_count']}")
+                    train_hud_ph.html(snap["hud_html"])
+                    if snap["rep_history"]:
+                        rep_cards = []
+                        for r_item in snap["rep_history"]:
+                            rep_cards.append(
+                                f"""<div style="background: #1E293B; border-left: 4px solid #6366F1; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; font-size: 11.5px;">
+                                    <div style="display: flex; justify-content: space-between; font-weight: 700;">
+                                        <span style="color: #F8FAFC;">Repetição #{r_item['rep_number']} ({r_item['timestamp']})</span>
+                                        <span style="color: #38BDF8;">{r_item['status']} • {r_item['quality_score']}%</span>
+                                    </div>
+                                    <div style="color: #94A3B8; font-size: 11px; margin-top: 2px;">{html.escape(r_item['feedback'])}</div>
+                                </div>"""
+                            )
+                        train_events_ph.markdown("".join(rep_cards), unsafe_allow_html=True)
+        else:
+            st.markdown("---")
+            col_ctrl1, col_ctrl2 = st.columns([1.2, 1])
+            with col_ctrl1:
+                run_live_training = st.checkbox("▶️ Iniciar Análise de Treinamento Ao Vivo Multi-Câmeras", value=False, key="run_live_training_checkbox")
+            with col_ctrl2:
+                st.caption("💡 *Marque para ativar o rastreamento biomecânico e contagem contínua. Desmarque a qualquer momento para finalizar e obter o relatório.*")
+
+            if run_live_training:
+                dev_pref = st.session_state.get("device_preference", get_processing_device())
+                vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
+                pipeline = SenpAIPipeline(
+                    calibration_profile="normal",
+                    device_preference=dev_pref,
+                    vision_model=vis_pref
+                )
+
+                live_train_mgr = LiveTrainingSessionManager(
+                    modality_override=selected_train_mod if selected_train_mod != "auto" else None,
+                    kendoka_name=kendoka_name_val,
+                    target_dan=target_dan_val,
+                    training_analyzer=pipeline.training_analyzer
+                )
+
+                col_live_cams, col_live_feed = st.columns([7, 5])
+
+                with col_live_feed:
+                    st.markdown("##### 🎓 Painel de Treinamento Ao Vivo")
+                    train_fps_metric = st.empty()
+                    live_train_hud_ph = st.empty()
+                    st.markdown("**Histórico de Repetições e Ações Técnicas:**")
+                    train_events_container = st.container(height=380)
+                    with train_events_container:
+                        train_events_placeholder = st.empty()
+                        train_events_placeholder.caption("🥋 *Inicie os movimentos e golpes para detecção das repetições...*")
 
             with col_live_cams:
                 st.markdown(f"##### 🎥 Feeds de Vídeo ({num_cameras} Câmera{'s' if num_cameras > 1 else ''})")

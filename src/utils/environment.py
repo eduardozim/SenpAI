@@ -113,3 +113,87 @@ def validate_virtual_environment(log_warning: bool = True) -> Tuple[bool, str]:
         )
         
     return False, error_msg
+
+
+def get_execution_environment_info() -> Dict[str, Any]:
+    """
+    Detecta automaticamente se o SenpAI está executando em um ambiente Local
+    (Desktop / Dojo / Localhost no Windows, macOS ou Linux com hardware direto)
+    ou em um Servidor Web / Nuvem (Streamlit Community Cloud, Hugging Face Spaces,
+    Docker, AWS, GCP, etc.).
+
+    Retorna metadados para que a aplicação adapte suas fontes de captura de câmera
+    (priorizando WebRTC no navegador quando na nuvem e OpenCV USB direto quando local).
+    """
+    # 1. Override explícito via variável de ambiente (útil para testes de simulação)
+    override = os.environ.get("SENPAI_DEPLOY_MODE", "").lower().strip()
+    if override in ["cloud", "web"]:
+        return {
+            "is_cloud": True,
+            "deployment_mode": "cloud",
+            "provider_label": "Servidor Web / Nuvem (Configurado)",
+            "description": "Executando em Servidor Web/Nuvem. Câmeras locais do cliente devem ser capturadas via WebRTC pelo navegador.",
+            "recommended_source": "webrtc"
+        }
+    elif override in ["local", "desktop"]:
+        return {
+            "is_cloud": False,
+            "deployment_mode": "local",
+            "provider_label": "Local (Desktop / Dojo)",
+            "description": "Executando em máquina local. Acesso direto a Webcams USB via OpenCV e aceleração nativa disponíveis.",
+            "recommended_source": "webcam"
+        }
+
+    # 2. Detecção específica do Streamlit Community Cloud
+    # No Streamlit Cloud, repositórios são montados sob /mount/src/<repo>
+    is_streamlit_cloud = os.path.exists("/mount/src") or bool(
+        os.environ.get("IS_STREAMLIT_CLOUD")
+        or os.environ.get("STREAMLIT_SHARING")
+        or ("STREAMLIT_SERVER_GATHER_USAGE_STATS" in os.environ and os.name != "nt" and not os.environ.get("DISPLAY"))
+    )
+    if is_streamlit_cloud:
+        return {
+            "is_cloud": True,
+            "deployment_mode": "cloud",
+            "provider_label": "Streamlit Community Cloud",
+            "description": "Servidor Streamlit Cloud detectado. Câmeras do computador do usuário devem ser capturadas pelo navegador (WebRTC).",
+            "recommended_source": "webrtc"
+        }
+
+    # 3. Detecção de outros provedores de nuvem e contêineres
+    provider = None
+    if os.environ.get("SPACE_ID"):
+        provider = "Hugging Face Spaces"
+    elif os.environ.get("DYNO"):
+        provider = "Heroku Cloud"
+    elif os.environ.get("KUBERNETES_SERVICE_HOST"):
+        provider = "Kubernetes Cluster"
+    elif os.path.exists("/.dockerenv"):
+        provider = "Docker Container"
+    elif os.environ.get("WEBSITE_SITE_NAME"):
+        provider = "Azure App Service"
+    elif os.environ.get("AWS_EXECUTION_ENV"):
+        provider = "AWS Cloud"
+    elif os.environ.get("GAE_APPLICATION"):
+        provider = "Google App Engine"
+    elif sys.platform.startswith("linux") and not os.environ.get("DISPLAY") and not os.environ.get("WAYLAND_DISPLAY") and not os.path.exists("/dev/video0"):
+        provider = "Servidor Linux / Nuvem Headless"
+
+    if provider is not None:
+        return {
+            "is_cloud": True,
+            "deployment_mode": "cloud",
+            "provider_label": provider,
+            "description": f"Executando em {provider}. Câmeras locais do cliente devem ser capturadas via WebRTC pelo navegador.",
+            "recommended_source": "webrtc"
+        }
+
+    # 4. Caso padrão: Ambiente Local (Windows, macOS ou Linux Desktop com display/dispositivos)
+    return {
+        "is_cloud": False,
+        "deployment_mode": "local",
+        "provider_label": "Local (Desktop / Dojo)",
+        "description": "Executando em máquina local. Acesso direto a Webcams USB via OpenCV e aceleração nativa disponíveis.",
+        "recommended_source": "webcam"
+    }
+
