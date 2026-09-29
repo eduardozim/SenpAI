@@ -36,15 +36,26 @@ from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA
 
 def get_rtc_configuration() -> Optional[Any]:
     """
-    Retorna a configuração de servidores STUN públicos (Google) para transposição
-    de NAT e firewall em conexões WebRTC no navegador.
+    Retorna a configuração de servidores STUN e TURN para transposição de NAT,
+    firewalls e contêineres de nuvem (Streamlit Community Cloud).
+    O Streamlit Cloud bloqueia tráfego UDP direto; os servidores TURN via TCP (porta 443)
+    garantem que o streaming de vídeo do navegador atravesse o firewall do contêiner com sucesso.
     """
     if not HAS_WEBRTC or RTCConfiguration is None:
         return None
     return RTCConfiguration(
         {
             "iceServers": [
-                {"urls": ["stun:stun.l.google.com:19302"]}
+                {"urls": ["stun:stun.l.google.com:19302"]},
+                {
+                    "urls": [
+                        "turn:openrelay.metered.ca:80",
+                        "turn:openrelay.metered.ca:443",
+                        "turn:openrelay.metered.ca:443?transport=tcp",
+                    ],
+                    "username": "openrelayproject",
+                    "credential": "openrelayproject",
+                },
             ]
         }
     )
