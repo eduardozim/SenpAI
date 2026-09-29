@@ -80,5 +80,6 @@ data/test_*.json
 # Scratch scripts e temporários de análise
 scratch/
 
-# Documentação interna de referência e estudos de calibração
+# Documentação interna de referência e melhorias
 REFERENCIA_MOTOR_CALIBRACAO_E_APRENDIZADO.md
+Melhorias_Issues.md
