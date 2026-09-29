@@ -2874,6 +2874,7 @@ elif nav_page in ["match", "training", "analysis"]:
             else:
                 st.info(f"Instruções de posicionamento no Shiai-jo para {num_cameras} câmera(s).")
 
+        run_live_detection = False
         has_webrtc_cam = any(c["type"] == "webrtc" for c in cam_configs)
 
         # Transmissão via WebRTC no Navegador (Prioritária quando rodando em Nuvem/Web)
@@ -3478,6 +3479,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 key="live_train_target_dan_select"
             )
 
+        run_live_training = False
         has_webrtc_cam = any(c["type"] == "webrtc" for c in cam_configs)
 
         # Transmissão de Treinamento via WebRTC no Navegador (Prioritária na Nuvem/Web)
