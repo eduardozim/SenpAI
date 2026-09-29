@@ -3,6 +3,8 @@ Módulo de detecção e gerenciamento de aceleração por hardware (CPU e GPU NV
 """
 
 import os
+import sys
+import glob
 import subprocess
 import logging
 from typing import Dict, Any, Tuple, List, Optional
@@ -290,6 +292,13 @@ def detect_connected_cameras() -> List[Dict[str, Any]]:
     Retorna lista de dicts: [{'index': 0, 'name': 'BisonCam,NB Pro', 'label': '🎥 [0] BisonCam,NB Pro'}, ...]
     """
     cameras: List[Dict[str, Any]] = []
+    
+    # 0. Se estiver em Linux/contêiner headless sem dispositivos /dev/video*, não sondar via OpenCV
+    # (evita timeout de 30s por índice do backend ffmpeg no Streamlit Cloud / Docker)
+    if sys.platform.startswith("linux"):
+        v_devices = glob.glob("/dev/video*")
+        if not v_devices:
+            return [{"index": 0, "name": "Câmera 0", "label": "🎥 Câmera 0 (Padrão)"}]
 
     # 1. Tentar DirectShow via pygrabber (se instalado)
     try:

@@ -1,5 +1,6 @@
 opencv-python>=4.8.0
-mediapipe>=0.10.0
+mediapipe>=0.10.0,<0.10.30; python_version < "3.13"
+mediapipe>=0.10.0; python_version >= "3.13"
 numpy>=1.24.0
 scipy>=1.10.0
 fastdtw>=0.3.4
@@ -7,8 +8,11 @@ streamlit>=1.30.0
 pillow>=10.0.0
 protobuf>=4.25.0
 yt-dlp>=2024.0.0
-pandas>=2.0.0
+pandas>=2.0.0,<3.0.0
 openpyxl>=3.1.0
+streamlit-webrtc>=0.47.0
+av>=10.0.0
+ultralytics>=8.0.0
 
 # --- Requisitos Opcionais para Aceleração de Hardware via GPU NVIDIA (CUDA) ---
 # Para ativar aceleração máxima via GPU NVIDIA (ex: RTX 4050/3060/4090):

@@ -65,7 +65,13 @@ from src.utils.video_downloader import (
     validate_video_url, extract_video_info, download_video_stream,
     format_video_duration, VideoDownloadError, QUALITY_LABELS
 )
-from src.utils.environment import get_virtual_environment_info, is_in_virtual_environment
+from src.utils.environment import (
+    get_virtual_environment_info, is_in_virtual_environment, get_execution_environment_info
+)
+from src.utils.webrtc_manager import (
+    HAS_WEBRTC, webrtc_streamer, WebRtcMode, get_rtc_configuration,
+    SenpAIMatchWebRtcProcessor, SenpAITrainingWebRtcProcessor
+)
 from src.utils.stream_capture import (
     ThreadedVideoStream, probe_stream_connection, normalize_stream_source, apply_ffmpeg_network_optimizations
 )
@@ -1070,6 +1076,29 @@ else:
         """
         <div style="background: rgba(239, 68, 68, 0.15); border: 1.5px solid #ef4444; border-radius: 6px; padding: 6px 10px; margin-bottom: 8px;">
             <div style="font-weight: 700; color: #f87171; font-size: 0.78rem;">🚨 Venv Não Identificado (Global)</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+# Indicador de Modo de Execução (Local vs Servidor Web / Nuvem)
+runtime_env_info = get_execution_environment_info()
+if runtime_env_info["is_cloud"]:
+    st.sidebar.markdown(
+        f"""
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px;">
+            <div style="font-size: 0.76rem; color: #38bdf8; font-weight: 600;">🌐 Servidor Web ({runtime_env_info['provider_label']})</div>
+            <div style="font-size: 0.70rem; color: #94a3b8; margin-top: 1px;">Captura de câmeras via WebRTC no navegador</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    st.sidebar.markdown(
+        f"""
+        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 6px; padding: 6px 10px; margin-bottom: 8px;">
+            <div style="font-size: 0.76rem; color: #34d399; font-weight: 600;">💻 Execução Local ({runtime_env_info['provider_label']})</div>
+            <div style="font-size: 0.70rem; color: #94a3b8; margin-top: 1px;">Acesso direto a Webcams USB e acelerador</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -2683,9 +2712,42 @@ elif nav_page in ["match", "training", "analysis"]:
         # Obter lista de câmeras detectadas no sistema
         detected_cams = detect_connected_cameras()
 
+        # Identificação e Adaptação Automática de Modo de Execução (Local vs Nuvem/Web)
+        runtime_env = get_execution_environment_info()
+        is_cloud_env = runtime_env["is_cloud"]
+
         col_rt_config, col_rt_diagram = st.columns([6, 5])
 
         with col_rt_config:
+            if is_cloud_env:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(56, 189, 248, 0.12); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                        <div style="font-weight: 700; color: #38bdf8; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
+                            <span>🌐</span> <b>Modo Servidor Web Detectado ({runtime_env['provider_label']})</b>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 0.80rem; margin-top: 4px; line-height: 1.4;">
+                            Para capturar a webcam deste computador pelo navegador, a fonte <b>'🌐 Câmera do Navegador (WebRTC)'</b> foi selecionada por padrão.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(16, 185, 129, 0.12); border: 1.5px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                        <div style="font-weight: 700; color: #4ade80; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
+                            <span>💻</span> <b>Modo Local Detectado ({runtime_env['provider_label']})</b>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 0.80rem; margin-top: 4px; line-height: 1.4;">
+                            Acesso direto às Webcams USB locais e fluxos de alta performance com aceleração de hardware ativados.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
             st.markdown("##### 📹 1. Seleção e Configuração das Câmeras")
             num_cams_raw = st.radio(
                 "Quantidade de Câmeras Simultâneas:",
@@ -2700,21 +2762,41 @@ elif nav_page in ["match", "training", "analysis"]:
             st.markdown("**Configuração Individual por Câmera:**")
             cam_configs = []
 
+            src_options = ["webrtc", "rtsp", "webcam"] if is_cloud_env else ["webcam", "rtsp", "webrtc"]
+
             for k in range(num_cameras):
                 st.markdown(f"**📷 Câmera {k + 1}:**")
-                row_c1, row_c2 = st.columns([1.2, 2.2])
+                row_c1, row_c2 = st.columns([1.3, 2.1])
 
                 with row_c1:
                     src_type = st.selectbox(
                         f"Tipo de Fonte (Câmera {k + 1}):",
-                        options=["webcam", "rtsp"],
+                        options=src_options,
                         index=0,
                         key=f"rt_src_type_row_{k}",
-                        format_func=lambda x: "🎥 Webcam Local" if x == "webcam" else "📡 Stream RTSP / IP",
+                        format_func=lambda x: {
+                            "webrtc": "🌐 Câmera do Navegador (WebRTC)",
+                            "webcam": "🎥 Webcam Local (OpenCV USB)",
+                            "rtsp": "📡 Stream RTSP / IP"
+                        }[x],
                         label_visibility="collapsed"
                     )
                 with row_c2:
-                    if src_type == "webcam":
+                    if src_type == "webrtc":
+                        st.markdown(
+                            """
+                            <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 6px; padding: 6px 10px;">
+                                <div style="font-size: 0.78rem; color: #38bdf8; font-weight: 600;">🌐 Câmera Local via Navegador (WebRTC)</div>
+                                <div style="font-size: 0.72rem; color: #94a3b8;">Captura direta da webcam deste computador pelo browser.</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        cam_val = "webrtc"
+                        cam_name_display = f"WebRTC Navegador (Câmera {k + 1})"
+                    elif src_type == "webcam":
+                        if is_cloud_env:
+                            st.caption("⚠️ **Aviso de Nuvem:** Esta opção busca portas USB do servidor em nuvem. Para usar a câmera deste computador, selecione **'🌐 Câmera do Navegador (WebRTC)'**.")
                         webcam_opts = [c["label"] for c in detected_cams] + ["➕ Outro Índice Manual..."]
                         default_idx = min(k, len(detected_cams) - 1) if detected_cams else 0
                         selected_cam_label = st.selectbox(
@@ -2792,311 +2874,406 @@ elif nav_page in ["match", "training", "analysis"]:
             else:
                 st.info(f"Instruções de posicionamento no Shiai-jo para {num_cameras} câmera(s).")
 
-        st.markdown("---")
-        col_ctrl1, col_ctrl2 = st.columns([1, 1])
-        with col_ctrl1:
-            run_live_detection = st.checkbox("▶️ Iniciar Transmissão Ao Vivo Multi-Câmeras", value=False, key="run_multi_live_detection")
-        with col_ctrl2:
-            st.caption("💡 *Marque para ativar o processamento em tempo real de todas as câmeras. Desmarque a qualquer momento para pausar.*")
+        run_live_detection = False
+        has_webrtc_cam = any(c["type"] == "webrtc" for c in cam_configs)
 
-        if run_live_detection:
-            dev_pref = st.session_state.get("device_preference", get_processing_device())
-            vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
-            pipeline = SenpAIPipeline(
-                calibration_profile=profile_choice if profile_choice != "custom" else "normal",
-                device_preference=dev_pref,
-                vision_model=vis_pref
-            )
+        # Transmissão via WebRTC no Navegador (Prioritária quando rodando em Nuvem/Web)
+        if has_webrtc_cam:
+            st.markdown("---")
+            st.markdown("##### 🌐 Transmissão Ao Vivo via Navegador (WebRTC)")
+            st.caption("Pressione **'START'** no player abaixo para autorizar e iniciar a captura da sua webcam pelo navegador. A IA do SenpAI processará os movimentos e projetará o HUD biomecânico em tempo real.")
 
-            active_profile_str = profile_choice if profile_choice != "custom" else "normal"
-            pipeline.multicam_fusion.profile_name = active_profile_str
+            with st.expander("🛠️ Dúvidas ou erro ao iniciar a câmera ('NotReadableError')?", expanded=False):
+                st.markdown(
+                    """
+                    **Se o player exibir `NotReadableError: Could not start video source`:**
+                    1. **Dispositivo correto:** Clique no botão **`SELECT DEVICE`** (ao lado de `START`) e selecione sua webcam física real (muitas vezes o navegador tenta abrir uma câmera virtual como OBS Virtual Camera que está inativa).
+                    2. **Câmera em uso:** Feche outros programas que possam estar acessando a webcam (Zoom, Microsoft Teams, OBS, Discord, aplicativo Câmera do Windows ou outras abas do navegador).
+                    3. **Permissões do Windows:** Verifique em *Configurações do Windows > Privacidade e Segurança > Câmera* se o acesso está ativado para o seu navegador.
+                    4. **Está usando no computador local?** Você pode alternar o tipo de fonte acima para **`🎥 Webcam Local (OpenCV USB)`**, que acessa o hardware diretamente com máximo desempenho.
+                    """
+                )
 
             col_live_cams, col_live_feed = st.columns([7, 5])
-
             with col_live_feed:
                 st.markdown("##### 📊 Feed de Golpes & Painel de Métricas")
                 fps_metric = st.empty()
                 strike_alert_box = st.empty()
-                live_score_placeholder = st.empty()
+                live_score_ph = st.empty()
+                live_score_ph.html(render_live_score_html(0, 0, 0, 0, "Kendo Shiai"))
                 st.markdown("**Histórico de Golpes Detectados na Sessão:**")
                 live_events_container = st.container(height=420)
                 with live_events_container:
                     live_events_placeholder = st.empty()
-                    live_events_placeholder.caption("🥋 *Aguardando detecção de golpes em tempo real...*")
+                    live_events_placeholder.caption("🥋 *Inicie a câmera e execute os golpes para avaliação em tempo real...*")
 
             with col_live_cams:
-                st.markdown(f"##### 🎥 Feeds de Vídeo ({num_cameras} Câmera{'s' if num_cameras > 1 else ''})")
-                frame_placeholders = []
-                # 1 Câmera: Única
-                if num_cameras == 1:
-                    frame_placeholders.append(st.empty())
-                # 2 Câmeras: Em linha
-                elif num_cameras == 2:
-                    c1, c2 = st.columns(2)
-                    frame_placeholders.append(c1.empty())
-                    frame_placeholders.append(c2.empty())
-                # 3 Câmeras: Pirâmide (1 topo + 2 base)
-                elif num_cameras == 3:
-                    top_col1, top_col2, top_col3 = st.columns([1, 6, 1])
-                    top_ph = top_col2.empty()
-                    bot_col1, bot_col2 = st.columns(2)
-                    bot1_ph = bot_col1.empty()
-                    bot2_ph = bot_col2.empty()
-                    frame_placeholders.extend([top_ph, bot1_ph, bot2_ph])
-                # 4 Câmeras: Quadrado 2x2
-                elif num_cameras == 4:
-                    r1_c1, r1_c2 = st.columns(2)
-                    r2_c1, r2_c2 = st.columns(2)
-                    frame_placeholders.extend([r1_c1.empty(), r1_c2.empty(), r2_c1.empty(), r2_c2.empty()])
+                dev_pref = st.session_state.get("device_preference", get_processing_device())
+                vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
+                active_profile_str = profile_choice if profile_choice != "custom" else "normal"
 
-            # Inicializar leitores de streams de vídeo assíncronos (ThreadedVideoStream com buffer zero)
-            streams = []
-            for cfg in cam_configs:
-                src = cfg["source"]
-                stream = ThreadedVideoStream(
-                    src=src,
-                    name=f"Cam{cfg['id']}-{cfg['label']}",
-                    max_reconnect_attempts=5,
-                    reconnect_delay=1.5,
-                    auto_start=True
+                pipeline_inst = SenpAIPipeline(
+                    calibration_profile=active_profile_str,
+                    device_preference=dev_pref,
+                    vision_model=vis_pref
                 )
-                streams.append(stream)
+                pipeline_inst.multicam_fusion.profile_name = active_profile_str
 
-            # Aguardar conexão inicial de forma resiliente com feedback visual (até 5.0 segundos)
-            with st.spinner("📡 Estabelecendo conexão com as fontes de vídeo (Webcam / RTSP / Câmeras IP)..."):
-                deadline = time.time() + 5.0
-                while time.time() < deadline:
-                    if any(s.is_connected() for s in streams):
-                        break
-                    time.sleep(0.1)
+                webrtc_ctx = webrtc_streamer(
+                    key="match_webrtc_live_streamer",
+                    mode=WebRtcMode.SENDRECV,
+                    rtc_configuration=get_rtc_configuration(),
+                    video_processor_factory=lambda: SenpAIMatchWebRtcProcessor(
+                        pipeline=pipeline_inst,
+                        profile_name=active_profile_str
+                    ),
+                    media_stream_constraints={"video": True, "audio": False},
+                    async_processing=True,
+                )
 
-            open_indices = [i for i, s in enumerate(streams) if s.is_connected()]
-            if not open_indices:
-                err_details = []
-                for i, s in enumerate(streams):
-                    msg = s.error_message or "Não respondeu no tempo limite de conexão (5s)."
-                    err_details.append(f"- **Câmera {i + 1} ({cam_configs[i]['label']})**: {msg}")
-                err_text = "\n".join(err_details)
-                st.error(f"❌ Não foi possível conectar a nenhuma das câmeras configuradas:\n{err_text}\n\n*Dica: Utilize o botão 'Testar' em cada câmera para verificar a URL ou dispositivo antes de iniciar a transmissão.*")
+                if webrtc_ctx.video_processor:
+                    snap = webrtc_ctx.video_processor.get_snapshot()
+                    fps_metric.metric("Desempenho da Transmissão (WebRTC)", f"{snap['fps']:.1f} FPS", f"Quadros: {snap['frame_count']}")
+                    live_score_ph.html(render_live_score_html(
+                        snap["score_shiro"],
+                        snap["score_aka"],
+                        snap["total_shiro_strikes"],
+                        snap["total_aka_strikes"],
+                        snap["live_modality_name"]
+                    ))
+                    if snap["latest_strike_alert"]:
+                        al = snap["latest_strike_alert"]
+                        strike_alert_box.markdown(
+                            f"""
+                            <div style="background: rgba(15, 23, 42, 0.95); border: 2px solid {al['badge_color']}; border-radius: 8px; padding: 10px 14px; margin-bottom: 10px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="color: {al['badge_color']}; font-weight: 800;">{al['status_text']}</span>
+                                    <span style="color: #94A3B8; font-size: 11px;">⏱️ {al['timestamp']}</span>
+                                </div>
+                                <div style="font-size: 1.1rem; font-weight: 800; color: #FFFFFF; margin-top: 4px;">{al['competitor']} — {al['tech']} ({al['score']}%)</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    if snap["strike_events"]:
+                        events_html = []
+                        for ev in snap["strike_events"]:
+                            events_html.append(
+                                f"""<div style="background: #1E293B; border-left: 4px solid {ev['badge_color']}; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; font-size: 11.5px;">
+                                    <div style="display: flex; justify-content: space-between; font-weight: 700;">
+                                        <span style="color: #F8FAFC;">{ev['competitor']} — {ev['tech']}</span>
+                                        <span style="color: {ev['status_color']};">{ev['status_text']} • {ev['score']}%</span>
+                                    </div>
+                                    <div style="color: #94A3B8; font-size: 10.5px;">Alvo: {ev['sub_target']}% | Fumikomi: {ev['sub_fumi']}% | Postura: {ev['sub_posture']}% | Zanshin: {ev['sub_zanshin']}%</div>
+                                </div>"""
+                            )
+                        live_events_placeholder.markdown("".join(events_html), unsafe_allow_html=True)
+        else:
+            st.markdown("---")
+            col_ctrl1, col_ctrl2 = st.columns([1, 1])
+            with col_ctrl1:
+                run_live_detection = st.checkbox("▶️ Iniciar Transmissão Ao Vivo Multi-Câmeras", value=False, key="run_multi_live_detection")
+            with col_ctrl2:
+                st.caption("💡 *Marque para ativar o processamento em tempo real de todas as câmeras. Desmarque a qualquer momento para pausar.*")
+
+            if run_live_detection:
+                dev_pref = st.session_state.get("device_preference", get_processing_device())
+                vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
+                pipeline = SenpAIPipeline(
+                    calibration_profile=profile_choice if profile_choice != "custom" else "normal",
+                    device_preference=dev_pref,
+                    vision_model=vis_pref
+                )
+
+                active_profile_str = profile_choice if profile_choice != "custom" else "normal"
+                pipeline.multicam_fusion.profile_name = active_profile_str
+
+                col_live_cams, col_live_feed = st.columns([7, 5])
+
+                with col_live_feed:
+                    st.markdown("##### 📊 Feed de Golpes & Painel de Métricas")
+                    fps_metric = st.empty()
+                    strike_alert_box = st.empty()
+                    live_score_placeholder = st.empty()
+                    st.markdown("**Histórico de Golpes Detectados na Sessão:**")
+                    live_events_container = st.container(height=420)
+                    with live_events_container:
+                        live_events_placeholder = st.empty()
+                        live_events_placeholder.caption("🥋 *Aguardando detecção de golpes em tempo real...*")
+
+                with col_live_cams:
+                    st.markdown(f"##### 🎥 Feeds de Vídeo ({num_cameras} Câmera{'s' if num_cameras > 1 else ''})")
+                    frame_placeholders = []
+                    # 1 Câmera: Única
+                    if num_cameras == 1:
+                        frame_placeholders.append(st.empty())
+                    # 2 Câmeras: Em linha
+                    elif num_cameras == 2:
+                        c1, c2 = st.columns(2)
+                        frame_placeholders.append(c1.empty())
+                        frame_placeholders.append(c2.empty())
+                    # 3 Câmeras: Pirâmide (1 topo + 2 base)
+                    elif num_cameras == 3:
+                        top_col1, top_col2, top_col3 = st.columns([1, 6, 1])
+                        top_ph = top_col2.empty()
+                        bot_col1, bot_col2 = st.columns(2)
+                        bot1_ph = bot_col1.empty()
+                        bot2_ph = bot_col2.empty()
+                        frame_placeholders.extend([top_ph, bot1_ph, bot2_ph])
+                    # 4 Câmeras: Quadrado 2x2
+                    elif num_cameras == 4:
+                        r1_c1, r1_c2 = st.columns(2)
+                        r2_c1, r2_c2 = st.columns(2)
+                        frame_placeholders.extend([r1_c1.empty(), r1_c2.empty(), r2_c1.empty(), r2_c2.empty()])
+
+                # Inicializar leitores de streams de vídeo assíncronos (ThreadedVideoStream com buffer zero)
+                streams = []
+                for cfg in cam_configs:
+                    src = cfg["source"]
+                    stream = ThreadedVideoStream(
+                        src=src,
+                        name=f"Cam{cfg['id']}-{cfg['label']}",
+                        max_reconnect_attempts=5,
+                        reconnect_delay=1.5,
+                        auto_start=True
+                    )
+                    streams.append(stream)
+
+                # Aguardar conexão inicial de forma resiliente com feedback visual (até 5.0 segundos)
+                with st.spinner("📡 Estabelecendo conexão com as fontes de vídeo (Webcam / RTSP / Câmeras IP)..."):
+                    deadline = time.time() + 5.0
+                    while time.time() < deadline:
+                        if any(s.is_connected() for s in streams):
+                            break
+                        time.sleep(0.1)
+
+                open_indices = [i for i, s in enumerate(streams) if s.is_connected()]
+                if not open_indices:
+                    err_details = []
+                    for i, s in enumerate(streams):
+                        msg = s.error_message or "Não respondeu no tempo limite de conexão (5s)."
+                        err_details.append(f"- **Câmera {i + 1} ({cam_configs[i]['label']})**: {msg}")
+                    err_text = "\n".join(err_details)
+                    st.error(f"❌ Não foi possível conectar a nenhuma das câmeras configuradas:\n{err_text}\n\n*Dica: Utilize o botão 'Testar' em cada câmera para verificar a URL ou dispositivo antes de iniciar a transmissão.*")
+                    for s in streams:
+                        try:
+                            s.stop()
+                        except Exception:
+                            pass
+                else:
+                    live_pose_histories = [[] for _ in range(num_cameras)]
+                    latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
+                    live_strike_history: list[str] = []
+                    score_shiro = 0
+                    score_aka = 0
+                    total_shiro_strikes = 0
+                    total_aka_strikes = 0
+                    frame_count = 0
+                    start_time = time.time()
+                    current_fps = 30.0
+                    live_modality_name = "Detectando movimentação..."
+
+                    live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
+
+                    while run_live_detection:
+                        any_frame_read = False
+
+                        for k in range(num_cameras):
+                            stream = streams[k]
+                            ret, frame = stream.read(copy=False)
+                            if not ret or frame is None:
+                                # Se ainda está conectando ou reconectando, exibir status informativo
+                                if stream.status in ["INITIALIZING", "RECONNECTING"]:
+                                    status_icon = "🟡"
+                                    status_msg = "Reconectando..." if stream.status == "RECONNECTING" else "Conectando stream..."
+                                else:
+                                    status_icon = "🔴"
+                                    status_msg = "Sem sinal"
+                            
+                                prev_frame = latest_drawn_frames[k]
+                                if prev_frame is not None:
+                                    frame_rgb = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2RGB)
+                                    frame_placeholders[k].image(
+                                        frame_rgb,
+                                        caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {status_msg})",
+                                        channels="RGB",
+                                        width="stretch"
+                                    )
+                                else:
+                                    frame_placeholders[k].info(f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {status_msg})")
+                                continue
+                        
+                            any_frame_read = True
+
+                            # Processar Pose Tracking na câmera k
+                            if num_cameras == 1:
+                                candidates, _ = pipeline.pose_detector.process_frame_candidates(frame)
+                                aka_lm, shiro_lm, disc = pipeline.combatant_tracker.associate_and_filter(
+                                    candidates,
+                                    frame=frame,
+                                    return_persisted=True
+                                )
+                                drawn_frame = pipeline.pose_detector.draw_combatants_overlay(
+                                    frame,
+                                    aka_landmarks=aka_lm,
+                                    shiro_landmarks=shiro_lm,
+                                    discarded_items=disc
+                                )
+                                active_lm = aka_lm or shiro_lm
+                                live_pose_histories[0].append(active_lm)
+                                latest_drawn_frames[0] = drawn_frame
+                            else:
+                                landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
+                                live_pose_histories[k].append(landmarks)
+                                latest_drawn_frames[k] = drawn_frame
+
+                            # Exibir frame anotado com badge de status do stream
+                            frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
+                            cam_stats = stream.get_stats()
+                            stream_fps_val = cam_stats.get("fps", 30.0)
+                            status_icon = "🟢" if stream.is_connected() else ("🟡" if stream.status == "RECONNECTING" else "🔴")
+                            frame_placeholders[k].image(
+                                frame_rgb,
+                                caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {stream_fps_val:.1f} FPS)",
+                                channels="RGB",
+                                width="stretch"
+                            )
+
+                        if not any_frame_read:
+                            time.sleep(0.01)
+                            # Se todas as conexões caíram definitivamente
+                            if all(s.status == "DISCONNECTED" for s in streams):
+                                st.warning("⚠️ Transmissão interrompida. Todas as conexões de câmera foram perdidas.")
+                                break
+                            continue
+
+
+                        # Identificação contínua e periódica da modalidade de treinamento no fluxo de vídeo
+                        if frame_count % 45 == 0 and len(live_pose_histories[0]) >= 20:
+                            try:
+                                sec_h = live_pose_histories[1] if num_cameras > 1 else []
+                                m_k, m_c, _ = pipeline.training_analyzer.detect_training_modality(
+                                    primary_history=live_pose_histories[0][-90:],
+                                    secondary_history=sec_h[-90:] if sec_h else [],
+                                    fps=current_fps or 30.0
+                                )
+                                live_modality_name = f"{TRAINING_MODALITIES_METADATA.get(m_k, {}).get('name', m_k)} ({int(m_c * 100)}%)"
+                                live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
+                            except Exception:
+                                pass
+
+                        # Avaliação conjunta do golpe pelo conjunto de imagens das câmeras (processado em background)
+                        if frame_count % 3 == 0 and any(len(h) >= 15 for h in live_pose_histories):
+                            multicam_eval = pipeline.multicam_fusion.evaluate_live_step(
+                                live_pose_histories=live_pose_histories,
+                                camera_configs=cam_configs,
+                                current_fps=current_fps or 30.0,
+                                current_frame_idx=frame_count,
+                                latest_frames=latest_drawn_frames
+                            )
+
+                            if multicam_eval:
+                                ts_str = multicam_eval.timestamp_ref
+                                yuko = multicam_eval.yuko_datotsu_analysis or {}
+                                is_ippon = yuko.get("is_valid", False)
+                                tot_sc = yuko.get("total_score", multicam_eval.joint_score)
+                                tech_mark = DiagnosticReporter.format_strike_name(multicam_eval.technique)
+                                sub = yuko.get("sub_scores", {})
+                                atk_name = multicam_eval.attacker_name or "Kenshi"
+                                atk_id_val = str(getattr(multicam_eval, "attacker_id", "") or yuko.get("attacker_id", "KENSHI_AKA")).upper()
+
+                                # Atualizar contador de pontos da sessão em tempo real
+                                if "SHIRO" in atk_id_val or "BRANCO" in atk_name.upper():
+                                    total_shiro_strikes += 1
+                                    if is_ippon:
+                                        score_shiro += 1
+                                else:
+                                    total_aka_strikes += 1
+                                    if is_ippon:
+                                        score_aka += 1
+
+                                live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
+
+                                # Banner superior de notificação imediata
+                                if is_ippon:
+                                    strike_alert_box.success(
+                                        f"🎉 **IPPON OFICIAL VÁLIDO ({tot_sc:.0f}%)**: {tech_mark} às `{ts_str}` — "
+                                        f"Quórum: {multicam_eval.num_confirming_cameras}/{multicam_eval.num_active_cameras} câmeras ({atk_name})"
+                                    )
+                                else:
+                                    failed_str = ", ".join(yuko.get("failed_subcriteria", [])) or "Abaixo da pontuação mínima"
+                                    strike_alert_box.warning(
+                                        f"⚠️ **GOLPE EXECUTADO / SEM IPPON ({tot_sc:.0f}%)**: {tech_mark} às `{ts_str}` — "
+                                        f"Motivo: {failed_str} ({atk_name})"
+                                    )
+
+                                # Renderizar o card rico de Yuko-Datotsu no container de histórico
+                                card_border = "#22c55e" if is_ippon else "#eab308"
+                                status_badge = (
+                                    '<span style="background: #166534; color: #4ade80; padding: 3px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px;">✅ IPPON VÁLIDO</span>'
+                                    if is_ippon else
+                                    '<span style="background: #991b1b; color: #fca5a5; padding: 3px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px;">⚠️ GOLPE INVÁLIDO</span>'
+                                )
+
+                                offset_ms = yuko.get("fumikomi_offset_ms", 0.0)
+                                offset_str = f"{offset_ms:+.0f}ms"
+
+                                diag_txt = yuko.get("diagnostic_report", "")
+                                details_html = ""
+                                if diag_txt:
+                                    diag_escaped = html.escape(diag_txt.strip())
+                                    details_html = (
+                                        f'<details style="margin-top: 8px; background: rgba(15,23,42,0.7); border: 1px solid rgba(148,163,184,0.25); border-radius: 6px; padding: 6px 10px; font-size: 0.8rem;">'
+                                        f'<summary style="cursor: pointer; font-weight: 600; color: #38BDF8; user-select: none;">'
+                                        f'📜 Detalhamento Yūko-Datotsu: {tech_mark} ({ts_str})'
+                                        f'</summary>'
+                                        f'<pre style="margin: 0; margin-top: 8px; color: #CBD5E1; font-size: 0.78rem; line-height: 1.45; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">{diag_escaped}</pre>'
+                                        f'</details>'
+                                    )
+
+                                card_color = "#4ADE80" if is_ippon else "#FBBF24"
+                                card_html = (
+                                    f'<div style="background: #1E293B; border: 1px solid {card_border}; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;">'
+                                    f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">'
+                                    f'<div style="font-weight: 700; font-size: 0.96rem; color: #F8FAFC;">'
+                                    f'🥊 {tech_mark} <span style="font-size: 0.78rem; color: #94A3B8; font-weight: 400;">({ts_str}) — {atk_name}</span>'
+                                    f'</div>'
+                                    f'<div>{status_badge}</div>'
+                                    f'</div>'
+                                    f'<div style="font-size: 0.82rem; color: #CBD5E1; margin-bottom: 6px;">'
+                                    f'<b>Pontuação Ki-Ken-Tai-Ichi:</b> <span style="color: {card_color}; font-weight: 800;">{tot_sc:.1f}%</span> '
+                                    f'&nbsp;|&nbsp; <b>Quórum:</b> {multicam_eval.num_confirming_cameras}/{multicam_eval.num_active_cameras} câmeras'
+                                    f'</div>'
+                                    f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.76rem; background: rgba(15,23,42,0.6); padding: 6px 8px; border-radius: 4px; margin-bottom: 6px;">'
+                                    f'<div>🎯 <b>Alvo (Ken):</b> {sub.get("target_impact", 0.0):.0f}%</div>'
+                                    f'<div>🦶 <b>Fumikomi (Tai):</b> {sub.get("fumikomi_sync", 0.0):.0f}% ({offset_str})</div>'
+                                    f'<div>🧍 <b>Postura (Tai):</b> {sub.get("posture", 0.0):.0f}%</div>'
+                                    f'<div>⚡ <b>Zanshin (Ki):</b> {sub.get("zanshin", 0.0):.0f}%</div>'
+                                    f'</div>'
+                                    f'{details_html}'
+                                    f'</div>'
+                                )
+
+                                # Inserir no início da lista para que os golpes mais recentes fiquem sempre no topo
+                                live_strike_history.insert(0, card_html)
+                                live_events_placeholder.html("".join(live_strike_history))
+
+                        frame_count += 1
+                        elapsed = time.time() - start_time
+                        active_cams_now = sum(1 for s in streams if s.is_connected())
+                        current_fps = (frame_count * max(1, active_cams_now)) / elapsed if elapsed > 0 else 0.0
+                        fps_metric.metric(
+                            "Desempenho Multi-Câmeras Ao Vivo",
+                            f"{current_fps:.1f} FPS",
+                            f"Câmeras Ativas: {active_cams_now}/{num_cameras}"
+                        )
+
+                # Liberar todas as threads e conexões de captura ao finalizar
                 for s in streams:
                     try:
                         s.stop()
                     except Exception:
                         pass
-            else:
-                live_pose_histories = [[] for _ in range(num_cameras)]
-                latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
-                live_strike_history: list[str] = []
-                score_shiro = 0
-                score_aka = 0
-                total_shiro_strikes = 0
-                total_aka_strikes = 0
-                frame_count = 0
-                start_time = time.time()
-                current_fps = 30.0
-                live_modality_name = "Detectando movimentação..."
-
-                live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
-
-                while run_live_detection:
-                    any_frame_read = False
-
-                    for k in range(num_cameras):
-                        stream = streams[k]
-                        ret, frame = stream.read(copy=False)
-                        if not ret or frame is None:
-                            # Se ainda está conectando ou reconectando, exibir status informativo
-                            if stream.status in ["INITIALIZING", "RECONNECTING"]:
-                                status_icon = "🟡"
-                                status_msg = "Reconectando..." if stream.status == "RECONNECTING" else "Conectando stream..."
-                            else:
-                                status_icon = "🔴"
-                                status_msg = "Sem sinal"
-                            
-                            prev_frame = latest_drawn_frames[k]
-                            if prev_frame is not None:
-                                frame_rgb = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2RGB)
-                                frame_placeholders[k].image(
-                                    frame_rgb,
-                                    caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {status_msg})",
-                                    channels="RGB",
-                                    width="stretch"
-                                )
-                            else:
-                                frame_placeholders[k].info(f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {status_msg})")
-                            continue
-                        
-                        any_frame_read = True
-
-                        # Processar Pose Tracking na câmera k
-                        if num_cameras == 1:
-                            candidates, _ = pipeline.pose_detector.process_frame_candidates(frame)
-                            aka_lm, shiro_lm, disc = pipeline.combatant_tracker.associate_and_filter(
-                                candidates,
-                                frame=frame,
-                                return_persisted=True
-                            )
-                            drawn_frame = pipeline.pose_detector.draw_combatants_overlay(
-                                frame,
-                                aka_landmarks=aka_lm,
-                                shiro_landmarks=shiro_lm,
-                                discarded_items=disc
-                            )
-                            active_lm = aka_lm or shiro_lm
-                            live_pose_histories[0].append(active_lm)
-                            latest_drawn_frames[0] = drawn_frame
-                        else:
-                            landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
-                            live_pose_histories[k].append(landmarks)
-                            latest_drawn_frames[k] = drawn_frame
-
-                        # Exibir frame anotado com badge de status do stream
-                        frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
-                        cam_stats = stream.get_stats()
-                        stream_fps_val = cam_stats.get("fps", 30.0)
-                        status_icon = "🟢" if stream.is_connected() else ("🟡" if stream.status == "RECONNECTING" else "🔴")
-                        frame_placeholders[k].image(
-                            frame_rgb,
-                            caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {stream_fps_val:.1f} FPS)",
-                            channels="RGB",
-                            width="stretch"
-                        )
-
-                    if not any_frame_read:
-                        time.sleep(0.01)
-                        # Se todas as conexões caíram definitivamente
-                        if all(s.status == "DISCONNECTED" for s in streams):
-                            st.warning("⚠️ Transmissão interrompida. Todas as conexões de câmera foram perdidas.")
-                            break
-                        continue
-
-
-                    # Identificação contínua e periódica da modalidade de treinamento no fluxo de vídeo
-                    if frame_count % 45 == 0 and len(live_pose_histories[0]) >= 20:
-                        try:
-                            sec_h = live_pose_histories[1] if num_cameras > 1 else []
-                            m_k, m_c, _ = pipeline.training_analyzer.detect_training_modality(
-                                primary_history=live_pose_histories[0][-90:],
-                                secondary_history=sec_h[-90:] if sec_h else [],
-                                fps=current_fps or 30.0
-                            )
-                            live_modality_name = f"{TRAINING_MODALITIES_METADATA.get(m_k, {}).get('name', m_k)} ({int(m_c * 100)}%)"
-                            live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
-                        except Exception:
-                            pass
-
-                    # Avaliação conjunta do golpe pelo conjunto de imagens das câmeras (processado em background)
-                    if frame_count % 3 == 0 and any(len(h) >= 15 for h in live_pose_histories):
-                        multicam_eval = pipeline.multicam_fusion.evaluate_live_step(
-                            live_pose_histories=live_pose_histories,
-                            camera_configs=cam_configs,
-                            current_fps=current_fps or 30.0,
-                            current_frame_idx=frame_count,
-                            latest_frames=latest_drawn_frames
-                        )
-
-                        if multicam_eval:
-                            ts_str = multicam_eval.timestamp_ref
-                            yuko = multicam_eval.yuko_datotsu_analysis or {}
-                            is_ippon = yuko.get("is_valid", False)
-                            tot_sc = yuko.get("total_score", multicam_eval.joint_score)
-                            tech_mark = DiagnosticReporter.format_strike_name(multicam_eval.technique)
-                            sub = yuko.get("sub_scores", {})
-                            atk_name = multicam_eval.attacker_name or "Kenshi"
-                            atk_id_val = str(getattr(multicam_eval, "attacker_id", "") or yuko.get("attacker_id", "KENSHI_AKA")).upper()
-
-                            # Atualizar contador de pontos da sessão em tempo real
-                            if "SHIRO" in atk_id_val or "BRANCO" in atk_name.upper():
-                                total_shiro_strikes += 1
-                                if is_ippon:
-                                    score_shiro += 1
-                            else:
-                                total_aka_strikes += 1
-                                if is_ippon:
-                                    score_aka += 1
-
-                            live_score_placeholder.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
-
-                            # Banner superior de notificação imediata
-                            if is_ippon:
-                                strike_alert_box.success(
-                                    f"🎉 **IPPON OFICIAL VÁLIDO ({tot_sc:.0f}%)**: {tech_mark} às `{ts_str}` — "
-                                    f"Quórum: {multicam_eval.num_confirming_cameras}/{multicam_eval.num_active_cameras} câmeras ({atk_name})"
-                                )
-                            else:
-                                failed_str = ", ".join(yuko.get("failed_subcriteria", [])) or "Abaixo da pontuação mínima"
-                                strike_alert_box.warning(
-                                    f"⚠️ **GOLPE EXECUTADO / SEM IPPON ({tot_sc:.0f}%)**: {tech_mark} às `{ts_str}` — "
-                                    f"Motivo: {failed_str} ({atk_name})"
-                                )
-
-                            # Renderizar o card rico de Yuko-Datotsu no container de histórico
-                            card_border = "#22c55e" if is_ippon else "#eab308"
-                            status_badge = (
-                                '<span style="background: #166534; color: #4ade80; padding: 3px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px;">✅ IPPON VÁLIDO</span>'
-                                if is_ippon else
-                                '<span style="background: #991b1b; color: #fca5a5; padding: 3px 10px; border-radius: 9999px; font-weight: 700; font-size: 11px;">⚠️ GOLPE INVÁLIDO</span>'
-                            )
-
-                            offset_ms = yuko.get("fumikomi_offset_ms", 0.0)
-                            offset_str = f"{offset_ms:+.0f}ms"
-
-                            diag_txt = yuko.get("diagnostic_report", "")
-                            details_html = ""
-                            if diag_txt:
-                                diag_escaped = html.escape(diag_txt.strip())
-                                details_html = (
-                                    f'<details style="margin-top: 8px; background: rgba(15,23,42,0.7); border: 1px solid rgba(148,163,184,0.25); border-radius: 6px; padding: 6px 10px; font-size: 0.8rem;">'
-                                    f'<summary style="cursor: pointer; font-weight: 600; color: #38BDF8; user-select: none;">'
-                                    f'📜 Detalhamento Yūko-Datotsu: {tech_mark} ({ts_str})'
-                                    f'</summary>'
-                                    f'<pre style="margin: 0; margin-top: 8px; color: #CBD5E1; font-size: 0.78rem; line-height: 1.45; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;">{diag_escaped}</pre>'
-                                    f'</details>'
-                                )
-
-                            card_color = "#4ADE80" if is_ippon else "#FBBF24"
-                            card_html = (
-                                f'<div style="background: #1E293B; border: 1px solid {card_border}; border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;">'
-                                f'<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">'
-                                f'<div style="font-weight: 700; font-size: 0.96rem; color: #F8FAFC;">'
-                                f'🥊 {tech_mark} <span style="font-size: 0.78rem; color: #94A3B8; font-weight: 400;">({ts_str}) — {atk_name}</span>'
-                                f'</div>'
-                                f'<div>{status_badge}</div>'
-                                f'</div>'
-                                f'<div style="font-size: 0.82rem; color: #CBD5E1; margin-bottom: 6px;">'
-                                f'<b>Pontuação Ki-Ken-Tai-Ichi:</b> <span style="color: {card_color}; font-weight: 800;">{tot_sc:.1f}%</span> '
-                                f'&nbsp;|&nbsp; <b>Quórum:</b> {multicam_eval.num_confirming_cameras}/{multicam_eval.num_active_cameras} câmeras'
-                                f'</div>'
-                                f'<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.76rem; background: rgba(15,23,42,0.6); padding: 6px 8px; border-radius: 4px; margin-bottom: 6px;">'
-                                f'<div>🎯 <b>Alvo (Ken):</b> {sub.get("target_impact", 0.0):.0f}%</div>'
-                                f'<div>🦶 <b>Fumikomi (Tai):</b> {sub.get("fumikomi_sync", 0.0):.0f}% ({offset_str})</div>'
-                                f'<div>🧍 <b>Postura (Tai):</b> {sub.get("posture", 0.0):.0f}%</div>'
-                                f'<div>⚡ <b>Zanshin (Ki):</b> {sub.get("zanshin", 0.0):.0f}%</div>'
-                                f'</div>'
-                                f'{details_html}'
-                                f'</div>'
-                            )
-
-                            # Inserir no início da lista para que os golpes mais recentes fiquem sempre no topo
-                            live_strike_history.insert(0, card_html)
-                            live_events_placeholder.html("".join(live_strike_history))
-
-                    frame_count += 1
-                    elapsed = time.time() - start_time
-                    active_cams_now = sum(1 for s in streams if s.is_connected())
-                    current_fps = (frame_count * max(1, active_cams_now)) / elapsed if elapsed > 0 else 0.0
-                    fps_metric.metric(
-                        "Desempenho Multi-Câmeras Ao Vivo",
-                        f"{current_fps:.1f} FPS",
-                        f"Câmeras Ativas: {active_cams_now}/{num_cameras}"
-                    )
-
-            # Liberar todas as threads e conexões de captura ao finalizar
-            for s in streams:
-                try:
-                    s.stop()
-                except Exception:
-                    pass
 
 
     # ==========================================================================
@@ -3112,9 +3289,42 @@ elif nav_page in ["match", "training", "analysis"]:
 
         detected_cams = detect_connected_cameras()
 
+        # Identificação e Adaptação Automática de Modo de Execução (Local vs Nuvem/Web)
+        runtime_env = get_execution_environment_info()
+        is_cloud_env = runtime_env["is_cloud"]
+
         col_rt_config, col_rt_diagram = st.columns([6, 5])
 
         with col_rt_config:
+            if is_cloud_env:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(56, 189, 248, 0.12); border: 1.5px solid rgba(56, 189, 248, 0.45); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                        <div style="font-weight: 700; color: #38bdf8; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
+                            <span>🌐</span> <b>Modo Servidor Web Detectado ({runtime_env['provider_label']})</b>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 0.80rem; margin-top: 4px; line-height: 1.4;">
+                            Para capturar a webcam deste computador pelo navegador, a fonte <b>'🌐 Câmera do Navegador (WebRTC)'</b> foi selecionada por padrão.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(16, 185, 129, 0.12); border: 1.5px solid rgba(16, 185, 129, 0.4); border-radius: 8px; padding: 10px 14px; margin-bottom: 14px;">
+                        <div style="font-weight: 700; color: #4ade80; font-size: 0.88rem; display: flex; align-items: center; gap: 8px;">
+                            <span>💻</span> <b>Modo Local Detectado ({runtime_env['provider_label']})</b>
+                        </div>
+                        <div style="color: #cbd5e1; font-size: 0.80rem; margin-top: 4px; line-height: 1.4;">
+                            Acesso direto às Webcams USB locais e fluxos de treino em tempo real com alta performance.
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
             st.markdown("##### 📹 1. Seleção e Configuração das Câmeras de Treino")
             num_cams_raw = st.radio(
                 "Quantidade de Câmeras Simultâneas no Dojo:",
@@ -3129,21 +3339,41 @@ elif nav_page in ["match", "training", "analysis"]:
             st.markdown("**Configuração Individual por Câmera:**")
             cam_configs = []
 
+            src_options = ["webrtc", "rtsp", "webcam"] if is_cloud_env else ["webcam", "rtsp", "webrtc"]
+
             for k in range(num_cameras):
                 st.markdown(f"**📷 Câmera {k + 1}:**")
-                row_c1, row_c2 = st.columns([1.2, 2.2])
+                row_c1, row_c2 = st.columns([1.3, 2.1])
 
                 with row_c1:
                     src_type = st.selectbox(
                         f"Tipo de Fonte (Câmera {k + 1}):",
-                        options=["webcam", "rtsp"],
+                        options=src_options,
                         index=0,
                         key=f"train_rt_src_type_{k}",
-                        format_func=lambda x: "🎥 Webcam Local" if x == "webcam" else "📡 Stream RTSP / IP",
+                        format_func=lambda x: {
+                            "webrtc": "🌐 Câmera do Navegador (WebRTC)",
+                            "webcam": "🎥 Webcam Local (OpenCV USB)",
+                            "rtsp": "📡 Stream RTSP / IP"
+                        }[x],
                         label_visibility="collapsed"
                     )
                 with row_c2:
-                    if src_type == "webcam":
+                    if src_type == "webrtc":
+                        st.markdown(
+                            """
+                            <div style="background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 6px; padding: 6px 10px;">
+                                <div style="font-size: 0.78rem; color: #38bdf8; font-weight: 600;">🌐 Câmera Local via Navegador (WebRTC)</div>
+                                <div style="font-size: 0.72rem; color: #94a3b8;">Captura direta da webcam deste computador pelo browser.</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        cam_val = "webrtc"
+                        cam_name_display = f"WebRTC Navegador (Câmera {k + 1})"
+                    elif src_type == "webcam":
+                        if is_cloud_env:
+                            st.caption("⚠️ **Aviso de Nuvem:** Esta opção busca portas USB do servidor em nuvem. Para usar a câmera deste computador, selecione **'🌐 Câmera do Navegador (WebRTC)'**.")
                         webcam_opts = [c["label"] for c in detected_cams] + ["➕ Outro Índice Manual..."]
                         default_idx = min(k, len(detected_cams) - 1) if detected_cams else 0
                         selected_cam_label = st.selectbox(
@@ -3237,10 +3467,9 @@ elif nav_page in ["match", "training", "analysis"]:
         with col_tp2:
             kendoka_name_val = st.text_input(
                 "Nome do Kendoka Praticante:",
-                value=st.session_state.get("live_kendoka_name_val", "Kendoka Praticante"),
+                value="Kendoka Praticante",
                 key="live_train_kendoka_name_input"
             )
-            st.session_state["live_kendoka_name_val"] = kendoka_name_val
         with col_tp3:
             target_dan_val = st.selectbox(
                 "Graduação Alvo:",
@@ -3250,191 +3479,73 @@ elif nav_page in ["match", "training", "analysis"]:
                 key="live_train_target_dan_select"
             )
 
-        st.markdown("---")
-        col_ctrl1, col_ctrl2 = st.columns([1.2, 1])
-        with col_ctrl1:
-            run_live_training = st.checkbox("▶️ Iniciar Análise de Treinamento Ao Vivo Multi-Câmeras", value=False, key="run_live_training_checkbox")
-        with col_ctrl2:
-            st.caption("💡 *Marque para ativar o rastreamento biomecânico e contagem contínua. Desmarque a qualquer momento para finalizar e obter o relatório.*")
+        run_live_training = False
+        has_webrtc_cam = any(c["type"] == "webrtc" for c in cam_configs)
 
-        if run_live_training:
-            dev_pref = st.session_state.get("device_preference", get_processing_device())
-            vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
-            pipeline = SenpAIPipeline(
-                calibration_profile="normal",
-                device_preference=dev_pref,
-                vision_model=vis_pref
-            )
+        # Transmissão de Treinamento via WebRTC no Navegador (Prioritária na Nuvem/Web)
+        if has_webrtc_cam:
+            st.markdown("---")
+            st.markdown("##### 🌐 Transmissão Ao Vivo via Navegador (WebRTC)")
+            st.caption("Pressione **'START'** no player abaixo para autorizar e iniciar a captura da sua webcam pelo navegador. A IA do SenpAI avaliará seus movimentos com biofeedback instantâneo.")
 
-            live_train_mgr = LiveTrainingSessionManager(
-                modality_override=selected_train_mod if selected_train_mod != "auto" else None,
-                kendoka_name=kendoka_name_val,
-                target_dan=target_dan_val,
-                training_analyzer=pipeline.training_analyzer
-            )
+            with st.expander("🛠️ Dúvidas ou erro ao iniciar a câmera ('NotReadableError')?", expanded=False):
+                st.markdown(
+                    """
+                    **Se o player exibir `NotReadableError: Could not start video source`:**
+                    1. **Dispositivo correto:** Clique no botão **`SELECT DEVICE`** (ao lado de `START`) e selecione sua webcam física real (muitas vezes o navegador tenta abrir uma câmera virtual como OBS Virtual Camera que está inativa).
+                    2. **Câmera em uso:** Feche outros programas que possam estar acessando a webcam (Zoom, Microsoft Teams, OBS, Discord, aplicativo Câmera do Windows ou outras abas do navegador).
+                    3. **Permissões do Windows:** Verifique em *Configurações do Windows > Privacidade e Segurança > Câmera* se o acesso está ativado para o seu navegador.
+                    4. **Está usando no computador local?** Você pode alternar o tipo de fonte acima para **`🎥 Webcam Local (OpenCV USB)`**, que acessa o hardware diretamente com máximo desempenho.
+                    """
+                )
 
             col_live_cams, col_live_feed = st.columns([7, 5])
-
             with col_live_feed:
                 st.markdown("##### 🎓 Painel de Treinamento Ao Vivo")
                 train_fps_metric = st.empty()
-                live_train_hud_ph = st.empty()
+                train_hud_ph = st.empty()
                 st.markdown("**Histórico de Repetições e Ações Técnicas:**")
                 train_events_container = st.container(height=380)
                 with train_events_container:
-                    train_events_placeholder = st.empty()
-                    train_events_placeholder.caption("🥋 *Inicie os movimentos e golpes para detecção das repetições...*")
+                    train_events_ph = st.empty()
+                    train_events_ph.caption("🥋 *Inicie a câmera e execute os movimentos para contagem de repetições...*")
 
             with col_live_cams:
-                st.markdown(f"##### 🎥 Feeds de Vídeo ({num_cameras} Câmera{'s' if num_cameras > 1 else ''})")
-                frame_placeholders = []
-                if num_cameras == 1:
-                    frame_placeholders.append(st.empty())
-                elif num_cameras == 2:
-                    c1, c2 = st.columns(2)
-                    frame_placeholders.append(c1.empty())
-                    frame_placeholders.append(c2.empty())
-                elif num_cameras == 3:
-                    top_col1, top_col2, top_col3 = st.columns([1, 6, 1])
-                    top_ph = top_col2.empty()
-                    bot_col1, bot_col2 = st.columns(2)
-                    bot1_ph = bot_col1.empty()
-                    bot2_ph = bot_col2.empty()
-                    frame_placeholders.extend([top_ph, bot1_ph, bot2_ph])
-                elif num_cameras == 4:
-                    r1_c1, r1_c2 = st.columns(2)
-                    r2_c1, r2_c2 = st.columns(2)
-                    frame_placeholders.extend([r1_c1.empty(), r1_c2.empty(), r2_c1.empty(), r2_c2.empty()])
+                dev_pref = st.session_state.get("device_preference", get_processing_device())
+                vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
 
-            streams = []
-            for cfg in cam_configs:
-                src = cfg["source"]
-                stream = ThreadedVideoStream(
-                    src=src,
-                    name=f"TrainCam{cfg['id']}-{cfg['label']}",
-                    max_reconnect_attempts=5,
-                    reconnect_delay=1.5,
-                    auto_start=True
+                pipeline_inst = SenpAIPipeline(
+                    calibration_profile="normal",
+                    device_preference=dev_pref,
+                    vision_model=vis_pref
                 )
-                streams.append(stream)
 
-            with st.spinner("📡 Estabelecendo conexão com as fontes de vídeo de treino (Webcam / RTSP)..."):
-                deadline = time.time() + 5.0
-                while time.time() < deadline:
-                    if any(s.is_connected() for s in streams):
-                        break
-                    time.sleep(0.1)
+                live_train_mgr = LiveTrainingSessionManager(
+                    modality_override=selected_train_mod if selected_train_mod != "auto" else None,
+                    kendoka_name=kendoka_name_val,
+                    target_dan=target_dan_val,
+                    training_analyzer=pipeline_inst.training_analyzer
+                )
 
-            open_indices = [i for i, s in enumerate(streams) if s.is_connected()]
-            if not open_indices:
-                err_details = []
-                for i, s in enumerate(streams):
-                    msg = s.error_message or "Não respondeu no tempo limite de conexão (5s)."
-                    err_details.append(f"- **Câmera {i + 1} ({cam_configs[i]['label']})**: {msg}")
-                err_text = "\n".join(err_details)
-                st.error(f"❌ Não foi possível conectar a nenhuma das câmeras de treino configuradas:\n{err_text}")
-                for s in streams:
-                    try:
-                        s.stop()
-                    except Exception:
-                        pass
-            else:
-                live_pose_histories = [[] for _ in range(num_cameras)]
-                latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
-                frame_count = 0
-                start_time = time.time()
-                current_fps = 30.0
+                webrtc_ctx = webrtc_streamer(
+                    key="train_webrtc_live_streamer",
+                    mode=WebRtcMode.SENDRECV,
+                    rtc_configuration=get_rtc_configuration(),
+                    video_processor_factory=lambda: SenpAITrainingWebRtcProcessor(
+                        pipeline=pipeline_inst,
+                        live_train_mgr=live_train_mgr
+                    ),
+                    media_stream_constraints={"video": True, "audio": False},
+                    async_processing=True,
+                )
 
-                live_train_hud_ph.html(live_train_mgr.render_live_hud_html())
-
-                while run_live_training:
-                    any_frame_read = False
-
-                    for k in range(num_cameras):
-                        stream = streams[k]
-                        ret, frame = stream.read(copy=False)
-                        if not ret or frame is None:
-                            if stream.status in ["INITIALIZING", "RECONNECTING"]:
-                                status_icon = "🟡"
-                                status_msg = "Reconectando..." if stream.status == "RECONNECTING" else "Conectando stream..."
-                            else:
-                                status_icon = "🔴"
-                                status_msg = "Sem sinal"
-                            prev_frame = latest_drawn_frames[k]
-                            if prev_frame is not None:
-                                frame_rgb = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2RGB)
-                                frame_placeholders[k].image(
-                                    frame_rgb,
-                                    caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {status_msg})",
-                                    channels="RGB",
-                                    width="stretch"
-                                )
-                            continue
-
-                        any_frame_read = True
-
-                        if num_cameras == 1:
-                            candidates, _ = pipeline.pose_detector.process_frame_candidates(frame)
-                            aka_lm, shiro_lm, disc = pipeline.combatant_tracker.associate_and_filter(
-                                candidates,
-                                frame=frame,
-                                return_persisted=True
-                            )
-                            drawn_frame = pipeline.pose_detector.draw_combatants_overlay(
-                                frame,
-                                aka_landmarks=aka_lm,
-                                shiro_landmarks=shiro_lm,
-                                discarded_items=disc
-                            )
-                            active_lm = aka_lm or shiro_lm
-                            live_pose_histories[0].append(active_lm)
-                            latest_drawn_frames[0] = drawn_frame
-                        else:
-                            landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
-                            live_pose_histories[k].append(landmarks)
-                            latest_drawn_frames[k] = drawn_frame
-
-                        frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
-                        cam_stats = stream.get_stats()
-                        stream_fps_val = cam_stats.get("fps", 30.0)
-                        status_icon = "🟢" if stream.is_connected() else "🔴"
-                        frame_placeholders[k].image(
-                            frame_rgb,
-                            caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {stream_fps_val:.1f} FPS)",
-                            channels="RGB",
-                            width="stretch"
-                        )
-
-                    if not any_frame_read:
-                        time.sleep(0.01)
-                        if all(s.status == "DISCONNECTED" for s in streams):
-                            st.warning("⚠️ Transmissão de treino interrompida. Conexões de câmera perdidas.")
-                            break
-                        continue
-
-                    # Processar passo de treino ao vivo
-                    step_data = live_train_mgr.process_live_frame(
-                        live_pose_histories=live_pose_histories,
-                        fps=current_fps or 30.0,
-                        current_frame_idx=frame_count
-                    )
-
-                    frame_count += 1
-                    elapsed = max(0.001, time.time() - start_time)
-                    active_cams_now = sum(1 for s in streams if s.is_connected())
-                    current_fps = (frame_count * max(1, active_cams_now)) / elapsed if elapsed > 0 else 0.0
-
-                    if frame_count % 3 == 0:
-                        train_fps_metric.metric(
-                            "Desempenho da Transmissão de Treino",
-                            f"{current_fps:.1f} FPS",
-                            f"Câmeras Ativas: {active_cams_now}/{num_cameras}"
-                        )
-                        live_train_hud_ph.html(live_train_mgr.render_live_hud_html())
-
-                    if step_data.get("new_rep_detected") or (frame_count % 30 == 0 and live_train_mgr.rep_history):
+                if webrtc_ctx.video_processor:
+                    snap = webrtc_ctx.video_processor.get_snapshot()
+                    train_fps_metric.metric("Desempenho da Transmissão (WebRTC)", f"{snap['fps']:.1f} FPS", f"Quadros: {snap['frame_count']}")
+                    train_hud_ph.html(snap["hud_html"])
+                    if snap["rep_history"]:
                         rep_cards = []
-                        for r_item in live_train_mgr.rep_history[:12]:
+                        for r_item in snap["rep_history"]:
                             rep_cards.append(
                                 f"""<div style="background: #1E293B; border-left: 4px solid #6366F1; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; font-size: 11.5px;">
                                     <div style="display: flex; justify-content: space-between; font-weight: 700;">
@@ -3444,16 +3555,212 @@ elif nav_page in ["match", "training", "analysis"]:
                                     <div style="color: #94A3B8; font-size: 11px; margin-top: 2px;">{html.escape(r_item['feedback'])}</div>
                                 </div>"""
                             )
-                        train_events_placeholder.markdown("".join(rep_cards), unsafe_allow_html=True)
+                        train_events_ph.markdown("".join(rep_cards), unsafe_allow_html=True)
+        else:
+            st.markdown("---")
+            col_ctrl1, col_ctrl2 = st.columns([1.2, 1])
+            with col_ctrl1:
+                run_live_training = st.checkbox("▶️ Iniciar Análise de Treinamento Ao Vivo Multi-Câmeras", value=False, key="run_live_training_checkbox")
+            with col_ctrl2:
+                st.caption("💡 *Marque para ativar o rastreamento biomecânico e contagem contínua. Desmarque a qualquer momento para finalizar e obter o relatório.*")
 
-                for s in streams:
-                    try:
-                        s.stop()
-                    except Exception:
-                        pass
+            if run_live_training:
+                dev_pref = st.session_state.get("device_preference", get_processing_device())
+                vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
+                pipeline = SenpAIPipeline(
+                    calibration_profile="normal",
+                    device_preference=dev_pref,
+                    vision_model=vis_pref
+                )
 
-                st.session_state["last_live_training_report"] = live_train_mgr.generate_final_session_report()
-                st.toast("✅ Sessão de treinamento ao vivo finalizada!", icon="🎓")
+                live_train_mgr = LiveTrainingSessionManager(
+                    modality_override=selected_train_mod if selected_train_mod != "auto" else None,
+                    kendoka_name=kendoka_name_val,
+                    target_dan=target_dan_val,
+                    training_analyzer=pipeline.training_analyzer
+                )
+
+                col_live_cams, col_live_feed = st.columns([7, 5])
+
+                with col_live_feed:
+                    st.markdown("##### 🎓 Painel de Treinamento Ao Vivo")
+                    train_fps_metric = st.empty()
+                    live_train_hud_ph = st.empty()
+                    st.markdown("**Histórico de Repetições e Ações Técnicas:**")
+                    train_events_container = st.container(height=380)
+                    with train_events_container:
+                        train_events_placeholder = st.empty()
+                        train_events_placeholder.caption("🥋 *Inicie os movimentos e golpes para detecção das repetições...*")
+
+                with col_live_cams:
+                    st.markdown(f"##### 🎥 Feeds de Vídeo ({num_cameras} Câmera{'s' if num_cameras > 1 else ''})")
+                    frame_placeholders = []
+                    if num_cameras == 1:
+                        frame_placeholders.append(st.empty())
+                    elif num_cameras == 2:
+                        c1, c2 = st.columns(2)
+                        frame_placeholders.append(c1.empty())
+                        frame_placeholders.append(c2.empty())
+                    elif num_cameras == 3:
+                        top_col1, top_col2, top_col3 = st.columns([1, 6, 1])
+                        top_ph = top_col2.empty()
+                        bot_col1, bot_col2 = st.columns(2)
+                        bot1_ph = bot_col1.empty()
+                        bot2_ph = bot_col2.empty()
+                        frame_placeholders.extend([top_ph, bot1_ph, bot2_ph])
+                    elif num_cameras == 4:
+                        r1_c1, r1_c2 = st.columns(2)
+                        r2_c1, r2_c2 = st.columns(2)
+                        frame_placeholders.extend([r1_c1.empty(), r1_c2.empty(), r2_c1.empty(), r2_c2.empty()])
+
+                streams = []
+                for cfg in cam_configs:
+                    src = cfg["source"]
+                    stream = ThreadedVideoStream(
+                        src=src,
+                        name=f"TrainCam{cfg['id']}-{cfg['label']}",
+                        max_reconnect_attempts=5,
+                        reconnect_delay=1.5,
+                        auto_start=True
+                    )
+                    streams.append(stream)
+
+                with st.spinner("📡 Estabelecendo conexão com as fontes de vídeo de treino (Webcam / RTSP)..."):
+                    deadline = time.time() + 5.0
+                    while time.time() < deadline:
+                        if any(s.is_connected() for s in streams):
+                            break
+                        time.sleep(0.1)
+
+                open_indices = [i for i, s in enumerate(streams) if s.is_connected()]
+                if not open_indices:
+                    err_details = []
+                    for i, s in enumerate(streams):
+                        msg = s.error_message or "Não respondeu no tempo limite de conexão (5s)."
+                        err_details.append(f"- **Câmera {i + 1} ({cam_configs[i]['label']})**: {msg}")
+                    err_text = "\n".join(err_details)
+                    st.error(f"❌ Não foi possível conectar a nenhuma das câmeras de treino configuradas:\n{err_text}")
+                    for s in streams:
+                        try:
+                            s.stop()
+                        except Exception:
+                            pass
+                else:
+                    live_pose_histories = [[] for _ in range(num_cameras)]
+                    latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
+                    frame_count = 0
+                    start_time = time.time()
+                    current_fps = 30.0
+
+                    live_train_hud_ph.html(live_train_mgr.render_live_hud_html())
+
+                    while run_live_training:
+                        any_frame_read = False
+
+                        for k in range(num_cameras):
+                            stream = streams[k]
+                            ret, frame = stream.read(copy=False)
+                            if not ret or frame is None:
+                                if stream.status in ["INITIALIZING", "RECONNECTING"]:
+                                    status_icon = "🟡"
+                                    status_msg = "Reconectando..." if stream.status == "RECONNECTING" else "Conectando stream..."
+                                else:
+                                    status_icon = "🔴"
+                                    status_msg = "Sem sinal"
+                                prev_frame = latest_drawn_frames[k]
+                                if prev_frame is not None:
+                                    frame_rgb = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2RGB)
+                                    frame_placeholders[k].image(
+                                        frame_rgb,
+                                        caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {status_msg})",
+                                        channels="RGB",
+                                        width="stretch"
+                                    )
+                                continue
+
+                            any_frame_read = True
+
+                            if num_cameras == 1:
+                                candidates, _ = pipeline.pose_detector.process_frame_candidates(frame)
+                                aka_lm, shiro_lm, disc = pipeline.combatant_tracker.associate_and_filter(
+                                    candidates,
+                                    frame=frame,
+                                    return_persisted=True
+                                )
+                                drawn_frame = pipeline.pose_detector.draw_combatants_overlay(
+                                    frame,
+                                    aka_landmarks=aka_lm,
+                                    shiro_landmarks=shiro_lm,
+                                    discarded_items=disc
+                                )
+                                active_lm = aka_lm or shiro_lm
+                                live_pose_histories[0].append(active_lm)
+                                latest_drawn_frames[0] = drawn_frame
+                            else:
+                                landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
+                                live_pose_histories[k].append(landmarks)
+                                latest_drawn_frames[k] = drawn_frame
+
+                            frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
+                            cam_stats = stream.get_stats()
+                            stream_fps_val = cam_stats.get("fps", 30.0)
+                            status_icon = "🟢" if stream.is_connected() else "🔴"
+                            frame_placeholders[k].image(
+                                frame_rgb,
+                                caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {stream_fps_val:.1f} FPS)",
+                                channels="RGB",
+                                width="stretch"
+                            )
+
+                        if not any_frame_read:
+                            time.sleep(0.01)
+                            if all(s.status == "DISCONNECTED" for s in streams):
+                                st.warning("⚠️ Transmissão de treino interrompida. Conexões de câmera perdidas.")
+                                break
+                            continue
+
+                        # Processar passo de treino ao vivo
+                        step_data = live_train_mgr.process_live_frame(
+                            live_pose_histories=live_pose_histories,
+                            fps=current_fps or 30.0,
+                            current_frame_idx=frame_count
+                        )
+
+                        frame_count += 1
+                        elapsed = max(0.001, time.time() - start_time)
+                        active_cams_now = sum(1 for s in streams if s.is_connected())
+                        current_fps = (frame_count * max(1, active_cams_now)) / elapsed if elapsed > 0 else 0.0
+
+                        if frame_count % 3 == 0:
+                            train_fps_metric.metric(
+                                "Desempenho da Transmissão de Treino",
+                                f"{current_fps:.1f} FPS",
+                                f"Câmeras Ativas: {active_cams_now}/{num_cameras}"
+                            )
+                            live_train_hud_ph.html(live_train_mgr.render_live_hud_html())
+
+                        if step_data.get("new_rep_detected") or (frame_count % 30 == 0 and live_train_mgr.rep_history):
+                            rep_cards = []
+                            for r_item in live_train_mgr.rep_history[:12]:
+                                rep_cards.append(
+                                    f"""<div style="background: #1E293B; border-left: 4px solid #6366F1; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; font-size: 11.5px;">
+                                        <div style="display: flex; justify-content: space-between; font-weight: 700;">
+                                            <span style="color: #F8FAFC;">Repetição #{r_item['rep_number']} ({r_item['timestamp']})</span>
+                                            <span style="color: #38BDF8;">{r_item['status']} • {r_item['quality_score']}%</span>
+                                        </div>
+                                        <div style="color: #94A3B8; font-size: 11px; margin-top: 2px;">{html.escape(r_item['feedback'])}</div>
+                                    </div>"""
+                                )
+                            train_events_placeholder.markdown("".join(rep_cards), unsafe_allow_html=True)
+
+                    for s in streams:
+                        try:
+                            s.stop()
+                        except Exception:
+                            pass
+
+                    st.session_state["last_live_training_report"] = live_train_mgr.generate_final_session_report()
+                    st.toast("✅ Sessão de treinamento ao vivo finalizada!", icon="🎓")
 
         # Exibir relatório pós-sessão se disponível
         if not run_live_training and "last_live_training_report" in st.session_state:
