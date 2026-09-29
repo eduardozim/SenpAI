@@ -857,20 +857,15 @@ def render_welcome_home_page():
     col_cta1, col_cta2, col_cta3, col_cta4 = st.columns([1.5, 1.5, 1.3, 1.1])
     with col_cta1:
         if st.button("⚔️ Modo de Análise de Lutas", width="stretch", type="primary", key="home_btn_analysis"):
-            st.session_state["nav_page_selection"] = "match"
-            st.session_state["sidebar_nav_radio"] = "match"
-            st.session_state["current_operation_mode"] = "match"
+            st.session_state["nav_page_target"] = "match"
             st.rerun()
     with col_cta2:
         if st.button("🎓 Treinamento & Aprendizado", width="stretch", type="primary", key="home_btn_training"):
-            st.session_state["nav_page_selection"] = "training"
-            st.session_state["sidebar_nav_radio"] = "training"
-            st.session_state["current_operation_mode"] = "training"
+            st.session_state["nav_page_target"] = "training"
             st.rerun()
     with col_cta3:
         if st.button("⚙️ Configurações", width="stretch", key="home_btn_settings"):
-            st.session_state["nav_page_selection"] = "settings"
-            st.session_state["sidebar_nav_radio"] = "settings"
+            st.session_state["nav_page_target"] = "settings"
             st.rerun()
     with col_cta4:
         man_doc = get_documentation_content("manual.md")
@@ -1053,8 +1048,7 @@ def render_welcome_home_page():
         st.caption("🥋 *SenpAI • Desenvolvido para a comunidade de Kendo com rigor técnico, respeito ao Budo e tecnologia de ponta.*")
     with f_col2:
         if st.button("🚀 Ir para Análise de Lutas ➔", width="stretch", type="primary", key="home_bottom_cta"):
-            st.session_state["nav_page_selection"] = "analysis"
-            st.session_state["sidebar_nav_radio"] = "analysis"
+            st.session_state["nav_page_target"] = "match"
             st.rerun()
 
 
@@ -1081,16 +1075,28 @@ else:
         unsafe_allow_html=True
     )
 
-# Inicializar seleção da página com "home" como estado inicial padrão
-if "nav_page_selection" not in st.session_state:
-    st.session_state["nav_page_selection"] = "home"
+# Suporte à navegação programática externa (botões da Home, atalhos, etc.)
+if "nav_page_target" in st.session_state:
+    target_page = st.session_state.pop("nav_page_target")
+    st.session_state["sidebar_nav_radio"] = target_page
+    st.session_state["nav_page_selection"] = target_page
 
 page_nav_options = ["home", "match", "training", "settings"]
-current_nav_val = st.session_state.get("nav_page_selection", "home")
+
+# Inicializar seleção da página com "home" como estado inicial padrão
+if "sidebar_nav_radio" not in st.session_state:
+    if "nav_page_selection" in st.session_state:
+        st.session_state["sidebar_nav_radio"] = st.session_state["nav_page_selection"]
+    else:
+        st.session_state["sidebar_nav_radio"] = "home"
+
+current_nav_val = st.session_state.get("sidebar_nav_radio", "home")
 if current_nav_val == "analysis":
     current_nav_val = "match"
+    st.session_state["sidebar_nav_radio"] = "match"
 elif current_nav_val not in page_nav_options:
     current_nav_val = "home"
+    st.session_state["sidebar_nav_radio"] = "home"
 
 def on_sidebar_nav_change():
     st.session_state["nav_page_selection"] = st.session_state.get("sidebar_nav_radio", "home")
@@ -1109,6 +1115,17 @@ nav_page = st.sidebar.radio(
     }[x]
 )
 st.session_state["nav_page_selection"] = nav_page
+
+def render_sidebar_footer():
+    st.sidebar.markdown(
+        """
+        <div style="font-size: 10.5px; color: #64748B; text-align: center; margin-top: 24px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); line-height: 1.4;">
+            <div><b>© 2026 SenpAI</b></div>
+            <div>Todos os direitos de uso e cópia reservados.</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 if nav_page == "settings":
     st.sidebar.markdown("---")
@@ -1134,15 +1151,8 @@ if nav_page == "settings":
     )
     st.sidebar.markdown("---")
 
-st.sidebar.markdown(
-    """
-    <div style="font-size: 10.5px; color: #64748B; text-align: center; margin-top: 24px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); line-height: 1.4;">
-        <div><b>© 2026 SenpAI</b></div>
-        <div>Todos os direitos de uso e cópia reservados.</div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+if nav_page in ["home", "settings"]:
+    render_sidebar_footer()
 
 
 # ==============================================================================
@@ -2443,30 +2453,9 @@ elif nav_page == "settings":
 # PÁGINAS DE OPERAÇÃO: ANÁLISE DE LUTAS & TREINAMENTO E APRENDIZADO
 # ==============================================================================
 elif nav_page in ["match", "training", "analysis"]:
-    # Determinar modo padrão a partir da navegação
-    initial_op = "training" if nav_page == "training" else "match"
-    if "current_operation_mode" not in st.session_state or nav_page in ["match", "training"]:
-        st.session_state["current_operation_mode"] = initial_op
-
-    # --- SIDEBAR: OS 2 GRANDES MODOS DE OPERAÇÃO ---
-    st.sidebar.markdown("### Modo de Operação")
-    op_mode_raw = st.sidebar.radio(
-        "Selecione o Modo Principal:",
-        options=["match", "training"],
-        index=0 if st.session_state.get("current_operation_mode", "match") == "match" else 1,
-        format_func=lambda x: {
-            "match": "⚔️ Modo de Análise de Lutas",
-            "training": "🎓 Modo de Treinamento & Aprendizado"
-        }[x],
-        key="sidebar_operation_mode_radio"
-    )
-    operation_mode: str = str(op_mode_raw or "match")
+    # Determinar modo de operação diretamente a partir da Navegação Principal
+    operation_mode = "training" if nav_page == "training" else "match"
     st.session_state["current_operation_mode"] = operation_mode
-
-    # Sincronizar nav_page se o usuário alternar pelo rádio
-    if operation_mode != initial_op and nav_page != "analysis":
-        st.session_state["nav_page_selection"] = operation_mode
-        st.session_state["sidebar_nav_radio"] = operation_mode
 
     # --- SELEÇÃO DO FORMATO DE ANÁLISE / ENTRADA ---
     st.sidebar.markdown("#### Formato de Análise")
@@ -2641,6 +2630,8 @@ elif nav_page in ["match", "training", "analysis"]:
             disabled=True,
             key=f"disabled_w_zanshin_{profile_choice}"
         )
+
+    render_sidebar_footer()
 
     # HERO BANNER DE BOAS-VINDAS
     render_hero_banner()
