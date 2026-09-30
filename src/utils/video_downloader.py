@@ -127,6 +127,47 @@ def sanitize_filename(name: str, max_length: int = 40) -> str:
     return clean[:max_length] if clean else "video"
 
 
+def format_netscape_cookie_content(raw_text: str) -> str:
+    """
+    Formata e normaliza o conteúdo de cookies para o formato Netscape HTTP Cookie File estrito.
+    Garante o cabeçalho '# Netscape HTTP Cookie File' e que os 7 campos estejam separados por tabulações (\t).
+    Converte automaticamente espaços acidentais para tabulações e remove comentários/linhas vazias corrompidas.
+    """
+    if not raw_text or not isinstance(raw_text, str):
+        return ""
+    
+    lines = raw_text.strip().splitlines()
+    formatted_lines = [
+        "# Netscape HTTP Cookie File",
+        "# http://curl.haxx.se/rfc/cookie_spec.html",
+        "# This file was generated and normalized by SenpAI",
+        ""
+    ]
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        
+        # Se contiver tabulações nativas, normaliza os 7 campos
+        if "\t" in line:
+            parts = line.split("\t")
+            if len(parts) >= 7:
+                # Junta garantindo 7 campos padrão
+                formatted_lines.append("\t".join(parts[:6] + ["\t".join(parts[6:])]))
+                continue
+
+        # Se não tiver tabulações (ex: espaços colados por editores web), divide pelos 6 primeiros espaços
+        parts = line.split(None, 6)
+        if len(parts) == 7:
+            formatted_lines.append("\t".join(parts))
+        elif len(parts) == 6:
+            parts.append("")
+            formatted_lines.append("\t".join(parts))
+
+    return "\n".join(formatted_lines) + "\n"
+
+
 def get_cookie_file_path(custom_file: Optional[str] = None) -> Optional[str]:
     """
     Retorna o caminho de um arquivo de cookies do YouTube se disponível silenciosamente no ambiente.
@@ -150,8 +191,9 @@ def get_cookie_file_path(custom_file: Optional[str] = None) -> Optional[str]:
             cookie_session = st.session_state.get("youtube_cookies_text", "")
             if cookie_session and len(str(cookie_session).strip()) > 10:
                 tmp_cookie = os.path.join(tempfile.gettempdir(), "senpai_yt_session_cookies.txt")
+                norm_cookies = format_netscape_cookie_content(str(cookie_session))
                 with open(tmp_cookie, "w", encoding="utf-8") as f:
-                    f.write(str(cookie_session).strip())
+                    f.write(norm_cookies)
                 return tmp_cookie
     except Exception:
         pass
@@ -167,8 +209,9 @@ def get_cookie_file_path(custom_file: Optional[str] = None) -> Optional[str]:
     if cookie_content and len(str(cookie_content).strip()) > 10:
         tmp_cookie = os.path.join(tempfile.gettempdir(), "senpai_yt_cookies.txt")
         try:
+            norm_cookies = format_netscape_cookie_content(str(cookie_content))
             with open(tmp_cookie, "w", encoding="utf-8") as f:
-                f.write(str(cookie_content).strip())
+                f.write(norm_cookies)
             return tmp_cookie
         except Exception:
             pass
@@ -205,11 +248,8 @@ def get_base_ydl_opts(
 
     if client_list:
         clients = client_list
-    elif resolved_cookie:
-        # Quando há cookies de usuário válidos, clientes web e iOS aproveitam a sessão perfeitamente
-        clients = ["web", "ios", "android"]
     else:
-        # Sem cookies, clientes móveis/XR contornam melhor bloqueios de IP de datacenter
+        # Clientes visionos + android são os mais resilientes, contornam SABR streaming e bloqueio de IP/PO token
         clients = ["visionos", "android"]
 
     opts["extractor_args"] = {
@@ -241,24 +281,14 @@ def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] =
     if not validate_video_url(url):
         raise VideoDownloadError("URL de vídeo inválida ou em formato não reconhecido.")
     
-    has_cookie = bool(get_cookie_file_path(cookie_file))
-    # Seleção de clientes baseada em autenticação disponível
-    if has_cookie:
-        client_strategies = [
-            ["web", "android"],
-            ["web"],
-            ["ios", "web"],
-            ["android"],
-            ["default"],
-        ]
-    else:
-        client_strategies = [
-            ["visionos", "android"],
-            ["android", "ios"],
-            ["visionos"],
-            ["mweb", "android"],
-            ["default"],
-        ]
+    # Clientes resilientes contra SABR streaming e exigências de PO Token
+    client_strategies = [
+        ["visionos", "android"],
+        ["android", "visionos"],
+        ["visionos"],
+        ["android"],
+        ["default"],
+    ]
 
     last_error_msg = ""
 
@@ -267,6 +297,7 @@ def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] =
         ydl_opts.update({
             "skip_download": True,
             "extract_flat": False,
+            "format": "all",
         })
         
         try:
@@ -330,7 +361,7 @@ def get_format_selector(quality: str = "media") -> str:
     """
     Retorna o seletor de formato do yt-dlp de acordo com a qualidade desejada:
     - 'alta': Máxima qualidade de resolução e FPS disponível.
-    - 'media' (padrão): Resolução intermediária (até 720p) limitada a 30 FPS.
+    - 'media' (padrão): Resolução intermediária (até 720p).
     - 'baixa': Menor qualidade disponível (menor tamanho e download rápido).
     """
     q = quality.lower().strip() if quality else "media"
@@ -339,7 +370,7 @@ def get_format_selector(quality: str = "media") -> str:
     elif q in ["baixa", "low"]:
         return "worstvideo[ext=mp4]+worstaudio[ext=m4a]/worst[ext=mp4]/worstvideo+worstaudio/worst"
     else:  # "media" padrão
-        return "bestvideo[height<=720][fps<=30][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][fps<=30][ext=mp4]/bestvideo[height<=720]+bestaudio/best[height<=720]/best"
+        return "bestvideo[height<=720]+bestaudio/best[height<=720]/best"
 
 
 def download_video_stream(
@@ -426,24 +457,15 @@ def download_video_stream(
     outtmpl_pattern = os.path.join(output_dir, f"yt_{video_id}_{quality_tag}_{safe_title}.%(ext)s")
     format_choice = get_format_selector(quality_tag)
     
-    # Estratégias automáticas de clientes para contornar qualquer bloqueio de IP ou usar cookies
-    has_cookie = bool(get_cookie_file_path(cookie_file))
-    if has_cookie:
-        client_strategies = [
-            ["web", "android"],
-            ["web"],
-            ["ios", "web"],
-            ["android"],
-            ["default"],
-        ]
-    else:
-        client_strategies = [
-            ["visionos", "android"],
-            ["android", "ios"],
-            ["visionos"],
-            ["mweb", "android"],
-            ["default"],
-        ]
+    # Estratégias automáticas de clientes para contornar qualquer bloqueio de IP, SABR streaming e PO token
+    client_strategies = [
+        ["visionos", "android"],
+        ["android", "visionos"],
+        ["visionos"],
+        ["android"],
+        ["web", "android"],
+        ["default"],
+    ]
 
     download_success = False
     last_error_msg = ""

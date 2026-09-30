@@ -15,6 +15,7 @@ from src.utils.video_downloader import (
     extract_video_info,
     download_video_stream,
     get_format_selector,
+    format_netscape_cookie_content,
     QUALITY_LABELS,
     VideoDownloadError
 )
@@ -197,7 +198,6 @@ class TestVideoDownloader(unittest.TestCase):
 
         med_fmt = get_format_selector("media")
         self.assertIn("height<=720", med_fmt)
-        self.assertIn("fps<=30", med_fmt)
 
         low_fmt = get_format_selector("baixa")
         self.assertIn("worst", low_fmt)
@@ -237,5 +237,25 @@ class TestVideoDownloader(unittest.TestCase):
                 self.assertGreater(info["downloaded_file_size_mb"], 0.0)
                 self.assertEqual(info["downloaded_resolution"], "640x480")
                 self.assertEqual(info["downloaded_fps"], 30.0)
+
+    def test_format_netscape_cookie_content(self):
+        """Valida que format_netscape_cookie_content adiciona o cabeçalho obrigatório e converte espaços para tabs."""
+        # 1. Teste com entrada vazia
+        self.assertEqual(format_netscape_cookie_content(""), "")
+
+        # 2. Teste sem cabeçalho e com espaços em vez de tabs (ex: colado de editor web)
+        raw_cookie = (
+            ".youtube.com TRUE / FALSE 1825156810 SID g.a000DAlFlL7rI2p1LF7SfjWdEXwNsCrXEts\n"
+            ".youtube.com TRUE / TRUE 1825156810 LOGIN_INFO AFmmF2swRAIgK8l9qTMzJsZNLCuIQj\n"
+        )
+        formatted = format_netscape_cookie_content(raw_cookie)
+        self.assertTrue(formatted.startswith("# Netscape HTTP Cookie File"))
+        self.assertIn("\t", formatted)
+        lines = [l for l in formatted.splitlines() if l and not l.startswith("#")]
+        self.assertEqual(len(lines), 2)
+        for l in lines:
+            parts = l.split("\t")
+            self.assertEqual(len(parts), 7)
+            self.assertEqual(parts[0], ".youtube.com")
 
 
