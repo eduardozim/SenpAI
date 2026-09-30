@@ -15,6 +15,7 @@ from src.utils.video_downloader import (
     extract_video_info,
     download_video_stream,
     get_format_selector,
+    get_base_ydl_opts,
     format_netscape_cookie_content,
     QUALITY_LABELS,
     VideoDownloadError
@@ -257,5 +258,24 @@ class TestVideoDownloader(unittest.TestCase):
             parts = l.split("\t")
             self.assertEqual(len(parts), 7)
             self.assertEqual(parts[0], ".youtube.com")
+
+    def test_get_base_ydl_opts_cookies_filtering(self):
+        """Valida que clientes móveis/XR (visionos, android) não recebem cookiefile, mas clientes web sim."""
+        with tempfile.NamedTemporaryFile("w", delete=False, suffix=".txt") as tf:
+            tf.write("# Netscape HTTP Cookie File\n.youtube.com\tTRUE\t/\tFALSE\t1825156810\tSID\t12345\n")
+            c_file = tf.name
+
+        try:
+            # 1. visionos + android não suportam cookies -> cookiefile NÃO deve ser anexado
+            opts_mobile = get_base_ydl_opts(client_list=["visionos", "android"], cookie_file=c_file)
+            self.assertNotIn("cookiefile", opts_mobile)
+
+            # 2. web suporta cookies -> cookiefile DEVE ser anexado
+            opts_web = get_base_ydl_opts(client_list=["web"], cookie_file=c_file)
+            self.assertIn("cookiefile", opts_web)
+            self.assertEqual(opts_web["cookiefile"], c_file)
+        finally:
+            if os.path.exists(c_file):
+                os.remove(c_file)
 
 

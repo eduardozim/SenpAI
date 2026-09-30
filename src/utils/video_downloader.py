@@ -242,10 +242,6 @@ def get_base_ydl_opts(
         }
     }
     
-    resolved_cookie = get_cookie_file_path(cookie_file)
-    if resolved_cookie:
-        opts["cookiefile"] = resolved_cookie
-
     if client_list:
         clients = client_list
     else:
@@ -258,6 +254,16 @@ def get_base_ydl_opts(
             "skip": ["translated_subs"],
         }
     }
+
+    # Clientes móveis/XR como visionos, android e ios NÃO suportam cookies no yt-dlp (SUPPORTS_COOKIES = False).
+    # Passar cookiefile para eles faz o yt-dlp emitir 'Skipping client since it does not support cookies',
+    # descartá-los e cair no cliente 'web', que falha com streaming SABR ("Only images are available") e exige PO token.
+    # Portanto, só anexamos cookiefile se algum cliente da lista suportar cookies (ex: web, mweb, tv)!
+    supports_cookies = any(c in ("web", "mweb", "web_safari", "web_embedded", "web_creator", "tv") for c in clients)
+    if supports_cookies:
+        resolved_cookie = get_cookie_file_path(cookie_file)
+        if resolved_cookie:
+            opts["cookiefile"] = resolved_cookie
 
     return opts
 
