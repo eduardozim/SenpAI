@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.2.3.2`
+> **Versão Oficial do Sistema**: `v 0.2.4.1`
 
 ---
 
@@ -563,7 +563,24 @@ Total de **169 testes automatizados** distribuídos em 18 módulos, executados e
 
 ---
 
-### `[v 0.2.4.0]` — 2026-09-28 *(Versão Atual)*
+### `[v 0.2.4.1]` — 2026-09-30 *(Versão Atual)*
+
+- **Mitigação de Bloqueio de IP em Servidores Nuvem (`HTTP Error 403: Forbidden`) & Gestão de Cookies via Secrets ([video_downloader.py](file:///d:/Projetos/SenpAI/Dev/src/utils/video_downloader.py) & [manual.md](file:///d:/Projetos/SenpAI/Dev/manual.md))**:
+  - **Diagnóstico da Causa Raiz do Erro 403 na Nuvem**:
+    - Servidores em nuvem (ex: Streamlit Community Cloud) utilizam faixas de IP de datacenters comerciais (AWS/GCP), que são severamente bloqueadas pelas defesas anti-bot do YouTube ao requisitar streams diretos de vídeo.
+    - Esclarecimento técnico de segurança: por imposição das políticas de segurança fundamentais da Web (*Same-Origin Policy* e flags *HttpOnly*), nenhum site ou script em nuvem tem permissão para extrair automaticamente cookies de terceiros do navegador do usuário.
+  - **Suporte a Cookies Transparentes via Streamlit Secrets (`YOUTUBE_COOKIES`)**:
+    - O módulo `video_downloader` consome cookies em formato Netscape injetados diretamente em `st.secrets["YOUTUBE_COOKIES"]` (ou arquivo `cookies.txt` no servidor), eliminando a necessidade de qualquer configuração ou upload por parte dos usuários finais na interface.
+  - **Refinamento de Clientes InnerTube e Estratégias do yt-dlp**:
+    - Priorização inteligente de clientes autenticados (`web`, `ios`, `android`) quando houver cookies válidos configurados nos Secrets.
+    - Expansão de fallbacks sem cookies (`visionos`, `android`, `ios`, `mweb`) com mensagens claras de diagnóstico indicando a alternativa imediata de carregar o arquivo pela aba de Upload Local.
+  - **Resiliência a Políticas de Controle de Aplicativos do Windows (Smart App Control)**:
+    - Tratamento defensivo de `OSError` e bloqueios de DLLs de Deep Learning no validador de aceleração de hardware ([hardware.py](file:///d:/Projetos/SenpAI/Dev/src/utils/hardware.py)).
+  - **Suíte de Testes Automatizados**: Suíte completa de 169 testes automatizados aprovada com 100% de sucesso.
+
+---
+
+### `[v 0.2.4.0]` — 2026-09-28
 
 - **Reorganização Hierárquica em 2 Modos de Operação Principais ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py), [training_live_manager.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_live_manager.py), [manual.md](file:///d:/Projetos/SenpAI/Dev/manual.md))**:
   - **Reestruturação Estratégica da Experiência do Usuário (UI/UX)**:

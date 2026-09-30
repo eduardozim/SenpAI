@@ -203,7 +203,15 @@ def get_base_ydl_opts(
     if resolved_cookie:
         opts["cookiefile"] = resolved_cookie
 
-    clients = client_list or ["visionos", "android"]
+    if client_list:
+        clients = client_list
+    elif resolved_cookie:
+        # Quando há cookies de usuário válidos, clientes web e iOS aproveitam a sessão perfeitamente
+        clients = ["web", "ios", "android"]
+    else:
+        # Sem cookies, clientes móveis/XR contornam melhor bloqueios de IP de datacenter
+        clients = ["visionos", "android"]
+
     opts["extractor_args"] = {
         "youtube": {
             "player_client": clients,
@@ -233,13 +241,24 @@ def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] =
     if not validate_video_url(url):
         raise VideoDownloadError("URL de vídeo inválida ou em formato não reconhecido.")
     
-    # Clientes com extração InnerTube direta (visionos e android não exigem PO tokens web de datacenter)
-    client_strategies = [
-        ["visionos", "android"],
-        ["visionos"],
-        ["android", "android_vr"],
-        ["default"],
-    ]
+    has_cookie = bool(get_cookie_file_path(cookie_file))
+    # Seleção de clientes baseada em autenticação disponível
+    if has_cookie:
+        client_strategies = [
+            ["web", "android"],
+            ["web"],
+            ["ios", "web"],
+            ["android"],
+            ["default"],
+        ]
+    else:
+        client_strategies = [
+            ["visionos", "android"],
+            ["android", "ios"],
+            ["visionos"],
+            ["mweb", "android"],
+            ["default"],
+        ]
 
     last_error_msg = ""
 
@@ -407,14 +426,24 @@ def download_video_stream(
     outtmpl_pattern = os.path.join(output_dir, f"yt_{video_id}_{quality_tag}_{safe_title}.%(ext)s")
     format_choice = get_format_selector(quality_tag)
     
-    # Estratégias automáticas de clientes para contornar qualquer bloqueio de IP sem exigir cookies manuais
-    client_strategies = [
-        ["visionos", "android"],
-        ["android", "android_vr"],
-        ["visionos"],
-        ["android"],
-        ["default"],
-    ]
+    # Estratégias automáticas de clientes para contornar qualquer bloqueio de IP ou usar cookies
+    has_cookie = bool(get_cookie_file_path(cookie_file))
+    if has_cookie:
+        client_strategies = [
+            ["web", "android"],
+            ["web"],
+            ["ios", "web"],
+            ["android"],
+            ["default"],
+        ]
+    else:
+        client_strategies = [
+            ["visionos", "android"],
+            ["android", "ios"],
+            ["visionos"],
+            ["mweb", "android"],
+            ["default"],
+        ]
 
     download_success = False
     last_error_msg = ""
@@ -477,8 +506,9 @@ def download_video_stream(
             "sign in to confirm", "bot", "403", "forbidden"
         ]):
             raise VideoDownloadError(
-                "Não foi possível obter um fluxo de vídeo compatível para este link no servidor em nuvem. "
-                "Experimente alternar o nível de qualidade ('Alta' ou 'Baixa') ou carregue o arquivo pela aba '📁 Upload de Arquivo Local'."
+                "O servidor em nuvem recebeu restrição temporária de acesso do YouTube (HTTP 403: Forbidden / Anti-Bot). "
+                "Para prosseguir imediatamente com a análise, realize o download do vídeo em seu computador e utilize a aba '📁 Upload de Arquivo Local' "
+                "(ou configure os cookies nos Secrets do Streamlit Cloud)."
             )
         raise VideoDownloadError(f"Falha ao baixar vídeo do YouTube: {last_error_msg}")
 
