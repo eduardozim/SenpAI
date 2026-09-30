@@ -60,42 +60,6 @@ def _enrich_with_actual_file_info(file_path: str, info: Dict[str, Any], quality_
     return info
 
 
-def inspect_video_file(file_path: str, fallback_title: str = "Vídeo", webpage_url: str = "") -> Dict[str, Any]:
-    """
-    Inspeciona um arquivo de vídeo físico para extrair resolução real, FPS, duração e tamanho em MB.
-    Útil para arquivos obtidos pelo navegador (Alternativa A) ou uploads locais.
-    """
-    sz_mb = round(os.path.getsize(file_path) / (1024 * 1024), 2) if os.path.exists(file_path) else 0.0
-    w, h, fps, count = 0, 0, 30.0, 0
-    try:
-        cap = cv2.VideoCapture(file_path)
-        if cap.isOpened():
-            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            fps = float(cap.get(cv2.CAP_PROP_FPS)) or 30.0
-            count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            cap.release()
-    except Exception:
-        pass
-
-    dur_sec = (count / fps) if fps > 0 and count > 0 else 0.0
-    clean_title = sanitize_filename(fallback_title.rsplit(".", 1)[0] if "." in fallback_title else fallback_title)
-    return {
-        "id": "yt_browser_upload",
-        "title": clean_title or "Vídeo do YouTube",
-        "uploader": "Download no Navegador (Local)",
-        "duration_seconds": dur_sec,
-        "duration_formatted": format_video_duration(dur_sec),
-        "downloaded_resolution": f"{w}x{h}" if w > 0 and h > 0 else "HD",
-        "downloaded_fps": round(fps, 1),
-        "quality_selected": "original",
-        "quality_label": "Qualidade Original (Navegador)",
-        "downloaded_file_size_mb": sz_mb,
-        "webpage_url": webpage_url,
-        "thumbnail": ""
-    }
-
-
 def validate_video_url(url: str) -> bool:
     """
     Valida se a string informada é uma URL suportada de vídeo (YouTube ou streaming).

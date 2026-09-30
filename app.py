@@ -63,7 +63,7 @@ from src.utils.test_runner import (
 )
 from src.utils.video_downloader import (
     validate_video_url, extract_video_info, download_video_stream,
-    format_video_duration, inspect_video_file, VideoDownloadError, QUALITY_LABELS
+    format_video_duration, VideoDownloadError, QUALITY_LABELS
 )
 from src.utils.environment import (
     get_virtual_environment_info, is_in_virtual_environment, get_execution_environment_info
@@ -3938,143 +3938,43 @@ elif nav_page in ["match", "training", "analysis"]:
                         key="recorded_youtube_url_input"
                     )
 
-                    exec_env_yt = get_execution_environment_info()
-                    is_cloud = exec_env_yt.get("is_cloud", False)
+                    yt_quality_keys = ["media", "alta", "baixa"]
+                    selected_quality_raw = st.selectbox(
+                        "⚙️ Resolução / Qualidade do Download:",
+                        options=yt_quality_keys,
+                        format_func=lambda k: QUALITY_LABELS.get(k, k),
+                        index=0,  # "media" padrão
+                        key="recorded_youtube_quality_select",
+                        help="• Média (Padrão): Resolução intermediária (até 720p) a 30 FPS.\n• Alta: Máxima resolução e FPS originais do vídeo.\n• Baixa: Menor resolução disponível com download mais rápido."
+                    )
+                    selected_quality: str = str(selected_quality_raw or "media")
 
-                    yt_loaded_path = st.session_state.get("video_file_path") if st.session_state.get("video_source_type") in ["youtube", "youtube_upload"] else None
+                    exec_env_yt = get_execution_environment_info()
+                    if exec_env_yt.get("is_cloud"):
+                        st.info(
+                            "💡 **Aviso para Ambiente em Nuvem (Streamlit Cloud)**: O YouTube bloqueia conexões de download originadas de servidores de datacenters comerciais (HTTP 403 Forbidden). "
+                            "Caso o carregamento via link falhe, baixe o arquivo em seu computador/celular e envie diretamente pela aba **'📁 Upload de Arquivo Local'** ao lado."
+                        )
+
+                    yt_loaded_path = st.session_state.get("video_file_path") if st.session_state.get("video_source_type") == "youtube" else None
                     yt_info = st.session_state.get("youtube_video_info", {})
 
-                    load_yt_btn = False
-                    clear_yt_btn = False
-                    selected_quality = "media"
-
-                    if is_cloud:
-                        # --- ALTERNATIVA A: Download via Navegador do Usuário (Nuvem / Streamlit Cloud) ---
-                        st.markdown(
-                            """
-                            <div style="background: linear-gradient(135deg, rgba(30, 27, 75, 0.75) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1.5px solid #6366F1; border-radius: 10px; padding: 14px 18px; margin-top: 10px; margin-bottom: 14px; box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15);">
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                                    <span style="font-size: 20px;">🌐</span>
-                                    <span style="color: #A5B4FC; font-weight: 800; font-size: 13.5px; text-transform: uppercase; letter-spacing: 0.5px;">Assistente de Vídeo YouTube (Download via Navegador)</span>
-                                </div>
-                                <div style="color: #CBD5E1; font-size: 13px; line-height: 1.5;">
-                                    O YouTube bloqueia conexões de download originadas de datacenters comerciais da nuvem (HTTP 403 Forbidden). Para analisar este combate sem bloqueios nem restrições:
-                                </div>
-                                <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: #E2E8F0;">
-                                    <div><b>1️⃣</b> Abra o baixador rápido no botão abaixo e salve o <code>.mp4</code> no seu dispositivo (em ~5 segundos).</div>
-                                    <div><b>2️⃣</b> Arraste o arquivo baixado no campo abaixo para a IA processar o combate instantaneamente.</div>
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
+                    col_yt_btn1, col_yt_btn2 = st.columns([1.8, 1.2])
+                    with col_yt_btn1:
+                        load_yt_btn = st.button(
+                            "📥 Carregar Vídeo do Link" if not yt_loaded_path else "🔄 Recarregar Link",
+                            type="primary" if not yt_loaded_path else "secondary",
+                            width="stretch",
+                            key="btn_load_recorded_youtube"
                         )
-
-                        col_dl1, col_dl2 = st.columns([1.5, 1.5])
-                        with col_dl1:
-                            st.link_button(
-                                "🚀 Abrir Baixador Rápido (Cobalt.tools)",
-                                "https://cobalt.tools/",
-                                type="primary",
-                                use_container_width=True,
-                                help="Abre o baixador rápido e gratuito no seu navegador. Basta colar o link do YouTube e salvar o vídeo em alta qualidade no seu computador ou celular."
-                            )
-                        with col_dl2:
-                            if yt_url_input and validate_video_url(yt_url_input):
-                                st.link_button(
-                                    "📺 Abrir Vídeo no YouTube",
-                                    yt_url_input,
-                                    type="secondary",
-                                    use_container_width=True
-                                )
-                            else:
-                                st.link_button(
-                                    "📺 Abrir o YouTube",
-                                    "https://www.youtube.com",
-                                    type="secondary",
-                                    use_container_width=True
-                                )
-
-                        st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
-                        uploaded_yt_file = st.file_uploader(
-                            "📥 Arraste o arquivo de vídeo baixado (.mp4, .avi, .mov) aqui:",
-                            type=["mp4", "avi", "mov"],
-                            help="Selecione o arquivo de vídeo salvo pelo seu navegador.",
-                            key="recorded_cloud_yt_file_uploader"
+                    with col_yt_btn2:
+                        clear_yt_btn = st.button(
+                            "🗑️ Limpar Vídeo",
+                            type="secondary",
+                            width="stretch",
+                            disabled=not yt_loaded_path,
+                            key="btn_clear_recorded_youtube"
                         )
-
-                        if uploaded_yt_file is not None:
-                            cached_file_name = st.session_state.get("uploaded_file_name")
-                            cached_file_size = st.session_state.get("uploaded_file_size")
-                            cached_file_path = st.session_state.get("video_file_path")
-
-                            if not (cached_file_path and os.path.exists(cached_file_path) and cached_file_name == uploaded_yt_file.name and cached_file_size == uploaded_yt_file.size):
-                                uploads_dir = os.path.join(tempfile.gettempdir(), "senpai_uploads")
-                                os.makedirs(uploads_dir, exist_ok=True)
-                                safe_name = f"yt_browser_{int(time.time())}_{uploaded_yt_file.name}"
-                                target_path = os.path.join(uploads_dir, safe_name)
-                                uploaded_yt_file.seek(0)
-                                with open(target_path, "wb") as f_out:
-                                    while True:
-                                        chunk = uploaded_yt_file.read(8 * 1024 * 1024)
-                                        if not chunk:
-                                            break
-                                        f_out.write(chunk)
-
-                                inspected_info = inspect_video_file(target_path, fallback_title=uploaded_yt_file.name, webpage_url=yt_url_input)
-                                st.session_state["video_file_path"] = target_path
-                                st.session_state["uploaded_file_name"] = uploaded_yt_file.name
-                                st.session_state["uploaded_file_size"] = uploaded_yt_file.size
-                                st.session_state["video_source_type"] = "youtube"
-                                st.session_state["youtube_video_info"] = inspected_info
-                                st.session_state["youtube_url"] = yt_url_input
-                                st.toast(f"✅ Vídeo '{inspected_info.get('title')}' carregado com sucesso pelo navegador!", icon="🎥")
-                                st.rerun()
-
-                        if yt_loaded_path:
-                            clear_yt_btn = st.button("🗑️ Limpar Vídeo Carregado", type="secondary", width="stretch", key="btn_clear_cloud_yt")
-
-                        # Opção secundária: tentar download direto no servidor caso seja link não-YouTube ou link direto
-                        with st.expander("🛠️ Tentar download direto no servidor da nuvem (Links diretos / Não-YouTube)"):
-                            yt_quality_keys = ["media", "alta", "baixa"]
-                            selected_quality_raw = st.selectbox(
-                                "⚙️ Qualidade para tentativa no servidor:",
-                                options=yt_quality_keys,
-                                format_func=lambda k: QUALITY_LABELS.get(k, k),
-                                index=0,
-                                key="recorded_youtube_quality_select_cloud"
-                            )
-                            selected_quality = str(selected_quality_raw or "media")
-                            load_yt_btn = st.button("📥 Tentar Download Direto no Servidor", key="btn_load_cloud_direct_yt", use_container_width=True)
-
-                    else:
-                        # --- Modo Local (Desktop / Dojo): Download direto com IP residencial sem bloqueios ---
-                        yt_quality_keys = ["media", "alta", "baixa"]
-                        selected_quality_raw = st.selectbox(
-                            "⚙️ Resolução / Qualidade do Download:",
-                            options=yt_quality_keys,
-                            format_func=lambda k: QUALITY_LABELS.get(k, k),
-                            index=0,  # "media" padrão
-                            key="recorded_youtube_quality_select_local",
-                            help="• Média (Padrão): Resolução intermediária (até 720p).\n• Alta: Máxima resolução e FPS originais do vídeo.\n• Baixa: Menor resolução disponível com download mais rápido."
-                        )
-                        selected_quality = str(selected_quality_raw or "media")
-
-                        col_yt_btn1, col_yt_btn2 = st.columns([1.8, 1.2])
-                        with col_yt_btn1:
-                            load_yt_btn = st.button(
-                                "📥 Carregar Vídeo do Link" if not yt_loaded_path else "🔄 Recarregar Link",
-                                type="primary" if not yt_loaded_path else "secondary",
-                                width="stretch",
-                                key="btn_load_recorded_youtube"
-                            )
-                        with col_yt_btn2:
-                            clear_yt_btn = st.button(
-                                "🗑️ Limpar Vídeo",
-                                type="secondary",
-                                width="stretch",
-                                disabled=not yt_loaded_path,
-                                key="btn_clear_recorded_youtube"
-                            )
 
                     if clear_yt_btn:
                         st.session_state.pop("video_file_path", None)
