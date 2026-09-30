@@ -17,6 +17,7 @@ from src.utils.video_downloader import (
     get_format_selector,
     get_base_ydl_opts,
     format_netscape_cookie_content,
+    inspect_video_file,
     QUALITY_LABELS,
     VideoDownloadError
 )
@@ -277,5 +278,21 @@ class TestVideoDownloader(unittest.TestCase):
         finally:
             if os.path.exists(c_file):
                 os.remove(c_file)
+
+    def test_inspect_video_file(self):
+        """Valida que inspect_video_file extrai propriedades reais (resolução, fps, duração) de arquivo de vídeo."""
+        demo_path = os.path.join(self.temp_dir.name, "kendo_sample.mp4")
+        generate_demo_kendo_video(demo_path, duration_sec=1, fps=20)
+
+        info = inspect_video_file(demo_path, fallback_title="kendo_sample.mp4", webpage_url="https://youtube.com/watch?v=123")
+        self.assertEqual(info["id"], "yt_browser_upload")
+        self.assertEqual(info["title"], "kendo_sample")
+        self.assertEqual(info["uploader"], "Download no Navegador (Local)")
+        self.assertIn("x", info["downloaded_resolution"])
+        self.assertAlmostEqual(info["downloaded_fps"], 20.0, places=1)
+        self.assertGreater(info["duration_seconds"], 0.5)
+        self.assertEqual(info["webpage_url"], "https://youtube.com/watch?v=123")
+        self.assertGreater(info["downloaded_file_size_mb"], 0.0)
+
 
 
