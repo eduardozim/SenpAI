@@ -231,6 +231,7 @@ def get_base_ydl_opts(
         "socket_timeout": timeout,
         "nocheckcertificate": True,
         "geo_bypass": True,
+        "hls_prefer_native": True,
         "js_runtimes": {"node": {}, "deno": {}},
         "http_headers": {
             "User-Agent": (
@@ -369,14 +370,29 @@ def get_format_selector(quality: str = "media") -> str:
     - 'alta': Máxima qualidade de resolução e FPS disponível.
     - 'media' (padrão): Resolução intermediária (até 720p).
     - 'baixa': Menor qualidade disponível (menor tamanho e download rápido).
+    Prioriza protocolos HLS (m3u8) que contornam bloqueios de CDN (HTTP 403) em ambientes em nuvem/datacenters.
     """
     q = quality.lower().strip() if quality else "media"
     if q in ["alta", "high"]:
-        return "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best"
+        return (
+            "bestvideo[protocol^=m3u8]+bestaudio[protocol^=m3u8]/"
+            "bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
+            "bestvideo+bestaudio/"
+            "best[protocol^=m3u8]/best[ext=mp4]/best"
+        )
     elif q in ["baixa", "low"]:
-        return "worstvideo[ext=mp4]+worstaudio[ext=m4a]/worst[ext=mp4]/worstvideo+worstaudio/worst"
+        return (
+            "worstvideo[protocol^=m3u8]+worstaudio[protocol^=m3u8]/"
+            "worstvideo[ext=mp4]+worstaudio[ext=m4a]/"
+            "worst[protocol^=m3u8]/worst[ext=mp4]/worst"
+        )
     else:  # "media" padrão
-        return "bestvideo[height<=720]+bestaudio/best[height<=720]/best"
+        return (
+            "bestvideo[protocol^=m3u8][height<=720]+bestaudio[protocol^=m3u8]/"
+            "bestvideo[height<=720]+bestaudio/"
+            "best[protocol^=m3u8][height<=720]/"
+            "best[height<=720]/best"
+        )
 
 
 def download_video_stream(
@@ -479,6 +495,8 @@ def download_video_stream(
     for attempt_idx, clients in enumerate(client_strategies):
         format_candidates = [
             format_choice,
+            "bestvideo[protocol^=m3u8]+bestaudio[protocol^=m3u8]/best[protocol^=m3u8]/best",
+            "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
             "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "best/bestvideo+bestaudio/worst",
             "18/22/best",
