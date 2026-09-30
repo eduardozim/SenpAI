@@ -3949,6 +3949,13 @@ elif nav_page in ["match", "training", "analysis"]:
                     )
                     selected_quality: str = str(selected_quality_raw or "media")
 
+                    exec_env_yt = get_execution_environment_info()
+                    if exec_env_yt.get("is_cloud"):
+                        st.info(
+                            "💡 **Aviso para Ambiente em Nuvem (Streamlit Cloud)**: O YouTube bloqueia conexões de download originadas de servidores de datacenters comerciais (HTTP 403 Forbidden). "
+                            "Caso o carregamento via link falhe, baixe o arquivo em seu computador/celular e envie diretamente pela aba **'📁 Upload de Arquivo Local'** ao lado."
+                        )
+
                     yt_loaded_path = st.session_state.get("video_file_path") if st.session_state.get("video_source_type") == "youtube" else None
                     yt_info = st.session_state.get("youtube_video_info", {})
 

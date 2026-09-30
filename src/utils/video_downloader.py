@@ -549,12 +549,12 @@ def download_video_stream(
         log_event("ERROR", f"Falha definitiva no download de vídeo do YouTube ({url}): {last_error_msg}", "video_downloader")
         if any(token in last_error_msg.lower() for token in [
             "requested format is not available", "only images are available",
-            "sign in to confirm", "bot", "403", "forbidden"
+            "sign in to confirm", "bot", "403", "forbidden", "empty"
         ]):
             raise VideoDownloadError(
-                "O servidor em nuvem recebeu restrição temporária de acesso do YouTube (HTTP 403: Forbidden / Anti-Bot). "
-                "Para prosseguir imediatamente com a análise, realize o download do vídeo em seu computador e utilize a aba '📁 Upload de Arquivo Local' "
-                "(ou configure os cookies nos Secrets do Streamlit Cloud)."
+                "O YouTube bloqueia a transferência direta de vídeos por servidores em nuvem (HTTP 403: Forbidden - Bloqueio de IP de Datacenter AWS/GCP). "
+                "Para analisar este combate no Streamlit Cloud, faça o download do vídeo em seu computador e envie pela aba ao lado '📁 Upload de Arquivo Local'. "
+                "Caso queira baixar vídeos diretamente via links do YouTube sem restrições, execute o SenpAI localmente em seu computador ('streamlit run app.py')."
             )
         raise VideoDownloadError(f"Falha ao baixar vídeo do YouTube: {last_error_msg}")
 
