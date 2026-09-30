@@ -2503,15 +2503,15 @@ elif nav_page in ["match", "training", "analysis"]:
     else:
         training_sub_raw = st.sidebar.radio(
             "Formato de Entrada:",
-            options=["recorded", "realtime"],
-            index=0 if st.session_state.get("training_submode_radio", "recorded") == "recorded" else 1,
+            options=["realtime", "recorded"],
+            index=0 if st.session_state.get("training_submode_radio", "realtime") == "realtime" else 1,
             format_func=lambda x: {
-                "recorded": "📹 Análise de Vídeo Gravado (Arquivo / YouTube / Demo)",
-                "realtime": "🔴 Análise em Tempo Real (Webcam / RTSP)"
+                "realtime": "🔴 Análise em Tempo Real (Webcam / RTSP)",
+                "recorded": "📹 Análise de Vídeo Gravado (Arquivo / YouTube / Demo)"
             }[x],
             key="training_submode_radio"
         )
-        app_mode = "training" if training_sub_raw == "recorded" else "training_realtime"
+        app_mode = "training_realtime" if training_sub_raw == "realtime" else "training"
 
     # Limpar análise anterior automaticamente sempre que houver mudança de modo ou formato
     current_mode_id = f"{operation_mode}_{app_mode}"
