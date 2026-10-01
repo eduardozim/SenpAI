@@ -2882,18 +2882,6 @@ elif nav_page in ["match", "training", "analysis"]:
             st.markdown("---")
             st.markdown("##### 🌐 Transmissão Ao Vivo via Navegador (WebRTC)")
             st.caption("Pressione **'START'** no player abaixo para autorizar e iniciar a captura da sua webcam pelo navegador. A IA do SenpAI processará os movimentos e projetará o HUD biomecânico em tempo real.")
-
-            with st.expander("🛠️ Dúvidas ou erro ao iniciar a câmera ('NotReadableError')?", expanded=False):
-                st.markdown(
-                    """
-                    **Se o player exibir `NotReadableError: Could not start video source`:**
-                    1. **Dispositivo correto:** Clique no botão **`SELECT DEVICE`** (ao lado de `START`) e selecione sua webcam física real (muitas vezes o navegador tenta abrir uma câmera virtual como OBS Virtual Camera que está inativa).
-                    2. **Câmera em uso:** Feche outros programas que possam estar acessando a webcam (Zoom, Microsoft Teams, OBS, Discord, aplicativo Câmera do Windows ou outras abas do navegador).
-                    3. **Permissões do Windows:** Verifique em *Configurações do Windows > Privacidade e Segurança > Câmera* se o acesso está ativado para o seu navegador.
-                    4. **Está usando no computador local?** Você pode alternar o tipo de fonte acima para **`🎥 Webcam Local (OpenCV USB)`**, que acessa o hardware diretamente com máximo desempenho.
-                    """
-                )
-
             col_live_cams, col_live_feed = st.columns([7, 5])
             with col_live_feed:
                 st.markdown("##### 📊 Feed de Golpes & Painel de Métricas")
@@ -3494,18 +3482,6 @@ elif nav_page in ["match", "training", "analysis"]:
             st.markdown("---")
             st.markdown("##### 🌐 Transmissão Ao Vivo via Navegador (WebRTC)")
             st.caption("Pressione **'START'** no player abaixo para autorizar e iniciar a captura da sua webcam pelo navegador. A IA do SenpAI avaliará seus movimentos com biofeedback instantâneo.")
-
-            with st.expander("🛠️ Dúvidas ou erro ao iniciar a câmera ('NotReadableError')?", expanded=False):
-                st.markdown(
-                    """
-                    **Se o player exibir `NotReadableError: Could not start video source`:**
-                    1. **Dispositivo correto:** Clique no botão **`SELECT DEVICE`** (ao lado de `START`) e selecione sua webcam física real (muitas vezes o navegador tenta abrir uma câmera virtual como OBS Virtual Camera que está inativa).
-                    2. **Câmera em uso:** Feche outros programas que possam estar acessando a webcam (Zoom, Microsoft Teams, OBS, Discord, aplicativo Câmera do Windows ou outras abas do navegador).
-                    3. **Permissões do Windows:** Verifique em *Configurações do Windows > Privacidade e Segurança > Câmera* se o acesso está ativado para o seu navegador.
-                    4. **Está usando no computador local?** Você pode alternar o tipo de fonte acima para **`🎥 Webcam Local (OpenCV USB)`**, que acessa o hardware diretamente com máximo desempenho.
-                    """
-                )
-
             col_live_cams, col_live_feed = st.columns([7, 5])
             with col_live_feed:
                 st.markdown("##### 🎓 Painel de Treinamento Ao Vivo")
