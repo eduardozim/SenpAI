@@ -59,6 +59,31 @@ from src.engine.reporter import DiagnosticReporter
 from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA
 
 
+def _patch_aioice_for_python314() -> None:
+    """
+    Previne exceção não tratada no aioice quando rodando em Python 3.14+ em ambientes de nuvem.
+    No Python 3.14, ao falhar uma transação UDP de STUN e fechar o transport, o _sock interno
+    é anulado e a chamada Transaction.__retry() lança AttributeError: 'NoneType' object has no attribute 'sendto'.
+    """
+    try:
+        import aioice.stun
+        orig_retry = getattr(aioice.stun.Transaction, "_Transaction__retry", None)
+        if orig_retry and not getattr(aioice.stun.Transaction, "_senpai_patched", False):
+            def safe_retry(self: Any) -> Any:
+                try:
+                    return orig_retry(self)
+                except (AttributeError, OSError):
+                    pass
+            aioice.stun.Transaction._Transaction__retry = safe_retry  # type: ignore
+            aioice.stun.Transaction._senpai_patched = True  # type: ignore
+    except Exception:
+        pass
+
+
+if HAS_WEBRTC:
+    _patch_aioice_for_python314()
+
+
 def get_rtc_configuration() -> Optional[Any]:
     """
     Retorna a configuração de servidores STUN e TURN para transposição de NAT,
@@ -68,19 +93,46 @@ def get_rtc_configuration() -> Optional[Any]:
     """
     if not HAS_WEBRTC or RTCConfiguration is None:
         return None
+
+    try:
+        from src.utils.environment import get_execution_environment_info
+        is_cloud = get_execution_environment_info().get("is_cloud", False)
+    except Exception:
+        is_cloud = False
+
+    if is_cloud:
+        # Em nuvem (Streamlit Cloud): prioriza exclusivamente TURN via TCP (porta 443) para transpor NAT/Proxy
+        return RTCConfiguration(
+            {
+                "iceServers": [
+                    {
+                        "urls": [
+                            "turns:openrelay.metered.ca:443?transport=tcp",
+                            "turn:openrelay.metered.ca:443?transport=tcp",
+                            "turn:openrelay.metered.ca:80?transport=tcp",
+                        ],
+                        "username": "openrelayproject",
+                        "credential": "openrelayproject",
+                    },
+                    {
+                        "urls": ["stun:stun.relay.metered.ca:80"],
+                    },
+                ]
+            }
+        )
+
     return RTCConfiguration(
         {
             "iceServers": [
-                {"urls": ["stun:stun.l.google.com:19302"]},
                 {
                     "urls": [
-                        "turn:openrelay.metered.ca:80",
-                        "turn:openrelay.metered.ca:443",
                         "turn:openrelay.metered.ca:443?transport=tcp",
+                        "turn:openrelay.metered.ca:80",
                     ],
                     "username": "openrelayproject",
                     "credential": "openrelayproject",
                 },
+                {"urls": ["stun:stun.l.google.com:19302"]},
             ]
         }
     )

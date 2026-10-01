@@ -500,7 +500,7 @@ def clear_previous_analysis() -> None:
         st.session_state.pop(k, None)
 
     # 3. Remover arquivo temporário de vídeo anotado se existir
-    annotated_out = "annotated_match.mp4"
+    annotated_out = os.path.abspath("annotated_match.mp4")
     if os.path.exists(annotated_out):
         try:
             os.remove(annotated_out)
@@ -3915,18 +3915,18 @@ elif nav_page in ["match", "training", "analysis"]:
                             unsafe_allow_html=True
                         )
                     else:
-                        if st.session_state.get("video_source_type") == "upload":
-                            if "uploaded_file_name" in st.session_state:
-                                cached_file_path = st.session_state.get("video_file_path")
-                                if cached_file_path and os.path.exists(cached_file_path) and ("senpai_uploads" in cached_file_path or "tmp" in cached_file_path):
-                                    try:
-                                        os.remove(cached_file_path)
-                                    except Exception:
-                                        pass
-                                st.session_state.pop("uploaded_file_name", None)
-                                st.session_state.pop("uploaded_file_size", None)
-                                st.session_state.pop("video_file_path", None)
-                                video_file_path = None
+                        cached_file_path = st.session_state.get("video_file_path")
+                        if cached_file_path and os.path.exists(cached_file_path):
+                            video_file_path = cached_file_path
+                            cached_name = st.session_state.get("uploaded_file_name", os.path.basename(cached_file_path))
+                            st.markdown(
+                                f'<div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.35); border-radius: 8px; padding: 8px 12px; margin-top: 8px; font-size: 0.84rem; color: #4ade80;">'
+                                f'📁 <b>Vídeo Carregado:</b> <code>{html.escape(cached_name)}</code>'
+                                f'</div>',
+                                unsafe_allow_html=True
+                            )
+                        else:
+                            video_file_path = None
 
                 else:
                     # Origem: Link do YouTube / Streaming Web
@@ -4151,7 +4151,7 @@ elif nav_page in ["match", "training", "analysis"]:
                             weight_zanshin=w_zanshin
                         )
 
-                    annotated_output = "annotated_match.mp4"
+                    annotated_output = os.path.abspath("annotated_match.mp4")
                     worker = AnalysisWorker(
                         pipeline=pipeline,
                         video_path=video_file_path,
@@ -4204,7 +4204,9 @@ elif nav_page in ["match", "training", "analysis"]:
                     else:
                         res = active_worker.result
                         st.session_state["analysis_result"] = res
-                        st.session_state["annotated_output"] = active_worker.output_video_path
+                        st.session_state["annotated_output"] = os.path.abspath(active_worker.output_video_path)
+                        if getattr(active_worker, "video_path", None) and os.path.exists(active_worker.video_path):
+                            st.session_state["video_file_path"] = os.path.abspath(active_worker.video_path)
                         st.session_state["last_processing_time"] = res.get("processing_time_seconds", round(active_worker.elapsed_seconds, 2))
                         st.session_state["last_processing_fps"] = res.get("processing_fps", round(res.get("total_frames", 0) / max(0.001, active_worker.elapsed_seconds), 1))
                         st.session_state.pop("analysis_worker", None)
@@ -4231,6 +4233,11 @@ elif nav_page in ["match", "training", "analysis"]:
                     )
 
         video_file_path = st.session_state.get("video_file_path", None)
+        if (not video_file_path or not os.path.exists(video_file_path)) and "analysis_result" in st.session_state:
+            res_v_path = st.session_state["analysis_result"].get("video_path")
+            if res_v_path and os.path.exists(res_v_path):
+                video_file_path = os.path.abspath(res_v_path)
+                st.session_state["video_file_path"] = video_file_path
 
         # PAINEL PRINCIPAL DE RESULTADOS
         if video_file_path or "analysis_result" in st.session_state:
@@ -4570,7 +4577,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                     weight_posture=w_posture,
                                     weight_zanshin=w_zanshin
                                 )
-                            annotated_output = "annotated_match.mp4"
+                            annotated_output = os.path.abspath("annotated_match.mp4")
                             worker = AnalysisWorker(
                                 pipeline=pipeline,
                                 video_path=video_file_path,
@@ -4612,19 +4619,52 @@ elif nav_page in ["match", "training", "analysis"]:
                         unsafe_allow_html=True
                     )
                 
-                has_annotated = "annotated_output" in st.session_state and os.path.exists(st.session_state.get("annotated_output", ""))
-                if has_annotated:
+                annotated_path = st.session_state.get("annotated_output", "")
+                if not annotated_path or not os.path.exists(annotated_path):
+                    cand_annotated = os.path.abspath("annotated_match.mp4")
+                    if os.path.exists(cand_annotated):
+                        annotated_path = cand_annotated
+                        st.session_state["annotated_output"] = annotated_path
+
+                has_annotated = bool(annotated_path and os.path.exists(annotated_path))
+                has_original = bool(video_file_path and os.path.exists(video_file_path))
+
+                # Se o vídeo original não for encontrado diretamente, tenta recuperar do resultado da análise
+                if not has_original and "analysis_result" in st.session_state:
+                    res_v_path = st.session_state["analysis_result"].get("video_path")
+                    if res_v_path and os.path.exists(res_v_path):
+                        video_file_path = os.path.abspath(res_v_path)
+                        st.session_state["video_file_path"] = video_file_path
+                        has_original = True
+
+                if has_annotated and has_original:
                     video_type = st.radio(
                         "Exibição do Vídeo:",
-                        ["📹 Vídeo Original", "🎥 Vídeo Anotado (Pose, Tracking & Golpes)"],
+                        ["🎥 Vídeo Anotado (Pose, Tracking & Golpes)", "📹 Vídeo Original"],
                         index=0,
                         horizontal=True,
                         key="video_display_type_selector"
                     )
-                    selected_video = video_file_path if (video_type and "Original" in video_type) else st.session_state["annotated_output"]
-                else:
+                    selected_video = annotated_path if (video_type and "Anotado" in video_type) else video_file_path
+                elif has_annotated:
+                    selected_video = annotated_path
+                    st.caption("🎥 **Exibindo Vídeo Anotado (Pose, Tracking & Golpes)**")
+                elif has_original:
                     selected_video = video_file_path
-                    
+                    st.caption("📹 **Exibindo Vídeo Original**")
+                else:
+                    selected_video = None
+
+                # Fallback defensivo automático: se a seleção não existir em disco, usa o vídeo que existir
+                if selected_video and not os.path.exists(selected_video):
+                    if has_annotated and os.path.exists(annotated_path):
+                        selected_video = annotated_path
+                        st.info("ℹ️ Exibindo o Vídeo Anotado (o arquivo original não está acessível no cache).")
+                    elif has_original and video_file_path and os.path.exists(video_file_path):
+                        selected_video = video_file_path
+                    else:
+                        selected_video = None
+
                 if selected_video and os.path.exists(selected_video):
                     # Banner indicativo se o vídeo foi posicionado em um evento específico
                     if "video_seek_label" in st.session_state:
