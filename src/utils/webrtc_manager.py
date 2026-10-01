@@ -8,7 +8,7 @@ processando os modelos de IA e devolvendo o vídeo anotado diretamente no navega
 import time
 import threading
 import html
-from typing import Dict, List, Any, Optional, Callable, TYPE_CHECKING
+from typing import Dict, List, Any, Optional, Callable, TYPE_CHECKING, cast
 
 import cv2
 import numpy as np
@@ -86,56 +86,60 @@ if HAS_WEBRTC:
 
 def get_rtc_configuration() -> Optional[Any]:
     """
-    Retorna a configuração de servidores STUN e TURN para transposição de NAT,
+    Retorna a configuração otimizada de servidores STUN e TURN para transposição rápida de NAT,
     firewalls e contêineres de nuvem (Streamlit Community Cloud).
-    O Streamlit Cloud bloqueia tráfego UDP direto; os servidores TURN via TCP (porta 443)
-    garantem que o streaming de vídeo do navegador atravesse o firewall do contêiner com sucesso.
+    Prioriza STUNs ultra-rápidos (Google e Cloudflare) para resolução em milissegundos,
+    com fallback para servidores TURN (UDP e TCP porta 443) caso o cliente ou o servidor
+    estejam atrás de redes corporativas restritas ou proxies.
+    Permite também configuração personalizada via st.secrets["RTC_CONFIGURATION"] ou st.secrets["webrtc"].
     """
     if not HAS_WEBRTC or RTCConfiguration is None:
         return None
 
+    # Verifica se há configuração customizada no st.secrets
     try:
-        from src.utils.environment import get_execution_environment_info
-        is_cloud = get_execution_environment_info().get("is_cloud", False)
+        import streamlit as st
+        if hasattr(st, "secrets"):
+            if "RTC_CONFIGURATION" in st.secrets:
+                cfg = st.secrets["RTC_CONFIGURATION"]
+                if isinstance(cfg, dict):
+                    return cast(Any, cfg)
+            if "webrtc" in st.secrets and isinstance(st.secrets["webrtc"], dict):
+                ice_servers = st.secrets["webrtc"].get("iceServers")
+                if ice_servers:
+                    return RTCConfiguration({"iceServers": ice_servers})
     except Exception:
-        is_cloud = False
+        pass
 
-    if is_cloud:
-        # Em nuvem (Streamlit Cloud): prioriza exclusivamente TURN via TCP (porta 443) para transpor NAT/Proxy
-        return RTCConfiguration(
-            {
-                "iceServers": [
-                    {
-                        "urls": [
-                            "turns:openrelay.metered.ca:443?transport=tcp",
-                            "turn:openrelay.metered.ca:443?transport=tcp",
-                            "turn:openrelay.metered.ca:80?transport=tcp",
-                        ],
-                        "username": "openrelayproject",
-                        "credential": "openrelayproject",
-                    },
-                    {
-                        "urls": ["stun:stun.relay.metered.ca:80"],
-                    },
-                ]
-            }
-        )
+    # Servidores STUN de altíssima velocidade e disponibilidade global
+    fast_stun_servers = [
+        "stun:stun.l.google.com:19302",
+        "stun:stun1.l.google.com:19302",
+        "stun:stun2.l.google.com:19302",
+        "stun:stun.cloudflare.com:3478",
+    ]
+
+    # Servidores TURN de fallback (com suporte a UDP, TCP e TLS/443 para contêineres)
+    turn_server = {
+        "urls": [
+            "turn:openrelay.metered.ca:80",
+            "turn:openrelay.metered.ca:443",
+            "turn:openrelay.metered.ca:443?transport=tcp",
+            "turns:openrelay.metered.ca:443?transport=tcp",
+        ],
+        "username": "openrelayproject",
+        "credential": "openrelayproject",
+    }
 
     return RTCConfiguration(
         {
             "iceServers": [
-                {
-                    "urls": [
-                        "turn:openrelay.metered.ca:443?transport=tcp",
-                        "turn:openrelay.metered.ca:80",
-                    ],
-                    "username": "openrelayproject",
-                    "credential": "openrelayproject",
-                },
-                {"urls": ["stun:stun.l.google.com:19302"]},
+                {"urls": fast_stun_servers},
+                turn_server,
             ]
         }
     )
+
 
 
 class SenpAIMatchWebRtcProcessor(VideoProcessorBase):  # type: ignore

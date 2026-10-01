@@ -2927,7 +2927,14 @@ elif nav_page in ["match", "training", "analysis"]:
                         pipeline=pipeline_inst,
                         profile_name=active_profile_str
                     ),
-                    media_stream_constraints={"video": True, "audio": False},
+                    media_stream_constraints={
+                        "video": {
+                            "width": {"ideal": 640, "max": 1280},
+                            "height": {"ideal": 480, "max": 720},
+                            "frameRate": {"ideal": 30, "max": 30},
+                        },
+                        "audio": False,
+                    },
                     async_processing=True,
                 )
 
@@ -3535,7 +3542,14 @@ elif nav_page in ["match", "training", "analysis"]:
                         pipeline=pipeline_inst,
                         live_train_mgr=live_train_mgr
                     ),
-                    media_stream_constraints={"video": True, "audio": False},
+                    media_stream_constraints={
+                        "video": {
+                            "width": {"ideal": 640, "max": 1280},
+                            "height": {"ideal": 480, "max": 720},
+                            "frameRate": {"ideal": 30, "max": 30},
+                        },
+                        "audio": False,
+                    },
                     async_processing=True,
                 )
 
