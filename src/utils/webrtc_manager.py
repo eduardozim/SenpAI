@@ -8,12 +8,27 @@ processando os modelos de IA e devolvendo o vídeo anotado diretamente no navega
 import time
 import threading
 import html
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Callable, TYPE_CHECKING
 
 import cv2
 import numpy as np
 
-try:
+
+class _WebRtcModeFallback:
+    SENDRECV: Any = "SENDRECV"
+    RECVONLY: Any = "RECVONLY"
+    SENDONLY: Any = "SENDONLY"
+
+
+class _DummyWebRtcContext:
+    video_processor: Any = None
+
+
+def _dummy_webrtc_streamer(*args: Any, **kwargs: Any) -> Any:
+    return _DummyWebRtcContext()
+
+
+if TYPE_CHECKING:
     from streamlit_webrtc import (
         webrtc_streamer,
         WebRtcMode,
@@ -21,14 +36,24 @@ try:
         VideoProcessorBase
     )
     import av
-    HAS_WEBRTC = True
-except ImportError:
-    HAS_WEBRTC = False
-    VideoProcessorBase = object
-    RTCConfiguration = None
-    WebRtcMode = None
-    webrtc_streamer = None
-    av = None
+    HAS_WEBRTC: bool = True
+else:
+    try:
+        from streamlit_webrtc import (
+            webrtc_streamer,
+            WebRtcMode,
+            RTCConfiguration,
+            VideoProcessorBase
+        )
+        import av
+        HAS_WEBRTC = True
+    except (ImportError, ModuleNotFoundError):
+        HAS_WEBRTC = False
+        VideoProcessorBase = object
+        RTCConfiguration = None
+        WebRtcMode = _WebRtcModeFallback
+        webrtc_streamer = _dummy_webrtc_streamer
+        av = None
 
 from src.engine.reporter import DiagnosticReporter
 from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA
@@ -61,7 +86,7 @@ def get_rtc_configuration() -> Optional[Any]:
     )
 
 
-class SenpAIMatchWebRtcProcessor(VideoProcessorBase):
+class SenpAIMatchWebRtcProcessor(VideoProcessorBase):  # type: ignore
     """
     Processador de vídeo WebRTC em tempo real para o Modo de Análise de Lutas (Shiai).
     Recebe frames do navegador do cliente, executa o rastreamento dos competidores (Aka/Shiro),
@@ -209,7 +234,7 @@ class SenpAIMatchWebRtcProcessor(VideoProcessorBase):
             }
 
 
-class SenpAITrainingWebRtcProcessor(VideoProcessorBase):
+class SenpAITrainingWebRtcProcessor(VideoProcessorBase):  # type: ignore
     """
     Processador de vídeo WebRTC em tempo real para o Modo de Treinamento & Aprendizado.
     Recebe frames da webcam do navegador do usuário, rastreia os movimentos biomecânicos,

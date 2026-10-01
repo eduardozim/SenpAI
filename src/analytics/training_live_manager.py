@@ -29,13 +29,13 @@ class LiveTrainingSessionManager:
         self,
         modality_override: Optional[str] = None,
         kendoka_name: str = "Kendoka Praticante",
-        target_dan: int = 3,
+        target_dan: Optional[int] = 3,
         training_analyzer: Optional[TrainingAnalyzer] = None
     ):
         self.analyzer = training_analyzer or TrainingAnalyzer()
         self.modality_override = modality_override if modality_override and modality_override != "auto" else None
         self.kendoka_name = kendoka_name.strip() or "Kendoka Praticante"
-        self.target_dan = target_dan
+        self.target_dan = target_dan if target_dan is not None else 3
 
         self.start_time = time.time()
         self.frame_count = 0
@@ -198,8 +198,8 @@ class LiveTrainingSessionManager:
                     modality_key=self.current_modality_key,
                     fps=fps
                 )
-                self.movement_score = float(pm.movement_score)
-                self.precision_score = float(pm.precision_score)
+                self.movement_score = float(pm.movimentacao)
+                self.precision_score = float(pm.precisao)
 
                 # Constância baseada na regularidade do intervalo entre as repetições
                 cadence_cpm = self.get_current_cadence_cpm()
@@ -211,7 +211,7 @@ class LiveTrainingSessionManager:
                         dist = min(abs(cadence_cpm - expected_min), abs(cadence_cpm - expected_max))
                         const_sc = max(40.0, 80.0 - dist * 1.5)
                 else:
-                    const_sc = float(pm.constancy_score)
+                    const_sc = float(pm.constancia)
 
                 self.constancy_score = float(const_sc)
                 self.overall_score = round(

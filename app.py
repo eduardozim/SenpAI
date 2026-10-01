@@ -2931,7 +2931,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     async_processing=True,
                 )
 
-                if webrtc_ctx.video_processor:
+                if webrtc_ctx and webrtc_ctx.video_processor:
                     snap = webrtc_ctx.video_processor.get_snapshot()
                     fps_metric.metric("Desempenho da Transmissão (WebRTC)", f"{snap['fps']:.1f} FPS", f"Quadros: {snap['frame_count']}")
                     live_score_ph.html(render_live_score_html(
@@ -3523,7 +3523,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 live_train_mgr = LiveTrainingSessionManager(
                     modality_override=selected_train_mod if selected_train_mod != "auto" else None,
                     kendoka_name=kendoka_name_val,
-                    target_dan=target_dan_val,
+                    target_dan=int(target_dan_val) if target_dan_val is not None else 3,
                     training_analyzer=pipeline_inst.training_analyzer
                 )
 
@@ -3539,7 +3539,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     async_processing=True,
                 )
 
-                if webrtc_ctx.video_processor:
+                if webrtc_ctx and webrtc_ctx.video_processor:
                     snap = webrtc_ctx.video_processor.get_snapshot()
                     train_fps_metric.metric("Desempenho da Transmissão (WebRTC)", f"{snap['fps']:.1f} FPS", f"Quadros: {snap['frame_count']}")
                     train_hud_ph.html(snap["hud_html"])
@@ -3576,7 +3576,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 live_train_mgr = LiveTrainingSessionManager(
                     modality_override=selected_train_mod if selected_train_mod != "auto" else None,
                     kendoka_name=kendoka_name_val,
-                    target_dan=target_dan_val,
+                    target_dan=int(target_dan_val) if target_dan_val is not None else 3,
                     training_analyzer=pipeline.training_analyzer
                 )
 
