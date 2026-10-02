@@ -50,7 +50,6 @@
   },
   "normal": {
     "name": "Treino Geral / Keiko (Normal)",
-    "description": "Equilíbrio padrão para treinos do dia a dia e avaliações gerais de Keiko.",
     "min_total_score": 0.74,
     "weights": {
       "target_impact": 0.4,
@@ -59,10 +58,10 @@
       "zanshin": 0.15
     },
     "sub_thresholds": {
-      "target_impact": 0.72,
-      "fumikomi_sync": 0.75,
-      "posture": 0.75,
-      "zanshin": 0.72
+      "target_impact": 0.6,
+      "fumikomi_sync": 0.55,
+      "posture": 0.55,
+      "zanshin": 0.45
     },
     "weights_by_strike_type": {
       "MEN": {
@@ -92,10 +91,10 @@
     },
     "platt_scaling": {
       "a": 12.0,
-      "b": -8.8,
+      "b": -8.0,
       "is_fitted": false
     },
-    "last_calibrated_at": "2026-10-02T12:00:00Z"
+    "last_calibrated_at": "2026-10-02T17:43:23.694040+00:00"
   },
   "rigido": {
     "name": "Campeonato / Audit de Dan (Rígido)",
@@ -148,7 +147,6 @@
   },
   "shiai": {
     "name": "Shiai",
-    "description": "Perfil de competição oficial com penalização assimétrica 3x contra Falsos Positivos.",
     "min_total_score": 0.65,
     "weights": {
       "target_impact": 0.4,
@@ -157,10 +155,10 @@
       "zanshin": 0.15
     },
     "sub_thresholds": {
-      "target_impact": 0.65,
-      "fumikomi_sync": 0.65,
-      "posture": 0.65,
-      "zanshin": 0.55
+      "target_impact": 0.6,
+      "fumikomi_sync": 0.55,
+      "posture": 0.55,
+      "zanshin": 0.45
     },
     "weights_by_strike_type": {
       "MEN": {
@@ -190,9 +188,9 @@
     },
     "platt_scaling": {
       "a": 12.0,
-      "b": -7.8,
+      "b": -8.0,
       "is_fitted": false
     },
-    "last_calibrated_at": "2026-10-02T12:00:00Z"
+    "last_calibrated_at": "2026-10-02T17:43:23.754848+00:00"
   }
 }

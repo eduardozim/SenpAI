@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.1.0`
+> **Versão Oficial do Sistema**: `v 0.3.2.0`
 
 ---
 
@@ -638,7 +638,37 @@ Total de **181 testes automatizados** distribuídos em 19 módulos, executados e
 
 ---
 
-### `[v 0.3.1.0]` — 2026-10-02 *(Versão Atual)*
+### `[v 0.3.2.0]` — 2026-10-02 *(Versão Atual)*
+
+- **Implementação do Eixo 2: Conversão da Pesquisa Web em Parâmetros Físicos Acionáveis ([actionable_research.py](file:///d:/Projetos/SenpAI/Dev/src/engine/actionable_research.py), [auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py), [llm_assistant.py](file:///d:/Projetos/SenpAI/Dev/src/engine/llm_assistant.py) & [mathematical_calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/mathematical_calibrator.py))**:
+  - **Pipeline de Extração Estruturada (Knowledge → JSON Schema - `PhysicalConstraintExtractor`)**:
+    - Extração automática de restrições biomecânicas numéricas rígidas a partir de manuais e pesquisas da web para os conceitos e modalidades de Kendo (*Yuko-Datotsu*, *Tenouchi*, *Hasuji*, *Fumikomi-ashi*, *Men*, *Kote*, *Do*, *Tsuki*).
+    - Validação de faixas físicas biologicamente plausíveis em formato estrito (`elbow_extension_impact_deg`, `spine_tilt_max_deg`, `fumikomi_hand_foot_window_ms`, `zanshin_duration_min_sec`, `hasuji_max_deviation_deg`, `blade_contact_zone`).
+    - Integração no `KendoLLMAssistant.extract_physical_constraints` com suporte a execução remota e fallback especialista determinístico offline.
+  - **Hierarquia Estrita de Fontes e Resolução de Conflitos (`SourceHierarchyResolver`)**:
+    - Implementação das 5 camadas de autoridade marcial:
+      - **Tier 1 (Prioridade 1, Peso 1.00)**: *FIK Official Rulebook* — Máxima autoridade, prevalece sempre.
+      - **Tier 2 (Prioridade 2, Peso 0.85)**: *AJKF Referee Handbook* — Alta autoridade.
+      - **Tier 3 (Prioridade 3, Peso 0.65)**: *Literatura arbitral especializada* — Média autoridade.
+      - **Tier 4 (Prioridade 4, Peso 0.45)**: *Artigos acadêmicos e estudos laboratoriais* — Baixa autoridade.
+      - **Tier 5 (Prioridade 5, Peso 0.00)**: *Blogs e fóruns abertos* — Descartados como prior de calibração.
+    - **Princípio do Conservadorismo Técnico**: Em caso de empate de autoridade entre fontes, o critério que impõe maior rigor técnico e menor tolerância a falhas prevalece incondicionalmente (menor inclinação de coluna, menor atraso de Fumikomi, maior tempo de Zanshin).
+    - Histórico e trilha de auditoria de decisões de desempate mantido em `conflict_history`.
+  - **Mineração de Vídeos de Referência Oficial (`EmpiricalDistributionLearner`)**:
+    - Mineração estatística de clipes de combates oficiais confirmados por árbitros (2 ou 3 bandeiras levantadas).
+    - Construção das distribuições empíricas de referência por tipo de golpe (`MEN`, `KOTE`, `DO`, `TSUKI`), calculando média ($\mu$), desvio padrão ($\sigma$), mínimo, máximo e percentis completos ($p_{25}, p_{50} \text{ [mediana]}, p_{75}, p_{90}$) para cada dimensão de Ki-Ken-Tai-Ichi.
+    - Armazenamento dedicado em `data/empirical_reference_distributions.json` e sincronização direta com a Base de Conhecimento da IA.
+  - **Injeção de Priors Bayesianos no Otimizador Numérico (`BayesianPriorInjector`)**:
+    - Vinculação direta das restrições físicas e medianas empíricas como fronteiras rígidas intransponíveis (*boundary conditions*) do `BayesianCalibrationOptimizer`.
+    - Garantia formal de que sub-limiares (postura, fumikomi, impacto e zanshin) e piso do score global não possam ser degradados além dos limites canônicos estabelecidos pela FIK/AJKF.
+  - **Painel Interativo do Eixo 2 no Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+    - Visualização em 3 abas interativas dedicadas: *Restrições Biomecânicas (JSON Schema com Badges de Autoridade)*, *Distribuições Empíricas de Vídeos Oficiais (Tabelas com percentis por golpe e botão de mineração em 1 clique)* e *Hierarquia de Fontes & Log de Resolução de Conflitos*.
+  - **Suíte de Testes Automatizados**:
+    - Criação de `tests/test_actionable_research_eixo2.py` com 10 testes rigorosos cobrindo todas as funcionalidades com 100% de aprovação.
+
+---
+
+### `[v 0.3.1.0]` — 2026-10-02
 
 - **Implementação do Eixo 1: Otimização Matemática e Calibração dos Pesos ([mathematical_calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/mathematical_calibrator.py), [calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py) & [calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))**:
   - **Otimizador Numérico Bayesiano (`BayesianCalibrationOptimizer`)**:

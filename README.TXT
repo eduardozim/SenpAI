@@ -1,7 +1,7 @@
 ===============================================================================
                         SENPAI (先輩 AI) - GUIA RÁPIDO
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
-                              Versão: v 0.3.1.0
+                              Versão: v 0.3.2.0
 ===============================================================================
 
 O SenpAI é um sistema de visão computacional e análise biomecânica projetado
@@ -262,7 +262,43 @@ Perfis Pré-configurados:
   Ajuste livre via sliders em tempo real no dashboard Web.
 
 -------------------------------------------------------------------------------
-6. CRITÉRIOS AVALIADOS (KI-KEN-TAI-ICHI & MAAI)
+6. PARÂMETROS FÍSICOS ACIONÁVEIS & HIERARQUIA DE FONTES (EIXO 2)
+-------------------------------------------------------------------------------
+
+O SenpAI converte pesquisas regulamentares e vídeos oficiais em restrições
+físicas acionáveis e priors bayesianos rígidos (actionable_research.py):
+
+- Pipeline de Extração Estruturada (Knowledge -> JSON Schema):
+  Extrai e valida limites biomecânicos a partir de manuais da FIK/AJKF e literatura:
+  • Extensão de cotovelos no Men: [150.0°, 175.0°] (ideal: 165.0°).
+  • Inclinação máxima de coluna (Shisei): <= 8.5°.
+  • Janela de simultaneidade do Fumikomi: [-45.0, 30.0] ms.
+  • Duração mínima de Zanshin regulamentar: >= 0.80 s.
+  • Desvio angular máximo de corte (Hasuji): <= 12.0°.
+  • Zona de contato regulamentar: Datotsu-bu / Monouchi do Shinai.
+
+- Hierarquia Estrita de Fontes & Resolução de Conflitos:
+  Classificação das 5 camadas de autoridade marcial:
+  1. FIK Official Rulebook (Autoridade Máxima - 1.00): prevalece sempre.
+  2. AJKF Referee Handbook (Autoridade Alta - 0.85): manuais práticos de arbitragem.
+  3. Literatura Especializada (Autoridade Média - 0.65): tratados técnicos de mestres.
+  4. Artigos Científicos (Autoridade Baixa - 0.45): estudos laboratoriais de biomecânica.
+  5. Blogs e Fóruns (Descartado - 0.00): desconsiderados como prior de calibração.
+  • Regra do Conservadorismo: em empates de autoridade, o critério que exige maior
+    rigor técnico e menor tolerância a erro prevalece incondicionalmente.
+
+- Mineração de Vídeos de Referência Oficial:
+  Extrai e calcula distribuições empíricas de referência (média, desvio padrão,
+  mínimo, máximo e percentis p25, p50 [mediana], p75, p90) a partir de lutas
+  oficiais com confirmação arbitral (2 ou 3 bandeiras), salvas em:
+  data/empirical_reference_distributions.json.
+
+- Injeção de Priors Bayesianos no Calibrador:
+  As restrições físicas atuam como fronteiras intransponíveis (boundary conditions)
+  durante a otimização de pesos e sub-limiares pelo BayesianCalibrationOptimizer.
+
+-------------------------------------------------------------------------------
+7. CRITÉRIOS AVALIADOS (KI-KEN-TAI-ICHI & MAAI)
 -------------------------------------------------------------------------------
 
 - Alvo / Impacto (Ken): Precisão do impacto do Kensen na zona de ataque (Men, Kote, Do, Tsuki).
@@ -273,7 +309,7 @@ Para documentação técnica completa, detalhamento dos algoritmos e histórico 
 mudanças, consulte o arquivo manual.md.
 
 -------------------------------------------------------------------------------
-7. DIREITOS DE USO, CÓPIA E PROPRIEDADE INTELECTUAL
+8. DIREITOS DE USO, CÓPIA E PROPRIEDADE INTELECTUAL
 -------------------------------------------------------------------------------
 
 (C) 2026 SenpAI (先輩 AI) - Plataforma Inteligente de Kendo.

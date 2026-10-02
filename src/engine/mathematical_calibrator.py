@@ -502,6 +502,33 @@ class BayesianCalibrationOptimizer:
         if max_fp_score >= prior_min_total:
             prior_min_total = min(0.90, max(prior_min_total + 0.05, max_fp_score + 0.02))
 
+        # Injeção de Priors Bayesianos e Restrições Biomecânicas Rígidas (Eixo 2)
+        lower_sub_target = 0.30
+        lower_sub_fumi = 0.30
+        lower_sub_posture = 0.30
+        lower_sub_zanshin = 0.20
+        floor_min_total = 0.50
+
+        try:
+            from src.engine.actionable_research import BayesianPriorInjector
+            prior_inj = BayesianPriorInjector()
+            b_priors = prior_inj.derive_optimizer_bounds_and_priors(strike_type=strike_type)
+            if b_priors and "sub_threshold_lower_bounds" in b_priors:
+                bounds_dict = b_priors["sub_threshold_lower_bounds"]
+                lower_sub_target = max(lower_sub_target, float(bounds_dict.get("target_impact", 0.30)))
+                lower_sub_fumi = max(lower_sub_fumi, float(bounds_dict.get("fumikomi_sync", 0.30)))
+                lower_sub_posture = max(lower_sub_posture, float(bounds_dict.get("posture", 0.30)))
+                lower_sub_zanshin = max(lower_sub_zanshin, float(bounds_dict.get("zanshin", 0.20)))
+                floor_min_total = max(floor_min_total, float(b_priors.get("min_total_score_floor", 0.50)))
+        except Exception:
+            pass
+
+        prior_min_total = max(prior_min_total, floor_min_total)
+        prior_sub_th["target_impact"] = max(prior_sub_th.get("target_impact", 0.50), lower_sub_target)
+        prior_sub_th["fumikomi_sync"] = max(prior_sub_th.get("fumikomi_sync", 0.50), lower_sub_fumi)
+        prior_sub_th["posture"] = max(prior_sub_th.get("posture", 0.50), lower_sub_posture)
+        prior_sub_th["zanshin"] = max(prior_sub_th.get("zanshin", 0.40), lower_sub_zanshin)
+
         # Inicial perda inicial
         init_loss, init_metrics = self.evaluate_loss(prior_weights, prior_min_total, prior_sub_th, samples, prior_weights)
 
@@ -539,12 +566,12 @@ class BayesianCalibrationOptimizer:
                         "zanshin": w_z
                     }
 
-                    trial_min_total = trial.suggest_float("min_total_score", 0.50, 0.90)
+                    trial_min_total = trial.suggest_float("min_total_score", floor_min_total, 0.90)
                     trial_sub_th = {
-                        "target_impact": trial.suggest_float("sub_target", 0.30, 0.85),
-                        "fumikomi_sync": trial.suggest_float("sub_fumi", 0.30, 0.85),
-                        "posture": trial.suggest_float("sub_posture", 0.30, 0.85),
-                        "zanshin": trial.suggest_float("sub_zanshin", 0.20, 0.85)
+                        "target_impact": trial.suggest_float("sub_target", lower_sub_target, 0.85),
+                        "fumikomi_sync": trial.suggest_float("sub_fumi", lower_sub_fumi, 0.85),
+                        "posture": trial.suggest_float("sub_posture", lower_sub_posture, 0.85),
+                        "zanshin": trial.suggest_float("sub_zanshin", lower_sub_zanshin, 0.85)
                     }
 
                     loss_val, _ = self.evaluate_loss(trial_weights, trial_min_total, trial_sub_th, samples, prior_weights)
@@ -602,11 +629,11 @@ class BayesianCalibrationOptimizer:
                 (0.10, 0.60),  # w_f
                 (0.10, 0.50),  # w_p
                 (0.10, 0.50),  # w_z
-                (0.50, 0.90),  # min_total
-                (0.30, 0.85),  # th_t
-                (0.30, 0.85),  # th_f
-                (0.30, 0.85),  # th_p
-                (0.20, 0.85)   # th_z
+                (floor_min_total, 0.90),  # min_total
+                (lower_sub_target, 0.85),  # th_t
+                (lower_sub_fumi, 0.85),  # th_f
+                (lower_sub_posture, 0.85),  # th_p
+                (lower_sub_zanshin, 0.85)   # th_z
             ]
 
             # Restrição de igualdade: w_t + w_f + w_p + w_z = 1.0
@@ -666,23 +693,29 @@ class BayesianCalibrationOptimizer:
         if max_fp_score > 0 and max_fp_score >= float(current_config.get("min_total_score", 0.65)):
             best_min_total = round(max(best_min_total, min(0.90, max_fp_score + 0.02)), 2)
 
+        # Garantir limites rígidos bayesianos finais
+        best_sub_th["target_impact"] = max(best_sub_th.get("target_impact", 0.50), lower_sub_target)
+        best_sub_th["fumikomi_sync"] = max(best_sub_th.get("fumikomi_sync", 0.50), lower_sub_fumi)
+        best_sub_th["posture"] = max(best_sub_th.get("posture", 0.50), lower_sub_posture)
+        best_sub_th["zanshin"] = max(best_sub_th.get("zanshin", 0.40), lower_sub_zanshin)
+        best_min_total = max(best_min_total, floor_min_total)
+
         # Avaliar métricas finais
         final_loss, final_metrics = self.evaluate_loss(best_weights, best_min_total, best_sub_th, samples, prior_weights)
 
         # Montar novo dicionário de configuração preservando metadados
         new_config = json.loads(json.dumps(current_config))
+        new_config["min_total_score"] = best_min_total
+        new_config["sub_thresholds"] = best_sub_th
 
         if strike_type:
-            # Atualiza apenas na tabela especializada de strike type
+            # Atualiza na tabela especializada de strike type
             wb_strike = new_config.get("weights_by_strike_type", json.loads(json.dumps(DEFAULT_WEIGHTS_BY_STRIKE_TYPE)))
             wb_strike[strike_type.upper()] = best_weights
             new_config["weights_by_strike_type"] = wb_strike
+            new_config.setdefault("sub_thresholds_by_strike_type", {})[strike_type.upper()] = best_sub_th
         else:
             new_config["weights"] = best_weights
-            new_config["min_total_score"] = best_min_total
-            new_config["sub_thresholds"] = best_sub_th
-
-            # Garantir presença de weights_by_strike_type inicializado se não existir
             if "weights_by_strike_type" not in new_config:
                 new_config["weights_by_strike_type"] = json.loads(json.dumps(DEFAULT_WEIGHTS_BY_STRIKE_TYPE))
 

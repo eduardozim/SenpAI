@@ -2436,6 +2436,118 @@ elif nav_page == "settings":
                         st.error(f"Erro na otimização: {err}")
 
         # ----------------------------------------------------------------------
+        # EIXO 2: CONVERSÃO DE PESQUISA EM PARÂMETROS FÍSICOS ACIONÁVEIS
+        # ----------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("### 🌐 Eixo 2: Conversão da Pesquisa Web em Parâmetros Físicos Acionáveis")
+        st.caption("Extração paramétrica estruturada (JSON Schema), hierarquia regulamentar estrita de fontes (FIK > AJKF > Artigos) e mineração de vídeos de referência oficial.")
+
+        tab_e2_constraints, tab_e2_empirical, tab_e2_hierarchy = st.tabs([
+            "📏 Restrições Biomecânicas (JSON Schema)",
+            "🎬 Distribuições Empíricas de Vídeos Oficiais",
+            "⚖️ Hierarquia de Fontes & Resolução de Conflitos"
+        ])
+
+        with tab_e2_constraints:
+            st.markdown("#### 📐 Limites Físicos Rígidos Consolidados (Boundary Conditions)")
+            st.caption("Essas restrições atuam como fronteiras intransponíveis durante a calibração de pesos e sub-limiares:")
+
+            try:
+                p_constraints = auto_trainer.get_physical_constraints() if hasattr(auto_trainer, "get_physical_constraints") else {}
+            except Exception:
+                p_constraints = {}
+
+            if p_constraints:
+                c_cards = st.columns(len(p_constraints))
+                for idx, (c_name, c_data) in enumerate(p_constraints.items()):
+                    with c_cards[idx % len(c_cards)]:
+                        tier_num = c_data.get("authority_tier", 2)
+                        badge_color = "#28a745" if tier_num == 1 else ("#17a2b8" if tier_num == 2 else "#ffc107")
+                        tier_label = "🥇 Tier 1 (FIK)" if tier_num == 1 else ("🥈 Tier 2 (AJKF)" if tier_num == 2 else f"🥉 Tier {tier_num}")
+
+                        st.markdown(f"""
+                        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <strong style="font-size: 1.05em;">{c_name.replace('_', ' ').title()}</strong>
+                                <span style="background: {badge_color}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold;">{tier_label}</span>
+                            </div>
+                            <div style="font-size: 0.85em; color: #aaa; margin: 4px 0 8px 0;">{c_data.get('source', 'Diretriz Oficial')}</div>
+                            <pre style="font-size: 0.80em; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; overflow-x: auto;">{json.dumps(c_data.get('constraints', {}), indent=2, ensure_ascii=False)}</pre>
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.info("Nenhuma restrição física consolidada registrada no momento.")
+
+        with tab_e2_empirical:
+            st.markdown("#### 🏆 Distribuição Empírica de Referência (Oficiais FIK / AJKF)")
+            st.caption("Padrão áureo cinemático extraído de clipes onde árbitros oficiais levantaram bandeira de Ippon (2 ou 3 bandeiras):")
+
+            try:
+                emp_dists_data = auto_trainer.get_empirical_reference_distributions() if hasattr(auto_trainer, "get_empirical_reference_distributions") else {}
+                dists_by_strike = emp_dists_data.get("distributions_by_strike", {})
+            except Exception:
+                emp_dists_data = {}
+                dists_by_strike = {}
+
+            if dists_by_strike:
+                st_tabs = st.tabs(["🔴 Men", "🟡 Kote", "🟢 Do", "🔵 Tsuki"])
+                for s_idx, s_key in enumerate(["MEN", "KOTE", "DO", "TSUKI"]):
+                    with st_tabs[s_idx]:
+                        s_metrics = dists_by_strike.get(s_key, {})
+                        if s_metrics:
+                            rows = []
+                            for m_k, dist_v in s_metrics.items():
+                                rows.append({
+                                    "Métrica": m_k.replace('_', ' ').title(),
+                                    "Média (μ)": f"{dist_v.get('mean', 0.0):.3f}",
+                                    "Desvio (σ)": f"±{dist_v.get('std', 0.0):.3f}",
+                                    "Mediana (p50)": f"{dist_v.get('p50', 0.0):.3f}",
+                                    "p25": f"{dist_v.get('p25', 0.0):.3f}",
+                                    "p75": f"{dist_v.get('p75', 0.0):.3f}",
+                                    "p90": f"{dist_v.get('p90', 0.0):.3f}",
+                                    "Amostras": dist_v.get('sample_count', 0)
+                                })
+                            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                        else:
+                            st.write(f"Sem dados suficientes para {s_key}.")
+
+            if st.button("🎬 Minerar Clipes de Lutas Oficiais (FIK/AJKF)", key="btn_mine_official_clips", use_container_width=True):
+                with st.spinner("Minerando métricas cinemáticas dos clipes oficiais confirmados..."):
+                    try:
+                        mine_res = auto_trainer.mine_official_video_clips()
+                        cnt = mine_res.get("metadata", {}).get("total_confirmed_clips_mined", 0)
+                        st.success(f"✅ Mineração concluída! {cnt} clipes oficiais com bandeiras integrados às distribuições empíricas.")
+                        st.rerun()
+                    except Exception as m_err:
+                        st.error(f"Erro na mineração: {m_err}")
+
+        with tab_e2_hierarchy:
+            st.markdown("#### 🏛️ Hierarquia Estrita de Autoridade Regulamentar")
+            st.markdown("""
+| Prioridade | Camada / Fonte | Autoridade | Prevalência & Regra de Desempate |
+| :---: | :--- | :---: | :--- |
+| **1** | **FIK Official Rulebook** | **Máxima (1.00)** | Prevalece incondicionalmente sobre qualquer outra fonte. |
+| **2** | **AJKF Referee Handbook** | **Alta (0.85)** | Prevalece sobre literatura secundária e artigos. |
+| **3** | **Literatura Especializada** | **Média (0.65)** | Manuais e tratados técnicos de mestres de Kendo. |
+| **4** | **Artigos Científicos** | **Baixa (0.45)** | Estudos biomecânicos laboratoriais e cinemáticos. |
+| **5** | **Blogs e Fóruns** | **Descartado (0.00)** | Descartados automaticamente como prior de calibração. |
+            """)
+            st.caption("⚖️ **Princípio do Conservadorismo:** Em caso de empate de autoridade, o critério que exige maior rigor técnico (tolerância menor / execução mais exigente) prevalece por padrão.")
+
+            # Histórico de resoluções de conflito
+            try:
+                c_history = auto_trainer.get_conflict_resolution_history() if hasattr(auto_trainer, "get_conflict_resolution_history") else []
+            except Exception:
+                c_history = []
+
+            if c_history:
+                st.markdown("##### 📜 Histórico Recente de Resolução de Conflitos:")
+                for ch in c_history[-5:]:
+                    st.write(f"• **{ch.get('param_name')}**: {ch.get('reason')}")
+            else:
+                st.info("Nenhum conflito de parâmetros registrado na sessão ativa. A base opera em conformidade estrita com as diretrizes da FIK/AJKF.")
+
+        # ----------------------------------------------------------------------
         # EIXO 4: GOLDEN BENCHMARK, APRENDIZADO ATIVO & ASSISTENTE LLM
         # ----------------------------------------------------------------------
         st.markdown("---")

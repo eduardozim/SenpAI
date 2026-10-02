@@ -20,6 +20,15 @@ from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA
 from src.engine.feedback_manager import FeedbackManager, DEFAULT_CALIBRATION_PROFILES
 from src.engine.calibrator import CalibrationEngine
 from src.utils.logger_manager import log_event
+from src.engine.actionable_research import (
+    SourceHierarchyResolver,
+    SourceAuthorityTier,
+    PhysicalConstraintExtractor,
+    EmpiricalDistributionLearner,
+    BayesianPriorInjector,
+    DEFAULT_PHYSICAL_CONSTRAINTS
+)
+
 
 
 # ==============================================================================
@@ -360,6 +369,10 @@ class AutoTrainingEngine:
         except Exception:
             pass
         self.calibrator = CalibrationEngine(config_path=profiles_path)
+        self.resolver = SourceHierarchyResolver()
+        self.extractor = PhysicalConstraintExtractor(resolver=self.resolver)
+        self.empirical_learner = EmpiricalDistributionLearner()
+        self.prior_injector = BayesianPriorInjector(knowledge_base_path=self.knowledge_base_path)
         self._is_running = False
         self._stop_requested = False
         self._ensure_knowledge_base()
@@ -466,6 +479,16 @@ class AutoTrainingEngine:
             kb["learned_parameters"]["general_kendo_principles"] = list(KENDO_GENERAL_PRINCIPLES)
         if "auto_learning_sequence_step" not in kb["learned_parameters"]:
             kb["learned_parameters"]["auto_learning_sequence_step"] = 0
+
+        # Garantir restrições físicas acionáveis e distribuições empíricas (Eixo 2)
+        if "physical_constraints" not in kb["learned_parameters"]:
+            kb["learned_parameters"]["physical_constraints"] = dict(DEFAULT_PHYSICAL_CONSTRAINTS)
+        if "empirical_distributions" not in kb["learned_parameters"]:
+            try:
+                emp_dists = getattr(self, "empirical_learner", EmpiricalDistributionLearner()).load_distributions()
+                kb["learned_parameters"]["empirical_distributions"] = emp_dists.get("distributions_by_strike", {})
+            except Exception:
+                pass
 
         return kb
 
@@ -597,8 +620,8 @@ class AutoTrainingEngine:
                 "biomechanical_thresholds": mod_kb.get("biomechanical_thresholds", {})
             })
 
-        # Se for escopo geral ou Shiai
-        if not discovered_sources or scope_key in ["general_all", "latent_need", "recorded_shiai", "realtime_shiai"]:
+        # 3. Fallback para Escopo Geral ou Modalidade Desconhecida
+        if not discovered_sources or scope_key in ["general_all", "latent_need", "recorded_shiai", "realtime_shiai", "general"]:
             for r_k, r_v in KENDO_KNOWLEDGE_RESOURCES.items():
                 discovered_sources.append({
                     "title": r_v.get("title", r_k),
@@ -609,6 +632,21 @@ class AutoTrainingEngine:
                     "principles": r_v.get("key_concepts", []),
                     "biomechanical_thresholds": r_v.get("biomechanical_thresholds", {})
                 })
+
+        # 4. Enriquecimento com Autoridade Hierárquica e Restrições Biomecânicas (Eixo 2)
+        for src in discovered_sources:
+            tier = self.resolver.classify_source(src)
+            src["authority_tier"] = tier.priority
+            src["authority_name"] = tier.display_name
+            src["authority_desc"] = tier.authority_desc
+            src["authority_weight"] = tier.weight
+            # Extração paramétrica JSON Schema
+            try:
+                extracted = self.extractor.extract_from_source(src)
+                src["physical_constraints"] = extracted.get("constraints", {})
+                src["structured_concept"] = extracted.get("concept", "")
+            except Exception:
+                pass
 
         return discovered_sources
 
@@ -729,9 +767,17 @@ class AutoTrainingEngine:
                     prev_acc = float(learned_mods[mod_k].get("current_accuracy", 88.0))
                     learned_mods[mod_k]["current_accuracy"] = min(99.4, round(prev_acc + 0.5, 1))
 
-        if scope_key == "latent_need":
-            cur_seq = int(kb.get("learned_parameters", {}).get("auto_learning_sequence_step", 0))
-            kb.setdefault("learned_parameters", {})["auto_learning_sequence_step"] = (cur_seq + 1) % 3
+        # Injeção de Priors e Constraints Biomecânicas Rígidas (Eixo 2)
+        new_constraints_map = {}
+        for src in sources_to_add:
+            try:
+                extracted = self.extractor.extract_from_source(src)
+                concept = extracted.get("concept", "general_kendo_biomechanics")
+                new_constraints_map[concept] = extracted
+            except Exception:
+                pass
+        if new_constraints_map:
+            self.prior_injector.inject_constraints_into_knowledge_base(new_constraints_map)
 
         kb["last_retrained_at"] = datetime.datetime.now().isoformat()
         self.save_knowledge_base(kb)
@@ -743,6 +789,54 @@ class AutoTrainingEngine:
 
         log_event("INFO", f"Checkpoint consolidado com sucesso. {new_sources_count} novas fontes integradas à Base de Conhecimento.", "auto_trainer")
         return ckpt
+
+    # ==========================================================================
+    # MÉTODOS PÚBLICOS DE PESQUISA ACIONÁVEL E MINERAÇÃO DE VÍDEOS (EIXO 2)
+    # ==========================================================================
+    def mine_official_video_clips(
+        self,
+        clips_dataset: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Minera distribuições empíricas de referência (média, desvio padrão, percentis p25, p50, p75, p90)
+        a partir de clipes oficiais de arbitragem (Eixo 2.2).
+        Utiliza lances onde árbitros levantaram bandeiras confirmando o ponto (flags >= 2).
+        """
+        if clips_dataset is None:
+            # Tentar carregar de dataset de feedback ou vídeos revisados
+            clips_dataset = []
+            try:
+                if self.feedback_mgr:
+                    feedbacks = self.feedback_mgr.load_feedbacks()
+                    # Seleciona feedbacks com bandeiras ou confirmados por Dan alto
+                    for fb in feedbacks:
+                        if fb.get("label") in ["TP", "CONFIRMED", "VALID", "IPPON"]:
+                            clips_dataset.append(fb)
+            except Exception:
+                pass
+
+        results = self.empirical_learner.mine_from_confirmed_clips(clips_dataset)
+
+        # Atualizar a Base de Conhecimento com as distribuições
+        kb = self.load_knowledge_base()
+        kb.setdefault("learned_parameters", {})["empirical_distributions"] = results.get("distributions_by_strike", {})
+        self.save_knowledge_base(kb)
+
+        log_event("INFO", f"Mineração de clipes oficiais concluída. {results.get('metadata', {}).get('total_confirmed_clips_mined', 0)} clipes minerados.", "auto_trainer")
+        return results
+
+    def get_physical_constraints(self) -> Dict[str, Any]:
+        """Retorna o mapa consolidado de restrições biomecânicas físicas (Eixo 2.1)."""
+        return self.prior_injector.get_consolidated_physical_constraints()
+
+    def get_conflict_resolution_history(self) -> List[Dict[str, Any]]:
+        """Retorna o histórico de resoluções de conflitos entre fontes regulamentares (Eixo 2.3)."""
+        return list(self.resolver.conflict_history)
+
+    def get_empirical_reference_distributions(self) -> Dict[str, Any]:
+        """Retorna as distribuições empíricas de referência por golpe mineradas de vídeos oficiais (Eixo 2.2)."""
+        return self.empirical_learner.load_distributions()
+
 
     def export_knowledge_data(self) -> Dict[str, Any]:
         """
@@ -2279,7 +2373,8 @@ class AutoTrainingEngine:
         return new_cfg, stats
 
 
-# Instância Singleton Global
+# Instância Singleton Global e Alias de compatibilidade
+AutoTrainer = AutoTrainingEngine
 auto_trainer = AutoTrainingEngine()
 
 
