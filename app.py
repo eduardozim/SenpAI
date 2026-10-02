@@ -80,10 +80,11 @@ from src.utils.video_player_controls import render_video_playback_controls
 # Inicializa o logger central do sistema
 setup_system_logger()
 
-
+# Versão Oficial do Sistema
+SYSTEM_VERSION = "v 0.3.5.0"
 
 st.set_page_config(
-    page_title="SenpAI - AI Kendo Referee & Analysis System",
+    page_title=f"SenpAI ({SYSTEM_VERSION}) - AI Kendo Referee & Analysis System",
     page_icon="⚔️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -839,9 +840,14 @@ def render_hero_banner():
                     </div>
                 </div>
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                    <span style="background: rgba(99, 102, 241, 0.25); color: #C7D2FE; border: 1px solid #6366F1; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;">
-                        🏛️ FIK & AJKF Standards
-                    </span>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span style="background: rgba(99, 102, 241, 0.25); color: #C7D2FE; border: 1px solid #6366F1; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;">
+                            🏛️ FIK & AJKF Standards
+                        </span>
+                        <span style="background: rgba(99, 102, 241, 0.20); color: #A5B4FC; border: 1px solid #818CF8; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 800;">
+                            🏷️ {SYSTEM_VERSION}
+                        </span>
+                    </div>
                     <span style="background: rgba(34, 197, 94, 0.15); color: #4ADE80; border: 1px solid #22C55E; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 700;">
                         ⚡ Hardware: {effective_dev.upper()} ({gpu_label}) &nbsp;|&nbsp; 🧠 {active_model_info['name']}
                     </span>
@@ -849,7 +855,7 @@ def render_hero_banner():
             </div>
             <div style="margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(99, 102, 241, 0.25); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 11.5px; color: #94A3B8;">
                 <div style="display: flex; align-items: center; gap: 6px;">
-                    <span><b>© 2026 SenpAI (先輩 AI)</b> • Todos os direitos de uso e cópia reservados.</span>
+                    <span><b>© 2026 SenpAI (先輩 AI)</b> • Versão Oficial <b>{SYSTEM_VERSION}</b> • Todos os direitos reservados.</span>
                 </div>
                 <div style="color: #818CF8; font-size: 11px;">
                     🔒 Protegido por Direitos Autorais • Proibida reprodução não autorizada
@@ -867,12 +873,12 @@ def render_global_footer():
     """
     st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
     st.markdown(
-        """
+        f"""
         <div style="border-top: 1px solid #1E293B; padding-top: 20px; padding-bottom: 28px; margin-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #64748B;">
             <div>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                     <span style="font-weight: 800; color: #E2E8F0; font-size: 13px;">SenpAI • 先輩 AI</span>
-                    <span style="color: #6366F1; font-weight: 700; font-size: 11px; background: rgba(99, 102, 241, 0.12); padding: 2px 8px; border-radius: 9999px;">v 0.3.0.0</span>
+                    <span style="color: #6366F1; font-weight: 700; font-size: 11px; background: rgba(99, 102, 241, 0.12); padding: 2px 8px; border-radius: 9999px;">{SYSTEM_VERSION}</span>
                 </div>
                 <div style="color: #94A3B8; font-size: 11.5px; line-height: 1.5;">
                     Plataforma de Visão Computacional e Análise Automatizada de Kendo (FIK & AJKF Standards).
@@ -1102,6 +1108,15 @@ def render_welcome_home_page():
 
 
 # --- SIDEBAR: NAVEGAÇÃO PRINCIPAL ---
+st.sidebar.markdown(
+    f"""
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+        <span style="font-size: 1.15rem; font-weight: 800; color: #F1F5F9;">🥋 SenpAI</span>
+        <span style="font-size: 0.72rem; color: #818CF8; background: rgba(99, 102, 241, 0.15); padding: 2px 8px; border-radius: 9999px; border: 1px solid rgba(99, 102, 241, 0.3); font-weight: 700;">{SYSTEM_VERSION}</span>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 st.sidebar.markdown("## Navegação")
 
 # Indicador de Status do Ambiente Virtual na Barra Lateral
@@ -1190,9 +1205,9 @@ st.session_state["nav_page_selection"] = nav_page
 
 def render_sidebar_footer():
     st.sidebar.markdown(
-        """
+        f"""
         <div style="font-size: 10.5px; color: #64748B; text-align: center; margin-top: 24px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); line-height: 1.4;">
-            <div><b>© 2026 SenpAI</b></div>
+            <div><b>© 2026 SenpAI • {SYSTEM_VERSION}</b></div>
             <div>Todos os direitos de uso e cópia reservados.</div>
         </div>
         """,

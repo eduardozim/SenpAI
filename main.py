@@ -47,7 +47,7 @@ def main():
     default_device = get_processing_device()
     default_model = get_vision_model()
 
-    parser = argparse.ArgumentParser(description="SenpAI - AI Kendo Match Analysis System")
+    parser = argparse.ArgumentParser(description="SenpAI (v0.3.5.0) - AI Kendo Match Analysis System")
     parser.add_argument("--video", type=str, help="Caminho para o arquivo de vídeo de luta (.mp4, .avi)")
     parser.add_argument("--output", type=str, default="output_annotated.mp4", help="Caminho para salvar o vídeo anotado")
     parser.add_argument("--profile", type=str, default="normal", choices=["permissivo", "normal", "rigido"],
