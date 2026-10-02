@@ -113,13 +113,13 @@ def check_cuda_framework_support() -> Dict[str, Any]:
         if torch_cuda:
             torch_device_name = torch.cuda.get_device_name(0)
             ultralytics_ready = True
-    except ImportError:
+    except Exception:
         pass
 
     try:
         import onnxruntime as ort
         onnx_cuda = "CUDAExecutionProvider" in ort.get_available_providers()
-    except ImportError:
+    except Exception:
         pass
 
     return {

@@ -1,0 +1,77 @@
+{
+  "status": "completed_consolidated",
+  "session_id": "auto_train_20261001_214214",
+  "scope_key": "modality_ji_geiko",
+  "scope_name": "🎯 Necessidade Mais Latente (🥋 Modalidade: Ji-geiko (地稽古))",
+  "samples_processed": 32831,
+  "final_accuracy": 35.7,
+  "sources_consulted": [
+    {
+      "title": "The Philosophy and Practice of Ji-geiko in Contemporary Kendo",
+      "type": "Manual Oficial AJKF / FIK",
+      "url": "https://www.kendo.or.jp/knowledge/ji_geiko",
+      "focus": "Ji-geiko (地稽古)",
+      "summary": "Diretrizes oficiais de execução para Ji-geiko (地稽古) (地稽古): foco em Construção de oportunidade com Seme, Manutenção da compostura e centro, Variedade técnica inteligente, Postura digna sob pressão.",
+      "principles": [
+        "Pressão com Seme (攻め): Rompimento da guarda e quebra da postura mental do adversário antes de desferir o ataque.",
+        "Ki-Ken-Tai-Ichi em Combate Livre: Aplicação plena dos fundamentos de golpe, corte e pés sem pré-determinação.",
+        "Chushin-sen: Disputa e domínio ininterrupto da linha central de corte e defesa."
+      ],
+      "biomechanical_thresholds": {
+        "cadence_cpm": [
+          8,
+          25
+        ],
+        "seme_retention_ratio": 0.88
+      }
+    },
+    {
+      "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+      "type": "Manual de Arbitragem AJKF"
+    },
+    {
+      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+      "type": "Tratado Técnico Kata"
+    },
+    {
+      "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+      "type": "Manual Oficial FIK"
+    },
+    {
+      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+      "type": "Corpus de Vídeo Dojo"
+    },
+    {
+      "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+      "type": "Mocap Científico"
+    },
+    {
+      "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+      "type": "Corpus de Vídeo HD"
+    },
+    {
+      "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+      "type": "Currículo Pedagógico"
+    },
+    {
+      "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+      "type": "Estudo Biomecânico"
+    },
+    {
+      "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+      "type": "Dataset de Calibração"
+    },
+    {
+      "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+      "type": "Modelo Neural"
+    },
+    {
+      "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+      "type": "Base de Conhecimento"
+    }
+  ],
+  "duration_seconds": 300.0,
+  "last_updated": "2026-10-01T21:47:14.312671",
+  "consolidated": true,
+  "last_checkpoint_timestamp": "2026-10-01T21:47:14.312671"
+}

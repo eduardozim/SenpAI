@@ -206,9 +206,14 @@ class TrainingPillarMetrics:
         mov_val = movimentacao_score if (movimentacao_score is not None and movimentacao_score > 0) else (forma_score if forma_score is not None else 0.0)
         self.movimentacao = round(float(np.clip(mov_val, 0.0, 100.0)), 1)
         self.forma = self.movimentacao  # Alias
+        self.movement_score: float = self.movimentacao  # Alias em inglês
 
         self.precisao = round(float(np.clip(precisao_score, 0.0, 100.0)), 1)
+        self.precision_score: float = self.precisao  # Alias em inglês
+
         self.constancia = round(float(np.clip(constancia_score, 0.0, 100.0)), 1)
+        self.constancy_score: float = self.constancia  # Alias em inglês
+
         self.overall_score = round((self.movimentacao * 0.35) + (self.precisao * 0.35) + (self.constancia * 0.30), 1)
 
         mov_subs = movimentacao_submetrics or forma_submetrics or {}

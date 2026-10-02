@@ -8,15 +8,28 @@ import os
 import re
 import time
 import tempfile
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple
 
 import cv2
-try:
+
+if TYPE_CHECKING:
     import yt_dlp
-    _YT_DLP_AVAILABLE = True
-except ImportError:
-    yt_dlp = None
-    _YT_DLP_AVAILABLE = False
+    import yt_dlp.utils
+    from yt_dlp.utils import DownloadError as YtDlpDownloadError
+else:
+    try:
+        import yt_dlp
+        import yt_dlp.utils
+        from yt_dlp.utils import DownloadError as YtDlpDownloadError
+        _YT_DLP_AVAILABLE = True
+    except (ImportError, AttributeError):
+        yt_dlp = None
+        _YT_DLP_AVAILABLE = False
+
+        class YtDlpDownloadError(Exception):
+            """Fallback para DownloadError quando yt-dlp não está disponível."""
+            pass
+
 
 from src.utils.logger_manager import log_event
 
@@ -60,7 +73,7 @@ def _enrich_with_actual_file_info(file_path: str, info: Dict[str, Any], quality_
     return info
 
 
-def validate_video_url(url: str) -> bool:
+def validate_video_url(url: Any) -> bool:
     """
     Valida se a string informada é uma URL suportada de vídeo (YouTube ou streaming).
     
@@ -107,7 +120,7 @@ def format_video_duration(seconds: Optional[float]) -> str:
     if seconds is None or seconds <= 0:
         return "00:00"
     
-    total_sec = int(round(seconds))
+    total_sec = round(seconds)
     hrs = total_sec // 3600
     mins = (total_sec % 3600) // 60
     secs = total_sec % 60
@@ -125,6 +138,47 @@ def sanitize_filename(name: str, max_length: int = 40) -> str:
     clean = re.sub(r'[\\/*?:"<>|]', "", name)
     clean = re.sub(r'[\s_]+', "_", clean).strip("_")
     return clean[:max_length] if clean else "video"
+
+
+def format_netscape_cookie_content(raw_text: str) -> str:
+    """
+    Formata e normaliza o conteúdo de cookies para o formato Netscape HTTP Cookie File estrito.
+    Garante o cabeçalho '# Netscape HTTP Cookie File' e que os 7 campos estejam separados por tabulações (\t).
+    Converte automaticamente espaços acidentais para tabulações e remove comentários/linhas vazias corrompidas.
+    """
+    if not raw_text or not isinstance(raw_text, str):
+        return ""
+    
+    lines = raw_text.strip().splitlines()
+    formatted_lines = [
+        "# Netscape HTTP Cookie File",
+        "# http://curl.haxx.se/rfc/cookie_spec.html",
+        "# This file was generated and normalized by SenpAI",
+        ""
+    ]
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        
+        # Se contiver tabulações nativas, normaliza os 7 campos
+        if "\t" in line:
+            parts = line.split("\t")
+            if len(parts) >= 7:
+                # Junta garantindo 7 campos padrão
+                formatted_lines.append("\t".join(parts[:6] + ["\t".join(parts[6:])]))
+                continue
+
+        # Se não tiver tabulações (ex: espaços colados por editores web), divide pelos 6 primeiros espaços
+        parts = line.split(None, 6)
+        if len(parts) == 7:
+            formatted_lines.append("\t".join(parts))
+        elif len(parts) == 6:
+            parts.append("")
+            formatted_lines.append("\t".join(parts))
+
+    return "\n".join(formatted_lines) + "\n"
 
 
 def get_cookie_file_path(custom_file: Optional[str] = None) -> Optional[str]:
@@ -150,8 +204,9 @@ def get_cookie_file_path(custom_file: Optional[str] = None) -> Optional[str]:
             cookie_session = st.session_state.get("youtube_cookies_text", "")
             if cookie_session and len(str(cookie_session).strip()) > 10:
                 tmp_cookie = os.path.join(tempfile.gettempdir(), "senpai_yt_session_cookies.txt")
+                norm_cookies = format_netscape_cookie_content(str(cookie_session))
                 with open(tmp_cookie, "w", encoding="utf-8") as f:
-                    f.write(str(cookie_session).strip())
+                    f.write(norm_cookies)
                 return tmp_cookie
     except Exception:
         pass
@@ -167,8 +222,9 @@ def get_cookie_file_path(custom_file: Optional[str] = None) -> Optional[str]:
     if cookie_content and len(str(cookie_content).strip()) > 10:
         tmp_cookie = os.path.join(tempfile.gettempdir(), "senpai_yt_cookies.txt")
         try:
+            norm_cookies = format_netscape_cookie_content(str(cookie_content))
             with open(tmp_cookie, "w", encoding="utf-8") as f:
-                f.write(str(cookie_content).strip())
+                f.write(norm_cookies)
             return tmp_cookie
         except Exception:
             pass
@@ -188,6 +244,7 @@ def get_base_ydl_opts(
         "socket_timeout": timeout,
         "nocheckcertificate": True,
         "geo_bypass": True,
+        "hls_prefer_native": True,
         "js_runtimes": {"node": {}, "deno": {}},
         "http_headers": {
             "User-Agent": (
@@ -199,17 +256,28 @@ def get_base_ydl_opts(
         }
     }
     
-    resolved_cookie = get_cookie_file_path(cookie_file)
-    if resolved_cookie:
-        opts["cookiefile"] = resolved_cookie
+    if client_list:
+        clients = client_list
+    else:
+        # Clientes visionos + android são os mais resilientes, contornam SABR streaming e bloqueio de IP/PO token
+        clients = ["visionos", "android"]
 
-    clients = client_list or ["visionos", "android"]
     opts["extractor_args"] = {
         "youtube": {
             "player_client": clients,
             "skip": ["translated_subs"],
         }
     }
+
+    # Clientes móveis/XR como visionos, android e ios NÃO suportam cookies no yt-dlp (SUPPORTS_COOKIES = False).
+    # Passar cookiefile para eles faz o yt-dlp emitir 'Skipping client since it does not support cookies',
+    # descartá-los e cair no cliente 'web', que falha com streaming SABR ("Only images are available") e exige PO token.
+    # Portanto, só anexamos cookiefile se algum cliente da lista suportar cookies (ex: web, mweb, tv)!
+    supports_cookies = any(c in ("web", "mweb", "web_safari", "web_embedded", "web_creator", "tv") for c in clients)
+    if supports_cookies:
+        resolved_cookie = get_cookie_file_path(cookie_file)
+        if resolved_cookie:
+            opts["cookiefile"] = resolved_cookie
 
     return opts
 
@@ -233,11 +301,15 @@ def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] =
     if not validate_video_url(url):
         raise VideoDownloadError("URL de vídeo inválida ou em formato não reconhecido.")
     
-    # Clientes com extração InnerTube direta (visionos e android não exigem PO tokens web de datacenter)
+    if yt_dlp is None:
+        raise VideoDownloadError("Módulo yt-dlp não está instalado ou disponível no ambiente.")
+    
+    # Clientes resilientes contra SABR streaming e exigências de PO Token
     client_strategies = [
         ["visionos", "android"],
+        ["android", "visionos"],
         ["visionos"],
-        ["android", "android_vr"],
+        ["android"],
         ["default"],
     ]
 
@@ -248,6 +320,7 @@ def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] =
         ydl_opts.update({
             "skip_download": True,
             "extract_flat": False,
+            "format": "all",
         })
         
         try:
@@ -278,7 +351,7 @@ def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] =
                     "webpage_url": info.get("webpage_url", url.strip()),
                     "is_live": bool(info.get("is_live", False)),
                 }
-        except yt_dlp.utils.DownloadError as e:
+        except YtDlpDownloadError as e:
             last_error_msg = str(e)
             if "Private video" in last_error_msg:
                 raise VideoDownloadError("Este vídeo é privado e não pode ser acessado.")
@@ -311,16 +384,31 @@ def get_format_selector(quality: str = "media") -> str:
     """
     Retorna o seletor de formato do yt-dlp de acordo com a qualidade desejada:
     - 'alta': Máxima qualidade de resolução e FPS disponível.
-    - 'media' (padrão): Resolução intermediária (até 720p) limitada a 30 FPS.
+    - 'media' (padrão): Resolução intermediária (até 720p).
     - 'baixa': Menor qualidade disponível (menor tamanho e download rápido).
+    Prioriza protocolos HLS (m3u8) que contornam bloqueios de CDN (HTTP 403) em ambientes em nuvem/datacenters.
     """
     q = quality.lower().strip() if quality else "media"
     if q in ["alta", "high"]:
-        return "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best"
+        return (
+            "bestvideo[protocol^=m3u8]+bestaudio[protocol^=m3u8]/"
+            "bestvideo[ext=mp4]+bestaudio[ext=m4a]/"
+            "bestvideo+bestaudio/"
+            "best[protocol^=m3u8]/best[ext=mp4]/best"
+        )
     elif q in ["baixa", "low"]:
-        return "worstvideo[ext=mp4]+worstaudio[ext=m4a]/worst[ext=mp4]/worstvideo+worstaudio/worst"
+        return (
+            "worstvideo[protocol^=m3u8]+worstaudio[protocol^=m3u8]/"
+            "worstvideo[ext=mp4]+worstaudio[ext=m4a]/"
+            "worst[protocol^=m3u8]/worst[ext=mp4]/worst"
+        )
     else:  # "media" padrão
-        return "bestvideo[height<=720][fps<=30][ext=mp4]+bestaudio[ext=m4a]/best[height<=720][fps<=30][ext=mp4]/bestvideo[height<=720]+bestaudio/best[height<=720]/best"
+        return (
+            "bestvideo[protocol^=m3u8][height<=720]+bestaudio[protocol^=m3u8]/"
+            "bestvideo[height<=720]+bestaudio/"
+            "best[protocol^=m3u8][height<=720]/"
+            "best[height<=720]/best"
+        )
 
 
 def download_video_stream(
@@ -349,6 +437,9 @@ def download_video_stream(
     """
     if not validate_video_url(url):
         raise VideoDownloadError("URL fornecida é inválida.")
+
+    if yt_dlp is None:
+        raise VideoDownloadError("Módulo yt-dlp não está instalado ou disponível no ambiente.")
 
     if output_dir is None:
         output_dir = os.path.join(tempfile.gettempdir(), "senpai_uploads")
@@ -407,12 +498,13 @@ def download_video_stream(
     outtmpl_pattern = os.path.join(output_dir, f"yt_{video_id}_{quality_tag}_{safe_title}.%(ext)s")
     format_choice = get_format_selector(quality_tag)
     
-    # Estratégias automáticas de clientes para contornar qualquer bloqueio de IP sem exigir cookies manuais
+    # Estratégias automáticas de clientes para contornar qualquer bloqueio de IP, SABR streaming e PO token
     client_strategies = [
         ["visionos", "android"],
-        ["android", "android_vr"],
+        ["android", "visionos"],
         ["visionos"],
         ["android"],
+        ["web", "android"],
         ["default"],
     ]
 
@@ -422,6 +514,8 @@ def download_video_stream(
     for attempt_idx, clients in enumerate(client_strategies):
         format_candidates = [
             format_choice,
+            "bestvideo[protocol^=m3u8]+bestaudio[protocol^=m3u8]/best[protocol^=m3u8]/best",
+            "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
             "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
             "best/bestvideo+bestaudio/worst",
             "18/22/best",
@@ -454,7 +548,7 @@ def download_video_stream(
                     ydl.download([url.strip()])
                 download_success = True
                 break
-            except yt_dlp.utils.DownloadError as e:
+            except YtDlpDownloadError as e:
                 err_str = str(e)
                 last_error_msg = err_str
                 log_event(
@@ -474,11 +568,12 @@ def download_video_stream(
         log_event("ERROR", f"Falha definitiva no download de vídeo do YouTube ({url}): {last_error_msg}", "video_downloader")
         if any(token in last_error_msg.lower() for token in [
             "requested format is not available", "only images are available",
-            "sign in to confirm", "bot", "403", "forbidden"
+            "sign in to confirm", "bot", "403", "forbidden", "empty"
         ]):
             raise VideoDownloadError(
-                "Não foi possível obter um fluxo de vídeo compatível para este link no servidor em nuvem. "
-                "Experimente alternar o nível de qualidade ('Alta' ou 'Baixa') ou carregue o arquivo pela aba '📁 Upload de Arquivo Local'."
+                "O YouTube bloqueia a transferência direta de vídeos por servidores em nuvem (HTTP 403: Forbidden - Bloqueio de IP de Datacenter AWS/GCP). "
+                "Para analisar este combate no Streamlit Cloud, faça o download do vídeo em seu computador e envie pela aba ao lado '📁 Upload de Arquivo Local'. "
+                "Caso queira baixar vídeos diretamente via links do YouTube sem restrições, execute o SenpAI localmente em seu computador ('streamlit run app.py')."
             )
         raise VideoDownloadError(f"Falha ao baixar vídeo do YouTube: {last_error_msg}")
 

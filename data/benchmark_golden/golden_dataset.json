@@ -1,0 +1,128 @@
+[
+  {
+    "id": "golden_men_01",
+    "category": "indisputable_ippon",
+    "strike_type": "Men",
+    "ground_truth": true,
+    "description": "Men perfeito em Ki-Ken-Tai-Ichi com Fumikomi simultâneo e Zanshin sustentado.",
+    "metrics": {
+      "target_impact": 0.92,
+      "fumikomi_sync": 0.9,
+      "posture": 0.88,
+      "zanshin": 0.85,
+      "hasuji_score": 0.95
+    }
+  },
+  {
+    "id": "golden_kote_01",
+    "category": "indisputable_ippon",
+    "strike_type": "Kote",
+    "ground_truth": true,
+    "description": "Kote com estalo seco no antebraço direito, cotovelo estendido e recuo controlado.",
+    "metrics": {
+      "target_impact": 0.88,
+      "fumikomi_sync": 0.85,
+      "posture": 0.82,
+      "zanshin": 0.8,
+      "hasuji_score": 0.9
+    }
+  },
+  {
+    "id": "golden_do_01",
+    "category": "indisputable_ippon",
+    "strike_type": "Do",
+    "ground_truth": true,
+    "description": "Nuki-do limpo com corte diagonal de lâmina a 45° e saída veloz em Zanshin.",
+    "metrics": {
+      "target_impact": 0.89,
+      "fumikomi_sync": 0.8,
+      "posture": 0.84,
+      "zanshin": 0.86,
+      "hasuji_score": 0.92
+    }
+  },
+  {
+    "id": "golden_tsuki_01",
+    "category": "indisputable_ippon",
+    "strike_type": "Tsuki",
+    "ground_truth": true,
+    "description": "Tsuki colinear na garganta (Tsuki-tare) com travamento de braço e impulso para frente.",
+    "metrics": {
+      "target_impact": 0.95,
+      "fumikomi_sync": 0.85,
+      "posture": 0.9,
+      "zanshin": 0.82,
+      "hasuji_score": 0.96
+    }
+  },
+  {
+    "id": "golden_men_no_fumikomi",
+    "category": "imperfect_strike",
+    "strike_type": "Men",
+    "ground_truth": false,
+    "description": "Men atingindo o alvo mas com pé esquerdo arrastado e sem batida de Fumikomi-ashi.",
+    "metrics": {
+      "target_impact": 0.85,
+      "fumikomi_sync": 0.28,
+      "posture": 0.7,
+      "zanshin": 0.6,
+      "hasuji_score": 0.8
+    }
+  },
+  {
+    "id": "golden_men_no_zanshin",
+    "category": "imperfect_strike",
+    "strike_type": "Men",
+    "ground_truth": false,
+    "description": "Men correto no impacto mas o atacante tropeçou e baixou o Shinai sem Zanshin.",
+    "metrics": {
+      "target_impact": 0.88,
+      "fumikomi_sync": 0.82,
+      "posture": 0.4,
+      "zanshin": 0.22,
+      "hasuji_score": 0.85
+    }
+  },
+  {
+    "id": "golden_kote_bad_hasuji",
+    "category": "imperfect_strike",
+    "strike_type": "Kote",
+    "ground_truth": false,
+    "description": "Kote batido com a lateral chata da lâmina (desvio de Hasuji > 35°).",
+    "metrics": {
+      "target_impact": 0.65,
+      "fumikomi_sync": 0.75,
+      "posture": 0.7,
+      "zanshin": 0.65,
+      "hasuji_score": 0.25
+    }
+  },
+  {
+    "id": "golden_ku_totsu_empty",
+    "category": "feint_block_ku_totsu",
+    "strike_type": "Men",
+    "ground_truth": false,
+    "description": "Golpe desferido fora da distância de corte (Ku-totsu) sem alcance do Monouchi.",
+    "metrics": {
+      "target_impact": 0.15,
+      "fumikomi_sync": 0.6,
+      "posture": 0.6,
+      "zanshin": 0.3,
+      "hasuji_score": 0.4
+    }
+  },
+  {
+    "id": "golden_block_tsubazeriai",
+    "category": "feint_block_ku_totsu",
+    "strike_type": "Men",
+    "ground_truth": false,
+    "description": "Bloqueio defensivo em guarda alta e contato de tsuba contra tsuba.",
+    "metrics": {
+      "target_impact": 0.1,
+      "fumikomi_sync": 0.1,
+      "posture": 0.5,
+      "zanshin": 0.1,
+      "hasuji_score": 0.3
+    }
+  }
+]

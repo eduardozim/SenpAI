@@ -8,12 +8,27 @@ processando os modelos de IA e devolvendo o vídeo anotado diretamente no navega
 import time
 import threading
 import html
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Callable, TYPE_CHECKING, cast
 
 import cv2
 import numpy as np
 
-try:
+
+class _WebRtcModeFallback:
+    SENDRECV: Any = "SENDRECV"
+    RECVONLY: Any = "RECVONLY"
+    SENDONLY: Any = "SENDONLY"
+
+
+class _DummyWebRtcContext:
+    video_processor: Any = None
+
+
+def _dummy_webrtc_streamer(*args: Any, **kwargs: Any) -> Any:
+    return _DummyWebRtcContext()
+
+
+if TYPE_CHECKING:
     from streamlit_webrtc import (
         webrtc_streamer,
         WebRtcMode,
@@ -21,47 +36,113 @@ try:
         VideoProcessorBase
     )
     import av
-    HAS_WEBRTC = True
-except ImportError:
-    HAS_WEBRTC = False
-    VideoProcessorBase = object
-    RTCConfiguration = None
-    WebRtcMode = None
-    webrtc_streamer = None
-    av = None
+    HAS_WEBRTC: bool = True
+else:
+    try:
+        from streamlit_webrtc import (
+            webrtc_streamer,
+            WebRtcMode,
+            RTCConfiguration,
+            VideoProcessorBase
+        )
+        import av
+        HAS_WEBRTC = True
+    except (ImportError, ModuleNotFoundError):
+        HAS_WEBRTC = False
+        VideoProcessorBase = object
+        RTCConfiguration = None
+        WebRtcMode = _WebRtcModeFallback
+        webrtc_streamer = _dummy_webrtc_streamer
+        av = None
 
 from src.engine.reporter import DiagnosticReporter
 from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA
 
 
+def _patch_aioice_for_python314() -> None:
+    """
+    Previne exceção não tratada no aioice quando rodando em Python 3.14+ em ambientes de nuvem.
+    No Python 3.14, ao falhar uma transação UDP de STUN e fechar o transport, o _sock interno
+    é anulado e a chamada Transaction.__retry() lança AttributeError: 'NoneType' object has no attribute 'sendto'.
+    """
+    try:
+        import aioice.stun
+        orig_retry = getattr(aioice.stun.Transaction, "_Transaction__retry", None)
+        if orig_retry and not getattr(aioice.stun.Transaction, "_senpai_patched", False):
+            def safe_retry(self: Any) -> Any:
+                try:
+                    return orig_retry(self)
+                except (AttributeError, OSError):
+                    pass
+            aioice.stun.Transaction._Transaction__retry = safe_retry  # type: ignore
+            aioice.stun.Transaction._senpai_patched = True  # type: ignore
+    except Exception:
+        pass
+
+
+if HAS_WEBRTC:
+    _patch_aioice_for_python314()
+
+
 def get_rtc_configuration() -> Optional[Any]:
     """
-    Retorna a configuração de servidores STUN e TURN para transposição de NAT,
+    Retorna a configuração otimizada de servidores STUN e TURN para transposição rápida de NAT,
     firewalls e contêineres de nuvem (Streamlit Community Cloud).
-    O Streamlit Cloud bloqueia tráfego UDP direto; os servidores TURN via TCP (porta 443)
-    garantem que o streaming de vídeo do navegador atravesse o firewall do contêiner com sucesso.
+    Prioriza STUNs ultra-rápidos (Google e Cloudflare) para resolução em milissegundos,
+    com fallback para servidores TURN (UDP e TCP porta 443) caso o cliente ou o servidor
+    estejam atrás de redes corporativas restritas ou proxies.
+    Permite também configuração personalizada via st.secrets["RTC_CONFIGURATION"] ou st.secrets["webrtc"].
     """
     if not HAS_WEBRTC or RTCConfiguration is None:
         return None
+
+    # Verifica se há configuração customizada no st.secrets
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets"):
+            if "RTC_CONFIGURATION" in st.secrets:
+                cfg = st.secrets["RTC_CONFIGURATION"]
+                if isinstance(cfg, dict):
+                    return cast(Any, cfg)
+            if "webrtc" in st.secrets and isinstance(st.secrets["webrtc"], dict):
+                ice_servers = st.secrets["webrtc"].get("iceServers")
+                if ice_servers:
+                    return RTCConfiguration({"iceServers": ice_servers})
+    except Exception:
+        pass
+
+    # Servidores STUN de altíssima velocidade e disponibilidade global
+    fast_stun_servers = [
+        "stun:stun.l.google.com:19302",
+        "stun:stun1.l.google.com:19302",
+        "stun:stun2.l.google.com:19302",
+        "stun:stun.cloudflare.com:3478",
+    ]
+
+    # Servidores TURN de fallback (com suporte a UDP, TCP e TLS/443 para contêineres)
+    turn_server = {
+        "urls": [
+            "turn:openrelay.metered.ca:80",
+            "turn:openrelay.metered.ca:443",
+            "turn:openrelay.metered.ca:443?transport=tcp",
+            "turns:openrelay.metered.ca:443?transport=tcp",
+        ],
+        "username": "openrelayproject",
+        "credential": "openrelayproject",
+    }
+
     return RTCConfiguration(
         {
             "iceServers": [
-                {"urls": ["stun:stun.l.google.com:19302"]},
-                {
-                    "urls": [
-                        "turn:openrelay.metered.ca:80",
-                        "turn:openrelay.metered.ca:443",
-                        "turn:openrelay.metered.ca:443?transport=tcp",
-                    ],
-                    "username": "openrelayproject",
-                    "credential": "openrelayproject",
-                },
+                {"urls": fast_stun_servers},
+                turn_server,
             ]
         }
     )
 
 
-class SenpAIMatchWebRtcProcessor(VideoProcessorBase):
+
+class SenpAIMatchWebRtcProcessor(VideoProcessorBase):  # type: ignore
     """
     Processador de vídeo WebRTC em tempo real para o Modo de Análise de Lutas (Shiai).
     Recebe frames do navegador do cliente, executa o rastreamento dos competidores (Aka/Shiro),
@@ -209,7 +290,7 @@ class SenpAIMatchWebRtcProcessor(VideoProcessorBase):
             }
 
 
-class SenpAITrainingWebRtcProcessor(VideoProcessorBase):
+class SenpAITrainingWebRtcProcessor(VideoProcessorBase):  # type: ignore
     """
     Processador de vídeo WebRTC em tempo real para o Modo de Treinamento & Aprendizado.
     Recebe frames da webcam do navegador do usuário, rastreia os movimentos biomecânicos,
