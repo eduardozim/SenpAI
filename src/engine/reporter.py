@@ -91,6 +91,13 @@ class DiagnosticReporter:
         if event_info.get("is_counterattack"):
             lines.append(f"- ⚔️ **Técnica de Contrataque:** Reconhecido como {event_info.get('counterattack_type', 'Oji-waza')}.")
 
+        # Perspectiva e Enquadramento da Câmera (Eixo 5)
+        if "camera_angle_deg" in event_info:
+            c_angle = event_info["camera_angle_deg"]
+            c_cat = event_info.get("camera_category", "LATERAL")
+            c_qual = event_info.get("camera_quality_score", 85.0)
+            lines.append(f"- 📹 **Enquadramento de Câmera ({c_cat} ~{c_angle:.0f}° - Qualidade {c_qual:.0f}%):** Compensação geométrica de perspectiva aplicada.")
+
         lines.append("")
         if not is_valid:
             lines.append("**O que faltou para o Ponto Válido:**")

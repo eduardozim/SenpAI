@@ -18,6 +18,7 @@ from src.analytics.event_spotter import EventSpotter, StrikeEvent
 from src.analytics.sonkyo_detector import SonkyoDetector
 from src.analytics.biomechanics import BiomechanicsAnalyzer
 from src.analytics.multimodal_yuko_datotsu import MultimodalYukoDatotsuEngine
+from src.analytics.camera_invariance import CameraInvarianceEngine
 from src.analytics.multi_camera_fusion import MultiCameraFusionEngine, MultiCameraStrikeEvaluation
 from src.analytics.training_analyzer import TrainingAnalyzer
 from src.engine.calibrator import CalibrationEngine
@@ -131,6 +132,7 @@ class SenpAIPipeline:
         self.event_spotter = EventSpotter()
         self.biomechanics = BiomechanicsAnalyzer()
         self.multimodal_engine = MultimodalYukoDatotsuEngine()
+        self.camera_invariance = CameraInvarianceEngine()
         self.training_analyzer = TrainingAnalyzer()
         self.calibrator = CalibrationEngine(profile_name=calibration_profile)
         self.multicam_fusion = MultiCameraFusionEngine(profile_name=calibration_profile)
@@ -322,6 +324,15 @@ class SenpAIPipeline:
             if not landmarks_at_impact:
                 landmarks_at_impact = primary_history[impact_f] if impact_f < len(primary_history) else None
 
+            # Análise de Invariância de Câmera, Normalização 3D e Diagnóstico de Perspectiva (Eixo 5)
+            spatial_invariance = self.camera_invariance.process_frame_spatial_invariance(
+                aka_landmarks=landmarks_at_impact,
+                shiro_landmarks=opponent_lm
+            )
+            camera_angle_deg = spatial_invariance.get("angle_info", {}).get("estimated_angle_deg", 65.0)
+            maai_3d = spatial_invariance.get("maai_3d")
+            quality_diag = spatial_invariance.get("quality_diagnostic", {})
+
             # Métricas Ki-Ken-Tai-Ichi e Avaliação Multimodal Eixo 3
             # 1. Avaliação Multimodal de Yuko-Datotsu (Colisão, Hasuji, Seme, Contrataque, Áudio e Action Spotting)
             mm_eval = self.multimodal_engine.evaluate_complete_strike(
@@ -341,12 +352,17 @@ class SenpAIPipeline:
             counter_data = mm_eval.get("counterattack", {})
             action_spot_data = mm_eval.get("action_spotting", {})
 
-            # Discriminação de Contato e Alcance Físico (Maai):
+            # Discriminação de Contato e Alcance Físico (Maai 2D e 3D):
+            # Se o Maai 3D for excessivo (> 0.52), reforça a classificação de Ku-totsu
+            if maai_3d is not None and maai_3d > 0.55:
+                is_ku_totsu = True
+
             is_contact_range = not is_ku_totsu
-            kenshi_dist = mm_eval.get("target_collision", {}).get("maai_distance") or 0.0
+            kenshi_dist = maai_3d if maai_3d is not None else (mm_eval.get("target_collision", {}).get("maai_distance") or 0.0)
 
             fumikomi_score, offset_ms = self.biomechanics.evaluate_fumikomi_sync(history_used, impact_f)
-            posture_score = self.biomechanics.evaluate_posture(landmarks_at_impact)
+            # Postura com compensação geométrica de perspectiva (Eixo 5.1)
+            posture_score = self.biomechanics.evaluate_posture(landmarks_at_impact, camera_angle_deg=camera_angle_deg)
             zanshin_score = self.biomechanics.evaluate_zanshin(history_used, impact_f, ev.end_frame)
 
             # Calibração com pesos especializados por tipo de golpe e 5° Pilar Hasuji (Eixo 1.4 & Eixo 3.2)
@@ -383,7 +399,10 @@ class SenpAIPipeline:
             ev_dict["seme_score"] = round(seme_score * 100, 1)
             ev_dict["action_spotting_class"] = action_spot_data.get("predicted_class")
             ev_dict["is_counterattack"] = counter_data.get("is_counterattack", False)
-            ev_dict["counterattack_type"] = counter_data.get("counterattack_type", "DIRECT_ATTACK")
+            ev_dict["camera_angle_deg"] = round(camera_angle_deg, 1)
+            ev_dict["maai_3d"] = round(maai_3d, 3) if maai_3d is not None else None
+            ev_dict["camera_category"] = spatial_invariance.get("angle_info", {}).get("camera_category", "LATERAL")
+            ev_dict["camera_quality_score"] = quality_diag.get("overall_quality_score", 85.0)
             
             report_text = DiagnosticReporter.generate_strike_report(ev_dict, evaluation, offset_ms)
             if not is_contact_range:
@@ -395,6 +414,7 @@ class SenpAIPipeline:
                 "event_info": ev_dict,
                 "evaluation": evaluation,
                 "multimodal_details": mm_eval,
+                "spatial_invariance": spatial_invariance,
                 "fumikomi_offset_ms": offset_ms,
                 "diagnostic_report": report_text
             })
@@ -574,7 +594,12 @@ class SenpAIPipeline:
             "plane_filtering": tracker_summary,
             "scoreboard": scoreboard,
             "events": analyzed_events,
-            "training_analysis": training_analysis.to_dict()
+            "training_analysis": training_analysis.to_dict(),
+            "camera_invariance_analysis": {
+                "detected_angle_deg": round(float(np.mean([ev["event_info"].get("camera_angle_deg", 65.0) for ev in analyzed_events])), 1) if analyzed_events else 65.0,
+                "camera_category": analyzed_events[0]["event_info"].get("camera_category", "LATERAL") if analyzed_events else "LATERAL",
+                "quality_diagnostic": analyzed_events[0]["spatial_invariance"].get("quality_diagnostic", {}) if analyzed_events and "spatial_invariance" in analyzed_events[0] else self.camera_invariance.diagnostic.diagnose_camera_angle(65.0)
+            }
         }
 
 

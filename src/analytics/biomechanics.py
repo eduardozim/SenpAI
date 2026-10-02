@@ -7,6 +7,7 @@ Calcula métricas numéricas precisas para:
 4. Manutenção de Guarda Pós-Golpe (Zanshin)
 """
 
+import math
 import numpy as np
 from typing import Dict, Any, List, Tuple, Optional, Sequence
 
@@ -181,10 +182,15 @@ class BiomechanicsAnalyzer:
         sync_score = max(0.0, 1.0 - (abs(offset_ms) / 150.0))
         return float(sync_score), float(offset_ms)
 
-    def evaluate_posture(self, landmarks: Optional[Dict[str, Any]]) -> float:
+    def evaluate_posture(
+        self,
+        landmarks: Optional[Dict[str, Any]],
+        camera_angle_deg: Optional[float] = None
+    ) -> float:
         """
         Avalia a postura corporal (verticalidade da coluna, ombros nivelados).
         No Kendo, o tronco não deve inclinar demasiadamente para a frente nem colapsar.
+        Suporta compensação geométrica de perspectiva segundo o ângulo da câmera (Eixo 5.1).
         """
         if not landmarks:
             return 0.0
@@ -208,6 +214,13 @@ class BiomechanicsAnalyzer:
             
         cosine_tilt = np.dot(spine_vec, vertical_vec) / norm_spine
         tilt_degrees = np.degrees(np.arccos(np.clip(cosine_tilt, -1.0, 1.0)))
+
+        # Compensação de Perspectiva (Eixo 5.1):
+        # Em câmera frontal (< 40°), a inclinação observada 2D é atenuada e normalizada;
+        # em câmera lateral (> 60°), o perfil é direto com máxima clareza.
+        if camera_angle_deg is not None:
+            angle = float(np.clip(camera_angle_deg, 15.0, 90.0))
+            tilt_degrees = tilt_degrees / max(0.40, math.sin(math.radians(angle)))
         
         # Uma inclinação aceitável no Kendo é de 0° a 15°. Acima de 25° a postura é ruim.
         score = 1.0 - max(0.0, (tilt_degrees - 10.0) / 25.0)

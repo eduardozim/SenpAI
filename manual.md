@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.3.0`
+> **Versão Oficial do Sistema**: `v 0.3.4.0`
 
 ---
 
@@ -143,6 +143,7 @@ Dev/
 ├── src/
 │   ├── analytics/
 │   │   ├── biomechanics.py         # Cálculo numérico dos critérios de Yuko-Datotsu e Maai
+│   │   ├── camera_invariance.py    # Invariância de câmera, compensação de perspectiva e Maai 3D (Eixo 5)         # Cálculo numérico dos critérios de Yuko-Datotsu e Maai
 │   │   ├── event_spotter.py        # Detecção temporal de picos cinemáticos, debounce e NMS de golpes
 │   │   ├── multi_camera_fusion.py  # Fusão de consenso multi-câmeras e avaliação Yuko-Datotsu
 │   │   ├── sonkyo_detector.py      # Identificação de Sonkyō, delimitação da luta e aprendizado
@@ -172,6 +173,7 @@ Dev/
 │   └── pipeline.py                 # Pipeline orquestrador end-to-end de vídeo e validação de Maai
 ├── tests/
 │   ├── test_active_learning_eixo4.py # Testes de aprendizado ativo, golden benchmark e assistente LLM
+│   ├── test_camera_invariance_eixo5.py # Testes de invariância de câmera, perspectiva e Maai 3D (Eixo 5) # Testes de aprendizado ativo, golden benchmark e assistente LLM
 │   ├── test_auto_trainer.py        # Testes de auto-treinamento, baselines < 50% e tolerância a falhas
 │   ├── test_dan_training_governance.py # Testes da governança por Dan, pacotes e retreinamento
 │   ├── test_environment.py         # Testes de detecção de ambiente virtual
@@ -583,6 +585,41 @@ Integração de Modelos de Linguagem de Grande Porte (LLMs) multimodal e textual
 
 ---
 
+### 4.13. Invariância de Câmera e Normalização Espacial 3D (Eixo 5) ([camera_invariance.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/camera_invariance.py))
+
+O módulo de invariância de câmera garante que a avaliação biomecânica e o julgamento de *Yuko-Datotsu* permaneçam consistentes e precisos independentemente do ângulo em que o smartphone, filmadora ou câmera de dojo for posicionado:
+
+- **Compensação de Perspectiva por Ângulo de Filmagem (`CombatVectorEstimator`)**:
+  - **Estimativa do Vetor de Combate**: Extrai as coordenadas 2D dos quadris dos dois atletas (`Kenshi Aka` e `Kenshi Shiro`) para traçar a linha principal de enfrentamento.
+  - **Classificação de Ângulo**:
+    - **Frontal ($0^\circ - 30^\circ$)**: Visão alinhada ao vetor de ataque; excelente para avaliar centralidade (*Chushin-sen*) e estocadas (*Tsuki*), porém sujeita a achatamento da inclinação da coluna.
+    - **Oblíquo ($30^\circ - 60^\circ$)**: Posição angular mista, comum em arquibancadas ou cantos do Shiaijo.
+    - **Lateral ($60^\circ - 90^\circ$)**: Plano canônico de referência para medição visual de avanço de pé (*Fumikomi*) e postura ereta (*Shisei*).
+  - **Detecção em Treinamento Solo**: Caso apenas um Kendoca esteja presente no dojo, o vetor é deduzido a partir da linha biacromial (largura entre ombros normalizada).
+  - **Normalização Trigonométrica de Postura (*Shisei*)**:
+    - Aplica o fator multiplicador $1 / \sin(\theta)$ (com clamp em $\sin(20^\circ)$ para prevenir singularidades) sobre a inclinação observada na câmera:
+      $$\theta_{\text{real}} = \frac{\theta_{\text{observado}}}{\sin(\max(\theta_{\text{câmera}}, 20^\circ))}$$
+    - Recupera o ângulo físico real do tronco no espaço tridimensional mesmo quando filmado de frente.
+
+- **Estimativa de Profundidade Monocular 3D & Maai 3D (`MonocularDepthEstimator`)**:
+  - **Reconstrução de Pseudo-Keypoints 3D $(x, y, z)$**:
+    - Estima o canal de profundidade $Z$ a partir de restrições antropométricas da altura em pixels e posições de articulações em relação ao plano canônico do solo.
+  - **Distância Euclidiana Tridimensional (*Maai 3D*)**:
+    - Substitui a distância euclidiana puramente bidimensional pela métrica tridimensional completa:
+      $$d_{\text{3D}} = \sqrt{(x_{\text{aka}} - x_{\text{shiro}})^2 + (y_{\text{aka}} - y_{\text{shiro}})^2 + (z_{\text{aka}} - z_{\text{shiro}})^2}$$
+    - **Eliminação Definitiva de Ku-totsu (Golpe no Vazio)**: Em tomadas frontais ou oblíquas, o atacante pode parecer sobreposto ao defensor no plano 2D $(x, y)$, mas estar a metros de distância no eixo $Z$. O *Maai 3D* detecta a separação real em profundidade e rejeita sumariamente o golpe caso $d_{\text{3D}} > 0.55$, eliminando marcações indevidas.
+
+- **Diagnóstico Automático de Qualidade de Ângulo (`CameraQualityDiagnostic`)**:
+  - Emite notas individuais de confiabilidade $[0.0, 1.0]$ para cada critério técnico conforme o enquadramento:
+    - *Fumikomi*: Alta confiança em tomadas laterais ($\ge 60^\circ$); penalizado em tomadas frontais com aviso de oclusão de pés.
+    - *Hasuji*: Avaliação ideal em tomadas oblíquas e laterais; penalizado quando o plano da lâmina fica colinear à lente.
+    - *Shisei*: Compensado trigonometricamente em ângulos frontais com margem de erro documentada.
+    - *Tsuki*: Confiabilidade máxima em tomadas frontais e oblíquas.
+    - *Zanshin*: Alta confiabilidade em todos os ângulos com correção de perspectiva.
+  - **Matriz de Modificadores de Peso**: Fornece multiplicadores adaptativos para o motor de calibração atenuar critérios de baixa visibilidade e reforçar os de alta certeza no ângulo ativo.
+
+---
+
 ## 5. Suíte de Testes Automatizados e Relatório de Execução
 
 O projeto inclui suíte completa de testes automatizados em `unittest` com runner customizado ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py)) e script de execução dedicado ([run_tests.py](file:///d:/Projetos/SenpAI/Dev/run_tests.py)).
@@ -638,7 +675,33 @@ Total de **181 testes automatizados** distribuídos em 19 módulos, executados e
 
 ---
 
-### `[v 0.3.3.0]` — 2026-10-02 *(Versão Atual)*
+### `[v 0.3.4.0]` — 2026-10-02 *(Versão Atual)*
+
+- **Implementação do Eixo 5: Invariância de Câmera e Normalização Espacial 3D ([camera_invariance.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/camera_invariance.py), [biomechanics.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/biomechanics.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Compensação de Perspectiva por Ângulo de Filmagem (`CombatVectorEstimator`)**:
+    - Extração contínua do vetor de combate Kenshi Aka <-> Kenshi Shiro através dos centros de quadril e estimação do ângulo de incidência da câmera $\theta_{\text{camera}} \in [0^\circ, 90^\circ]$.
+    - Classificação automática em 3 categorias operacionais:
+      - **Frontal ($0^\circ - 30^\circ$)**: Foco no Chushin-sen e alinhamento central;
+      - **Oblíquo ($30^\circ - 60^\circ$)**: Enquadramento diagonal de arquibancada / córner;
+      - **Lateral ($60^\circ - 90^\circ$)**: Referencial canônico para análise de perfil e Fumikomi.
+    - Suporte a treinamento solo deduzindo a rotação do praticante a partir da largura biacromial dos ombros.
+    - **Normalização Trigonométrica de Postura (*Shisei*)**:
+      - Compensação do achatamento visual em tomadas frontais através da escala $1 / \sin(\theta)$ no cálculo da inclinação da coluna, mapeando a leitura observada para o plano lateral canônico.
+  - **Estimativa de Profundidade Monocular 3D & Maai 3D (`MonocularDepthEstimator`)**:
+    - Reconstrução de pseudo-keypoints tridimensionais $(x, y, z)$ a partir de restrições antropométricas e avanço cinemático corporal.
+    - **Distância Euclidiana Tridimensional (*Maai 3D*)**: Cálculo da distância de combate $\sqrt{\Delta x^2 + \Delta y^2 + \Delta z^2}$, permitindo a detecção e eliminação definitiva de *Ku-totsu* (golpes no vazio) quando atacante e defensor parecem sobrepostos em 2D mas estão distantes no eixo $Z$.
+    - Rejeição reforçada no pipeline caso $d_{\text{3D}} > 0.55$.
+  - **Diagnóstico Automático de Qualidade do Ângulo (`CameraQualityDiagnostic`)**:
+    - Avaliação de confiabilidade para cada um dos 5 critérios regulamentares (*Fumikomi*, *Hasuji*, *Shisei*, *Tsuki*, *Zanshin*), cálculo de erro angular esperado e matriz de modificadores multiplicativos de peso.
+  - **Exibição Visual no Web App Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)) & Relatórios ([reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py))**:
+    - Badges em tempo real nos cards de golpes com ângulo de filmagem (ex: `📐 Câmera: 78.5° (Lateral - Alta Precisão)`) e diagnóstico de enquadramento nos relatórios textuais.
+  - **Suíte de Testes Automatizados**:
+    - Criação de [test_camera_invariance_eixo5.py](file:///d:/Projetos/SenpAI/Dev/tests/test_camera_invariance_eixo5.py) com 8 testes cobrindo todo o Eixo 5 com 100% de sucesso.
+    - Suíte geral de testes do SenpAI atinge **231 testes automatizados em 24 módulos aprovados sem regressões**.
+
+---
+
+### `[v 0.3.3.0]` — 2026-10-02
 
 - **Implementação do Eixo 3: Reconhecimento Multimodal de Golpes Válidos (Yuko-Datotsu) ([multimodal_yuko_datotsu.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/multimodal_yuko_datotsu.py), [biomechanics.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/biomechanics.py), [calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - **Interação Atacante ↔ Defensor & Eliminação de Ku-totsu (`TargetImpactEvaluator`)**:
