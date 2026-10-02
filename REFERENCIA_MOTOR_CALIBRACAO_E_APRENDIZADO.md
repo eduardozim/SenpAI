@@ -118,9 +118,9 @@ Quando a FIK diz que o *Fumikomi* deve ser simultâneo, mas um artigo cita uma j
 
 ---
 
-## ⚔️ Eixo 3: Reconhecimento Multimodal de Golpes Válidos (Yuko-Datotsu)
+## ⚔️ Eixo 3: Reconhecimento Multimodal de Golpes Válidos (Yuko-Datotsu) [✅ APLICADO]
 
-A regra clássica do Kendo estabelece: *Ki-Ken-Tai-Ichi* (Espírito, Espada e Corpo em um só instante) atingindo o *Datotsu-bui* do oponente com *Datotsu-bu* da lâmina, seguido de *Zanshin*.
+A regra clássica do Kendo estabelece: *Ki-Ken-Tai-Ichi* (Espírito, Espada e Corpo em um só instante) atingindo o *Datotsu-bui* do oponente com *Datotsu-bu* da lâmina, seguido de *Zanshin*. Implementado integralmente pelo módulo `src/analytics/multimodal_yuko_datotsu.py`, integrado no calibrador (`src/engine/calibrator.py`), no analisador biomecânico (`src/analytics/biomechanics.py`) e orquestrado no pipeline de produção (`src/pipeline.py`).
 
 ### 3.1 Interação Atacante ↔ Defensor (Contato Real com o Bogu)
 No biomechanics.py, evoluir o cálculo de `evaluate_target_impact`:

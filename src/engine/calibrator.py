@@ -140,23 +140,35 @@ class CalibrationEngine:
         posture_score: float,
         zanshin_score: float,
         strike_type: str = "MEN",
+        hasuji_score: Optional[float] = None,
+        seme_score: Optional[float] = None,
+        is_ku_totsu: bool = False,
         **kwargs
     ) -> Dict[str, Any]:
         """
         Aplica os pesos da calibração ativa (com especialização por strike_type),
         determina a validade do ponto (Yuko-datotsu) e calcula a probabilidade calibrada (Platt Scaling).
+        Suporta o 5° Pilar Hasuji e eliminação de Ku-totsu (Eixo 3.1 e 3.2).
         """
         norm_strike = str(strike_type).upper().strip() if strike_type else "MEN"
         weights = self.get_weights_for_strike(norm_strike)
         min_total = self.active_config.get("min_total_score", 0.65)
         sub_thresholds = self.active_config.get("sub_thresholds", {})
 
-        total_score = (
+        # Se hasuji_score foi fornecido (5° Pilar do Eixo 3.2), combinamos proporcionalmente
+        # mantendo compatibilidade direta com modelos de 4 pilares
+        base_score = (
             target_score * weights["target_impact"] +
             fumikomi_score * weights["fumikomi_sync"] +
             posture_score * weights["posture"] +
             zanshin_score * weights["zanshin"]
         )
+
+        if hasuji_score is not None:
+            # 5° Pilar: Hasuji modula com peso balanceado de 15% reescalonando a base em 85%
+            total_score = (base_score * 0.85) + (float(hasuji_score) * 0.15)
+        else:
+            total_score = base_score
 
         # Probabilidade Calibrada de Ippon via Platt Scaling (Eixo 1.2)
         prob = self.platt_calibrator.predict_proba(total_score)
@@ -167,6 +179,10 @@ class CalibrationEngine:
 
         # Se um sub-requisito crítico falhou acentuadamente, invalida o ponto mesmo que o total passe
         failed_subcriteria = []
+        if is_ku_totsu:
+            is_valid = False
+            failed_subcriteria.append("KU_TOTSU_VAZIO")
+
         if target_score < sub_thresholds.get("target_impact", 0.40):
             is_valid = False
             failed_subcriteria.append("ALVO_FORA")
@@ -176,6 +192,20 @@ class CalibrationEngine:
             failed_subcriteria.append("POSTURA_INCLINADA")
         if zanshin_score < sub_thresholds.get("zanshin", 0.20):
             failed_subcriteria.append("SEM_ZANSHIN")
+        if hasuji_score is not None and hasuji_score < 0.40:
+            is_valid = False
+            failed_subcriteria.append("HASUJI_INCORRETO")
+
+        sub_scores_dict = {
+            "target_impact": round(target_score * 100, 1),
+            "fumikomi_sync": round(fumikomi_score * 100, 1),
+            "posture": round(posture_score * 100, 1),
+            "zanshin": round(zanshin_score * 100, 1)
+        }
+        if hasuji_score is not None:
+            sub_scores_dict["hasuji"] = round(hasuji_score * 100, 1)
+        if seme_score is not None:
+            sub_scores_dict["seme"] = round(seme_score * 100, 1)
 
         return {
             "is_valid": is_valid,
@@ -187,13 +217,11 @@ class CalibrationEngine:
             "strike_type": norm_strike,
             "profile_used": self.active_config.get("name", "Custom"),
             "weights_used": weights,
-            "sub_scores": {
-                "target_impact": round(target_score * 100, 1),
-                "fumikomi_sync": round(fumikomi_score * 100, 1),
-                "posture": round(posture_score * 100, 1),
-                "zanshin": round(zanshin_score * 100, 1)
-            },
-            "failed_subcriteria": failed_subcriteria
+            "sub_scores": sub_scores_dict,
+            "failed_subcriteria": failed_subcriteria,
+            "hasuji_score": round(hasuji_score, 3) if hasuji_score is not None else None,
+            "seme_score": round(seme_score, 3) if seme_score is not None else None,
+            "is_ku_totsu": is_ku_totsu
         }
 
     def check_concept_drift(

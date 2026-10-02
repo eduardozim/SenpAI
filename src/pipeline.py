@@ -17,6 +17,7 @@ from src.vision.combatant_tracker import CombatantTracker
 from src.analytics.event_spotter import EventSpotter, StrikeEvent
 from src.analytics.sonkyo_detector import SonkyoDetector
 from src.analytics.biomechanics import BiomechanicsAnalyzer
+from src.analytics.multimodal_yuko_datotsu import MultimodalYukoDatotsuEngine
 from src.analytics.multi_camera_fusion import MultiCameraFusionEngine, MultiCameraStrikeEvaluation
 from src.analytics.training_analyzer import TrainingAnalyzer
 from src.engine.calibrator import CalibrationEngine
@@ -129,6 +130,7 @@ class SenpAIPipeline:
         self.sonkyo_detector = SonkyoDetector()
         self.event_spotter = EventSpotter()
         self.biomechanics = BiomechanicsAnalyzer()
+        self.multimodal_engine = MultimodalYukoDatotsuEngine()
         self.training_analyzer = TrainingAnalyzer()
         self.calibrator = CalibrationEngine(profile_name=calibration_profile)
         self.multicam_fusion = MultiCameraFusionEngine(profile_name=calibration_profile)
@@ -320,36 +322,56 @@ class SenpAIPipeline:
             if not landmarks_at_impact:
                 landmarks_at_impact = primary_history[impact_f] if impact_f < len(primary_history) else None
 
-            # Métricas Ki-Ken-Tai-Ichi
-            target_score = self.biomechanics.evaluate_target_impact(ev.type, landmarks_at_impact)
+            # Métricas Ki-Ken-Tai-Ichi e Avaliação Multimodal Eixo 3
+            # 1. Avaliação Multimodal de Yuko-Datotsu (Colisão, Hasuji, Seme, Contrataque, Áudio e Action Spotting)
+            mm_eval = self.multimodal_engine.evaluate_complete_strike(
+                strike_type=ev.type,
+                attacker_history=history_used,
+                defender_history=opponent_history,
+                impact_frame=impact_f,
+                video_path=video_path,
+                fps=fps
+            )
+
+            # Impacto no alvo considerando colisão com Bogu do oponente
+            target_score = mm_eval.get("collision_score", 0.60)
+            hasuji_score = mm_eval.get("hasuji_score", 0.75)
+            seme_score = mm_eval.get("seme_score", 0.70)
+            is_ku_totsu = mm_eval.get("is_ku_totsu", False)
+            counter_data = mm_eval.get("counterattack", {})
+            action_spot_data = mm_eval.get("action_spotting", {})
 
             # Discriminação de Contato e Alcance Físico (Maai):
-            # Se os dois combatentes estiverem muito distantes (Tōma excessivo > 0.48 da tela),
-            # o movimento foi no ar/vazio, sem contato real com o oponente.
-            is_contact_range = True
-            kenshi_dist = 0.0
-            if landmarks_at_impact and opponent_lm:
-                atk_cx = (landmarks_at_impact.get("RIGHT_HIP", {}).get("x", 0.5) + landmarks_at_impact.get("LEFT_HIP", {}).get("x", 0.5)) / 2.0
-                opp_cx = (opponent_lm.get("RIGHT_HIP", {}).get("x", 0.5) + opponent_lm.get("LEFT_HIP", {}).get("x", 0.5)) / 2.0
-                kenshi_dist = abs(atk_cx - opp_cx)
-                if kenshi_dist > 0.48:
-                    is_contact_range = False
-                    target_score = min(0.25, target_score * 0.30)  # Penalização severa por golpe desferido no ar
+            is_contact_range = not is_ku_totsu
+            kenshi_dist = mm_eval.get("target_collision", {}).get("maai_distance") or 0.0
 
             fumikomi_score, offset_ms = self.biomechanics.evaluate_fumikomi_sync(history_used, impact_f)
             posture_score = self.biomechanics.evaluate_posture(landmarks_at_impact)
             zanshin_score = self.biomechanics.evaluate_zanshin(history_used, impact_f, ev.end_frame)
 
-            # Calibração com pesos especializados por tipo de golpe (Eixo 1.4)
+            # Calibração com pesos especializados por tipo de golpe e 5° Pilar Hasuji (Eixo 1.4 & Eixo 3.2)
             evaluation = self.calibrator.evaluate_strike(
-                target_score, fumikomi_score, posture_score, zanshin_score, strike_type=ev.type
+                target_score,
+                fumikomi_score,
+                posture_score,
+                zanshin_score,
+                strike_type=ev.type,
+                hasuji_score=hasuji_score,
+                seme_score=seme_score,
+                is_ku_totsu=is_ku_totsu
             )
+
+            # Se for falso disparo de Tsubazeriai ou guarda no vazio suprimida
+            if action_spot_data.get("suppress_false_trigger", False):
+                evaluation["is_valid"] = False
+                evaluation["notes"] = f"Ação suprimida por Action Spotting ({action_spot_data.get('predicted_class')})."
             
             # Se foi constatada falta de alcance/contato, não pode ser Ippon válido
             if not is_contact_range:
                 evaluation["is_valid_ippon"] = False
+                evaluation["is_valid"] = False
                 evaluation["contact_valid"] = False
-                evaluation["notes"] = "Fora do Maai (Sem contato com oponente)"
+                evaluation["notes"] = "Fora do Maai (Sem contato com oponente / Ku-totsu)"
             else:
                 evaluation["contact_valid"] = True
 
@@ -357,13 +379,22 @@ class SenpAIPipeline:
             ev_dict = ev.to_dict()
             ev_dict["contact_detected"] = is_contact_range
             ev_dict["maai_distance"] = round(kenshi_dist, 3) if kenshi_dist > 0 else None
+            ev_dict["hasuji_score"] = round(hasuji_score * 100, 1)
+            ev_dict["seme_score"] = round(seme_score * 100, 1)
+            ev_dict["action_spotting_class"] = action_spot_data.get("predicted_class")
+            ev_dict["is_counterattack"] = counter_data.get("is_counterattack", False)
+            ev_dict["counterattack_type"] = counter_data.get("counterattack_type", "DIRECT_ATTACK")
+            
             report_text = DiagnosticReporter.generate_strike_report(ev_dict, evaluation, offset_ms)
             if not is_contact_range:
-                report_text += " [Aviso: Golpe sem contato físico / Fora da distância de combate]"
+                report_text += " [Aviso: Golpe sem contato físico / Ku-totsu fora do Maai]"
+            if ev_dict["is_counterattack"]:
+                report_text += f" [{counter_data.get('counterattack_type')}]"
 
             analyzed_events.append({
                 "event_info": ev_dict,
                 "evaluation": evaluation,
+                "multimodal_details": mm_eval,
                 "fumikomi_offset_ms": offset_ms,
                 "diagnostic_report": report_text
             })

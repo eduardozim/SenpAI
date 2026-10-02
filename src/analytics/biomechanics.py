@@ -25,10 +25,31 @@ class BiomechanicsAnalyzer:
         cosine_angle = np.clip(cosine_angle, -1.0, 1.0)
         return float(np.degrees(np.arccos(cosine_angle)))
 
-    def evaluate_target_impact(self, strike_type: str, landmarks: Optional[Dict[str, Any]]) -> float:
+    def evaluate_target_impact(
+        self,
+        strike_type: str,
+        landmarks: Optional[Dict[str, Any]],
+        defender_landmarks: Optional[Dict[str, Any]] = None,
+        shinai_data: Optional[Dict[str, Any]] = None
+    ) -> float:
         """
-        Avalia o grau de precisão do impacto no alvo correto. Retorna um score entre 0.0 e 1.0.
+        Avalia o grau de precisão do impacto no alvo correto (Eixo 3.1).
+        Se defender_landmarks estiver presente, calcula a colisão física Shinai-Bogu e elimina Ku-totsu.
+        Retorna score entre 0.0 e 1.0.
         """
+        if defender_landmarks is not None:
+            try:
+                from src.analytics.multimodal_yuko_datotsu import TargetImpactEvaluator
+                res = TargetImpactEvaluator.evaluate_target_collision(
+                    strike_type=strike_type,
+                    attacker_landmarks=landmarks,
+                    defender_landmarks=defender_landmarks,
+                    shinai_data=shinai_data
+                )
+                return float(res.get("collision_score", 0.5))
+            except Exception:
+                pass
+
         if not landmarks:
             return 0.0
 
@@ -70,6 +91,47 @@ class BiomechanicsAnalyzer:
             score = max(0.0, 1.0 - (diff * 3.0))
 
         return float(np.clip(score, 0.0, 1.0))
+
+    def evaluate_hasuji(
+        self,
+        strike_type: str,
+        blade_angle_deg: Optional[float] = None,
+        shinai_data: Optional[Dict[str, Any]] = None
+    ) -> Tuple[float, float, bool]:
+        """
+        Avalia o 5° Pilar: Hasuji (Alinhamento angular do fio da espada no corte - Eixo 3.2).
+        Retorna (hasuji_score [0..1], deviation_deg, is_valid).
+        """
+        from src.analytics.multimodal_yuko_datotsu import HasujiEvaluator
+        res = HasujiEvaluator.evaluate_hasuji(strike_type, blade_angle_deg, shinai_data)
+        return float(res["hasuji_score"]), float(res["deviation_deg"]), bool(res["is_hasuji_valid"])
+
+    def evaluate_seme(
+        self,
+        attacker_pose_history: Sequence[Optional[Dict[str, Any]]],
+        defender_pose_history: Optional[Sequence[Optional[Dict[str, Any]]]],
+        impact_frame: int
+    ) -> Tuple[float, bool]:
+        """
+        Avalia a pressão prévia de Seme no Chushin-sen nos 20-30 frames antes do golpe (Eixo 3.3).
+        Retorna (seme_score [0..1], is_seme_present).
+        """
+        from src.analytics.multimodal_yuko_datotsu import SemeDetector
+        res = SemeDetector.evaluate_seme(attacker_pose_history, defender_pose_history, impact_frame)
+        return float(res["seme_score"]), bool(res["is_seme_present"])
+
+    def detect_counterattack(
+        self,
+        attacker_pose_history: Sequence[Optional[Dict[str, Any]]],
+        defender_pose_history: Optional[Sequence[Optional[Dict[str, Any]]]],
+        impact_frame: int
+    ) -> Dict[str, Any]:
+        """
+        Detecta técnicas de resposta e contragolpe (Oji-waza / Debana - Eixo 3.4).
+        """
+        from src.analytics.multimodal_yuko_datotsu import CounterattackDetector
+        return CounterattackDetector.detect_counterattack(attacker_pose_history, defender_pose_history, impact_frame)
+
 
     def evaluate_fumikomi_sync(self, pose_history: Sequence[Optional[Dict[str, Any]]], impact_frame: int) -> Tuple[float, float]:
         """
@@ -170,3 +232,40 @@ class BiomechanicsAnalyzer:
 
         zanshin_score = float(np.mean(posture_scores))
         return float(np.clip(zanshin_score, 0.0, 1.0))
+
+    def evaluate_hasuji(
+        self,
+        strike_type: str,
+        blade_angle_deg: Optional[float],
+        shinai_data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Avalia o alinhamento do fio da espada (Hasuji - Eixo 3.2).
+        Retorna dicionário com hasuji_score [0..1] e desvio angular.
+        """
+        from src.analytics.multimodal_yuko_datotsu import HasujiEvaluator
+        return HasujiEvaluator.evaluate_hasuji(strike_type, blade_angle_deg, shinai_data)
+
+    def evaluate_seme(
+        self,
+        attacker_history: Sequence[Optional[Dict[str, Any]]],
+        defender_history: Optional[Sequence[Optional[Dict[str, Any]]]],
+        impact_frame: int
+    ) -> Dict[str, Any]:
+        """
+        Avalia a pressão e intenção ofensiva pré-golpe (Seme - Eixo 3.3).
+        """
+        from src.analytics.multimodal_yuko_datotsu import SemeDetector
+        return SemeDetector.evaluate_seme(attacker_history, defender_history, impact_frame)
+
+    def detect_counterattack(
+        self,
+        attacker_history: Sequence[Optional[Dict[str, Any]]],
+        defender_history: Optional[Sequence[Optional[Dict[str, Any]]]],
+        impact_frame: int
+    ) -> Dict[str, Any]:
+        """
+        Detecta técnicas de resposta (Oji-waza / Debana - Eixo 3.4).
+        """
+        from src.analytics.multimodal_yuko_datotsu import CounterattackDetector
+        return CounterattackDetector.detect_counterattack(attacker_history, defender_history, impact_frame)

@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.2.0`
+> **Versão Oficial do Sistema**: `v 0.3.3.0`
 
 ---
 
@@ -638,7 +638,40 @@ Total de **181 testes automatizados** distribuídos em 19 módulos, executados e
 
 ---
 
-### `[v 0.3.2.0]` — 2026-10-02 *(Versão Atual)*
+### `[v 0.3.3.0]` — 2026-10-02 *(Versão Atual)*
+
+- **Implementação do Eixo 3: Reconhecimento Multimodal de Golpes Válidos (Yuko-Datotsu) ([multimodal_yuko_datotsu.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/multimodal_yuko_datotsu.py), [biomechanics.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/biomechanics.py), [calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Interação Atacante ↔ Defensor & Eliminação de Ku-totsu (`TargetImpactEvaluator`)**:
+    - Avaliação geométrica de colisão entre o *Datotsu-bu* (terço final / Kensen do Shinai) e as regiões regulamentares do Bogu do oponente (*Men*, *Kote*, *Do*, *Tsuki*).
+    - Discriminação de distância (*Maai*): rejeição sumária e automática de golpes no vazio (*Ku-totsu*), penalizando golpes desferidos fora da distância física de combate.
+  - **Hasuji — O Ângulo da Lâmina como 5° Pilar de Avaliação (`HasujiEvaluator`)**:
+    - Extração contínua da orientação angular do Shinai (`angle_deg`) gerado pelo rastreador e comparação com os planos regulamentares de corte:
+      - *Men*: Vertical puro com tolerância de $\pm 15^\circ$ (desvio $> 25^\circ$ reprova por corte de chapa).
+      - *Do*: Diagonal descendente entre $30^\circ$ e $45^\circ$.
+      - *Tsuki*: Horizontal frontal colinear com desvio $\le 10^\circ$.
+      - *Kote*: Diagonal descendente moderada entre $15^\circ$ e $35^\circ$.
+    - Integração de `hasuji_score` no [calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py) com peso balanceado de 15%, verificação de sub-limiar mínimo e feedback detalhado no [reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py).
+  - **Detecção do Seme e Pressão Pré-Golpe (`SemeDetector`)**:
+    - Avaliação retroativa de 20 a 30 frames antes do impacto: verifica avanço com tronco ereto em direção ao oponente mantendo o centro (*Chudan/Chushin-sen*).
+    - Penalização no score quando o ataque se origina de recuo descontrolado ou guarda quebrada.
+  - **Detecção de Técnicas de Resposta (Oji-waza e Debana - `CounterattackDetector`)**:
+    - Análise de janela de 10 a 15 frames para identificar se o adversário iniciou o movimento ofensivo (*Furikaburi*) antes do atacante responder.
+    - Classificação automática em *Debana-waza* (interceptação no nascimento do golpe), *Kaeshi-waza* ou *Nuki-waza*, com detecção dinâmica da inversão de papéis.
+  - **Fusão Multimodal com Faixa de Áudio (`AudioKiaiFusion`)**:
+    - Detecção de *Datotsu-on* (transiente acústico seco de alta frequência entre $1.5\text{ kHz}$ e $4.0\text{ kHz}$) e *Kiai* vocal ($200\text{ Hz}$ a $1.0\text{ kHz}$).
+    - Critério de sincronismo síncrono $\Delta t \le 40\text{ ms}$ entre pico sonoro e vídeo, com fallback gracioso e transparente para vídeos sem faixa de áudio.
+  - **Modelo Temporal de Sequência de Poses (Action Spotting TCN - `TemporalActionSpotter`)**:
+    - Classificador de convolução temporal sobre janela de 30 frames em 10 classes fundamentais de Kendo (`IDLE_KAMAE`, `TSUBAZERIAI`, `SEME_ADVANCE`, `MEN_ATTACK`, `KOTE_ATTACK`, `DO_ATTACK`, `TSUKI_ATTACK`, `DEFENSE_BLOCK`, `COUNTERATTACK`, `ZANSHIN_RETREAT`).
+    - Supressão de falsos disparos durante movimentações de guarda, fintas e clinch prolongado (*Tsubazeriai*).
+  - **Painel Interativo de Yuko-Datotsu no Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+    - Cartões de golpe ao vivo atualizados com grid de 6 métricas: Alvo, Fumikomi, Postura, Zanshin, Hasuji (5° Pilar) e Seme.
+  - **Suíte de Testes Automatizados**:
+    - Criação do módulo [test_multimodal_yuko_datotsu_eixo3.py](file:///d:/Projetos/SenpAI/Dev/tests/test_multimodal_yuko_datotsu_eixo3.py) com 14 testes cobrindo todos os módulos do Eixo 3 com 100% de sucesso.
+    - Suíte geral de testes do SenpAI atinge **205 testes automatizados em 21 módulos aprovados sem regressões**.
+
+---
+
+### `[v 0.3.2.0]` — 2026-10-02
 
 - **Implementação do Eixo 2: Conversão da Pesquisa Web em Parâmetros Físicos Acionáveis ([actionable_research.py](file:///d:/Projetos/SenpAI/Dev/src/engine/actionable_research.py), [auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py), [llm_assistant.py](file:///d:/Projetos/SenpAI/Dev/src/engine/llm_assistant.py) & [mathematical_calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/mathematical_calibrator.py))**:
   - **Pipeline de Extração Estruturada (Knowledge → JSON Schema - `PhysicalConstraintExtractor`)**:

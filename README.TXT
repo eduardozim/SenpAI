@@ -1,7 +1,7 @@
 ===============================================================================
                         SENPAI (先輩 AI) - GUIA RÁPIDO
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
-                              Versão: v 0.3.2.0
+                              Versão: v 0.3.3.0
 ===============================================================================
 
 O SenpAI é um sistema de visão computacional e análise biomecânica projetado
@@ -297,8 +297,16 @@ físicas acionáveis e priors bayesianos rígidos (actionable_research.py):
   As restrições físicas atuam como fronteiras intransponíveis (boundary conditions)
   durante a otimização de pesos e sub-limiares pelo BayesianCalibrationOptimizer.
 
+- Reconhecimento Multimodal de Yuko-Datotsu (Eixo 3):
+  • Interação Atacante <-> Defensor: colisão Shinai-Bogu e eliminação de Ku-totsu (golpe no vazio).
+  • Hasuji (5° Pilar): ângulo da lâmina (Men vertical +-15°, Do diagonal 30°-45°, Tsuki horizontal +-10°).
+  • Detecção de Seme: pressão pré-golpe no Chushin-sen em janela de 20 a 30 frames.
+  • Detecção de Oji-waza / Debana: identificação retroativa de contrataques em 10 a 15 frames.
+  • Fusão Multimodal de Áudio: sincronismo de Datotsu-on (estalo 1.5k-4kHz) e Kiai vocal com delta_t <= 40ms.
+  • Action Spotting TCN: classificação temporal de 10 classes de Kendo com supressão de falso disparo em Tsubazeriai.
+
 -------------------------------------------------------------------------------
-7. CRITÉRIOS AVALIADOS (KI-KEN-TAI-ICHI & MAAI)
+7. CRITÉRIOS AVALIADOS (KI-KEN-TAI-ICHI, HASUJI & MAAI)
 -------------------------------------------------------------------------------
 
 - Alvo / Impacto (Ken): Precisão do impacto do Kensen na zona de ataque (Men, Kote, Do, Tsuki).
