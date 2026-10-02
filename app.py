@@ -2642,6 +2642,95 @@ elif nav_page == "settings":
                                 st.rerun()
                     st.markdown("---")
 
+        # ----------------------------------------------------------------------
+        # EIXO 6: MODELAGEM DO ESTILO INDIVIDUAL & WARM START DE PERFIS
+        # ----------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("### 🧬 Eixo 6: Modelagem do Estilo Individual & Warm Start de Perfis")
+        st.caption(
+            "O SenpAI aprende o baseline biomecânico pessoal de cada atleta (postura de repouso, cadência habitual e sincronismo de Fumikomi), "
+            "medindo a evolução por desvio de si próprio, e permite derivar novos perfis com inicialização quente (Warm Start)."
+        )
+
+        tab_e6_baselines, tab_e6_warm_start = st.tabs([
+            "🥋 Perfis Cinestésicos Individuais (Baseline)",
+            "🔥 Derivação de Perfil com Warm Start"
+        ])
+
+        with tab_e6_baselines:
+            st.markdown("#### 👤 Baselines Cinestésicos dos Praticantes Cadastrados")
+            try:
+                from src.analytics.kenshi_style_model import KinestheticProfileManager
+                kin_mgr = KinestheticProfileManager()
+                profs_list = kin_mgr.list_profiles()
+                if not profs_list:
+                    st.info("Nenhum praticante com histórico cinestésico registrado ainda. Os baselines são formados automaticamente durante treinos e lutas.")
+                else:
+                    for k_prof in profs_list:
+                        with st.container(border=True):
+                            c_k1, c_k2, c_k3, c_k4 = st.columns([1.5, 1, 1, 1])
+                            with c_k1:
+                                st.markdown(f"**Kendoca:** `{k_prof['display_name']}` ({k_prof['kenshi_id']})")
+                                st.caption(f"Sessões: {k_prof['sessions_count']} | Golpes Analisados: {k_prof['strikes_count']}")
+                            with c_k2:
+                                tilt_str = f"{k_prof['mean_spine_tilt']}°" if k_prof['mean_spine_tilt'] is not None else "Em consolidação"
+                                st.metric("Inclinação Habitual", tilt_str)
+                            with c_k3:
+                                cad_str = f"{k_prof['mean_cadence_cpm']} CPM" if k_prof['mean_cadence_cpm'] is not None else "Em consolidação"
+                                st.metric("Cadência Média", cad_str)
+                            with c_k4:
+                                fumi_str = f"{k_prof['mean_fumikomi_ms']} ms" if k_prof['mean_fumikomi_ms'] is not None else "Em consolidação"
+                                st.metric("Fumikomi Médio", fumi_str)
+            except Exception as e:
+                st.caption(f"Status do gerenciador cinestésico: {e}")
+
+        with tab_e6_warm_start:
+            st.markdown("#### 🔥 Derivar Novo Perfil a partir de um Perfil Existente (Warm Start)")
+            st.caption(
+                "Em vez de iniciar um novo perfil do zero, herde os pesos ótimos de Ki-Ken-Tai-Ichi e a calibração de Platt Scaling "
+                "de um perfil calibrado, aplicando um ajuste direcional de rigidez."
+            )
+            with st.container(border=True):
+                ws_col1, ws_col2, ws_col3 = st.columns(3)
+                with ws_col1:
+                    avail_profiles = feedback_mgr.load_profiles() if hasattr(feedback_mgr, "load_profiles") else {}
+                    parent_choice = st.selectbox(
+                        "Perfil Pai (Base de Herança):",
+                        options=list(avail_profiles.keys()) if avail_profiles else ["normal", "rigido", "permissivo"],
+                        format_func=lambda k: f"{avail_profiles.get(k, {}).get('name', k)} ({k})",
+                        key="ws_parent_profile_choice"
+                    )
+                with ws_col2:
+                    new_prof_key = st.text_input("Identificador Único (Key):", value="torneio_especial", key="ws_new_profile_key")
+                    new_prof_name = st.text_input("Nome Legível para Exibição:", value="Torneio Especial de Dojo", key="ws_new_profile_name")
+                with ws_col3:
+                    ws_direction = st.selectbox(
+                        "Direção do Ajuste de Rigidez:",
+                        options=["more_strict", "more_permissive", "neutral"],
+                        format_func=lambda d: {
+                            "more_strict": "⬆️ Mais Rígido (+5% a +10% nos limiares)",
+                            "more_permissive": "⬇️ Mais Permissivo (-5% a -10% nos limiares)",
+                            "neutral": "➡️ Neutro (mesmos limiares)"
+                        }.get(d, d),
+                        key="ws_direction_choice"
+                    )
+                    ws_factor = st.slider("Fator Multiplicativo (%):", min_value=1.01, max_value=1.25, value=1.06, step=0.01, key="ws_factor_slider")
+
+                if st.button("🚀 Derivar Perfil com Warm Start", key="btn_derive_profile_ws", type="primary", use_container_width=True):
+                    try:
+                        clean_key = new_prof_key.strip().lower().replace(" ", "_")
+                        derived_p = feedback_mgr.derive_profile_warm_start(
+                            source_profile_key=parent_choice,
+                            new_profile_key=clean_key,
+                            direction=ws_direction,
+                            factor=ws_factor,
+                            new_name=new_prof_name
+                        )
+                        st.success(f"🎉 Perfil '{derived_p.get('name')}' derivado com sucesso via Warm Start a partir de '{parent_choice}'! Limiar Global: {int(derived_p['min_total_score']*100)}%.")
+                        st.rerun()
+                    except Exception as err:
+                        st.error(f"Erro ao derivar perfil: {err}")
+
     # --------------------------------------------------------------------------
     # GUIA 4: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA
     # --------------------------------------------------------------------------

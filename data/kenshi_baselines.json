@@ -1,0 +1,204 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-10-02T20:15:07Z",
+  "profiles": {
+    "KENSHI_SOLO": {
+      "kenshi_id": "KENSHI_SOLO",
+      "display_name": "Kendoca Principal",
+      "created_at": "2026-10-02T20:05:46Z",
+      "last_updated_at": "2026-10-02T20:15:07Z",
+      "sessions_count": 36,
+      "strikes_count": 0,
+      "metrics": {
+        "posture_resting_angle_deg": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "fumikomi_window_ms": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "cadence_cpm": {
+          "count": 4,
+          "mean": 10.0,
+          "std_dev": 0.001,
+          "m2": 0.0
+        },
+        "spine_tilt_strike_deg": {
+          "count": 4,
+          "mean": 92.0,
+          "std_dev": 0.001,
+          "m2": 0.0
+        },
+        "zanshin_duration_s": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      },
+      "strike_extensions": {
+        "MEN": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "KOTE": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "DO": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "TSUKI": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      }
+    },
+    "KENSHI_SHIRO": {
+      "kenshi_id": "KENSHI_SHIRO",
+      "display_name": "Eduardo Zimermann",
+      "created_at": "2026-10-02T20:06:13Z",
+      "last_updated_at": "2026-10-02T20:15:01Z",
+      "sessions_count": 4,
+      "strikes_count": 0,
+      "metrics": {
+        "posture_resting_angle_deg": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "fumikomi_window_ms": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "cadence_cpm": {
+          "count": 4,
+          "mean": 10.0,
+          "std_dev": 0.001,
+          "m2": 0.0
+        },
+        "spine_tilt_strike_deg": {
+          "count": 4,
+          "mean": 92.0,
+          "std_dev": 0.001,
+          "m2": 0.0
+        },
+        "zanshin_duration_s": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      },
+      "strike_extensions": {
+        "MEN": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "KOTE": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "DO": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "TSUKI": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      }
+    },
+    "KENSHI_AKA": {
+      "kenshi_id": "KENSHI_AKA",
+      "display_name": "Parceiro Keiko",
+      "created_at": "2026-10-02T20:06:13Z",
+      "last_updated_at": "2026-10-02T20:15:01Z",
+      "sessions_count": 4,
+      "strikes_count": 0,
+      "metrics": {
+        "posture_resting_angle_deg": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "fumikomi_window_ms": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "cadence_cpm": {
+          "count": 4,
+          "mean": 10.0,
+          "std_dev": 0.001,
+          "m2": 0.0
+        },
+        "spine_tilt_strike_deg": {
+          "count": 4,
+          "mean": 92.0,
+          "std_dev": 0.001,
+          "m2": 0.0
+        },
+        "zanshin_duration_s": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      },
+      "strike_extensions": {
+        "MEN": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "KOTE": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "DO": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "TSUKI": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      }
+    }
+  }
+}

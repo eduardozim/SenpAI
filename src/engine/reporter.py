@@ -98,6 +98,11 @@ class DiagnosticReporter:
             c_qual = event_info.get("camera_quality_score", 85.0)
             lines.append(f"- 📹 **Enquadramento de Câmera ({c_cat} ~{c_angle:.0f}° - Qualidade {c_qual:.0f}%):** Compensação geométrica de perspectiva aplicada.")
 
+        # Modelagem do Estilo Individual do Kenshi (Eixo 6)
+        if "kinesthetic_insights" in event_info and event_info["kinesthetic_insights"]:
+            for ins in event_info["kinesthetic_insights"]:
+                lines.append(f"- 🧬 **Estilo Individual:** {ins}")
+
         lines.append("")
         if not is_valid:
             lines.append("**O que faltou para o Ponto Válido:**")

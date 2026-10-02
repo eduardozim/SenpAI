@@ -1627,4 +1627,85 @@ class FeedbackManager:
         """Retorna o peso efetivo do revisor com decaimento temporal e consistência."""
         return self.reviewer_trust_manager.get_effective_weight(reviewer_id, dan)
 
+    # --------------------------------------------------------------------------
+    # MÉTODOS DE APOIO AO EIXO 6 (MODELAGEM INDIVIDUAL & WARM START DE PERFIS)
+    # --------------------------------------------------------------------------
+    @property
+    def kinesthetic_manager(self):
+        """Gerenciador central de baselines cinestésicos individuais dos kenshis."""
+        if getattr(self, "_kinesthetic_manager", None) is None:
+            try:
+                from src.analytics.kenshi_style_model import KinestheticProfileManager
+                self._kinesthetic_manager = KinestheticProfileManager()
+            except Exception:
+                pass
+        return self._kinesthetic_manager
+
+    def save_profiles(self, profiles: Dict[str, Any]) -> bool:
+        """Salva o dicionário de perfis de calibração em config/calibration_profiles.json."""
+        try:
+            os.makedirs(os.path.dirname(self.profiles_path) or ".", exist_ok=True)
+            with open(self.profiles_path, "w", encoding="utf-8") as f:
+                json.dump(profiles, f, indent=2, ensure_ascii=False)
+            return True
+        except Exception:
+            return False
+
+    def derive_profile_warm_start(
+        self,
+        source_profile_key: str,
+        new_profile_key: str,
+        direction: str = "more_strict",
+        factor: float = 1.05,
+        new_name: Optional[str] = None,
+        description: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Deriva um novo perfil de calibração utilizando Warm Start (Eixo 6.2).
+        Herda os pesos calibrados de Ki-Ken-Tai-Ichi do perfil pai, ajusta os limiares
+        direcionalmente e persiste em config/calibration_profiles.json.
+        """
+        from src.analytics.kenshi_style_model import ProfileWarmStartManager
+
+        profiles = self.load_profiles()
+        source_cfg = profiles.get(source_profile_key)
+        if not source_cfg:
+            source_cfg = DEFAULT_CALIBRATION_PROFILES.get(source_profile_key, DEFAULT_CALIBRATION_PROFILES.get("normal", {}))
+
+        derived = ProfileWarmStartManager.derive_profile(
+            source_profile_config=source_cfg,
+            new_profile_key=new_profile_key,
+            direction=direction,
+            adjustment_factor=factor,
+            new_profile_name=new_name,
+            new_description=description
+        )
+
+        profiles[new_profile_key] = derived
+        self.save_profiles(profiles)
+
+        log_event(
+            "INFO",
+            f"PERFIL DERIVADO COM WARM START: '{new_profile_key}' derivado de '{source_profile_key}' ({direction}, fator={factor})",
+            "feedback_manager"
+        )
+        return derived
+
+    def list_profiles_with_lineage(self) -> List[Dict[str, Any]]:
+        """Lista todos os perfis disponíveis com metadados de derivação e linhagem."""
+        profiles = self.load_profiles()
+        lineage_list = []
+        for key, p in profiles.items():
+            lineage_list.append({
+                "key": key,
+                "name": p.get("name", key),
+                "description": p.get("description", ""),
+                "min_total_score": p.get("min_total_score", 0.70),
+                "derived_from": p.get("derived_from"),
+                "warm_started": bool(p.get("warm_started", False)),
+                "warm_start_direction": p.get("warm_start_direction"),
+                "derived_at": p.get("derived_at")
+            })
+        return lineage_list
+
 

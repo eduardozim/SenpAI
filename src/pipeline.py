@@ -136,6 +136,11 @@ class SenpAIPipeline:
         self.training_analyzer = TrainingAnalyzer()
         self.calibrator = CalibrationEngine(profile_name=calibration_profile)
         self.multicam_fusion = MultiCameraFusionEngine(profile_name=calibration_profile)
+        try:
+            from src.analytics.kenshi_style_model import KinestheticProfileManager
+            self.kinesthetic_manager = KinestheticProfileManager()
+        except Exception:
+            self.kinesthetic_manager = None
 
     def process_video(
         self,
@@ -403,6 +408,30 @@ class SenpAIPipeline:
             ev_dict["maai_3d"] = round(maai_3d, 3) if maai_3d is not None else None
             ev_dict["camera_category"] = spatial_invariance.get("angle_info", {}).get("camera_category", "LATERAL")
             ev_dict["camera_quality_score"] = quality_diag.get("overall_quality_score", 85.0)
+
+            # Eixo 6: Modelagem do Estilo Individual do Kenshi
+            kin_eval = {}
+            if self.kinesthetic_manager:
+                try:
+                    atk_disp = (custom_kendoka_names or {}).get(ev.attacker_id, ev.attacker_name)
+                    # Estimativa de inclinação da coluna no impacto
+                    spine_tilt_val = None
+                    if opponent_history and len(opponent_history) > ev.impact_frame:
+                        opp_p = opponent_history[ev.impact_frame]
+                        if opp_p:
+                            spine_tilt_val = opp_p.get("spine_tilt_deg")
+                    kin_eval = self.kinesthetic_manager.record_strike_event(
+                        kenshi_id=ev.attacker_id,
+                        strike_type=ev.type,
+                        spine_tilt_deg=spine_tilt_val,
+                        fumikomi_offset_ms=offset_ms,
+                        display_name=atk_disp
+                    )
+                except Exception:
+                    pass
+
+            ev_dict["kinesthetic_baseline_evaluation"] = kin_eval
+            ev_dict["kinesthetic_insights"] = kin_eval.get("insights", [])
             
             report_text = DiagnosticReporter.generate_strike_report(ev_dict, evaluation, offset_ms)
             if not is_contact_range:
@@ -415,6 +444,7 @@ class SenpAIPipeline:
                 "evaluation": evaluation,
                 "multimodal_details": mm_eval,
                 "spatial_invariance": spatial_invariance,
+                "kinesthetic_baseline": kin_eval,
                 "fumikomi_offset_ms": offset_ms,
                 "diagnostic_report": report_text
             })

@@ -20,7 +20,7 @@ Este documento detalha **6 Eixos de Evolução**, suas formulações matemática
 - **Eixo 3: Reconhecimento Multimodal de Yuko-Datotsu**: ✅ **[APLICADO]** (`multimodal_yuko_datotsu.py`, `event_spotter.py`, `pipeline.py`, `reporter.py`)
 - **Eixo 4: Aprendizado Ativo e Golden Benchmark**: ✅ **[APLICADO]** (`active_learning.py`, `golden_dataset.json`, `auto_trainer.py`)
 - **Eixo 5: Invariância de Câmera e Normalização Espacial**: ✅ **[APLICADO]** (`camera_invariance.py`, `biomechanics.py`, `pipeline.py`)
-- **Eixo 6: Modelagem do Estilo Individual do Kenshi**: ⏳ *Próxima etapa (Planejado)*
+- **Eixo 6: Modelagem do Estilo Individual do Kenshi**: ✅ **[APLICADO]** (`kenshi_style_model.py`, `feedback_manager.py`, `training_analyzer.py`, `app.py`, `reporter.py`)
 
 ---
 
@@ -255,26 +255,39 @@ O sistema emite diagnóstico contínuo de confiabilidade por critério com base 
 
 ---
 
-## 🧬 Eixo 6: Modelagem do Estilo Individual do Kenshi
+## 🧬 Eixo 6: Modelagem do Estilo Individual do Kenshi [✅ APLICADO]
 
-> **Perspectiva nova — nenhum sistema de Kendo existente implementa isso.**
+> **Status:** ✅ **Aplicado e Integrado ao SenpAI**
+> **Componentes Implementados:**
+> - `src/analytics/kenshi_style_model.py`: `MetricDistribution` (algoritmo online de Welford para média e variância contínuas), `KinestheticBaselineModel` (baseline de Chudan, Fumikomi, extensão e inclinação com diagnóstico humanizado via Z-score), `KinestheticProfileManager` (gestão multi-praticante e persistência em `data/kenshi_baselines.json`), `ProfileWarmStartManager` (derivação de novos perfis com herança de pesos otimizados e rastreamento de linhagem).
+> - `src/engine/feedback_manager.py`: Integração com `KinestheticProfileManager`, métodos `derive_profile_warm_start` e `list_profiles_with_lineage`.
+> - `src/analytics/training_analyzer.py`: Avaliação de desvios cinestésicos em treinos solo e duplas, e inclusão da "Seção 3: Análise Comparativa com o Baseline Cinestésico Individual" no relatório Markdown exportável do Kenshi.
+> - `src/pipeline.py`: Injeção de `kinesthetic_baseline_evaluation` e insights nos eventos de corte em tempo real e lote.
+> - `src/engine/reporter.py`: Destaque visual humanizado dos desvios em relação ao estilo individual nos relatórios de corte.
+> - `app.py`: Painel de visualização de Perfis Cinestésicos Individuais e assistente de derivação de novos perfis com Warm Start na aba de Calibração.
+> - `tests/test_kenshi_style_model_eixo6.py`: 9 testes automatizados cobrindo Welford, Z-score, persistência JSON, Warm Start (mais rígido e mais permissivo), feedback_manager e relatórios.
 
-### 6.1 Perfil Cinestésico Individual (Kinesthetic Baseline)
+### 6.1 Perfil Cinestésico Individual (Kinesthetic Baseline) [✅ APLICADO]
 Cada Kenshi tem um estilo biomecânico único e consistente. A execução de *Men* de um praticante de baixa estatura naturalmente difere da de um praticante alto — e ambas podem ser igualmente válidas.
 
-* Após algumas sessões de análise, o sistema aprende o **baseline biomecânico de cada praticante cadastrado**:
-  * Seu ângulo natural de postura em repouso (*Chudan*).
-  * Sua janela de sincronismo habitual de *Fumikomi*.
-  * Sua extensão de braço típica por tipo de golpe.
-* A avaliação passa a medir **desvio do próprio baseline**, não apenas comparação com um padrão universal:
-  > *"Hoje você executou o Men com 8° a mais de inclinação do que sua média habitual nas últimas 5 sessões."*
-* Especialmente valioso no **Modo de Treinamento**, onde o objetivo é a evolução do praticante, não a arbitragem de competição.
+* O sistema aprende o **baseline biomecânico de cada praticante cadastrado** de forma contínua online (Welford):
+  * Seu ângulo natural de postura em repouso (*Chudan / Shisei*).
+  * Sua janela de sincronismo habitual de *Fumikomi* (tempo em ms entre o impacto e a pisada).
+  * Sua extensão de braço típica por tipo de golpe (`MEN`, `KOTE`, `DO`, `TSUKI`).
+  * Sua cadência habitual de cortes (CPM) e inclinação da coluna.
+* A avaliação passa a medir **desvio do próprio baseline em Z-score**, gerando insights humanizados em linguagem natural:
+  > *"Hoje seu Fumikomi foi 45ms mais rápido que seu habitual (1.8σ), indicando excelente explosão do pé direito."*
+  > *"Atenção: inclinação da coluna 6.2° maior que seu padrão habitual (Z=+2.1σ). Mantenha o Shisei ereto."*
+* Especialmente valioso no **Modo de Treinamento**, onde o objetivo é a evolução do praticante e a manutenção da consistência biomecânica pessoal.
 
-### 6.2 Transferência de Conhecimento entre Perfis (Warm Start)
-Quando um novo perfil é criado (`rigido`, `shiai`), ele começa do zero. Mas muito do que foi aprendido no perfil `normal` é diretamente reutilizável:
-* Usar os pesos calibrados de um perfil como **inicialização quente (warm start)** para um novo perfil derivado.
-* Reduz dramaticamente o número de feedbacks necessários para calibrar um novo perfil.
-* Implementação: ao criar um novo perfil, o feedback_manager.py copia os pesos do perfil "pai" e ajusta os limiares de acordo com a direção de rigidez desejada.
+### 6.2 Transferência de Conhecimento entre Perfis (Warm Start) [✅ APLICADO]
+Quando um novo perfil é criado (`rigido`, `shiai` ou perfis para dojos e graduações específicas), ele não precisa começar do zero. O conhecimento adquirido através de otimização Bayesiana e feedbacks humanos é transferido:
+* **Herança Completa dos Pesos Ótimos:** Copia os pesos globais e a matriz `weights_by_strike_type` (`MEN`, `KOTE`, `DO`, `TSUKI`), priors de Dan e calibração Platt.
+* **Ajuste Direcional de Rigidez:**
+  * `more_strict`: Aumenta limiares de score em +10% e sub-limiares em +8% (respeitando limites máximos de segurança).
+  * `more_permissive`: Reduz limiares de score em -10% e sub-limiares em -8% (respeitando limites mínimos de segurança).
+  * `neutral`: Mantém limiares idênticos para calibração direcionada a novo público.
+* **Rastreamento de Linhagem:** Registra perfil pai (`parent_profile_id`), data de derivação e direção de rigidez para governança auditável.
 
 ---
 
@@ -341,11 +354,11 @@ flowchart TD
 | **Detecção Oji-waza / Debana**      | 3.4    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | ✅ **Concluído**    |
 | **Fusão de áudio (Kiai + estalo)**  | 3.5    | ⭐⭐⭐⭐          | 🔧🔧🔧🔧 Muito Alto  | ✅ **Concluído**    |
 | **TCN (Action Spotting 10 Classes)**| 3.6    | ⭐⭐⭐⭐          | 🔧🔧🔧🔧 Muito Alto  | ✅ **Concluído**    |
-| **Profundidade Monocular (MiDaS)** | 5.2    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | 🟠 Alta             |
-| **Compensação de Perspectiva**      | 5.1    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | 🟡 Média            |
-| **Diagnóstico de Ângulo de Câmera** | 5.3    | ⭐⭐⭐           | 🔧 Baixo             | 🟡 Média            |
-| **Baseline cinestésico individual** | 6.1    | ⭐⭐⭐⭐⭐         | 🔧🔧🔧🔧 Muito Alto  | 🟢 Longo prazo      |
-| **Warm Start entre perfis**         | 6.2    | ⭐⭐⭐           | 🔧 Baixo             | 🟢 Longo prazo      |
+| **Profundidade Monocular (MiDaS)** | 5.2    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | ✅ **Concluído**    |
+| **Compensação de Perspectiva**      | 5.1    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | ✅ **Concluído**    |
+| **Diagnóstico de Ângulo de Câmera** | 5.3    | ⭐⭐⭐           | 🔧 Baixo             | ✅ **Concluído**    |
+| **Baseline cinestésico individual** | 6.1    | ⭐⭐⭐⭐⭐         | 🔧🔧🔧🔧 Muito Alto  | ✅ **Concluído**    |
+| **Warm Start entre perfis**         | 6.2    | ⭐⭐⭐           | 🔧 Baixo             | ✅ **Concluído**    |
 
 ---
 
@@ -354,10 +367,13 @@ flowchart TD
 * `src/engine/auto_trainer.py`: Orquestração do aprendizado e conexão com fontes de conhecimento.
 * `src/engine/feedback_manager.py`: Gestor do histórico de anotações humanas e cálculo da calibração ativa.
 * `src/engine/calibrator.py`: Motor executor de corte, ponderação e validação de Yuko-Datotsu.
-* `src/analytics/biomechanics.py`: Extração cinemática dos pilares técnicos de corte.
+* `src/analytics/biomechanics.py`: Extração cinemática dos pilares técnicos de corte e normalização espacial 3D.
+* `src/analytics/camera_invariance.py`: Compensação afim de perspectiva, estimativa de profundidade monocular e diagnóstico de ângulo (Eixo 5).
+* `src/analytics/kenshi_style_model.py`: Modelagem de baseline cinestésico individual online (Welford/Z-score) e Warm Start de perfis (Eixo 6).
+* `data/kenshi_baselines.json`: Persistência de baselines biomecânicos individuais dos praticantes.
 * `src/analytics/event_spotter.py`: Identificação temporal dos disparos de ataque.
 * `src/vision/shinai_tracker.py`: Rastreamento da lâmina, ângulo (Hasuji) e determinação do ponto de impacto (Monouchi).
-* `config/calibration_profiles.json`: Persistência dos perfis de tolerância (permissivo, normal, rigido, shiai).
+* `config/calibration_profiles.json`: Persistência dos perfis de tolerância com pesos por golpe, Platt scaling e linhagem warm start.
 * `data/benchmark_golden/golden_dataset.json`: Conjunto de validação padrão-ouro com clipes canônicos chancelados (implementado).
 * `src/engine/active_learning.py`: Motor de Aprendizado Ativo, amostragem por incerteza e consenso arbitral (implementado).
 * `src/engine/llm_assistant.py`: Assistente LLM para Kendo e captura/rotulagem acelerada de movimentos (implementado).

@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.4.0`
+> **Versão Oficial do Sistema**: `v 0.3.5.0`
 
 ---
 
@@ -143,7 +143,8 @@ Dev/
 ├── src/
 │   ├── analytics/
 │   │   ├── biomechanics.py         # Cálculo numérico dos critérios de Yuko-Datotsu e Maai
-│   │   ├── camera_invariance.py    # Invariância de câmera, compensação de perspectiva e Maai 3D (Eixo 5)         # Cálculo numérico dos critérios de Yuko-Datotsu e Maai
+│   │   ├── camera_invariance.py    # Invariância de câmera, compensação de perspectiva e Maai 3D (Eixo 5)
+│   │   ├── kenshi_style_model.py   # Modelagem de baseline cinestésico individual e warm start de perfis (Eixo 6)
 │   │   ├── event_spotter.py        # Detecção temporal de picos cinemáticos, debounce e NMS de golpes
 │   │   ├── multi_camera_fusion.py  # Fusão de consenso multi-câmeras e avaliação Yuko-Datotsu
 │   │   ├── sonkyo_detector.py      # Identificação de Sonkyō, delimitação da luta e aprendizado
@@ -173,7 +174,8 @@ Dev/
 │   └── pipeline.py                 # Pipeline orquestrador end-to-end de vídeo e validação de Maai
 ├── tests/
 │   ├── test_active_learning_eixo4.py # Testes de aprendizado ativo, golden benchmark e assistente LLM
-│   ├── test_camera_invariance_eixo5.py # Testes de invariância de câmera, perspectiva e Maai 3D (Eixo 5) # Testes de aprendizado ativo, golden benchmark e assistente LLM
+│   ├── test_camera_invariance_eixo5.py # Testes de invariância de câmera, perspectiva e Maai 3D (Eixo 5)
+│   ├── test_kenshi_style_model_eixo6.py # Testes de baseline cinestésico e warm start de perfis (Eixo 6)
 │   ├── test_auto_trainer.py        # Testes de auto-treinamento, baselines < 50% e tolerância a falhas
 │   ├── test_dan_training_governance.py # Testes da governança por Dan, pacotes e retreinamento
 │   ├── test_environment.py         # Testes de detecção de ambiente virtual
@@ -620,6 +622,45 @@ O módulo de invariância de câmera garante que a avaliação biomecânica e o 
 
 ---
 
+### 4.14. Modelagem do Estilo Individual do Kenshi & Warm Start (Eixo 6) ([kenshi_style_model.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/kenshi_style_model.py))
+
+A modelagem do estilo individual personaliza a avaliação biomecânica, reconhecendo que cada Kenshi possui proporções corporais e características cinestésicas únicas, avaliando o praticante em relação ao seu próprio histórico evolutivo e transferindo conhecimento prévio entre perfis:
+
+- **Aprendizado Contínuo Online do Baseline Cinestésico (`MetricDistribution` & Algoritmo de Welford)**:
+  - Atualização recursiva e estatisticamente estável da média ($\mu_n$) e variância ($\sigma_n^2$) a cada nova repetição ou sessão de treino, sem necessidade de recalcular todo o histórico:
+    $$M_{1} = x_1, \quad M_{k} = M_{k-1} + \frac{x_k - M_{k-1}}{k}$$
+    $$S_k = S_{k-1} + (x_k - M_{k-1})(x_k - M_k), \quad \sigma^2 = \frac{S_k}{k - 1}$$
+  - Rastreamento contínuo de 5 dimensões biomotoras:
+    - Ângulo de postura de repouso em *Chudan* / *Shisei*;
+    - Janela temporal de sincronismo habitual de *Fumikomi* (tempo em ms entre aceleração e impacto);
+    - Extensão de braço típica por golpe (`MEN`, `KOTE`, `DO`, `TSUKI`);
+    - Cadência de cortes em Golpes por Minuto (**CPM**);
+    - Inclinação média habitual da coluna.
+
+- **Avaliação Comparativa em Z-Score e Diagnóstico Humanizado (`KinestheticBaselineModel`)**:
+  - Mede o desvio padronizado da execução atual em relação à média pessoal do próprio atleta:
+    $$Z = \frac{x_{\text{observado}} - \mu_{\text{kenshi}}}{\sigma_{\text{kenshi}}}$$
+  - Geração de diagnósticos pedagógicos humanizados em linguagem natural com ícone 🧬:
+    - *Fumikomi*: *"Seu Fumikomi foi 35ms mais rápido que seu habitual (1.4σ), indicando excelente explosão do pé direito."*
+    - *Coluna*: *"Atenção: inclinação da coluna 5.4° maior que seu padrão habitual (Z=+1.9σ). Mantenha o Shisei ereto."*
+    - *Extensão*: *"Extensão de braço no Men perfeitamente alinhada com seu baseline histórico."*
+
+- **Gestão Centralizada e Persistência Multi-Praticante (`KinestheticProfileManager`)**:
+  - Armazenamento atômico em `data/kenshi_baselines.json`.
+  - Integração no `SenpAIPipeline` e no `TrainingAnalyzer`, registrando e avaliando tanto praticantes solo (`KENSHI_SOLO`) quanto duplas de combate (`KENSHI_SHIRO`, `KENSHI_AKA`).
+  - Inclusão automática da **Seção 3: Análise Comparativa com o Baseline Cinestésico Individual** nos relatórios exportáveis de treino em Markdown.
+
+- **Transferência de Conhecimento entre Perfis com Warm Start (`ProfileWarmStartManager`)**:
+  - Permite derivar novos perfis de calibração (`rigido`, `shiai` ou perfis para clubes e graduações específicas) reaproveitando o conhecimento otimizado do perfil pai.
+  - **Preservação Integral de Pesos Ótimos**: Copia os pesos globais, a matriz `weights_by_strike_type` (`MEN`, `KOTE`, `DO`, `TSUKI`), calibração de Platt Scaling e priors de Dan.
+  - **Ajuste Direcional de Rigidez**:
+    - `more_strict`: Eleva a pontuação mínima em +10% e sub-limiares em +8% (respeitando tetos de segurança);
+    - `more_permissive`: Reduz a pontuação mínima em -10% e sub-limiares em -8% (respeitando pisos de segurança);
+    - `neutral`: Mantém limiares idênticos para direcionamento a novo segmento.
+  - **Governança e Rastreamento de Linhagem**: Registra `parent_profile_id`, data/hora de criação e direção de ajuste em `config/calibration_profiles.json`.
+
+---
+
 ## 5. Suíte de Testes Automatizados e Relatório de Execução
 
 O projeto inclui suíte completa de testes automatizados em `unittest` com runner customizado ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py)) e script de execução dedicado ([run_tests.py](file:///d:/Projetos/SenpAI/Dev/run_tests.py)).
@@ -667,7 +708,9 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_video_player_controls.py` (5 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
 - **`test_training_live_manager.py` (5 testes)**: Valida a máquina de estados de golpes em tempo real (`LiveStrikeState`), rastreamento biomecânico contínuo da coluna (*Shisei*) e simetria de ombros, contagem de repetições, cadência em Golpes por Minuto (CPM), renderização do HUD em tempo real dos 3 Pilares e geração de relatórios de sessão em Markdown e JSON.
 
-Total de **181 testes automatizados** distribuídos em 19 módulos, executados e aprovados com 100% de sucesso.
+- **`test_kenshi_style_model_eixo6.py` (9 testes)**: Valida a atualização online via algoritmo de Welford (MetricDistribution), cálculo de desvios em Z-score e geração de insights humanizados (KinestheticBaselineModel), persistência atômica e gestão multi-praticante em JSON (KinestheticProfileManager), derivação direcional de perfis com Warm Start mais rígido e mais permissivo preservando pesos e linhagem (ProfileWarmStartManager), integração com FeedbackManager e inclusão da Seção 3 no relatório de treino do Kendoca.
+
+Total de **232 testes automatizados** distribuídos em 25 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -675,7 +718,27 @@ Total de **181 testes automatizados** distribuídos em 19 módulos, executados e
 
 ---
 
-### `[v 0.3.4.0]` — 2026-10-02 *(Versão Atual)*
+### `[v 0.3.5.0]` — 2026-10-02 *(Versão Atual)*
+
+- **Implementação do Eixo 6: Modelagem do Estilo Individual do Kenshi & Warm Start de Perfis ([kenshi_style_model.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/kenshi_style_model.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py), [training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Perfil Cinestésico Individual (Kinesthetic Baseline) & Algoritmo de Welford**:
+    - Rastreamento estatístico contínuo online de cada praticante com atualização estável de média e variância (`MetricDistribution`) para ângulo de repouso em *Chudan*, janela temporal de *Fumikomi* (em ms), extensão de braço por golpe (`MEN`, `KOTE`, `DO`, `TSUKI`), cadência em Golpes por Minuto (**CPM**) e inclinação da coluna.
+    - Avaliação de golpes através do desvio em Z-score em relação ao baseline pessoal do atleta, gerando diagnósticos humanizados e construtivos em linguagem natural.
+  - **Persistência Multi-Praticante & Relatório Individual Enriquecido**:
+    - Armazenamento atômico dos baselines em `data/kenshi_baselines.json` através do `KinestheticProfileManager`.
+    - Injeção automática da **Seção 3: Análise Comparativa com o Baseline Cinestésico Individual** nos relatórios em Markdown e telemetria de corte.
+  - **Transferência de Conhecimento entre Perfis (Warm Start)**:
+    - Derivação de novos perfis de calibração herdando integralmente os pesos matematicamente otimizados de Ki-Ken-Tai-Ichi, matriz `weights_by_strike_type`, parâmetros de Platt Scaling e priors de Dan.
+    - Ajuste direcional com clamping seguro (`more_strict`, `more_permissive`, `neutral`) e rastreamento de linhagem (`parent_profile_id`).
+  - **Interface Web Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+    - Adição de painel interativo de Perfis Cinestésicos Individuais e assistente em 1 clique para Derivação de Novos Perfis com Warm Start na aba de Calibração.
+  - **Suíte de Testes Automatizados**:
+    - Criação de [test_kenshi_style_model_eixo6.py](file:///d:/Projetos/SenpAI/Dev/tests/test_kenshi_style_model_eixo6.py) com 9 testes automatizados cobrindo todo o Eixo 6 com 100% de sucesso.
+    - Suíte geral de testes do SenpAI atinge **232 testes automatizados em 25 módulos aprovados sem regressões**.
+
+---
+
+### `[v 0.3.4.0]` — 2026-10-02
 
 - **Implementação do Eixo 5: Invariância de Câmera e Normalização Espacial 3D ([camera_invariance.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/camera_invariance.py), [biomechanics.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/biomechanics.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - **Compensação de Perspectiva por Ângulo de Filmagem (`CombatVectorEstimator`)**:
