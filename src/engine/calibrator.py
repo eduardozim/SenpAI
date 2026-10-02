@@ -192,7 +192,8 @@ class CalibrationEngine:
             failed_subcriteria.append("POSTURA_INCLINADA")
         if zanshin_score < sub_thresholds.get("zanshin", 0.20):
             failed_subcriteria.append("SEM_ZANSHIN")
-        if hasuji_score is not None and hasuji_score < 0.40:
+        hasuji_thresh = sub_thresholds.get("hasuji", 0.40)
+        if hasuji_score is not None and hasuji_score < hasuji_thresh:
             is_valid = False
             failed_subcriteria.append("HASUJI_INCORRETO")
 
