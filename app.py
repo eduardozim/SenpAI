@@ -1598,6 +1598,20 @@ elif nav_page == "settings":
                 del st.session_state["training_reset_confirmed_msg"]
                 st.rerun()
 
+        if st.session_state.get("training_download_success_msg"):
+            st.success(st.session_state["training_download_success_msg"], icon="📥")
+            st.toast("📥 Pacote de treinamento e configurações baixado com sucesso!", icon="✅")
+            if st.button("✖️ Fechar Aviso de Download", key="btn_dismiss_dl_alert", type="tertiary"):
+                del st.session_state["training_download_success_msg"]
+                st.rerun()
+
+        if st.session_state.get("training_import_success_msg"):
+            st.success(st.session_state["training_import_success_msg"], icon="🎉")
+            st.toast("📤 Pacote de treinamento importado com sucesso!", icon="🎉")
+            if st.button("✖️ Fechar Aviso de Importação", key="btn_dismiss_import_alert", type="tertiary"):
+                del st.session_state["training_import_success_msg"]
+                st.rerun()
+
         act_col1, act_col2, act_col3 = st.columns(3)
 
         with act_col1:
@@ -1627,7 +1641,7 @@ elif nav_page == "settings":
             st.caption("Exporta pacote (.json) completo com revisões por Dan, Decisão dos Shinpans (incluindo links de streaming), calibrações e treinamento automático por IA (Base de Conhecimento e 14 modalidades).")
             pkg_data = feedback_mgr.export_training_package(auto_trainer_instance=auto_trainer)
             pkg_json_str = json.dumps(pkg_data, indent=2, ensure_ascii=False)
-            st.download_button(
+            dl_train_clicked = st.download_button(
                 label="📥 Baixar Treinamento (.json)",
                 data=pkg_json_str,
                 file_name=f"senpai_training_package_{int(time.time())}.json",
@@ -1635,29 +1649,45 @@ elif nav_page == "settings":
                 width="stretch",
                 key="btn_dl_train_tab"
             )
+            if dl_train_clicked:
+                st.session_state["training_download_success_msg"] = (
+                    "✅ **Download do Pacote de Treinamento e Configurações realizado com sucesso!**\n\n"
+                    f"O arquivo `.json` ({len(pkg_json_str.encode('utf-8')) / 1024:.1f} KB) foi gerado e baixado contendo "
+                    "todas as revisões por Dan, Decisões dos Shinpans, links de streaming homologados, "
+                    "calibrações de Ki-Ken-Tai-Ichi e a Base de Conhecimento do Auto-Trainer."
+                )
+                st.toast("📥 Pacote de treinamento e configurações baixado com sucesso!", icon="✅")
+                st.success("✅ **Download realizado com sucesso!** Arquivo `.json` gerado e salvo.", icon="📥")
+            elif st.session_state.get("training_download_success_msg"):
+                st.success("✅ Pacote baixado recentemente.", icon="📥")
 
         with act_col3:
             st.markdown("**📤 Carregar Treinamento Baixado**")
             st.caption("Importa pacote de treinamento previamente baixado para restaurar revisões, links de streaming e aprendizado da IA.")
             imported_file = st.file_uploader("Selecione pacote (.json)", type=["json"], key="import_pkg_file_tab")
             if imported_file is not None:
+                st.info(f"📄 **Arquivo selecionado:** `{imported_file.name}` ({imported_file.size / 1024:.1f} KB)\n\nPronto para restauração. Clique no botão abaixo para restaurar configurações e retreinar o modelo.")
                 if st.button("📤 Importar e Retreinar Modelo", type="primary", width="stretch", key="btn_import_train_tab"):
-                    try:
-                        imported_file.seek(0)
-                        pkg_content = json.loads(imported_file.read().decode("utf-8"))
-                        import_res = feedback_mgr.import_training_package(pkg_content, auto_trainer_instance=auto_trainer)
-                        success_msg = (
-                            f"🎉 Pacote importado com sucesso!\n"
-                            f"• {import_res['new_items_added']} novas revisões por Dan/Shinpans integradas.\n"
-                            f"• {import_res.get('shinpan_videos_imported', 0)} links de streaming / vídeos de Shinpans registrados.\n"
-                            f"• {import_res.get('imported_trainings_count', 0)} sessões no histórico de treinamento.\n"
-                            f"• Base de Conhecimento de IA e 14 modalidades pedagógicas recalibradas.\n"
-                            f"• Dan Médio Atual: {import_res['average_dan_now']}."
-                        )
-                        st.success(success_msg)
-                        st.rerun()
-                    except Exception as ex:
-                        st.error(f"❌ Erro ao importar pacote de treinamento: {ex}")
+                    with st.spinner("⏳ Processando e aplicando pacote de treinamento..."):
+                        try:
+                            imported_file.seek(0)
+                            pkg_content = json.loads(imported_file.read().decode("utf-8"))
+                            import_res = feedback_mgr.import_training_package(pkg_content, auto_trainer_instance=auto_trainer)
+                            success_msg = (
+                                f"🎉 **Pacote de Treinamento e Configurações importado com sucesso!**\n\n"
+                                f"• **{import_res['new_items_added']}** novas revisões por Dan/Shinpans integradas ao modelo.\n"
+                                f"• **{import_res.get('shinpan_videos_imported', 0)}** links de streaming / vídeos de Shinpans registrados.\n"
+                                f"• **{import_res.get('imported_trainings_count', 0)}** sessões integradas ao histórico de treinamento.\n"
+                                f"• Base de Conhecimento de IA e 14 modalidades pedagógicas recalibradas com sucesso.\n"
+                                f"• **Dan Médio Atual:** {import_res['average_dan_now']}."
+                            )
+                            st.session_state["training_import_success_msg"] = success_msg
+                            st.toast("🎉 Pacote importado e configurações aplicadas com sucesso!", icon="✅")
+                            st.rerun()
+                        except Exception as ex:
+                            st.error(f"❌ Erro ao importar pacote de treinamento: {ex}")
+            elif st.session_state.get("training_import_success_msg"):
+                st.success("✅ Pacote importado com sucesso.", icon="🎉")
 
         # ----------------------------------------------------------------------
         # SEÇÃO: TREINAMENTO AUTOMÁTICO POR IA (WEB & VÍDEO KNOWLEDGE INGESTION)
