@@ -1575,6 +1575,14 @@ elif nav_page == "settings":
                 st.info("ℹ️ Nenhum link de vídeo com Decisão dos Shinpans registrado até o momento.")
 
         st.markdown("#### 🛠️ Gerenciamento do Dataset de Treinamento:")
+
+        if st.session_state.get("training_reset_confirmed_msg"):
+            st.success(st.session_state["training_reset_confirmed_msg"], icon="✅")
+            st.toast("🗑️ Dados de treinamento apagados com sucesso!", icon="✅")
+            if st.button("✖️ Fechar Aviso de Confirmação", key="btn_dismiss_reset_alert", type="tertiary"):
+                del st.session_state["training_reset_confirmed_msg"]
+                st.rerun()
+
         act_col1, act_col2, act_col3 = st.columns(3)
 
         with act_col1:
@@ -1587,7 +1595,13 @@ elif nav_page == "settings":
                     auto_trainer.reset_knowledge_base()
                     if "last_auto_train_res" in st.session_state:
                         del st.session_state["last_auto_train_res"]
-                    st.success("✅ Treinamento do sistema apagado com sucesso! Sistema restaurado ao estágio inicial.")
+                    st.session_state["training_reset_confirmed_msg"] = (
+                        "✅ **Todos os dados de treinamento foram apagados com sucesso!**\n\n"
+                        "O histórico de revisões por Dan, a base de Decisão dos Shinpans, as calibrações personalizadas "
+                        "e a Base de Conhecimento do Auto-Trainer foram completamente resetados. "
+                        "O sistema e seus modelos foram restaurados ao estágio inicial padrão de fábrica."
+                    )
+                    st.session_state["chk_confirm_reset_tab"] = False
                     st.rerun()
                 else:
                     st.warning("⚠️ Marque a caixa de confirmação acima antes de apagar.")
