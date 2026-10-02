@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.2.4.1`
+> **Versão Oficial do Sistema**: `v 0.3.0.0`
 
 ---
 
@@ -133,6 +133,8 @@ Dev/
 │   └── sonkyo_learned_profile.json # Perfil adaptativo aprendido de postura de Sonkyō
 ├── data/
 │   ├── auto_training_checkpoint.json # Checkpoint persistente de tolerância a falhas do auto-treinador
+│   ├── benchmark_golden/
+│   │   └── golden_dataset.json       # Dataset canônico imutável de benchmark padrão-ouro (Eixo 4)
 │   ├── feedback_dataset.json       # Base de dados de anotações (TP/FP/FN/Dan) para RL
 │   └── training_history.json       # Histórico de sessões de treinamento e revisões por Dan
 ├── logs/
@@ -146,9 +148,11 @@ Dev/
 │   │   ├── sonkyo_detector.py      # Identificação de Sonkyō, delimitação da luta e aprendizado
 │   │   └── training_analyzer.py    # Análise das 14 modalidades de dojo e avaliação dos 3 Pilares
 │   ├── engine/
+│   │   ├── active_learning.py      # Motor de Aprendizado Ativo (Uncertainty, Golden Benchmark, Consenso e Trust)
 │   │   ├── auto_trainer.py         # Motor de auto-treinamento por IA, persistência e baselines
 │   │   ├── calibrator.py           # Motor de pontuação e validação de limiares
 │   │   ├── feedback_manager.py     # Motor de Aprendizagem por Reforço, Governança por Dan e Otimização
+│   │   ├── llm_assistant.py        # Assistente LLM Especialista FIK (Gemini/OpenAI + fallback determinístico)
 │   │   └── reporter.py             # Gerador de relatórios diagnósticos textuais
 │   ├── utils/
 │   │   ├── demo_generator.py       # Gerador sintético de vídeos de teste de Kendo
@@ -167,6 +171,7 @@ Dev/
 │   │   └── shinai_tracker.py       # Estimação do Kensen e zonas anatômicas de alvo
 │   └── pipeline.py                 # Pipeline orquestrador end-to-end de vídeo e validação de Maai
 ├── tests/
+│   ├── test_active_learning_eixo4.py # Testes de aprendizado ativo, golden benchmark e assistente LLM
 │   ├── test_auto_trainer.py        # Testes de auto-treinamento, baselines < 50% e tolerância a falhas
 │   ├── test_dan_training_governance.py # Testes da governança por Dan, pacotes e retreinamento
 │   ├── test_environment.py         # Testes de detecção de ambiente virtual
@@ -509,6 +514,46 @@ O módulo de **Decisão dos Shinpans** foi concebido para atender às exigência
 
 ---
 
+### 4.11. Motor de Aprendizado Ativo & Benchmark Padrão-Ouro (Eixo 4) ([active_learning.py](file:///d:/Projetos/SenpAI/Dev/src/engine/active_learning.py))
+
+O módulo de Aprendizado Ativo (*Active Learning*) automatiza o ciclo de evolução do SenpAI, priorizando instâncias que trazem maior ganho informativo e blindando o modelo contra o esquecimento catastrófico:
+
+- **Amostragem por Incerteza (`UncertaintySampler`)**:
+  - Em vez de solicitar rotulagem humana para golpes óbvios (confiança muito alta $> 85\%$ ou muito baixa $< 30\%$), o algoritmo calcula o índice de incerteza da predição:
+    $$\text{Incerteza}(x) = 1.0 - 2 \cdot |P(\text{Ippon}) - 0.5|$$
+  - Golpes cuja probabilidade/score de aprovação situa-se na faixa de contorno e ambiguidade regulamentar (**45% a 65%**) recebem incerteza elevada ($\ge 0.70$) e são automaticamente enfileirados em `data/active_learning_queue.json`.
+  - A fila possui limite deslizante (`max_queue_size = 500`), priorizando os lances mais críticos para revisão humana orientada.
+- **Dataset Canônico de Benchmark Padrão-Ouro (`GoldenBenchmark` & `golden_dataset.json`)**:
+  - Armazenado de forma imutável em `data/benchmark_golden/golden_dataset.json`, reúne lances incontestáveis de campeonatos mundiais (WKC), All Japan Kendo Championships e exames de alto Dan (Men, Kote, Do, Tsuki e Falsos Positivos canônicos como golpes fora do Shinai-bu ou sem Zanshin).
+  - **Salvaguarda Mandatória contra Esquecimento Catastrófico (`validate_no_regression`)**:
+    - Antes de qualquer atualização dos perfis de calibração (`feedback_manager.py`) ou consolidação de auto-treinamento (`auto_trainer.py`), o motor executa a validação contra o Golden Benchmark.
+    - Se a acurácia global ou a acurácia em qualquer tipo de golpe regredir abaixo de uma tolerância estrita ($\le 2.0\%$), a atualização é terminantemente **rejeitada** e revertida, impedindo a degradação do modelo.
+- **Consenso Multi-Árbitro Ponderado por Dan (`MultiJudgeConsensus`)**:
+  - Modela o regulamento oficial da FIK (Artigo 24 — quórum de 2 em 3 árbitros).
+  - Pondera cada voto pelo peso do Dan do revisor ($w_i = \text{Dan}_i$ ou $4.5$ para Shinpan):
+    $$V_{\text{ponderado}} = \frac{\sum_{i=1}^{N} w_i \cdot v_i}{\sum_{i=1}^{N} w_i}, \quad v_i \in \{0, 1\}$$
+  - Calcula o **Grau de Divergência Arbitral**: lances com alta discordância entre os juízes disparam alertas de controvérsia e são marcados para análise colegiada.
+- **Decaimento Exponencial de Confiança de Revisores (`ReviewerTrustManager`)**:
+  - Gerencia a autoridade de revisores com decaimento exponencial temporal por inatividade ($T_{1/2} = 180$ dias):
+    $$\text{Trust}(t) = \text{Trust}_{\text{base}} \cdot e^{-\lambda \cdot \Delta t}$$
+  - A confiança é restaurada e ampliada dinamicamente conforme a taxa de concordância histórica do revisor com o Golden Benchmark.
+
+---
+
+### 4.12. Assistente LLM Especialista em Kendo e Anotação Cinemática ([llm_assistant.py](file:///d:/Projetos/SenpAI/Dev/src/engine/llm_assistant.py))
+
+Integração de Modelos de Linguagem de Grande Porte (LLMs) multimodal e textual para acelerar a rotulagem, explicar decisões e sintetizar regras da Federação Internacional de Kendo (FIK):
+
+- **Arquitetura Híbrida com Fallback Determinístico**:
+  - Suporte nativo às APIs de ponta: **Google Gemini** (`gemini-1.5-flash` / `gemini-1.5-pro`) via `GEMINI_API_KEY` e **OpenAI** (`gpt-4o` / `gpt-4o-mini`) via `OPENAI_API_KEY`.
+  - **Motor Especialista Offline Embutido**: Caso nenhuma chave de API esteja configurada ou não haja conexão à internet, o assistente ativa um motor heurístico baseado nos tratados oficiais da FIK e AJKF, garantindo operação 100% autônoma e determinística.
+- **Rotulagem e Anotação Cinemática Assistida (`label_strike_from_telemetry`)**:
+  - Processa os vetores de telemetria de um golpe (aceleração do pulso, offset do Fumikomi em milissegundos, ângulo de Shisei da coluna, proximidade de Maai e Zanshin) e gera parecer arbitral completo em JSON estruturado com recomendação de ponto (`is_valid_ippon`), alvo sugerido, nível de confiança e justificativa técnica detalhada à luz do *Ki-Ken-Tai-Ichi*.
+- **Explicação Pedagógica de Lances Controversos (`explain_controversial_strike`)**:
+  - Analisa lances divergentes da fila de aprendizado ativo, detalhando os pontos de discordância (ex: impacto perfeito no Men, porém desprovido de Fumikomi sincrônico dentro da janela regulamentar de 100ms).
+
+---
+
 ## 5. Suíte de Testes Automatizados e Relatório de Execução
 
 O projeto inclui suíte completa de testes automatizados em `unittest` com runner customizado ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py)) e script de execução dedicado ([run_tests.py](file:///d:/Projetos/SenpAI/Dev/run_tests.py)).
@@ -534,8 +579,9 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **Política de Retenção Única**:
   - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
 
-### Módulos de Testes Incluídos (143 Testes)
+### Módulos de Testes Incluídos (181 Testes em 19 Módulos)
 
+- **`test_active_learning_eixo4.py` (10 testes)**: Valida o cálculo de amostragem por incerteza (faixa 45%-65%), enfileiramento inteligente, avaliação de acurácia contra o dataset padrão-ouro canônico (`GoldenBenchmark`), salvaguarda mandatória contra esquecimento catastrófico (`validate_no_regression`), bloqueio de regressão no retreinamento adaptativo e auto-treinamento, consenso multi-árbitro 2-de-3 ponderado por Dan, detecção de divergência arbitral, decaimento exponencial de autoridade por inatividade (`ReviewerTrustManager`), rotulagem de lances pelo Assistente LLM Especialista FIK e explicação pedagógica de lances controversos.
 - **`test_auto_trainer.py` (14 testes)**: Valida a inicialização da base de conhecimento de Kendo, diagnóstico autônomo de necessidade mais latente, ciclo de auto-treinamento com tempo controlado, baselines preliminares realistas (< 50%), recalibração de perfis de arbitragem e das 14 modalidades pedagógicas, persistência incremental em governança e checkpoints de tolerância a falhas.
 - **`test_dan_training_governance.py` (8 testes)**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador humano vs IA, média de Dan humano pura e tabela por Dan com linha dedicada para IA e Decisão dos Shinpans), ponderação regulamentar com peso balanceado (4.5) para Shinpans, as 5 regras de transição de estado da UI (`test_shinpan_ui_state_transitions`), exportação/importação de pacotes `.json` com data e Dan/Shinpan, e reset do sistema.
 - **`test_environment.py` (9 testes)**: Valida detecção, integridade e isolamento do ambiente virtual Python (`.venv`).
@@ -555,7 +601,7 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_video_player_controls.py` (5 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
 - **`test_training_live_manager.py` (5 testes)**: Valida a máquina de estados de golpes em tempo real (`LiveStrikeState`), rastreamento biomecânico contínuo da coluna (*Shisei*) e simetria de ombros, contagem de repetições, cadência em Golpes por Minuto (CPM), renderização do HUD em tempo real dos 3 Pilares e geração de relatórios de sessão em Markdown e JSON.
 
-Total de **169 testes automatizados** distribuídos em 18 módulos, executados e aprovados com 100% de sucesso.
+Total de **181 testes automatizados** distribuídos em 19 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -563,7 +609,32 @@ Total de **169 testes automatizados** distribuídos em 18 módulos, executados e
 
 ---
 
-### `[v 0.2.4.1]` — 2026-09-30 *(Versão Atual)*
+### `[v 0.3.0.0]` — 2026-10-01 *(Versão Atual)*
+
+- **Implementação do Eixo 4: Aprendizado Ativo & Salvaguarda Golden Benchmark ([active_learning.py](file:///d:/Projetos/SenpAI/Dev/src/engine/active_learning.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py) & [auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py))**:
+  - **Amostragem por Incerteza (`UncertaintySampler`)**:
+    - Algoritmo de filtragem seletiva de lances de borda com probabilidade entre **45% e 65%** (incerteza máxima $\ge 0.70$), descartando casos triviais e enfileirando amostras de alto valor informativo em `data/active_learning_queue.json`.
+  - **Dataset Canônico de Benchmark Padrão-Ouro (`GoldenBenchmark`)**:
+    - Criação do dataset canônico imutável (`data/benchmark_golden/golden_dataset.json`) contendo casos de teste incontestáveis de campeonatos mundiais (WKC) e exames de alto Dan.
+    - **Proteção Mandatória contra Esquecimento Catastrófico (`validate_no_regression`)**:
+      - Bloqueio estrito de qualquer alteração de calibração ou auto-treinamento que cause regressão na acurácia do Golden Benchmark superior à margem de tolerância ($\le 2.0\%$).
+  - **Consenso Multi-Árbitro Ponderado por Dan (`MultiJudgeConsensus`)**:
+    - Quórum ponderado modelo 2 de 3 (FIK Artigo 24) com detecção e cálculo numérico do Grau de Divergência Arbitral.
+  - **Gestão de Confiança e Decaimento Exponencial (`ReviewerTrustManager`)**:
+    - Modelo de meia-vida temporal ($T_{1/2} = 180$ dias) com decaimento exponencial de autoridade por inatividade e reforço cumulativo por histórico de acertos no Golden Benchmark.
+- **Assistente LLM Especialista em Kendo e Anotação Cinemática ([llm_assistant.py](file:///d:/Projetos/SenpAI/Dev/src/engine/llm_assistant.py))**:
+  - Suporte nativo a Google Gemini (`gemini-1.5-flash` / `gemini-1.5-pro`) e OpenAI (`gpt-4o` / `gpt-4o-mini`).
+  - Motor de regras FIK offline determinístico embutido para funcionamento autônomo sem dependência de credenciais externas.
+  - Rotulagem cinemática estruturada em JSON (`label_strike_from_telemetry`) e explicação didática de lances controversos (`explain_controversial_strike`).
+- **Painel de Aprendizado Ativo & Curadoria no Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - Adição de card de métricas de conformidade com o Golden Benchmark na aba de Calibração.
+  - Visualização da Fila de Incerteza com ferramentas de curadoria rápida em 1 clique.
+- **Suíte de Testes Automatizados Expandida**:
+  - Criação do módulo `test_active_learning_eixo4.py` com 10 testes dedicados, elevando a suíte de testes do SenpAI para **181 testes automatizados em 19 módulos com 100% de aprovação**.
+
+---
+
+### `[v 0.2.4.1]` — 2026-09-30
 
 - **Mitigação de Bloqueio de IP em Servidores Nuvem (`HTTP Error 403: Forbidden`) & Gestão de Cookies via Secrets ([video_downloader.py](file:///d:/Projetos/SenpAI/Dev/src/utils/video_downloader.py) & [manual.md](file:///d:/Projetos/SenpAI/Dev/manual.md))**:
   - **Diagnóstico da Causa Raiz do Erro 403 na Nuvem**:

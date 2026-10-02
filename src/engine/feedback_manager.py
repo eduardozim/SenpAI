@@ -10,6 +10,13 @@ import datetime
 from typing import Dict, Any, List, Tuple, Optional
 from urllib.parse import urlparse
 from src.utils.logger_manager import log_event
+from src.engine.active_learning import (
+    UncertaintySampler,
+    GoldenBenchmark,
+    MultiJudgeConsensus,
+    ReviewerTrustManager
+)
+from src.engine.llm_assistant import KendoLLMAssistant
 
 SHINPAN_REV_KEY: str = "shinpan"
 SHINPAN_NAME: str = "Decisão dos Shinpans"
@@ -134,6 +141,12 @@ class FeedbackManager:
         self.shinpan_registry_path = shinpan_registry_path
         self.checkpoint_path = checkpoint_path
         self._ensure_files_exist()
+        
+        # Componentes do Eixo 4: Aprendizado Ativo, Padrão-Ouro e Governança
+        self.golden_benchmark = GoldenBenchmark()
+        self.llm_assistant = KendoLLMAssistant()
+        self.uncertainty_sampler = UncertaintySampler(llm_assistant=self.llm_assistant)
+        self.reviewer_trust_manager = ReviewerTrustManager()
 
     def _ensure_files_exist(self):
         os.makedirs(os.path.dirname(self.dataset_path), exist_ok=True)
@@ -398,6 +411,27 @@ class FeedbackManager:
 
         with open(self.dataset_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+
+        # Eixo 4.1: Amostragem por Incerteza para Aprendizado Ativo (Active Learning)
+        try:
+            conf = float(total_score) / 100.0 if total_score > 1.0 else float(total_score)
+            if self.uncertainty_sampler.is_uncertain(conf):
+                strike_data_pkg = {
+                    "strike_type": strike_type,
+                    "scores": sub_scores or {},
+                    "sub_scores": sub_scores or {},
+                    "total_score": total_score,
+                    "label": label,
+                    "notes": notes
+                }
+                self.uncertainty_sampler.evaluate_and_enqueue(
+                    strike_data=strike_data_pkg,
+                    confidence=conf,
+                    video_source=video_url or video_name,
+                    profile_name=profile_key
+                )
+        except Exception as e:
+            log_event("WARNING", f"Falha ao processar amostragem por incerteza: {e}", "feedback_manager")
 
         return entry
 
@@ -1480,6 +1514,25 @@ class FeedbackManager:
         new_config["sub_thresholds"] = sub_thresholds
         new_config["weights"] = weights
 
+        # Eixo 4.2: Salvaguarda Obrigatória no Golden Benchmark (Prevenção contra Catastrophic Forgetting)
+        try:
+            passed, bench_report = self.golden_benchmark.validate_no_regression(new_config, current_config)
+            if not passed:
+                log_event(
+                    "WARNING",
+                    f"Recalibração do perfil '{profile_key}' BLOQUEADA por regressão no Golden Benchmark: {bench_report.get('block_reason')}",
+                    "feedback_manager"
+                )
+                new_config = json.loads(json.dumps(current_config))
+                changes_summary = [f"⚠️ Bloqueio por Regressão no Golden Benchmark: {bench_report.get('block_reason')}"]
+            else:
+                changes_summary.append(
+                    f"✅ Validação no Golden Benchmark aprovada (Acurácia: {bench_report['new_metrics']['accuracy']*100:.1f}%, "
+                    f"F1: {bench_report['new_metrics']['f1']:.3f})."
+                )
+        except Exception as e:
+            log_event("WARNING", f"Falha ao validar contra Golden Benchmark: {e}", "feedback_manager")
+
         opt_stats = {
             "status": "success",
             "profile_key": profile_key,
@@ -1490,4 +1543,40 @@ class FeedbackManager:
         }
 
         return new_config, opt_stats
+
+    # --------------------------------------------------------------------------
+    # MÉTODOS DE APOIO AO EIXO 4 (GOLDEN BENCHMARK, ACTIVE LEARNING & CONSENSO)
+    # --------------------------------------------------------------------------
+    def load_profiles(self) -> Dict[str, Any]:
+        """Carrega os perfis de calibração persistidos em config/calibration_profiles.json."""
+        if os.path.exists(self.profiles_path):
+            try:
+                with open(self.profiles_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return DEFAULT_CALIBRATION_PROFILES
+
+    def get_golden_benchmark_metrics(self, profile_key: str = "normal") -> Dict[str, Any]:
+        """Avalia o desempenho do perfil indicado contra o Golden Benchmark Dataset."""
+        profiles = self.load_profiles()
+        cfg = profiles.get(profile_key, DEFAULT_CALIBRATION_PROFILES.get(profile_key, {}))
+        return self.golden_benchmark.evaluate_profile(cfg)
+
+    def get_active_learning_queue(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Retorna itens com alta incerteza aguardando curadoria ativa."""
+        return self.uncertainty_sampler.get_queue(status=status)
+
+    def resolve_active_learning_item(self, item_id: str, approved: bool, reviewer_dan: int, notes: str = "") -> bool:
+        """Marca um item da fila de curadoria ativa como resolvido por um árbitro."""
+        return self.uncertainty_sampler.resolve_item(item_id, approved, reviewer_dan, notes=notes)
+
+    def consolidate_multi_judge_reviews(self, reviews: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Consolida votos de múltiplos árbitros aplicando regra de 2 de 3, ponderação por Dan e grau de divergência."""
+        return MultiJudgeConsensus.consolidate_reviews(reviews, llm_assistant=self.llm_assistant)
+
+    def get_reviewer_trust_weight(self, reviewer_id: str, dan: int) -> float:
+        """Retorna o peso efetivo do revisor com decaimento temporal e consistência."""
+        return self.reviewer_trust_manager.get_effective_weight(reviewer_id, dan)
+
 

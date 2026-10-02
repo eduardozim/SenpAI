@@ -495,11 +495,54 @@ def clear_previous_analysis() -> None:
         "youtube_video_info",
         "recorded_local_file_uploader",
         "youtube_url_input",
+        "video_seek_key",
+        "video_display_type_selector",
+        "last_recorded_source_choice",
+        "recorded_youtube_url_input",
     ]
     for k in keys_to_clear:
         st.session_state.pop(k, None)
 
     # 3. Remover arquivo temporário de vídeo anotado se existir
+    annotated_out = os.path.abspath("annotated_match.mp4")
+    if os.path.exists(annotated_out):
+        try:
+            os.remove(annotated_out)
+        except Exception:
+            pass
+
+
+def clear_analysis_results_only() -> None:
+    """
+    Limpa completamente todos os dados, placares, métricas, linha do tempo, anotações
+    e vídeo anotado da análise anterior da tela, mantendo apenas o novo vídeo atualmente selecionado.
+    """
+    active_worker = st.session_state.get("analysis_worker")
+    if active_worker and not getattr(active_worker, "is_done", True):
+        try:
+            active_worker.cancel()
+        except Exception:
+            pass
+
+    keys_to_clear = [
+        "analysis_result",
+        "analysis_worker",
+        "annotated_output",
+        "last_processing_time",
+        "last_processing_fps",
+        "session_reviews",
+        "sonkyo_edits",
+        "training_kendoka_names",
+        "training_modality_selected",
+        "video_seek_label",
+        "video_start_time",
+        "video_seek_key",
+        "video_display_type_selector",
+        "processing_cancelled",
+    ]
+    for k in keys_to_clear:
+        st.session_state.pop(k, None)
+
     annotated_out = os.path.abspath("annotated_match.mp4")
     if os.path.exists(annotated_out):
         try:
@@ -829,7 +872,7 @@ def render_global_footer():
             <div>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                     <span style="font-weight: 800; color: #E2E8F0; font-size: 13px;">SenpAI • 先輩 AI</span>
-                    <span style="color: #6366F1; font-weight: 700; font-size: 11px; background: rgba(99, 102, 241, 0.12); padding: 2px 8px; border-radius: 9999px;">v 0.2.3.2</span>
+                    <span style="color: #6366F1; font-weight: 700; font-size: 11px; background: rgba(99, 102, 241, 0.12); padding: 2px 8px; border-radius: 9999px;">v 0.3.0.0</span>
                 </div>
                 <div style="color: #94A3B8; font-size: 11.5px; line-height: 1.5;">
                     Plataforma de Visão Computacional e Análise Automatizada de Kendo (FIK & AJKF Standards).
@@ -2292,6 +2335,60 @@ elif nav_page == "settings":
 """
         st.markdown(calib_table_md)
         st.info("💡 **Dica de Calibração:** Durante a análise de lutas, você pode selecionar o perfil desejado ou escolher a opção **'⚙️ Personalizado'** na barra lateral para ajustar os sliders de limiares em tempo real.")
+
+        # ----------------------------------------------------------------------
+        # EIXO 4: GOLDEN BENCHMARK, APRENDIZADO ATIVO & ASSISTENTE LLM
+        # ----------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("### 🎯 Eixo 4: Aprendizado Ativo & Golden Benchmark")
+        st.caption("Validação contra o conjunto padrão-ouro (Golden Dataset) e curadoria de lances incertos assistida por Inteligência Artificial (LLM).")
+
+        gb_col1, gb_col2 = st.columns([1, 1])
+        with gb_col1:
+            st.markdown("#### 🛡️ Conjunto de Validação Padrão-Ouro")
+            try:
+                gb_metrics = auto_trainer.feedback_mgr.get_golden_benchmark_metrics("normal")
+                m_c1, m_c2, m_c3, m_c4 = st.columns(4)
+                m_c1.metric("Acurácia Padrão-Ouro", f"{gb_metrics['accuracy']*100:.1f}%")
+                m_c2.metric("F1-Score", f"{gb_metrics['f1']:.3f}")
+                m_c3.metric("Precisão", f"{gb_metrics['precision']*100:.1f}%")
+                m_c4.metric("Recall", f"{gb_metrics['recall']*100:.1f}%")
+                st.success("✅ **Salvaguarda Ativa:** O motor de treinamento bloqueia automaticamente qualquer recalibração que cause regressão no Golden Benchmark.")
+            except Exception as e:
+                st.caption(f"Status do Golden Benchmark: {e}")
+
+        with gb_col2:
+            st.markdown("#### 🤖 Assistente Cognitivo LLM (Kendo & Movimentos)")
+            llm_inst = auto_trainer.feedback_mgr.llm_assistant
+            engine_status = f"🟢 Conectado via API ({llm_inst.provider.upper()})" if llm_inst.is_online else "🟡 Motor Especialista FIK / AJKF (Offline Integrado)"
+            st.markdown(f"**Provedor Ativo:** `{engine_status}`")
+            st.caption("O assistente analisa lances de incerteza (45%-65%), diagnostica Ki-Ken-Tai-Ichi e sugere anotações de movimentos para vídeos e treinos.")
+
+        # Fila de Curadoria Ativa
+        unc_queue = auto_trainer.get_active_learning_queue(status="pending_curation")
+        with st.expander(f"📥 Fila de Curadoria Ativa (Lances com Incerteza Arbitral) — {len(unc_queue)} pendentes", expanded=bool(unc_queue)):
+            if not unc_queue:
+                st.info("Nenhum lance controverso na faixa de incerteza (45% a 65%) pendente de curadoria no momento.")
+            else:
+                for idx, unc_item in enumerate(unc_queue[:5]):
+                    c_unc1, c_unc2 = st.columns([2, 1])
+                    with c_unc1:
+                        st.markdown(f"**Golpe:** `{unc_item.get('strike_type', 'Men')}` | **Confiança:** `{unc_item.get('confidence', 0.5)*100:.1f}%` | **Incerteza:** `{unc_item.get('uncertainty_score', 0.0)*100:.1f}%`")
+                        triage = unc_item.get("llm_triage") or {}
+                        if triage:
+                            st.markdown(f"- 🏛️ **Parecer LLM:** `{triage.get('verdict', 'DOUBTFUL')}` ({triage.get('fik_rule_rationale', '')})")
+                            st.markdown(f"- 💡 **Orientação Técnica:** {triage.get('coaching_advice', '')}")
+                    with c_unc2:
+                        btn_c1, btn_c2 = st.columns(2)
+                        with btn_c1:
+                            if st.button("✅ Ippon", key=f"btn_cur_ok_{idx}"):
+                                auto_trainer.feedback_mgr.resolve_active_learning_item(unc_item.get("id", ""), True, 5, notes="Homologado via Curadoria Ativa")
+                                st.rerun()
+                        with btn_c2:
+                            if st.button("❌ Inválido", key=f"btn_cur_no_{idx}"):
+                                auto_trainer.feedback_mgr.resolve_active_learning_item(unc_item.get("id", ""), False, 5, notes="Reprovado via Curadoria Ativa")
+                                st.rerun()
+                    st.markdown("---")
 
     # --------------------------------------------------------------------------
     # GUIA 4: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA
@@ -3833,6 +3930,14 @@ elif nav_page in ["match", "training", "analysis"]:
                     key="recorded_source_choice"
                 )
 
+                # Se o usuário alternar entre Upload e YouTube, limpar a análise e dados do vídeo anterior da tela
+                source_type_selected = "upload" if "Upload" in source_choice else "youtube"
+                prev_source_type = st.session_state.get("last_recorded_source_choice")
+                if prev_source_type is not None and prev_source_type != source_type_selected:
+                    clear_analysis_results_only()
+                    st.session_state.pop("video_file_path", None)
+                st.session_state["last_recorded_source_choice"] = source_type_selected
+
                 if source_choice == "📁 Fazer Upload de Arquivo":
                     st.markdown("Selecione o arquivo de vídeo local do treinamento de Kendo a ser analisado:" if app_mode == "training" else "Selecione o arquivo de vídeo local da luta de Kendo a ser analisado:")
                     uploaded_file = st.file_uploader(
@@ -3850,6 +3955,9 @@ elif nav_page in ["match", "training", "analysis"]:
                         if cached_file_path and os.path.exists(cached_file_path) and cached_file_name == uploaded_file.name and cached_file_size == uploaded_file.size:
                             video_file_path = cached_file_path
                         else:
+                            # Novo arquivo selecionado: limpar imediatamente qualquer análise anterior da tela!
+                            clear_analysis_results_only()
+
                             # Limpar arquivo temporário anterior se existir
                             if cached_file_path and os.path.exists(cached_file_path) and ("senpai_uploads" in cached_file_path or "tmp" in cached_file_path):
                                 try:
@@ -3906,7 +4014,7 @@ elif nav_page in ["match", "training", "analysis"]:
                         )
                     else:
                         cached_file_path = st.session_state.get("video_file_path")
-                        if cached_file_path and os.path.exists(cached_file_path):
+                        if cached_file_path and os.path.exists(cached_file_path) and st.session_state.get("video_source_type") == "upload":
                             video_file_path = cached_file_path
                             cached_name = st.session_state.get("uploaded_file_name", os.path.basename(cached_file_path))
                             st.markdown(
@@ -3916,6 +4024,8 @@ elif nav_page in ["match", "training", "analysis"]:
                                 unsafe_allow_html=True
                             )
                         else:
+                            if st.session_state.get("video_source_type") == "upload" and st.session_state.get("uploaded_file_name"):
+                                clear_previous_analysis()
                             video_file_path = None
 
                 else:
@@ -3927,6 +4037,15 @@ elif nav_page in ["match", "training", "analysis"]:
                         value=st.session_state.get("youtube_url", ""),
                         key="recorded_youtube_url_input"
                     )
+
+                    # Se o usuário alterou o link digitado em relação ao vídeo atualmente carregado, limpar análise anterior
+                    loaded_yt_url = str(st.session_state.get("youtube_url", "")).strip()
+                    curr_input_url = str(yt_url_input or "").strip()
+                    if loaded_yt_url and curr_input_url and loaded_yt_url != curr_input_url:
+                        clear_analysis_results_only()
+                        st.session_state.pop("video_file_path", None)
+                        st.session_state.pop("youtube_video_info", None)
+                        st.session_state["youtube_url"] = curr_input_url
 
                     yt_quality_keys = ["media", "alta", "baixa"]
                     selected_quality_raw = st.selectbox(
@@ -3960,11 +4079,7 @@ elif nav_page in ["match", "training", "analysis"]:
                         )
 
                     if clear_yt_btn:
-                        st.session_state.pop("video_file_path", None)
-                        st.session_state.pop("youtube_video_info", None)
-                        st.session_state.pop("youtube_url", None)
-                        st.session_state.pop("video_source_type", None)
-                        st.session_state.pop("analysis_result", None)
+                        clear_previous_analysis()
                         st.toast("Vídeo descarregado com sucesso!", icon="🗑️")
                         st.rerun()
 
@@ -3972,6 +4087,9 @@ elif nav_page in ["match", "training", "analysis"]:
                         if not validate_video_url(yt_url_input):
                             st.error("❌ Link inválido. Forneça uma URL válida do YouTube (ex: youtube.com/watch?v=... ou youtu.be/...) ou streaming de vídeo.")
                         else:
+                            # Limpar imediatamente dados do vídeo anterior da tela antes de baixar o novo
+                            clear_analysis_results_only()
+
                             prog_bar = st.progress(0.0)
                             status_txt = st.empty()
                             def _ui_progress(pct: float, msg: str):
@@ -3985,6 +4103,8 @@ elif nav_page in ["match", "training", "analysis"]:
                                         quality=selected_quality,
                                         progress_callback=_ui_progress
                                     )
+                                # Limpar novamente para garantir estado 100% novo do vídeo recém-carregado
+                                clear_analysis_results_only()
                                 st.session_state["video_file_path"] = dl_path
                                 st.session_state["youtube_video_info"] = extracted_info
                                 st.session_state["youtube_url"] = yt_url_input
@@ -4124,6 +4244,9 @@ elif nav_page in ["match", "training", "analysis"]:
 
                 # 2. Se o usuário clicar em Iniciar Análise
                 if start_btn and video_file_path and not is_running:
+                    # Limpar imediatamente dados e resultados de qualquer análise anterior da tela antes de iniciar o novo processamento
+                    clear_analysis_results_only()
+
                     dev_pref = st.session_state.get("device_preference", get_processing_device())
                     vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
                     pipeline = SenpAIPipeline(
@@ -4223,11 +4346,14 @@ elif nav_page in ["match", "training", "analysis"]:
                     )
 
         video_file_path = st.session_state.get("video_file_path", None)
-        if (not video_file_path or not os.path.exists(video_file_path)) and "analysis_result" in st.session_state:
+        # Se há resultado anterior mas ele pertence a outro vídeo ou não há mais vídeo carregado, limpar análise da tela
+        if "analysis_result" in st.session_state:
             res_v_path = st.session_state["analysis_result"].get("video_path")
-            if res_v_path and os.path.exists(res_v_path):
-                video_file_path = os.path.abspath(res_v_path)
-                st.session_state["video_file_path"] = video_file_path
+            if video_file_path and res_v_path and os.path.exists(video_file_path) and os.path.exists(res_v_path):
+                if os.path.abspath(video_file_path) != os.path.abspath(res_v_path):
+                    clear_analysis_results_only()
+            elif not video_file_path:
+                clear_analysis_results_only()
 
         # PAINEL PRINCIPAL DE RESULTADOS
         if video_file_path or "analysis_result" in st.session_state:
@@ -4303,7 +4429,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 session_revs = st.session_state.get("session_reviews", {})
                 sonkyo_edits = st.session_state.get("sonkyo_edits", {})
 
-                if "analysis_result" in st.session_state:
+                if "analysis_result" in st.session_state and not is_running:
                     res = st.session_state["analysis_result"]
                     raw_scoreboard = res.get("scoreboard", {})
 
@@ -4455,138 +4581,139 @@ elif nav_page in ["match", "training", "analysis"]:
                     )
 
                 # BARRA DE CONTROLES: INVERSÃO DE LUTADORES, HABILITAR EDIÇÃO & PAINEL DAN
-                col_ctrl1, col_ctrl2 = st.columns([1.6, 2.4])
-                with col_ctrl1:
-                    if st.button("🔄 Inverter Lutadores (Aka ⇄ Shiro)", width="stretch", key="btn_toggle_invert_aka_shiro", help="Inverte os lados de Aka e Shiro na pontuação, nos relatórios e nos eventos caso a câmera esteja invertida"):
-                        st.session_state["invert_aka_shiro"] = not is_inverted
-                        st.toast(f"🔄 Identidades invertidas: Aka ⇄ Shiro {'(Ativado)' if not is_inverted else '(Restaurado)'}!", icon="🔄")
-                        st.rerun()
-                with col_ctrl2:
-                    enable_editing = st.toggle("✏️ Habilitar Edição e Revisão dos Golpes Detectados", value=st.session_state.get("editing_enabled", False), key="toggle_enable_editing")
-                    st.session_state["editing_enabled"] = enable_editing
-
-                if enable_editing:
-                    rev_header_col1, rev_header_col2 = st.columns([3, 1])
-                    with rev_header_col1:
-                        curr_dan_idx = list(dan_options.keys()).index(selected_dan) if selected_dan in dan_options else 2
-                        dan_val = st.selectbox(
-                            "🥋 Graduação / Tipo de Revisor:",
-                            options=list(dan_options.keys()),
-                            format_func=lambda x: dan_options[x],
-                            index=curr_dan_idx,
-                            key="reviewer_dan_select"
-                        )
-                        selected_dan = dan_val if dan_val == "shinpan" else int(dan_val or 3)
-                    with rev_header_col2:
-                        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-                        if st.button("🔄 Resetar Revisão", width="stretch", help="Reseta todas as alterações de marcação e edições feitas nesta sessão"):
-                            st.session_state["session_reviews"] = {}
-                            if selected_dan == "shinpan":
-                                st.toast("🔄 Sessão resetada! Linha do tempo limpa para inclusão de Ippons dos Shinpans.", icon="🔄")
-                            else:
-                                st.toast("🔄 Revisão resetada! Golpes identificados pela IA restaurados.", icon="🔄")
+                if "analysis_result" in st.session_state and not is_running:
+                    col_ctrl1, col_ctrl2 = st.columns([1.6, 2.4])
+                    with col_ctrl1:
+                        if st.button("🔄 Inverter Lutadores (Aka ⇄ Shiro)", width="stretch", key="btn_toggle_invert_aka_shiro", help="Inverte os lados de Aka e Shiro na pontuação, nos relatórios e nos eventos caso a câmera esteja invertida"):
+                            st.session_state["invert_aka_shiro"] = not is_inverted
+                            st.toast(f"🔄 Identidades invertidas: Aka ⇄ Shiro {'(Ativado)' if not is_inverted else '(Restaurado)'}!", icon="🔄")
                             st.rerun()
+                    with col_ctrl2:
+                        enable_editing = st.toggle("✏️ Habilitar Edição e Revisão dos Golpes Detectados", value=st.session_state.get("editing_enabled", False), key="toggle_enable_editing")
+                        st.session_state["editing_enabled"] = enable_editing
 
-                    if selected_dan == "shinpan":
-                        if is_shinpan_registered and shinpan_reg_info:
-                            st.markdown(
-                                f"""
-                                <div style="background: linear-gradient(135deg, rgba(127, 29, 29, 0.45) 0%, rgba(153, 27, 27, 0.3) 100%); border: 2px solid #EF4444; border-radius: 10px; padding: 14px 18px; margin: 12px 0;">
-                                    <div style="display: flex; align-items: center; gap: 10px;">
-                                        <span style="font-size: 1.5rem;">⛔</span>
-                                        <h4 style="color: #FCA5A5; margin: 0; font-weight: 800;">Entrada Duplicada Bloqueada — Decisão dos Shinpans já Registrada</h4>
-                                    </div>
-                                    <p style="color: #FEE2E2; font-size: 0.90rem; margin: 8px 0 6px 0; line-height: 1.4;">
-                                        Este vídeo já possui uma <b>Decisão dos Shinpans</b> oficialmente homologada no sistema:<br/>
-                                        • <b>Data/Hora do Registro:</b> {shinpan_reg_info.get('reviewed_at', 'Sessão anterior')}<br/>
-                                        • <b>ID da Sessão:</b> <code>{shinpan_reg_info.get('session_id', 'N/A')}</code> &nbsp;|&nbsp; 🥋 <b>Total de Ippons:</b> {shinpan_reg_info.get('items_count', 0)} golpe(s)<br/>
-                                        • <b>Link/Arquivo Registrado:</b> <code>{shinpan_reg_info.get('video_url', video_url_current)}</code>
-                                    </p>
-                                    <div style="background: rgba(0, 0, 0, 0.35); border-left: 3px solid #F87171; border-radius: 6px; padding: 8px 12px; margin-top: 8px; font-size: 0.85rem; color: #FECACA;">
-                                        ⚖️ <b>Regra de Governança:</b> Cada link de vídeo de combate só pode receber <b>1 única entrada</b> como Decisão dos Shinpans para garantir a integridade dos dados regulamentares.<br/>
-                                        💡 <b>Revisão por DAN Irrestrita:</b> Para realizar novas avaliações, revisões pedagógicas ou análises comparativas deste mesmo vídeo, altere o seletor acima para <b>Revisão por DAN (1º ao 8º Dan)</b>, onde <b>não há restrição para entradas duplicadas</b>.
-                                    </div>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
+                    if enable_editing:
+                        rev_header_col1, rev_header_col2 = st.columns([3, 1])
+                        with rev_header_col1:
+                            curr_dan_idx = list(dan_options.keys()).index(selected_dan) if selected_dan in dan_options else 2
+                            dan_val = st.selectbox(
+                                "🥋 Graduação / Tipo de Revisor:",
+                                options=list(dan_options.keys()),
+                                format_func=lambda x: dan_options[x],
+                                index=curr_dan_idx,
+                                key="reviewer_dan_select"
                             )
-                        else:
-                            st.markdown(
-                                """
-                                <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 2px solid #EAB308; border-radius: 10px; padding: 12px 16px; margin: 10px 0;">
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <span style="font-size: 1.25rem;">⚖️</span>
-                                        <h4 style="color: #FDE047; margin: 0;">Modo Decisão dos Shinpans (Árbitros de Shiai) Ativo</h4>
-                                    </div>
-                                    <p style="color: #FEF08A; font-size: 0.88rem; margin: 6px 0 0 0;">
-                                        A Linha do Tempo & Revisão de Golpes está configurada para <b>registrar exclusivamente os golpes válidos (Ippon / Yūko-datotsu) apontados pelos Shinpans</b> no Shiai. Golpes não assinalados pela arbitragem não pontuam. As marcações serão utilizadas para recalibrar os pesos biomecânicos de validação de forma balanceada.
-                                    </p>
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
-                    else:
-                        if is_shinpan_registered and shinpan_reg_info:
-                            st.markdown(
-                                f"""
-                                <div style="background: rgba(30, 58, 138, 0.25); border: 1px solid #3B82F6; border-radius: 8px; padding: 8px 14px; margin: 8px 0; font-size: 0.85rem; color: #BFDBFE;">
-                                    ℹ️ <b>Revisão por DAN Livre:</b> Este vídeo já possui uma Decisão dos Shinpans registrada (Sessão <code>{shinpan_reg_info.get('session_id', '')}</code>). Como você está revisando sob a governança de <b>{dan_options.get(selected_dan, 'Dan')}</b>, <b>não há restrição de entradas duplicadas</b> e suas anotações técnicas serão salvas normalmente.
-                                </div>
-                                """,
-                                unsafe_allow_html=True
-                            )
+                            selected_dan = dan_val if dan_val == "shinpan" else int(dan_val or 3)
+                        with rev_header_col2:
+                            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                            if st.button("🔄 Resetar Revisão", width="stretch", help="Reseta todas as alterações de marcação e edições feitas nesta sessão"):
+                                st.session_state["session_reviews"] = {}
+                                if selected_dan == "shinpan":
+                                    st.toast("🔄 Sessão resetada! Linha do tempo limpa para inclusão de Ippons dos Shinpans.", icon="🔄")
+                                else:
+                                    st.toast("🔄 Revisão resetada! Golpes identificados pela IA restaurados.", icon="🔄")
+                                st.rerun()
 
-                # Banner de Reprocessamento de Sonkyō
-                if sonkyo_edits:
-                    st.markdown(
-                        """
-                        <div style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border: 2px solid #818CF8; border-radius: 10px; padding: 12px 16px; margin: 10px 0;">
-                            <h4 style="color: #E0E7FF; margin: 0 0 4px 0;">⚡ Momentos de Sonkyō Alterados pelo Revisor</h4>
-                            <p style="color: #C7D2FE; font-size: 0.88rem; margin: 0 0 8px 0;">
-                                Os limites regulamentares de Sonkyō foram modificados. O SenpAI irá <b>aprender a movimentação corporal</b> deste combate para reprocessar a analise.
-                            </p>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    col_rep1, col_rep2 = st.columns([3, 1])
-                    with col_rep1:
-                        if st.button("🔄 Reprocessar Analise com Aprendizado de Sonkyō", type="primary", width="stretch", key="btn_reprocess_sonkyo_learning"):
-                            dev_pref = st.session_state.get("device_preference", get_processing_device())
-                            vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
-                            pipeline = SenpAIPipeline(
-                                calibration_profile=profile_choice if profile_choice != "custom" else "normal",
-                                device_preference=dev_pref,
-                                vision_model=vis_pref
-                            )
-                            if profile_choice == "custom":
-                                pipeline.calibrator.update_custom_settings(
-                                    min_total_score=min_score_pct / 100.0,
-                                    weight_target=w_target,
-                                    weight_fumikomi=w_fumikomi,
-                                    weight_posture=w_posture,
-                                    weight_zanshin=w_zanshin
+                        if selected_dan == "shinpan":
+                            if is_shinpan_registered and shinpan_reg_info:
+                                st.markdown(
+                                    f"""
+                                    <div style="background: linear-gradient(135deg, rgba(127, 29, 29, 0.45) 0%, rgba(153, 27, 27, 0.3) 100%); border: 2px solid #EF4444; border-radius: 10px; padding: 14px 18px; margin: 12px 0;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <span style="font-size: 1.5rem;">⛔</span>
+                                            <h4 style="color: #FCA5A5; margin: 0; font-weight: 800;">Entrada Duplicada Bloqueada — Decisão dos Shinpans já Registrada</h4>
+                                        </div>
+                                        <p style="color: #FEE2E2; font-size: 0.90rem; margin: 8px 0 6px 0; line-height: 1.4;">
+                                            Este vídeo já possui uma <b>Decisão dos Shinpans</b> oficialmente homologada no sistema:<br/>
+                                            • <b>Data/Hora do Registro:</b> {shinpan_reg_info.get('reviewed_at', 'Sessão anterior')}<br/>
+                                            • <b>ID da Sessão:</b> <code>{shinpan_reg_info.get('session_id', 'N/A')}</code> &nbsp;|&nbsp; 🥋 <b>Total de Ippons:</b> {shinpan_reg_info.get('items_count', 0)} golpe(s)<br/>
+                                            • <b>Link/Arquivo Registrado:</b> <code>{shinpan_reg_info.get('video_url', video_url_current)}</code>
+                                        </p>
+                                        <div style="background: rgba(0, 0, 0, 0.35); border-left: 3px solid #F87171; border-radius: 6px; padding: 8px 12px; margin-top: 8px; font-size: 0.85rem; color: #FECACA;">
+                                            ⚖️ <b>Regra de Governança:</b> Cada link de vídeo de combate só pode receber <b>1 única entrada</b> como Decisão dos Shinpans para garantir a integridade dos dados regulamentares.<br/>
+                                            💡 <b>Revisão por DAN Irrestrita:</b> Para realizar novas avaliações, revisões pedagógicas ou análises comparativas deste mesmo vídeo, altere o seletor acima para <b>Revisão por DAN (1º ao 8º Dan)</b>, onde <b>não há restrição para entradas duplicadas</b>.
+                                        </div>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
                                 )
-                            annotated_output = os.path.abspath("annotated_match.mp4")
-                            worker = AnalysisWorker(
-                                pipeline=pipeline,
-                                video_path=video_file_path,
-                                output_video_path=annotated_output,
-                                initial_sonkyo_override=sonkyo_edits.get("initial"),
-                                final_sonkyo_override=sonkyo_edits.get("final"),
-                                invert_combatants=st.session_state.get("invert_aka_shiro", False)
-                            )
-                            worker.start()
-                            st.session_state["analysis_worker"] = worker
-                            st.session_state["sonkyo_edits"] = {}
-                            st.session_state["processing_cancelled"] = False
-                            st.toast("⚡ Reprocessamento iniciado com aprendizado contínuo de Sonkyō!", icon="🔄")
-                            st.rerun()
-                    with col_rep2:
-                        if st.button("❌ Descartar Edições", width="stretch", key="btn_clear_sonkyo_edits"):
-                            st.session_state["sonkyo_edits"] = {}
-                            st.toast("Edições de Sonkyō descartadas!", icon="🔄")
-                            st.rerun()
+                            else:
+                                st.markdown(
+                                    """
+                                    <div style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); border: 2px solid #EAB308; border-radius: 10px; padding: 12px 16px; margin: 10px 0;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span style="font-size: 1.25rem;">⚖️</span>
+                                            <h4 style="color: #FDE047; margin: 0;">Modo Decisão dos Shinpans (Árbitros de Shiai) Ativo</h4>
+                                        </div>
+                                        <p style="color: #FEF08A; font-size: 0.88rem; margin: 6px 0 0 0;">
+                                            A Linha do Tempo & Revisão de Golpes está configurada para <b>registrar exclusivamente os golpes válidos (Ippon / Yūko-datotsu) apontados pelos Shinpans</b> no Shiai. Golpes não assinalados pela arbitragem não pontuam. As marcações serão utilizadas para recalibrar os pesos biomecânicos de validação de forma balanceada.
+                                        </p>
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+                        else:
+                            if is_shinpan_registered and shinpan_reg_info:
+                                st.markdown(
+                                    f"""
+                                    <div style="background: rgba(30, 58, 138, 0.25); border: 1px solid #3B82F6; border-radius: 8px; padding: 8px 14px; margin: 8px 0; font-size: 0.85rem; color: #BFDBFE;">
+                                        ℹ️ <b>Revisão por DAN Livre:</b> Este vídeo já possui uma Decisão dos Shinpans registrada (Sessão <code>{shinpan_reg_info.get('session_id', '')}</code>). Como você está revisando sob a governança de <b>{dan_options.get(selected_dan, 'Dan')}</b>, <b>não há restrição de entradas duplicadas</b> e suas anotações técnicas serão salvas normalmente.
+                                    </div>
+                                    """,
+                                    unsafe_allow_html=True
+                                )
+
+                    # Banner de Reprocessamento de Sonkyō
+                    if sonkyo_edits:
+                        st.markdown(
+                            """
+                            <div style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); border: 2px solid #818CF8; border-radius: 10px; padding: 12px 16px; margin: 10px 0;">
+                                <h4 style="color: #E0E7FF; margin: 0 0 4px 0;">⚡ Momentos de Sonkyō Alterados pelo Revisor</h4>
+                                <p style="color: #C7D2FE; font-size: 0.88rem; margin: 0 0 8px 0;">
+                                    Os limites regulamentares de Sonkyō foram modificados. O SenpAI irá <b>aprender a movimentação corporal</b> deste combate para reprocessar a analise.
+                                </p>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                        col_rep1, col_rep2 = st.columns([3, 1])
+                        with col_rep1:
+                            if st.button("🔄 Reprocessar Analise com Aprendizado de Sonkyō", type="primary", width="stretch", key="btn_reprocess_sonkyo_learning"):
+                                dev_pref = st.session_state.get("device_preference", get_processing_device())
+                                vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
+                                pipeline = SenpAIPipeline(
+                                    calibration_profile=profile_choice if profile_choice != "custom" else "normal",
+                                    device_preference=dev_pref,
+                                    vision_model=vis_pref
+                                )
+                                if profile_choice == "custom":
+                                    pipeline.calibrator.update_custom_settings(
+                                        min_total_score=min_score_pct / 100.0,
+                                        weight_target=w_target,
+                                        weight_fumikomi=w_fumikomi,
+                                        weight_posture=w_posture,
+                                        weight_zanshin=w_zanshin
+                                    )
+                                annotated_output = os.path.abspath("annotated_match.mp4")
+                                worker = AnalysisWorker(
+                                    pipeline=pipeline,
+                                    video_path=video_file_path,
+                                    output_video_path=annotated_output,
+                                    initial_sonkyo_override=sonkyo_edits.get("initial"),
+                                    final_sonkyo_override=sonkyo_edits.get("final"),
+                                    invert_combatants=st.session_state.get("invert_aka_shiro", False)
+                                )
+                                worker.start()
+                                st.session_state["analysis_worker"] = worker
+                                st.session_state["sonkyo_edits"] = {}
+                                st.session_state["processing_cancelled"] = False
+                                st.toast("⚡ Reprocessamento iniciado com aprendizado contínuo de Sonkyō!", icon="🔄")
+                                st.rerun()
+                        with col_rep2:
+                            if st.button("❌ Descartar Edições", width="stretch", key="btn_clear_sonkyo_edits"):
+                                st.session_state["sonkyo_edits"] = {}
+                                st.toast("Edições de Sonkyō descartadas!", icon="🔄")
+                                st.rerun()
 
             # DUAS COLUNAS PERFEITAMENTE ALINHADAS LADO A LADO: VÍDEO (ESQUERDA) & RESULTADOS (DIREITA)
             col_video, col_results = st.columns([5, 7])
@@ -4609,14 +4736,17 @@ elif nav_page in ["match", "training", "analysis"]:
                         unsafe_allow_html=True
                     )
                 
-                annotated_path = st.session_state.get("annotated_output", "")
-                if not annotated_path or not os.path.exists(annotated_path):
-                    cand_annotated = os.path.abspath("annotated_match.mp4")
-                    if os.path.exists(cand_annotated):
-                        annotated_path = cand_annotated
-                        st.session_state["annotated_output"] = annotated_path
-
-                has_annotated = bool(annotated_path and os.path.exists(annotated_path))
+                if "analysis_result" in st.session_state and not is_running:
+                    annotated_path = st.session_state.get("annotated_output", "")
+                    if not annotated_path or not os.path.exists(annotated_path):
+                        cand_annotated = os.path.abspath("annotated_match.mp4")
+                        if os.path.exists(cand_annotated):
+                            annotated_path = cand_annotated
+                            st.session_state["annotated_output"] = annotated_path
+                    has_annotated = bool(annotated_path and os.path.exists(annotated_path))
+                else:
+                    annotated_path = ""
+                    has_annotated = False
                 has_original = bool(video_file_path and os.path.exists(video_file_path))
 
                 # Se o vídeo original não for encontrado diretamente, tenta recuperar do resultado da análise
@@ -4695,7 +4825,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 else:
                     st.info("Nenhum vídeo disponível para reprodução.")
                     
-                if "analysis_result" in st.session_state:
+                if "analysis_result" in st.session_state and not is_running:
                     res = st.session_state["analysis_result"]
                     proc_time = res.get("processing_time_seconds", st.session_state.get("last_processing_time", 0.0))
                     proc_fps = res.get("processing_fps", st.session_state.get("last_processing_fps", 0.0))
@@ -4780,14 +4910,18 @@ elif nav_page in ["match", "training", "analysis"]:
             with col_results:
                 if app_mode == "training":
                     st.subheader("🎓 Avaliação de Treinamento")
-                    if "analysis_result" not in st.session_state:
+                    if is_running:
+                        st.info("⏳ Processando vídeo de treinamento... Aguarde a conclusão da análise.")
+                    elif "analysis_result" not in st.session_state:
                         st.info("👈 Clique em **⚡ Executar Análise de Treinamento** acima para visualizar a avaliação dos 3 Pilares e dos praticantes.")
                     else:
                         res = st.session_state["analysis_result"]
                         render_training_analysis_view(res, is_inverted)
                 else:
                     st.subheader("🥋 Linha do Tempo & Revisão de Golpes")
-                    if "analysis_result" not in st.session_state:
+                    if is_running:
+                        st.info("⏳ Processando combate de Kendo... A linha do tempo de eventos, o placar e as métricas serão exibidos assim que a análise for concluída.")
+                    elif "analysis_result" not in st.session_state:
                         st.info("👈 Clique em **⚡ Executar Analise** para visualizar a linha do tempo de eventos e análise detalhada.")
                     else:
                         res = st.session_state["analysis_result"]

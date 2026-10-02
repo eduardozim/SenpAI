@@ -1,6 +1,7 @@
 ===============================================================================
                         SENPAI (先輩 AI) - GUIA RÁPIDO
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
+                              Versão: v 0.3.0.0
 ===============================================================================
 
 O SenpAI é um sistema de visão computacional e análise biomecânica projetado
@@ -106,6 +107,12 @@ Recursos da Interface Web:
   4. Habilitar edição desmarcada após Decisão dos Shinpans: Todos os golpes de IA voltam a ser apresentados imediatamente.
   5. Seleção de Dan após Decisão dos Shinpans: Todos os golpes de IA voltam a ser apresentados com ferramentas do Dan escolhido.
 - Governança & Calibração dos Shinpans com Peso Balanceado (4.5): As decisões dos árbitros utilizam peso médio fixo (4.5) para recalibração normalizada dos critérios biomecânicos sem distorcer o cálculo do nível médio Dan puro dos treinadores (1º ao 8º Dan), com estatísticas e contadores dedicados.
+- Motor de Aprendizado Ativo & Triagem por Incerteza (Eixo 4): Amostragem seletiva de lances com incerteza na faixa de contorno (45% a 65%) para curadoria humana prioritária, eliminando ruído de casos triviais.
+- Salvaguarda Mandatória com Dataset Canônico Golden Benchmark: Base imutável de testes (WKC e exames de alto Dan) que bloqueia automaticamente qualquer retreinamento ou alteração que provoque esquecimento catastrófico ou regressão na acurácia (> 2.0%).
+- Consenso Multi-Árbitro Ponderado por Dan (FIK 2 de 3): Julgamento colegiado com detecção e cálculo numérico de Grau de Divergência Arbitral.
+- Gestão de Confiança com Decaimento Temporal Exponencial: Modelo de meia-vida (180 dias) para controle de autoridade de revisores por inatividade.
+- Assistente LLM Especialista em Kendo: Integração nativa com APIs Gemini/OpenAI e motor de regras offline determinístico da FIK para anotação cinemática estruturada e explicação didática de lances controversos.
+- Painel de Curadoria Rápida no Streamlit: Na aba de Calibração, visualização das métricas do Golden Benchmark e ações de aprovação/rejeição rápida com 1 clique na fila de incerteza.
 
 --- B. LINHA DE COMANDO (CLI) ---
 Para processar vídeos diretamente no terminal:
@@ -125,11 +132,11 @@ Para processar vídeos diretamente no terminal:
 - Otimizar perfil com base no dataset de feedback gravado:
    python main.py --profile normal --optimize-profile
 
-- Executar suíte completa de testes automatizados (143 testes) com relatório descritivo salvo em logs/:
+- Executar suíte completa de testes automatizados (181 testes) com relatório descritivo salvo em logs/:
    python run_tests.py
    (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
-   * Executa a suíte de 143 testes automatizados distribuídos em 17 módulos com 100% de aprovação
-   * Validações especializadas de rastreamento K=2, supressão de Shinpans, governança Dan e Decisão dos Shinpans
+   * Executa a suíte de 181 testes automatizados distribuídos em 19 módulos com 100% de aprovação
+   * Validações especializadas de rastreamento K=2, supressão de Shinpans, governança Dan, Decisão dos Shinpans e Aprendizado Ativo (Eixo 4)
    * Gera o arquivo descritivo logs/senpai_test_report.log com detalhes de cada teste
    * Mantém estritamente apenas o último log de testes executado na pasta logs/
 

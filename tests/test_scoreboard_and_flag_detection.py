@@ -127,14 +127,18 @@ class TestScoreboardAndFlagDetection(unittest.TestCase):
         """Valida cálculo de placar oficial (Ippon), vencedor e empate."""
         import tempfile
         import os
+        import gc
         from src.utils.demo_generator import generate_demo_kendo_video
 
-        with tempfile.TemporaryDirectory() as tmpdir:
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
             test_vid = os.path.join(tmpdir, "demo_kendo_scoreboard.mp4")
             generate_demo_kendo_video(test_vid, duration_sec=2, fps=30)
 
             pipeline = SenpAIPipeline()
             res = pipeline.process_video(test_vid)
+            del pipeline
+            gc.collect()
+
             self.assertIsNotNone(res)
             self.assertIn("scoreboard", res)
             sb = res["scoreboard"]

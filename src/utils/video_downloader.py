@@ -8,15 +8,28 @@ import os
 import re
 import time
 import tempfile
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple
 
 import cv2
-try:
+
+if TYPE_CHECKING:
     import yt_dlp
-    _YT_DLP_AVAILABLE = True
-except ImportError:
-    yt_dlp = None
-    _YT_DLP_AVAILABLE = False
+    import yt_dlp.utils
+    from yt_dlp.utils import DownloadError as YtDlpDownloadError
+else:
+    try:
+        import yt_dlp
+        import yt_dlp.utils
+        from yt_dlp.utils import DownloadError as YtDlpDownloadError
+        _YT_DLP_AVAILABLE = True
+    except (ImportError, AttributeError):
+        yt_dlp = None
+        _YT_DLP_AVAILABLE = False
+
+        class YtDlpDownloadError(Exception):
+            """Fallback para DownloadError quando yt-dlp não está disponível."""
+            pass
+
 
 from src.utils.logger_manager import log_event
 
@@ -60,7 +73,7 @@ def _enrich_with_actual_file_info(file_path: str, info: Dict[str, Any], quality_
     return info
 
 
-def validate_video_url(url: str) -> bool:
+def validate_video_url(url: Any) -> bool:
     """
     Valida se a string informada é uma URL suportada de vídeo (YouTube ou streaming).
     
@@ -107,7 +120,7 @@ def format_video_duration(seconds: Optional[float]) -> str:
     if seconds is None or seconds <= 0:
         return "00:00"
     
-    total_sec = int(round(seconds))
+    total_sec = round(seconds)
     hrs = total_sec // 3600
     mins = (total_sec % 3600) // 60
     secs = total_sec % 60
@@ -288,6 +301,9 @@ def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] =
     if not validate_video_url(url):
         raise VideoDownloadError("URL de vídeo inválida ou em formato não reconhecido.")
     
+    if yt_dlp is None:
+        raise VideoDownloadError("Módulo yt-dlp não está instalado ou disponível no ambiente.")
+    
     # Clientes resilientes contra SABR streaming e exigências de PO Token
     client_strategies = [
         ["visionos", "android"],
@@ -335,7 +351,7 @@ def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] =
                     "webpage_url": info.get("webpage_url", url.strip()),
                     "is_live": bool(info.get("is_live", False)),
                 }
-        except yt_dlp.utils.DownloadError as e:
+        except YtDlpDownloadError as e:
             last_error_msg = str(e)
             if "Private video" in last_error_msg:
                 raise VideoDownloadError("Este vídeo é privado e não pode ser acessado.")
@@ -421,6 +437,9 @@ def download_video_stream(
     """
     if not validate_video_url(url):
         raise VideoDownloadError("URL fornecida é inválida.")
+
+    if yt_dlp is None:
+        raise VideoDownloadError("Módulo yt-dlp não está instalado ou disponível no ambiente.")
 
     if output_dir is None:
         output_dir = os.path.join(tempfile.gettempdir(), "senpai_uploads")
@@ -529,7 +548,7 @@ def download_video_stream(
                     ydl.download([url.strip()])
                 download_success = True
                 break
-            except yt_dlp.utils.DownloadError as e:
+            except YtDlpDownloadError as e:
                 err_str = str(e)
                 last_error_msg = err_str
                 log_event(

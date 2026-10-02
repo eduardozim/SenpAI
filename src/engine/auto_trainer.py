@@ -1640,10 +1640,17 @@ class AutoTrainingEngine:
             profiles["rigido"]["sub_thresholds"] = {"target_impact": 0.68, "fumikomi_sync": 0.58, "posture": 0.58, "zanshin": 0.54}
             profiles["permissivo"]["weights"] = {"target_impact": 0.36, "fumikomi_sync": 0.24, "posture": 0.20, "zanshin": 0.20}
 
-            self.calibrator.update_and_save_profile("normal", profiles["normal"])
-            self.calibrator.update_and_save_profile("rigido", profiles["rigido"])
-            self.calibrator.update_and_save_profile("permissivo", profiles["permissivo"])
-            improvements.append("Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) nos 3 perfis de arbitragem.")
+            # Salvaguarda no Golden Benchmark antes de persistir novos limiares (Eixo 4.2)
+            passed_gb, rep_gb = self.feedback_mgr.golden_benchmark.validate_no_regression(
+                profiles["normal"], self.calibrator.profiles.get("normal", {})
+            )
+            if passed_gb:
+                self.calibrator.update_and_save_profile("normal", profiles["normal"])
+                self.calibrator.update_and_save_profile("rigido", profiles["rigido"])
+                self.calibrator.update_and_save_profile("permissivo", profiles["permissivo"])
+                improvements.append("Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) chancelado pelo Golden Benchmark.")
+            else:
+                improvements.append(f"⚠️ Atualização de perfis preservada: Golden Benchmark evitou regressão de precisão ({rep_gb.get('block_reason')}).")
 
         # 2. Refinamento das Modalidades Pedagógicas
         if "modalities" in effective_scope or "modality" in effective_scope or effective_scope in ["latent_need", "general_all"]:
@@ -2117,6 +2124,45 @@ class AutoTrainingEngine:
         """Retorna os princípios fundamentais e universais do Kendo."""
         kb = self.load_knowledge_base()
         return kb.get("learned_parameters", {}).get("general_kendo_principles", list(KENDO_GENERAL_PRINCIPLES))
+
+    # --------------------------------------------------------------------------
+    # MÉTODOS DE APOIO AO EIXO 4 (LLM, ACTIVE LEARNING & GOLDEN BENCHMARK)
+    # --------------------------------------------------------------------------
+    def query_llm_for_kendo_coaching(
+        self,
+        strike_data: Dict[str, Any],
+        profile_name: str = "normal",
+        confidence: float = 0.50
+    ) -> Dict[str, Any]:
+        """Consulta o assistente LLM para diagnóstico aprofundado de um lance."""
+        return self.feedback_mgr.llm_assistant.analyze_uncertain_strike(
+            strike_data=strike_data,
+            profile_name=profile_name,
+            confidence=confidence
+        )
+
+    def assisted_label_video_movement(
+        self,
+        kinematic_summary: Dict[str, Any],
+        context_hint: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Utiliza o assistente LLM para aceleração de rotulagem de movimentos em vídeos e treinos."""
+        return self.feedback_mgr.llm_assistant.assisted_movement_labeling(
+            kinematic_summary=kinematic_summary,
+            context_hint=context_hint
+        )
+
+    def get_golden_benchmark_status(self) -> Dict[str, Any]:
+        """Retorna o status de avaliação do Golden Benchmark para os perfis atuais."""
+        return {
+            p_key: self.feedback_mgr.get_golden_benchmark_metrics(p_key)
+            for p_key in ["normal", "rigido", "permissivo"]
+        }
+
+    def get_active_learning_queue(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Retorna os lances da fila de aprendizado ativo para curadoria prioritária."""
+        return self.feedback_mgr.get_active_learning_queue(status=status)
+
 
 
 # Instância Singleton Global

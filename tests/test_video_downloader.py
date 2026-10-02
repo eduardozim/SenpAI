@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 import os
 import tempfile
+from typing import Any, List
 import cv2
 
 from src.utils.video_downloader import (
@@ -52,7 +53,7 @@ class TestVideoDownloader(unittest.TestCase):
 
     def test_validate_video_url_invalid_inputs(self):
         """Valida a rejeição de URLs inválidas, vazias ou formatos incorretos."""
-        invalid_urls = [
+        invalid_urls: List[Any] = [
             "",
             None,
             "   ",
