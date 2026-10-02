@@ -143,10 +143,83 @@ class FeedbackManager:
         self._ensure_files_exist()
         
         # Componentes do Eixo 4: Aprendizado Ativo, Padrão-Ouro e Governança
-        self.golden_benchmark = GoldenBenchmark()
-        self.llm_assistant = KendoLLMAssistant()
-        self.uncertainty_sampler = UncertaintySampler(llm_assistant=self.llm_assistant)
-        self.reviewer_trust_manager = ReviewerTrustManager()
+        self._golden_benchmark = None
+        self._llm_assistant = None
+        self._uncertainty_sampler = None
+        self._reviewer_trust_manager = None
+
+        try:
+            self._golden_benchmark = GoldenBenchmark()
+        except Exception:
+            pass
+        try:
+            self._llm_assistant = KendoLLMAssistant()
+        except Exception:
+            pass
+        try:
+            self._uncertainty_sampler = UncertaintySampler(llm_assistant=self._llm_assistant)
+        except Exception:
+            pass
+        try:
+            self._reviewer_trust_manager = ReviewerTrustManager()
+        except Exception:
+            pass
+
+    @property
+    def golden_benchmark(self) -> GoldenBenchmark:
+        if getattr(self, "_golden_benchmark", None) is None:
+            try:
+                from src.engine.active_learning import GoldenBenchmark
+                self._golden_benchmark = GoldenBenchmark()
+            except Exception:
+                pass
+        return self._golden_benchmark
+
+    @golden_benchmark.setter
+    def golden_benchmark(self, val):
+        self._golden_benchmark = val
+
+    @property
+    def llm_assistant(self) -> KendoLLMAssistant:
+        if getattr(self, "_llm_assistant", None) is None:
+            try:
+                from src.engine.llm_assistant import KendoLLMAssistant
+                self._llm_assistant = KendoLLMAssistant()
+            except Exception:
+                pass
+        return self._llm_assistant
+
+    @llm_assistant.setter
+    def llm_assistant(self, val):
+        self._llm_assistant = val
+
+    @property
+    def uncertainty_sampler(self) -> UncertaintySampler:
+        if getattr(self, "_uncertainty_sampler", None) is None:
+            try:
+                from src.engine.active_learning import UncertaintySampler
+                self._uncertainty_sampler = UncertaintySampler(llm_assistant=self.llm_assistant)
+            except Exception:
+                pass
+        return self._uncertainty_sampler
+
+    @uncertainty_sampler.setter
+    def uncertainty_sampler(self, val):
+        self._uncertainty_sampler = val
+
+    @property
+    def reviewer_trust_manager(self) -> ReviewerTrustManager:
+        if getattr(self, "_reviewer_trust_manager", None) is None:
+            try:
+                from src.engine.active_learning import ReviewerTrustManager
+                self._reviewer_trust_manager = ReviewerTrustManager()
+            except Exception:
+                pass
+        return self._reviewer_trust_manager
+
+    @reviewer_trust_manager.setter
+    def reviewer_trust_manager(self, val):
+        self._reviewer_trust_manager = val
 
     def _ensure_files_exist(self):
         os.makedirs(os.path.dirname(self.dataset_path), exist_ok=True)
