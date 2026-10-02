@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.0.0`
+> **Versão Oficial do Sistema**: `v 0.3.1.0`
 
 ---
 
@@ -325,9 +325,9 @@ Gerenciador de Sessão de Treinamento em Tempo Real para dojos e academias com c
 
 ---
 
-### 4.3. Engine de Calibração ([calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py) & [calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))
+### 4.3. Engine de Calibração & Motor Matemático ([calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py), [mathematical_calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/mathematical_calibrator.py) & [calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))
 
-O motor calcula a **Pontuação Total Ponderada**:
+O motor calcula a **Pontuação Total Ponderada** com base no tipo de golpe desferido e nas regras biomecânicas da FIK/AJKF:
 
 $$\text{Score}_{\text{Total}} = (w_{\text{target}} \cdot S_{\text{target}}) + (w_{\text{fumikomi}} \cdot S_{\text{fumikomi}}) + (w_{\text{posture}} \cdot S_{\text{posture}}) + (w_{\text{zanshin}} \cdot S_{\text{zanshin}})$$
 
@@ -335,13 +335,42 @@ Para um golpe ser validado como **Yuko-Datotsu** (Ponto Válido / *Ippon*):
 1. $\text{Score}_{\text{Total}}$ deve ser maior ou igual a `min_total_score` do perfil ativo.
 2. Cada sub-pontuação individual deve satisfazer o respectivo `sub_threshold`.
 
+#### 4.3.1. Pesos Especializados por Tipo de Golpe (`weights_by_strike_type` — Eixo 1.4)
+Em vez de pesos homogêneos para todas as técnicas, a importância relativa de cada pilar biomecânico adapta-se dinamicamente conforme a técnica executada:
+
+| Golpe (Waza) | Pilar Mais Crítico | Alvo ($w_{\text{target}}$) | Fumikomi ($w_{\text{fumikomi}}$) | Postura ($w_{\text{posture}}$) | Zanshin ($w_{\text{zanshin}}$) |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| 🔴 **Men** | Sincronismo Ki-Ken-Tai-Ichi | 35% | 30% | 20% | 15% |
+| 🟡 **Kote** | Extensão de cotovelo e contato no Bogu | 45% | 25% | 18% | 12% |
+| 🟢 **Do** | Ângulo de corte lateral (Hasuji) | 45% | 15% | 20% | 20% |
+| 🔵 **Tsuki** | Alinhamento da lâmina e colinearidade | 50% | 20% | 15% | 15% |
+
+#### 4.3.2. Classificador Probabilístico Calibrado (Platt Scaling — Eixo 1.2)
+Além da classificação booleana (*Ippon* vs *Não-Ippon*), o sistema calcula a probabilidade real contínua de validação arbitral:
+
+$$P(\text{Yuko-Datotsu}=1 \mid s) = \sigma(A \cdot s + B) = \frac{1}{1 + e^{-(A \cdot s + B)}}$$
+
+Onde os parâmetros $A$ e $B$ são calibrados por máxima verossimilhança com regularização L2 sobre os feedbacks validados. O resultado é disponibilizado em `probability` $[0.0, 1.0]$ e `probability_pct` (ex: `88.4%`).
+
+#### 4.3.3. Monitoramento de Deriva Temporal (Concept Drift — Eixo 1.3)
+Para detectar alterações nos padrões de julgamento arbitral ou defasagem temporal dos modelos:
+* **Fator de Decaimento Exponencial:** $W_i = \text{DanWeight}_i \times e^{-\lambda \cdot \Delta t}$, com meia-vida regulamentar de 30 dias ($\lambda = \ln(2)/30$), conferindo maior autoridade a anotações recentes.
+* **Teste Bilateral Kolmogorov-Smirnov (`scipy.stats.ks_2samp`):** Compara a distribuição dos scores recentes com a base histórica de calibração. Se $p\text{-valor} < 0.05$, o sistema emite um alerta de `drift_alert` recomendando recalibração.
+
+#### 4.3.4. Otimização Formal com Custo Assimétrico (`BayesianCalibrationOptimizer` — Eixo 1.1)
+Substituição definitiva de acréscimos manuais fixos por otimização de parâmetros com:
+* **Motor Híbrido:** Optuna (TPE Sampler) com fallback automático para SciPy SLSQP (Sequential Least Squares Programming).
+* **Restrições Rígidas:** $\sum w_i = 1.0$, cada peso individual $w_i \ge 0.10$, $T_{\text{global}} \in [0.50, 0.90]$, sub-limiares em $[0.30, 0.85]$.
+* **Penalização Assimétrica de Competição:** Custo 3x maior para Falso Positivo ($C_{\text{FP}} = 3.0 \times C_{\text{FN}}$), em conformidade com o regulamento da FIK que proíbe Ippons duvidosos.
+
 #### Perfis Pré-configurados ([calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))
 
-| Perfil | $\text{min\_total\_score}$ | Pesos ($w_{\text{target}}, w_{\text{fumikomi}}, w_{\text{posture}}, w_{\text{zanshin}}$) | Aplicação Principal |
+| Perfil | $\text{min\_total\_score}$ | Pesos Globais ($w_{\text{target}}, w_{\text{fumikomi}}, w_{\text{posture}}, w_{\text{zanshin}}$) | Aplicação Principal |
 | :--- | :---: | :--- | :--- |
-| **Rígido** | `82%` | Target: 35%, Fumikomi: 25%, Posture: 20%, Zanshin: 20% | Campeonatos / Exames de Dan |
-| **Normal** | `65%` | Target: 40%, Fumikomi: 25%, Posture: 20%, Zanshin: 15% | Treinos de Dojang e Avaliação Geral |
-| **Permissivo** | `45%` | Target: 55%, Fumikomi: 20%, Posture: 15%, Zanshin: 10% | Iniciantes / Avaliação Educacional |
+| **Rígido** | `78%` | Target: 45%, Fumikomi: 25%, Posture: 15%, Zanshin: 15% | Campeonatos / Exames de Dan |
+| **Normal** | `74%` | Target: 40%, Fumikomi: 25%, Posture: 20%, Zanshin: 15% | Treinos de Dojang e Avaliação Geral |
+| **Permissivo** | `50%` | Target: 35%, Fumikomi: 25%, Posture: 20%, Zanshin: 20% | Iniciantes / Avaliação Educacional |
+| **Shiai** | `65%` | Target: 40%, Fumikomi: 25%, Posture: 20%, Zanshin: 15% | Competições Oficiais (Custo 3x FP) |
 | **Custom** | Dinâmico | Definido pelo usuário via sliders no Streamlit | Pesquisa e Ajustes Finos |
 
 ---
@@ -609,7 +638,30 @@ Total de **181 testes automatizados** distribuídos em 19 módulos, executados e
 
 ---
 
-### `[v 0.3.0.0]` — 2026-10-01 *(Versão Atual)*
+### `[v 0.3.1.0]` — 2026-10-02 *(Versão Atual)*
+
+- **Implementação do Eixo 1: Otimização Matemática e Calibração dos Pesos ([mathematical_calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/mathematical_calibrator.py), [calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py) & [calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))**:
+  - **Otimizador Numérico Bayesiano (`BayesianCalibrationOptimizer`)**:
+    - Substituição definitiva de saltos fixos (`+0.05` / `-0.04`) por otimização formal com Optuna (TPE) e SciPy SLSQP.
+    - Restrições lineares estritas: $\sum w_i = 1.0$, $w_i \ge 0.10$, $T_{\text{global}} \in [0.50, 0.90]$, sub-limiares em $[0.30, 0.85]$.
+    - **Penalização Assimétrica de Competição**: Custo 3x maior para Falso Positivo ($C_{\text{FP}} = 3.0 \times C_{\text{FN}}$) fundamentado na regra da FIK que veda pontos duvidosos.
+    - Ponderação por autoridade Dan (Shinpan: 4.5, Dan: 1 a 8, Kyu: 0.8) e decaimento temporal exponencial com meia-vida regulamentar de 30 dias ($e^{-\lambda \Delta t}$).
+  - **Classificador Probabilístico Calibrado (Platt Scaling - `ProbabilisticPlattCalibrator`)**:
+    - Cálculo contínuo da probabilidade real de validação do golpe: $P(\text{Yuko-Datotsu}=1 \mid s) = \sigma(A \cdot s + B)$, com parâmetros ajustados por máxima verossimilhança e regularização L2.
+    - Exibição de `probability` e `probability_pct` na interface gráfica e relatórios diagnósticos.
+  - **Monitoramento de Deriva Temporal (Concept Drift - `ConceptDriftDetector`)**:
+    - Teste bilateral Kolmogorov-Smirnov (`scipy.stats.ks_2samp`) comparando a distribuição recente de scores contra a base histórica para detecção precoce de defasagem de regras ou critérios arbitrais.
+  - **Ponderação Especializada por Tipo de Golpe (`weights_by_strike_type`)**:
+    - Vetores customizados de Ki-Ken-Tai-Ichi por técnica: `MEN` (ênfase em sincronia mão-pé), `KOTE` (ênfase em extensão de cotovelo e contato), `DO` (ênfase em Hasuji/ângulo de corte), `TSUKI` (ênfase em colinearidade e alvo).
+    - Roteamento dinâmico em `pipeline.py` e `multi_camera_fusion.py` através da passagem contextual do `strike_type`.
+  - **Painel Interativo de Calibração Matemática no Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+    - Visualização gráfica de status do motor numérico, parâmetros de Platt Scaling, alertas de Concept Drift e tabela de pesos especializados por golpe com botão de execução rápida da otimização.
+  - **Suíte de Testes Automatizados**:
+    - Criação do módulo `tests/test_mathematical_calibration_eixo1.py` com 10 testes dedicados com 100% de aprovação.
+
+---
+
+### `[v 0.3.0.0]` — 2026-10-01
 
 - **Implementação do Eixo 4: Aprendizado Ativo & Salvaguarda Golden Benchmark ([active_learning.py](file:///d:/Projetos/SenpAI/Dev/src/engine/active_learning.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py) & [auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py))**:
   - **Amostragem por Incerteza (`UncertaintySampler`)**:

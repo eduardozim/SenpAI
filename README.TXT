@@ -1,7 +1,7 @@
 ===============================================================================
                         SENPAI (先輩 AI) - GUIA RÁPIDO
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
-                              Versão: v 0.3.0.0
+                              Versão: v 0.3.1.0
 ===============================================================================
 
 O SenpAI é um sistema de visão computacional e análise biomecânica projetado
@@ -227,18 +227,39 @@ Opções disponíveis:
       - Geração e download de Relatório Consolidado de Treinamento da Sessão Ao Vivo (.md e .json).
 
 -------------------------------------------------------------------------------
-5. PERFIS DE CALIBRAÇÃO (SENSIBILIDADE)
+5. PERFIS DE CALIBRAÇÃO & MOTOR MATEMÁTICO (EIXO 1)
 -------------------------------------------------------------------------------
 
+O SenpAI incorpora um Motor Matemático de Calibração formal (mathematical_calibrator.py):
+- Otimização Bayesiana / Numérica:
+  Busca automática de parâmetros ótimos via Optuna (TPE) ou SciPy SLSQP,
+  com restrições estritas (soma dos pesos = 1.0 e cada peso >= 0.10).
+- Penalização Assimétrica de Competição (Shiai/FIK):
+  Custo 3x maior para Falso Positivo (3.0x FP / 1.0x FN), pois as normas
+  arbitrais da FIK exigem certeza absoluta para a validação de Ippon.
+- Classificador Probabilístico Calibrado (Platt Scaling):
+  Calcula a probabilidade real contínua de Ippon: P(Ippon) = sigmoid(A*s + B),
+  gerando percentuais precisos de confiança arbitral (ex: 88.4%).
+- Monitoramento de Deriva Temporal (Concept Drift):
+  Aplica o teste estatístico bilateral Kolmogorov-Smirnov (scipy.stats.ks_2samp)
+  comparando scores recentes com a base histórica para detecção de desvios.
+- Pesos Especializados por Tipo de Golpe (weights_by_strike_type):
+  • Men: ênfase máxima em sincronismo mão-pé Ki-Ken-Tai-Ichi (30% Fumikomi).
+  • Kote: ênfase em extensão de cotovelo e contato firme no Bogu (45% Alvo).
+  • Do: ênfase em Hasuji e trajetória de corte lateral (45% Alvo / 20% Postura).
+  • Tsuki: ênfase em colinearidade e estocada penetrante (50% Alvo).
+
+Perfis Pré-configurados:
 - Iniciantes / Educacional (Permissivo):
-  Limiar mínimo: 45%. Foco na precisão ao alvo, tolerando pequenas falhas
-  de postura e sincronismo.
+  Limiar mínimo: 50%. Foco formativo, tolerando pequenas falhas posturais.
 - Treino Geral / Keiko (Normal):
-  Limiar mínimo: 65%. Equilíbrio ideal entre precisão técnica e tolerância.
+  Limiar mínimo: 74%. Equilíbrio padrão para treinos diários e exames de Kyu.
 - Campeonato / Audit de Dan (Rígido):
-  Limiar mínimo: 82%. Exige execução perfeita de Ki-Ken-Tai-Ichi e Zanshin.
+  Limiar mínimo: 78%. Alta exigência em Ki-Ken-Tai-Ichi e Zanshin.
+- Oficial de Competição (Shiai):
+  Limiar mínimo: 65%. Calibrado com custo assimétrico estrito de 3x contra Falsos Positivos.
 - Personalizado (Custom):
-  Disponível na interface Web para ajuste manual de pesos e limiares via sliders.
+  Ajuste livre via sliders em tempo real no dashboard Web.
 
 -------------------------------------------------------------------------------
 6. CRITÉRIOS AVALIADOS (KI-KEN-TAI-ICHI & MAAI)

@@ -2228,6 +2228,55 @@ class AutoTrainingEngine:
             return self.feedback_mgr.resolve_active_learning_item(item_id, label_approved, reviewer_dan, notes)
         return False
 
+    def get_mathematical_calibration_status(self, profile_key: str = "normal") -> Dict[str, Any]:
+        """
+        Retorna o status completo da calibração matemática (Eixo 1):
+        - Pesos especializados por tipo de golpe (Men, Kote, Do, Tsuki)
+        - Parâmetros de Platt Scaling (probabilidade calibrada de Ippon)
+        - Métricas de Concept Drift (Kolmogorov-Smirnov test bilateral)
+        - Motor ativo de otimização (Optuna TPE ou Scipy SLSQP)
+        """
+        self.calibrator.set_profile(profile_key)
+        cfg = self.calibrator.active_config
+        weights_by_strike = cfg.get("weights_by_strike_type", {})
+        platt_info = cfg.get("platt_scaling", {})
+        last_calib = cfg.get("last_calibrated_at", "Não calibrado")
+
+        # Avaliação de Concept Drift com base no histórico de feedback
+        fbs = self.feedback_mgr.load_feedback()
+        scores = []
+        for fb in fbs:
+            tot = fb.get("total_score")
+            if tot is not None:
+                scores.append(float(tot) / 100.0 if float(tot) > 1.0 else float(tot))
+
+        drift_res = self.calibrator.check_concept_drift(scores) if scores else {
+            "drift_detected": False,
+            "status": "stable",
+            "message": "Histórico insuficiente para teste KS (< 15 amostras). Distribuição nominal estável."
+        }
+
+        from src.engine.mathematical_calibrator import OPTUNA_AVAILABLE
+
+        return {
+            "profile_key": profile_key,
+            "profile_name": cfg.get("name", profile_key),
+            "min_total_score": cfg.get("min_total_score", 0.65),
+            "weights_global": cfg.get("weights", {}),
+            "weights_by_strike": weights_by_strike,
+            "platt_scaling": platt_info,
+            "last_calibrated_at": last_calib,
+            "drift_evaluation": drift_res,
+            "optimization_engine": "Optuna (TPE Bayesiano)" if OPTUNA_AVAILABLE else "SciPy SLSQP (Otimização Numérica com Restrições)",
+            "asymmetric_loss_ratio": "3.0x FP / 1.0x FN (Padrão Oficial Shiai/FIK)"
+        }
+
+    def run_mathematical_optimization(self, profile_key: str = "normal") -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        """Executa a otimização matemática bayesiana/SLSQP para o perfil especificado."""
+        cur_cfg = self.calibrator.profiles.get(profile_key, self.calibrator.active_config)
+        new_cfg, stats = self.feedback_mgr.optimize_profile_config(profile_key, cur_cfg)
+        self.calibrator.update_and_save_profile(profile_key, new_cfg)
+        return new_cfg, stats
 
 
 # Instância Singleton Global

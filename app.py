@@ -2337,6 +2337,105 @@ elif nav_page == "settings":
         st.info("💡 **Dica de Calibração:** Durante a análise de lutas, você pode selecionar o perfil desejado ou escolher a opção **'⚙️ Personalizado'** na barra lateral para ajustar os sliders de limiares em tempo real.")
 
         # ----------------------------------------------------------------------
+        # EIXO 1: OTIMIZAÇÃO MATEMÁTICA, PESOS POR GOLPE & PLATT SCALING
+        # ----------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("### 🏛️ Eixo 1: Otimização Matemática, Pesos por Golpe & Platt Scaling")
+        st.caption("Otimização formal de pesos (Optuna TPE / SciPy SLSQP), penalização assimétrica (3.0x FP em Shiai), calibração probabilística sigmoidal (Platt Scaling) e monitoramento de Concept Drift.")
+
+        calib_status = {}
+        try:
+            if hasattr(auto_trainer, "get_mathematical_calibration_status"):
+                calib_status = auto_trainer.get_mathematical_calibration_status("normal")
+        except Exception:
+            calib_status = {}
+
+        m_col1, m_col2, m_col3 = st.columns(3)
+        with m_col1:
+            st.markdown(
+                f"""
+                <div style="background-color: #1E293B; border-left: 4px solid #3B82F6; border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+                    <div style="font-weight: 700; color: #60A5FA; font-size: 1.0rem;">📐 Motor de Otimização Numérica</div>
+                    <div style="color: #94A3B8; font-size: 0.85rem; margin-top: 4px;">Motor Ativo: <b>{calib_status.get('optimization_engine', 'SciPy SLSQP')}</b></div>
+                    <div style="font-size: 0.82rem; color: #E2E8F0; margin-top: 6px;">
+                        • <b>Perda Assimétrica:</b> {calib_status.get('asymmetric_loss_ratio', '3.0x FP / 1.0x FN')}<br>
+                        • <b>Ponderação Dan:</b> Shinpan (4.5), 1-8 Dan, Kyu (0.8)<br>
+                        • <b>Decaimento Temporal:</b> Exponencial (Half-life de 30 dias)
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with m_col2:
+            platt_cfg = calib_status.get("platt_scaling", {})
+            st.markdown(
+                f"""
+                <div style="background-color: #1E293B; border-left: 4px solid #10B981; border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+                    <div style="font-weight: 700; color: #34D399; font-size: 1.0rem;">📈 Calibração Probabilística (Platt)</div>
+                    <div style="color: #94A3B8; font-size: 0.85rem; margin-top: 4px;">Fórmula: <b>P(Ippon) = σ(A·s + B)</b></div>
+                    <div style="font-size: 0.82rem; color: #E2E8F0; margin-top: 6px;">
+                        • <b>Parâmetro A (Inclinação):</b> {platt_cfg.get('a', 12.0)}<br>
+                        • <b>Parâmetro B (Intercepto):</b> {platt_cfg.get('b', -8.8)}<br>
+                        • <b>Status do Ajuste:</b> {'Ajustado com Feedbacks' if platt_cfg.get('is_fitted') else 'Calibração Analítica Base'}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        with m_col3:
+            drift_ev = calib_status.get("drift_evaluation", {})
+            is_drift = drift_ev.get("drift_detected", False)
+            d_color = "#EF4444" if is_drift else "#10B981"
+            d_icon = "⚠️ Alerta de Deriva" if is_drift else "✅ Estável"
+            st.markdown(
+                f"""
+                <div style="background-color: #1E293B; border-left: 4px solid {d_color}; border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+                    <div style="font-weight: 700; color: {d_color}; font-size: 1.0rem;">⏳ Deriva Temporal (Concept Drift)</div>
+                    <div style="color: #94A3B8; font-size: 0.85rem; margin-top: 4px;">Status: <b>{d_icon}</b></div>
+                    <div style="font-size: 0.82rem; color: #E2E8F0; margin-top: 6px;">
+                        • <b>Teste Estatístico:</b> Kolmogorov-Smirnov (scipy.stats.ks_2samp)<br>
+                        • <b>Estatística KS:</b> {drift_ev.get('ks_statistic', 0.0)} | <b>p-valor:</b> {drift_ev.get('p_value', 1.0)}<br>
+                        • <b>Última Calibração:</b> {str(calib_status.get('last_calibrated_at', 'Sincronizado'))[:19].replace('T', ' ')}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        st.markdown("#### 🥋 Pesos Especializados por Tipo de Golpe (weights_by_strike_type):")
+        st.caption("A importância biomecânica de cada pilar varia conforme o golpe desferido (FIK/AJKF):")
+        w_strike_table_md = """| Golpe (Waza) | Pilar Mais Crítico | Alvo (Target) | Fumikomi (Sincronia) | Postura Corporal | Zanshin |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| 🔴 **Men** | Sincronismo Ki-Ken-Tai-Ichi | 35% | 30% | 20% | 15% |
+| 🟡 **Kote** | Extensão de cotovelo e contato | 45% | 25% | 18% | 12% |
+| 🟢 **Do** | Ângulo do corte lateral (Hasuji) | 45% | 15% | 20% | 20% |
+| 🔵 **Tsuki** | Alinhamento e colinearidade | 50% | 20% | 15% | 15% |
+"""
+        st.markdown(w_strike_table_md)
+
+        c_opt1, c_opt2 = st.columns([1, 2])
+        with c_opt1:
+            prof_opt_choice = st.selectbox(
+                "Perfil para Otimizar:",
+                options=["normal", "rigido", "permissivo", "shiai"],
+                format_func=lambda k: {"normal": "🔵 Normal (Keiko)", "rigido": "🟣 Rígido (Campeonato)", "permissivo": "🟢 Permissivo", "shiai": "🏆 Shiai (Oficial)"}.get(k, k),
+                key="sel_profile_math_opt"
+            )
+        with c_opt2:
+            st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+            if st.button("⚡ Executar Otimização Matemática dos Pesos (Eixo 1)", key="btn_run_math_opt", use_container_width=True):
+                with st.spinner("Executando otimização formal dos parâmetros com custo assimétrico e Platt Scaling..."):
+                    try:
+                        _, opt_res = auto_trainer.run_mathematical_optimization(prof_opt_choice)
+                        st.success(f"✅ Otimização concluída via {opt_res.get('optimization_method', 'otimizador')}!")
+                        for ch in opt_res.get("changes", []):
+                            st.write(f"- {ch}")
+                    except Exception as err:
+                        st.error(f"Erro na otimização: {err}")
+
+        # ----------------------------------------------------------------------
         # EIXO 4: GOLDEN BENCHMARK, APRENDIZADO ATIVO & ASSISTENTE LLM
         # ----------------------------------------------------------------------
         st.markdown("---")

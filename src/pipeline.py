@@ -340,8 +340,10 @@ class SenpAIPipeline:
             posture_score = self.biomechanics.evaluate_posture(landmarks_at_impact)
             zanshin_score = self.biomechanics.evaluate_zanshin(history_used, impact_f, ev.end_frame)
 
-            # Calibração
-            evaluation = self.calibrator.evaluate_strike(target_score, fumikomi_score, posture_score, zanshin_score)
+            # Calibração com pesos especializados por tipo de golpe (Eixo 1.4)
+            evaluation = self.calibrator.evaluate_strike(
+                target_score, fumikomi_score, posture_score, zanshin_score, strike_type=ev.type
+            )
             
             # Se foi constatada falta de alcance/contato, não pode ser Ippon válido
             if not is_contact_range:
