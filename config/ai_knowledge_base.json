@@ -1,7 +1,7 @@
 {
   "version": "2.0.0",
-  "last_updated": "2026-10-01T21:47:14.312671",
-  "total_web_sources_indexed": 15,
+  "last_updated": "2026-10-02T17:34:34.093705",
+  "total_web_sources_indexed": 3,
   "sources": {
     "fik_regulations": {
       "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
@@ -75,73 +75,10 @@
         ],
         "stamina_retention_ratio_target": 0.88
       }
-    },
-    "the_philosophy_and_practice_of_ji-geiko_": {
-      "title": "The Philosophy and Practice of Ji-geiko in Contemporary Kendo",
-      "type": "Manual Oficial AJKF / FIK",
-      "url": "https://www.kendo.or.jp/knowledge/ji_geiko",
-      "focus": "Ji-geiko (地稽古)",
-      "summary": "Diretrizes oficiais de execução para Ji-geiko (地稽古) (地稽古): foco em Construção de oportunidade com Seme, Manutenção da compostura e centro, Variedade técnica inteligente, Postura digna sob pressão.",
-      "principles": [
-        "Pressão com Seme (攻め): Rompimento da guarda e quebra da postura mental do adversário antes de desferir o ataque.",
-        "Ki-Ken-Tai-Ichi em Combate Livre: Aplicação plena dos fundamentos de golpe, corte e pés sem pré-determinação.",
-        "Chushin-sen: Disputa e domínio ininterrupto da linha central de corte e defesa."
-      ],
-      "biomechanical_thresholds": {
-        "cadence_cpm": [
-          8,
-          25
-        ],
-        "seme_retention_ratio": 0.88
-      }
-    },
-    "ajkf_/_znkr_kendo_shinpan_&_shiai_practi": {
-      "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
-      "type": "Manual de Arbitragem AJKF"
-    },
-    "treatise_on_nihon_kendo_kata_technical_&": {
-      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
-      "type": "Tratado Técnico Kata"
-    },
-    "fik_international_kendo_regulations_(art": {
-      "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
-      "type": "Manual Oficial FIK"
-    },
-    "kirikaeshi_continuous_stroke_cadence_&_d": {
-      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
-      "type": "Corpus de Vídeo Dojo"
-    },
-    "high-speed_motion_capture_of_fumikomi-as": {
-      "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
-      "type": "Mocap Científico"
-    },
-    "all_japan_kendo_championship_finals_-_ki": {
-      "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
-      "type": "Corpus de Vídeo HD"
-    },
-    "kendo_pedagogical_training_curriculum:_1": {
-      "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
-      "type": "Currículo Pedagógico"
-    },
-    "physiological_&_biomechanical_load_in_su": {
-      "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
-      "type": "Estudo Biomecânico"
-    },
-    "reinforcement_optimization_on_dan_review": {
-      "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
-      "type": "Dataset de Calibração"
-    },
-    "multi-view_neural_consensus_&_perspectiv": {
-      "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
-      "type": "Modelo Neural"
-    },
-    "senpai_knowledge_base_&_calibration_prof": {
-      "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
-      "type": "Base de Conhecimento"
     }
   },
   "learned_parameters": {
-    "auto_learning_sequence_step": 1,
+    "auto_learning_sequence_step": 0,
     "general_kendo_principles": [
       "Ki-Ken-Tai-Ichi (気剣体一致): Unidade completa e simultânea de espírito (Ki), espada (Ken) e corpo/pés (Tai).",
       "Maai (間合い): Domínio da distância espacial e temporal (Toma, Issoku-itto-no-maai e Chikama).",
@@ -166,8 +103,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 41.0,
         "current_accuracy": 41.0,
         "last_calibrated": "Inicial Calibrado",
@@ -198,7 +135,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -209,8 +146,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 46.5,
         "current_accuracy": 46.5,
         "last_calibrated": "Inicial Calibrado",
@@ -242,7 +179,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -253,8 +190,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 44.0,
         "current_accuracy": 44.0,
         "last_calibrated": "Inicial Calibrado",
@@ -285,7 +222,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -296,8 +233,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 39.5,
         "current_accuracy": 39.5,
         "last_calibrated": "Inicial Calibrado",
@@ -328,7 +265,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -339,8 +276,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 38.0,
         "current_accuracy": 38.0,
         "last_calibrated": "Inicial Calibrado",
@@ -371,7 +308,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -382,8 +319,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 33.5,
         "current_accuracy": 33.5,
         "last_calibrated": "Inicial Calibrado",
@@ -413,7 +350,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -424,8 +361,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 37.5,
         "current_accuracy": 37.5,
         "last_calibrated": "Inicial Calibrado",
@@ -455,7 +392,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -466,8 +403,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 36.5,
         "current_accuracy": 36.5,
         "last_calibrated": "Inicial Calibrado",
@@ -497,7 +434,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -508,8 +445,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 35.5,
         "current_accuracy": 35.5,
         "last_calibrated": "Inicial Calibrado",
@@ -539,7 +476,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -550,11 +487,11 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 32.0,
-        "current_accuracy": 35.7,
-        "last_calibrated": "01/10/2026 21:47",
+        "current_accuracy": 32.0,
+        "last_calibrated": "Inicial Calibrado",
         "mastery_level": "Fase Inicial (Falsos Positivos)",
         "principles_learned": [
           "Pressão com Seme (攻め): Rompimento da guarda e quebra da postura mental do adversário antes de desferir o ataque.",
@@ -578,83 +515,23 @@
             "title": "The Philosophy and Practice of Ji-geiko in Contemporary Kendo",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/ji_geiko"
-          },
-          {
-            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
-            "type": "Manual de Arbitragem AJKF",
-            "url": ""
-          },
-          {
-            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
-            "type": "Tratado Técnico Kata",
-            "url": ""
-          },
-          {
-            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
-            "type": "Manual Oficial FIK",
-            "url": ""
-          },
-          {
-            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
-            "type": "Corpus de Vídeo Dojo",
-            "url": ""
-          },
-          {
-            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
-            "type": "Mocap Científico",
-            "url": ""
-          },
-          {
-            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
-            "type": "Corpus de Vídeo HD",
-            "url": ""
-          },
-          {
-            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
-            "type": "Currículo Pedagógico",
-            "url": ""
-          },
-          {
-            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
-            "type": "Estudo Biomecânico",
-            "url": ""
-          },
-          {
-            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
-            "type": "Dataset de Calibração",
-            "url": ""
-          },
-          {
-            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
-            "type": "Modelo Neural",
-            "url": ""
-          },
-          {
-            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
-            "type": "Base de Conhecimento",
-            "url": ""
           }
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
-          },
-          {
-            "date": "01/10/2026 21:47",
-            "gain": "+2.4%",
-            "note": "Treinamento Profundo (modality_ji_geiko). Acurácia elevada para 34.7%. 3 princípios consolidados."
           }
         ],
-        "sessions_count": 1
+        "sessions_count": 0
       },
       "shiai_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 34.0,
         "current_accuracy": 34.0,
         "last_calibrated": "Inicial Calibrado",
@@ -685,7 +562,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -696,8 +573,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 45.0,
         "current_accuracy": 45.0,
         "last_calibrated": "Inicial Calibrado",
@@ -728,7 +605,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -739,8 +616,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 42.5,
         "current_accuracy": 42.5,
         "last_calibrated": "Inicial Calibrado",
@@ -770,7 +647,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -781,8 +658,8 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.12,
-        "posture_strictness": 0.85,
+        "cadence_tolerance_pct": 0.15,
+        "posture_strictness": 0.8,
         "initial_accuracy": 36.0,
         "current_accuracy": 36.0,
         "last_calibrated": "Inicial Calibrado",
@@ -812,7 +689,7 @@
         ],
         "evolution_log": [
           {
-            "date": "16/09/2026",
+            "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -821,6 +698,5 @@
       }
     }
   },
-  "training_sessions_completed": 1,
-  "last_retrained_at": "2026-10-01T21:47:14.312671"
+  "training_sessions_completed": 0
 }

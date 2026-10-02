@@ -18,38 +18,38 @@
     "weights_by_strike_type": {
       "MEN": {
         "target_impact": 0.35,
-        "fumikomi_sync": 0.25,
-        "posture": 0.2,
-        "zanshin": 0.2
-      },
-      "KOTE": {
-        "target_impact": 0.4,
-        "fumikomi_sync": 0.25,
+        "fumikomi_sync": 0.3,
         "posture": 0.2,
         "zanshin": 0.15
       },
+      "KOTE": {
+        "target_impact": 0.45,
+        "fumikomi_sync": 0.25,
+        "posture": 0.18,
+        "zanshin": 0.12
+      },
       "DO": {
-        "target_impact": 0.4,
-        "fumikomi_sync": 0.2,
+        "target_impact": 0.45,
+        "fumikomi_sync": 0.15,
         "posture": 0.2,
         "zanshin": 0.2
       },
       "TSUKI": {
-        "target_impact": 0.45,
+        "target_impact": 0.5,
         "fumikomi_sync": 0.2,
-        "posture": 0.18,
-        "zanshin": 0.17
+        "posture": 0.15,
+        "zanshin": 0.15
       }
     },
     "platt_scaling": {
       "a": 10.0,
       "b": -5.0,
       "is_fitted": false
-    },
-    "last_calibrated_at": "2026-10-02T12:00:00Z"
+    }
   },
   "normal": {
     "name": "Treino Geral / Keiko (Normal)",
+    "description": "Equilíbrio padrão para treinos do dia a dia e avaliações gerais de Keiko.",
     "min_total_score": 0.74,
     "weights": {
       "target_impact": 0.4,
@@ -58,10 +58,10 @@
       "zanshin": 0.15
     },
     "sub_thresholds": {
-      "target_impact": 0.6,
-      "fumikomi_sync": 0.55,
-      "posture": 0.55,
-      "zanshin": 0.45
+      "target_impact": 0.72,
+      "fumikomi_sync": 0.75,
+      "posture": 0.75,
+      "zanshin": 0.72
     },
     "weights_by_strike_type": {
       "MEN": {
@@ -91,10 +91,9 @@
     },
     "platt_scaling": {
       "a": 12.0,
-      "b": -8.0,
+      "b": -8.8,
       "is_fitted": false
-    },
-    "last_calibrated_at": "2026-10-02T20:14:28.071463+00:00"
+    }
   },
   "rigido": {
     "name": "Campeonato / Audit de Dan (Rígido)",
@@ -115,54 +114,6 @@
     "weights_by_strike_type": {
       "MEN": {
         "target_impact": 0.35,
-        "fumikomi_sync": 0.32,
-        "posture": 0.18,
-        "zanshin": 0.15
-      },
-      "KOTE": {
-        "target_impact": 0.48,
-        "fumikomi_sync": 0.24,
-        "posture": 0.16,
-        "zanshin": 0.12
-      },
-      "DO": {
-        "target_impact": 0.46,
-        "fumikomi_sync": 0.16,
-        "posture": 0.18,
-        "zanshin": 0.2
-      },
-      "TSUKI": {
-        "target_impact": 0.52,
-        "fumikomi_sync": 0.18,
-        "posture": 0.15,
-        "zanshin": 0.15
-      }
-    },
-    "platt_scaling": {
-      "a": 14.0,
-      "b": -10.9,
-      "is_fitted": false
-    },
-    "last_calibrated_at": "2026-10-02T12:00:00Z"
-  },
-  "shiai": {
-    "name": "Shiai",
-    "min_total_score": 0.65,
-    "weights": {
-      "target_impact": 0.4,
-      "fumikomi_sync": 0.25,
-      "posture": 0.2,
-      "zanshin": 0.15
-    },
-    "sub_thresholds": {
-      "target_impact": 0.6,
-      "fumikomi_sync": 0.55,
-      "posture": 0.55,
-      "zanshin": 0.45
-    },
-    "weights_by_strike_type": {
-      "MEN": {
-        "target_impact": 0.35,
         "fumikomi_sync": 0.3,
         "posture": 0.2,
         "zanshin": 0.15
@@ -187,10 +138,9 @@
       }
     },
     "platt_scaling": {
-      "a": 12.0,
-      "b": -8.0,
+      "a": 14.0,
+      "b": -10.9,
       "is_fitted": false
-    },
-    "last_calibrated_at": "2026-10-02T20:14:28.132728+00:00"
+    }
   }
 }
