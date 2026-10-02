@@ -1585,7 +1585,7 @@ elif nav_page == "settings":
                         "Ippons Válidos": s_item.get("items_count", 0),
                         "Perfil": s_item.get("profile_key", "normal")
                     })
-                st.dataframe(pd.DataFrame(sh_table_rows), use_container_width=True)
+                st.dataframe(pd.DataFrame(sh_table_rows), width="stretch")
             else:
                 st.info("ℹ️ Nenhum link de vídeo com Decisão dos Shinpans registrado até o momento.")
 
@@ -1603,7 +1603,8 @@ elif nav_page == "settings":
         with act_col1:
             st.markdown("**🗑️ Apagar Treinamento do Sistema**")
             st.caption("Reseta todo o histórico de revisões e restaura o modelo ao estágio inicial.")
-            confirm_reset = st.checkbox("Confirmo que desejo apagar todo o treinamento", key="chk_confirm_reset_tab")
+            reset_chk_ver = st.session_state.get("reset_chk_ver", 0)
+            confirm_reset = st.checkbox("Confirmo que desejo apagar todo o treinamento", key=f"chk_confirm_reset_{reset_chk_ver}")
             if st.button("🗑️ Apagar Treinamento", type="secondary", width="stretch", key="btn_reset_train_tab"):
                 if confirm_reset:
                     feedback_mgr.reset_all_training_data()
@@ -1616,7 +1617,7 @@ elif nav_page == "settings":
                         "e a Base de Conhecimento do Auto-Trainer foram completamente resetados. "
                         "O sistema e seus modelos foram restaurados ao estágio inicial padrão de fábrica."
                     )
-                    st.session_state["chk_confirm_reset_tab"] = False
+                    st.session_state["reset_chk_ver"] = reset_chk_ver + 1
                     st.rerun()
                 else:
                     st.warning("⚠️ Marque a caixa de confirmação acima antes de apagar.")
@@ -2454,7 +2455,7 @@ elif nav_page == "settings":
             )
         with c_opt2:
             st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-            if st.button("⚡ Executar Otimização Matemática dos Pesos (Eixo 1)", key="btn_run_math_opt", use_container_width=True):
+            if st.button("⚡ Executar Otimização Matemática dos Pesos (Eixo 1)", key="btn_run_math_opt", width="stretch"):
                 with st.spinner("Executando otimização formal dos parâmetros com custo assimétrico e Platt Scaling..."):
                     try:
                         _, opt_res = auto_trainer.run_mathematical_optimization(prof_opt_choice)
@@ -2536,11 +2537,11 @@ elif nav_page == "settings":
                                     "p90": f"{dist_v.get('p90', 0.0):.3f}",
                                     "Amostras": dist_v.get('sample_count', 0)
                                 })
-                            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+                            st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
                         else:
                             st.write(f"Sem dados suficientes para {s_key}.")
 
-            if st.button("🎬 Minerar Clipes de Lutas Oficiais (FIK/AJKF)", key="btn_mine_official_clips", use_container_width=True):
+            if st.button("🎬 Minerar Clipes de Lutas Oficiais (FIK/AJKF)", key="btn_mine_official_clips", width="stretch"):
                 with st.spinner("Minerando métricas cinemáticas dos clipes oficiais confirmados..."):
                     try:
                         mine_res = auto_trainer.mine_official_video_clips()
@@ -2745,7 +2746,7 @@ elif nav_page == "settings":
                     )
                     ws_factor = st.slider("Fator Multiplicativo (%):", min_value=1.01, max_value=1.25, value=1.06, step=0.01, key="ws_factor_slider")
 
-                if st.button("🚀 Derivar Perfil com Warm Start", key="btn_derive_profile_ws", type="primary", use_container_width=True):
+                if st.button("🚀 Derivar Perfil com Warm Start", key="btn_derive_profile_ws", type="primary", width="stretch"):
                     try:
                         clean_key = new_prof_key.strip().lower().replace(" ", "_")
                         derived_p = feedback_mgr.derive_profile_warm_start(
@@ -3299,7 +3300,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                 label_visibility="collapsed"
                             )
                         with col_rtsp_test:
-                            test_btn = st.button("🔍 Testar", key=f"btn_test_rtsp_cam_{k}", use_container_width=True)
+                            test_btn = st.button("🔍 Testar", key=f"btn_test_rtsp_cam_{k}", width="stretch")
 
                         cam_val = normalize_stream_source(rtsp_val)
                         cam_name_display = f"RTSP (Cam {k + 1})"
@@ -3874,7 +3875,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                 label_visibility="collapsed"
                             )
                         with col_rtsp_test:
-                            test_btn = st.button("🔍 Testar", key=f"train_btn_test_rtsp_cam_{k}", use_container_width=True)
+                            test_btn = st.button("🔍 Testar", key=f"train_btn_test_rtsp_cam_{k}", width="stretch")
 
                         cam_val = normalize_stream_source(rtsp_val)
                         cam_name_display = f"RTSP (Cam {k + 1})"
@@ -5521,7 +5522,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                             file_name=f"golpes_detectados_{safe_vname}_{now_tag}.xlsx",
                                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                             type="primary",
-                                            use_container_width=True,
+                                            width="stretch",
                                             key="btn_download_strikes_excel"
                                         )
                                         st.info(f"💡 **Dica de Edição:** A planilha exportada possui três abas: *'Golpes Detectados'*, *'Metadados & Vídeo'* e *'Instruções & Dicionário'*. O arquivo contém o link de streaming e a graduação Dan ({dan_options.get(exp_dan)}).")
@@ -5585,7 +5586,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                                 })
                                             if preview_rows:
                                                 st.markdown("**Prévia dos Golpes Importados:**")
-                                                st.dataframe(pd.DataFrame(preview_rows), use_container_width=True, height=200)
+                                                st.dataframe(pd.DataFrame(preview_rows), width="stretch", height=200)
 
                                             # Opções de Governança e Ação
                                             st.markdown("---")
@@ -5613,7 +5614,7 @@ elif nav_page in ["match", "training", "analysis"]:
 
                                             btn_col1, btn_col2 = st.columns(2)
                                             with btn_col1:
-                                                if st.button("📥 Aplicar à Sessão Atual (Atualizar Linha do Tempo & Placar)", use_container_width=True, key="btn_apply_excel_session"):
+                                                if st.button("📥 Aplicar à Sessão Atual (Atualizar Linha do Tempo & Placar)", width="stretch", key="btn_apply_excel_session"):
                                                     st.session_state["session_reviews"] = apply_imported_strikes_to_session_reviews(
                                                         imported_strikes=imported_list,
                                                         current_session_reviews=st.session_state.get("session_reviews", {})
@@ -5622,7 +5623,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                                     st.rerun()
 
                                             with btn_col2:
-                                                if st.button("🎯 Executar Treinamento do Modelo com a Planilha", type="primary", use_container_width=True, key="btn_train_excel_model"):
+                                                if st.button("🎯 Executar Treinamento do Modelo com a Planilha", type="primary", width="stretch", key="btn_train_excel_model"):
                                                     # Atualiza a sessão
                                                     st.session_state["session_reviews"] = apply_imported_strikes_to_session_reviews(
                                                         imported_strikes=imported_list,
