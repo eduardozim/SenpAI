@@ -12,7 +12,7 @@ Implementa:
 import os
 import math
 import numpy as np
-from typing import Dict, List, Any, Optional, Tuple, Union
+from typing import Dict, List, Any, Optional, Tuple, Union, Sequence
 
 from src.utils.logger_manager import log_event
 
