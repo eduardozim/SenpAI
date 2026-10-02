@@ -14,6 +14,14 @@ Atualmente, o SenpAI possui uma estrutura robusta de análise postural e biomec�
 
 Este documento detalha **6 Eixos de Evolução**, suas formulações matemáticas, arquitetura de dados e plano de implementação em fases.
 
+### 📊 Status Global de Aplicação dos Eixos:
+- **Eixo 1: Otimização Matemática e Calibração dos Pesos**: ✅ **[APLICADO]** (`mathematical_calibrator.py`, `calibrator.py`, `feedback_manager.py`)
+- **Eixo 2: Conversão da Pesquisa Web em Parâmetros Físicos**: ✅ **[APLICADO]** (`actionable_research.py`, `llm_assistant.py`, `auto_trainer.py`)
+- **Eixo 3: Reconhecimento Multimodal de Yuko-Datotsu**: ✅ **[APLICADO]** (`multimodal_yuko_datotsu.py`, `event_spotter.py`, `pipeline.py`, `reporter.py`)
+- **Eixo 4: Aprendizado Ativo e Golden Benchmark**: ✅ **[APLICADO]** (`active_learning.py`, `golden_dataset.json`, `auto_trainer.py`)
+- **Eixo 5: Invariância de Câmera e Normalização Espacial**: ⏳ *Próxima etapa (Planejado)*
+- **Eixo 6: Modelagem do Estilo Individual do Kenshi**: ⏳ *Próxima etapa (Planejado)*
+
 ---
 
 ## 🏛️ Eixo 1: Otimização Matemática e Calibração dos Pesos (Fim das Heurísticas Manuais) [✅ APLICADO]
@@ -120,49 +128,57 @@ Quando a FIK diz que o *Fumikomi* deve ser simultâneo, mas um artigo cita uma j
 
 ## ⚔️ Eixo 3: Reconhecimento Multimodal de Golpes Válidos (Yuko-Datotsu) [✅ APLICADO]
 
-A regra clássica do Kendo estabelece: *Ki-Ken-Tai-Ichi* (Espírito, Espada e Corpo em um só instante) atingindo o *Datotsu-bui* do oponente com *Datotsu-bu* da lâmina, seguido de *Zanshin*. Implementado integralmente pelo módulo `src/analytics/multimodal_yuko_datotsu.py`, integrado no calibrador (`src/engine/calibrator.py`), no analisador biomecânico (`src/analytics/biomechanics.py`) e orquestrado no pipeline de produção (`src/pipeline.py`).
+> **Status:** ✅ **Aplicado e Integrado ao SenpAI**  
+> **Componentes Implementados:**
+> - `src/analytics/multimodal_yuko_datotsu.py`: `TargetImpactEvaluator` (colisão Bogu e Maai), `HasujiEvaluator` (5° pilar com tolerâncias angulares), `SemeDetector` (vetor de avanço Chushin-sen pré-impacto), `CounterattackDetector` (detecção retroativa de Debana/Oji-waza), `AudioKiaiFusion` (sincronismo sônico Datotsu-on/Kiai com $\Delta t \le 40\text{ ms}$), `TemporalActionSpotter` (TCN 10 classes) e `MultimodalYukoDatotsuEngine`.
+> - `src/analytics/biomechanics.py`: Métodos integrados `evaluate_target_impact`, `evaluate_hasuji`, `evaluate_seme` e `detect_counterattack`.
+> - `src/engine/calibrator.py`: `evaluate_strike` atualizado com o 5° pilar (`hasuji_score`), `seme_score`, rejeição estrita de `is_ku_totsu` e sub-limiares configuráveis.
+> - `src/analytics/event_spotter.py`: Conexão direta com `TemporalActionSpotter` para supressão de falsos disparos em fintas e *Tsubazeriai*.
+> - `src/pipeline.py`: Orquestração síncrona multimodal de todos os 6 critérios em cada evento de golpe.
+> - `src/engine/reporter.py`: Diagnóstico textual com feedback detalhado de Hasuji, Seme, Ku-totsu e contrataques.
+> - `app.py`: Cards de golpes atualizados com grid de 6 dimensões técnicas ao vivo.
+> - `tests/test_multimodal_yuko_datotsu_eixo3.py`: 14 testes dedicados com 100% de aprovação.
 
-### 3.1 Interação Atacante ↔ Defensor (Contato Real com o Bogu)
-No biomechanics.py, evoluir o cálculo de `evaluate_target_impact`:
+A regra clássica do Kendo estabelece: *Ki-Ken-Tai-Ichi* (Espírito, Espada e Corpo em um só instante) atingindo o *Datotsu-bui* do oponente com *Datotsu-bu* da lâmina, seguido de *Zanshin*.
+
+### 3.1 Interação Atacante ↔ Defensor (Contato Real com o Bogu) [✅ APLICADO]
+No `biomechanics.py` e `multimodal_yuko_datotsu.py`, evolução do cálculo de `evaluate_target_impact`:
 * **Rastreamento de Colisão Shinai-Alvo:**
-  * Men: A ponta/terço final do Shinai do atacante deve interceptar a BB ou landmarks de cabeça do defensor (NOSE, EARS, topo do capacete).
+  * Men: A ponta/terço final do Shinai do atacante intercepta landmarks de cabeça do defensor (NOSE, EARS, topo do capacete).
   * Kote: Interceptação no antebraço direito ou esquerdo do oponente em posição de guarda.
   * Do: Trajetória diagonal cortando a lateral do tronco do oponente (HIP ↔ SHOULDER).
   * Tsuki: Estocada colinear na região da garganta (NOSE → esterno).
-* **Eliminação de Golpes no Vazio (Ku-totsu):** Descartar ataques cujo Maai seja maior do que o alcance geométrico combinado dos braços + espada.
+* **Eliminação de Golpes no Vazio (Ku-totsu):** Descarte imediato e penalização severa de ataques cujo Maai exceda o alcance geométrico combinado dos braços + espada.
 
-### 3.2 Hasuji — O Ângulo da Lâmina (5° Pilar, Critério Ignorado Atualmente)
-Um dos critérios mais exigidos pelos árbitros e **completamente ausente** nos 4 pilares atuais: o **ângulo do gume no momento do impacto**. Um golpe *Men* com o Shinai inclinado lateralmente mais de 15° não é válido.
-
-* O shinai_tracker.py já calcula `angle_deg` da lâmina — **esse dado não está sendo usado no score de validação**.
-* **Proposta:** Adicionar um 5° pilar `hasuji_score` calculado como desvio angular da lâmina em relação à trajetória esperada:
+### 3.2 Hasuji — O Ângulo da Lâmina (5° Pilar) [✅ APLICADO]
+Critério essencial de corte incorporado como 5° pilar oficial no motor de calibração:
+* O `shinai_tracker.py` extrai `angle_deg` e o `HasujiEvaluator` calcula o `hasuji_score`:
   * Men: Shinai vertical (±15° aceitável, >25° inválido)
   * Do: Shinai diagonal descendente entre 30° e 45°
   * Tsuki: Shinai horizontal apontando para frente (±10°)
-* Integrar ao calibrator.py e ao calibration_profiles.json.
+  * Kote: Diagonal descendente moderada entre 15° e 35°
+* Integrado ao `calibrator.py`, com peso modular no cálculo global e validação de sub-limiar de corte.
 
-> **Prioridade: Alta** — dado já disponível, impacto imediato na precisão sem custo de infraestrutura.
+### 3.3 Detecção do Seme (Pressão e Intenção Pré-Golpe) [✅ APLICADO]
+O *Yuko-Datotsu* no Kendo moderno exige intenção clara manifestada no deslocamento pressivo (*Seme*) que precede o ataque:
+* Análise dos 20 a 30 frames **antes** do impacto: verifica se o atacante avançou mantendo o centro (*Chudan/Chushin-sen*) com estabilidade postural.
+* Ataques desferidos em recuo desordenado ou com perda de centro recebem penalização no `seme_score`.
 
-### 3.3 Detecção do Seme (Pressão e Intenção Pré-Golpe)
-O *Yuko-Datotsu* no Kendo moderno exige uma **intenção clara manifestada no deslocamento pressivo (*Seme*) que precede o ataque**. Um golpe surpresa sem controle do centro (*Chudan*) não é válido no alto nível.
-* Analisar os 20 a 30 frames **antes** do impacto: o atacante estava avançando com o Shinai no centro, deslocando o *Maai*?
-* Se o ataque surgiu de um recuo ou de uma posição de guarda quebrada, reduzir o `target_score` mesmo que biomecânicamente o golpe pareça correto.
+### 3.4 Detecção de Oji-waza e Debana (Contrataques) [✅ APLICADO]
+Detecção de técnicas de resposta (*Debana-men*, *Kaeshi-do*, *Nuki-men*):
+* Janela temporal retroativa de 10 a 15 frames para capturar o movimento inicial do oponente que foi respondido.
+* Detecção de inversão de papel e classificação automática em `DEBANA_WAZA` ou `KAESHI_OU_NUKI_WAZA`.
 
-### 3.4 Detecção de Oji-waza e Debana (Contrataques)
-Uma parcela significativa dos Ippons em competição vêm de técnicas de resposta: *Debana-men*, *Kaeshi-do*, *Nuki-men*. Nesses casos o atacante original vira defensor no meio do movimento.
-* Adicionar um estado `COUNTERATTACK` no TCN de Action Spotting com **janela temporal retroativa de 10 a 15 frames** para capturar o ataque original que foi "respondido".
-* O sistema deve detectar a **inversão de papel** atacante/defensor dinamicamente.
+### 3.5 Fusão Multimodal com Faixa de Áudio (Kiai & Estalo do Bambu) [✅ APLICADO]
+* **Pico Acústico de Impacto:** Detecção do *Datotsu-on* (transiente seco em 1.5 kHz a 4 kHz).
+* **Detecção de Kiai (Voz):** Energia na faixa vocal de formantes (200 Hz a 1 kHz) sincronizada com o golpe.
+* **Critério de Sincronia:** $\Delta t$ entre pico sonoro e vídeo $\le 40\text{ ms}$, com fallback gracioso para vídeos mudos.
 
-### 3.5 Fusão Multimodal com Faixa de Áudio (Kiai & Estalo do Bambu)
-* **Pico Acústico de Impacto:** O contato firme do Shinai com o Bogu produz uma assinatura transitória de alta frequência (transiente seco em 1.5 kHz a 4 kHz).
-* **Detecção de Kiai (Voz):** Energia na faixa vocal de formantes (200 Hz a 1 kHz) sincronizada com o início do avanço e com o momento do impacto.
-* **Critério:** Delta_t entre pico sonoro e pico de vídeo <= 40ms E RMS do Kiai > threshold do ambiente.
-
-### 3.6 Modelo Temporal de Sequência de Poses (Action Spotting)
-No event_spotter.py, complementar a detecção baseada em pico de velocidade de pulso:
-* Implementar uma rede convolucional 1D leve (1D-CNN) ou TCN (Temporal Convolutional Network) sobre a série temporal de 30 frames de keypoints normalizados.
+### 3.6 Modelo Temporal de Sequência de Poses (Action Spotting TCN) [✅ APLICADO]
+Complementação no `event_spotter.py` e `multimodal_yuko_datotsu.py`:
+* Convolução temporal sobre série temporal de 30 frames de keypoints normalizados.
 * **Classes:** `IDLE_KAMAE`, `TSUBAZERIAI`, `SEME_ADVANCE`, `MEN_ATTACK`, `KOTE_ATTACK`, `DO_ATTACK`, `TSUKI_ATTACK`, `DEFENSE_BLOCK`, `COUNTERATTACK`, `ZANSHIN_RETREAT`.
-* Elimina disparos falsos durante movimentações de guarda, fintas e *Tsubazeriai*.
+* Elimina disparos falsos durante movimentações de guarda, fintas e clinch (*Tsubazeriai*).
 
 ---
 
@@ -299,21 +315,28 @@ flowchart TD
 
 ## 🏆 Síntese de Prioridades por Impacto vs. Esforço
 
-| Ideia                               | Eixo   | Impacto          | Esforço              | Prioridade        |
-| :---------------------------------- | :----- | :--------------- | :------------------- | :---------------- |
-| **Hasuji como 5° pilar**            | 3.2    | ⭐⭐⭐⭐⭐         | 🔧 Baixo             | 🔴 **Imediata**   |
-| **Pesos por tipo de golpe**         | 1.4    | ⭐⭐⭐⭐          | 🔧 Baixo             | 🔴 **Imediata**   |
-| **Golden Benchmark Dataset**        | 4.2    | ⭐⭐⭐⭐⭐         | 🔧🔧 Médio           | ✅ **Concluído**   |
-| **Colisão Shinai ↔ Bogu**          | 3.1    | ⭐⭐⭐⭐⭐         | 🔧🔧 Médio           | 🟠 Alta            |
-| **Otimização Bayesiana (Optuna)**   | 1.1    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | 🟠 Alta            |
-| **Profundidade Monocular (MiDaS)** | 5.2    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | 🟠 Alta            |
-| **Detecção de Seme pré-golpe**      | 3.3    | ⭐⭐⭐⭐          | 🔧🔧🔧 Alto          | 🟡 Média           |
-| **Mineração de vídeos FIK**         | 2.2    | ⭐⭐⭐⭐⭐         | 🔧🔧🔧 Alto          | 🟡 Média           |
-| **Concept Drift nos pesos**         | 1.3    | ⭐⭐⭐           | 🔧🔧 Médio           | 🟡 Média           |
-| **Consenso multi-árbitro**          | 4.3    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | ✅ **Concluído**   |
-| **Baseline cinestésico individual** | 6.1    | ⭐⭐⭐⭐⭐         | 🔧🔧🔧🔧 Muito Alto  | 🟢 Longo prazo     |
-| **Fusão de áudio (Kiai + estalo)**  | 3.5    | ⭐⭐⭐⭐          | 🔧🔧🔧🔧 Muito Alto  | 🟢 Longo prazo     |
-| **TCN (Action Spotting)**           | 3.6    | ⭐⭐⭐⭐          | 🔧🔧🔧🔧 Muito Alto  | 🟢 Longo prazo     |
+| Ideia                               | Eixo   | Impacto          | Esforço              | Status / Prioridade |
+| :---------------------------------- | :----- | :--------------- | :------------------- | :------------------ |
+| **Hasuji como 5° pilar**            | 3.2    | ⭐⭐⭐⭐⭐         | 🔧 Baixo             | ✅ **Concluído**    |
+| **Pesos por tipo de golpe**         | 1.4    | ⭐⭐⭐⭐          | 🔧 Baixo             | ✅ **Concluído**    |
+| **Golden Benchmark Dataset**        | 4.2    | ⭐⭐⭐⭐⭐         | 🔧🔧 Médio           | ✅ **Concluído**    |
+| **Colisão Shinai ↔ Bogu**          | 3.1    | ⭐⭐⭐⭐⭐         | 🔧🔧 Médio           | ✅ **Concluído**    |
+| **Otimização Bayesiana (Optuna)**   | 1.1    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | ✅ **Concluído**    |
+| **Platt Scaling (Probabilidades)**  | 1.2    | ⭐⭐⭐⭐          | 🔧 Baixo             | ✅ **Concluído**    |
+| **Hierarquia de Fontes / Priors**   | 2.1/2.3| ⭐⭐⭐⭐          | 🔧🔧 Médio           | ✅ **Concluído**    |
+| **Mineração de vídeos FIK**         | 2.2    | ⭐⭐⭐⭐⭐         | 🔧🔧🔧 Alto          | ✅ **Concluído**    |
+| **Concept Drift nos pesos**         | 1.3    | ⭐⭐⭐           | 🔧🔧 Médio           | ✅ **Concluído**    |
+| **Consenso multi-árbitro**          | 4.3    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | ✅ **Concluído**    |
+| **Decaimento por Inatividade**      | 4.4    | ⭐⭐⭐           | 🔧 Baixo             | ✅ **Concluído**    |
+| **Detecção de Seme pré-golpe**      | 3.3    | ⭐⭐⭐⭐          | 🔧🔧🔧 Alto          | ✅ **Concluído**    |
+| **Detecção Oji-waza / Debana**      | 3.4    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | ✅ **Concluído**    |
+| **Fusão de áudio (Kiai + estalo)**  | 3.5    | ⭐⭐⭐⭐          | 🔧🔧🔧🔧 Muito Alto  | ✅ **Concluído**    |
+| **TCN (Action Spotting 10 Classes)**| 3.6    | ⭐⭐⭐⭐          | 🔧🔧🔧🔧 Muito Alto  | ✅ **Concluído**    |
+| **Profundidade Monocular (MiDaS)** | 5.2    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | 🟠 Alta             |
+| **Compensação de Perspectiva**      | 5.1    | ⭐⭐⭐⭐          | 🔧🔧 Médio           | 🟡 Média            |
+| **Diagnóstico de Ângulo de Câmera** | 5.3    | ⭐⭐⭐           | 🔧 Baixo             | 🟡 Média            |
+| **Baseline cinestésico individual** | 6.1    | ⭐⭐⭐⭐⭐         | 🔧🔧🔧🔧 Muito Alto  | 🟢 Longo prazo      |
+| **Warm Start entre perfis**         | 6.2    | ⭐⭐⭐           | 🔧 Baixo             | 🟢 Longo prazo      |
 
 ---
 
