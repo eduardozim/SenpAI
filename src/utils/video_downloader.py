@@ -6,6 +6,8 @@ extrair metadados e preparar o arquivo local para processamento no OpenCV e visu
 
 import os
 import re
+import sys
+import shutil
 import time
 import tempfile
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple
@@ -232,6 +234,67 @@ def get_cookie_file_path(custom_file: Optional[str] = None) -> Optional[str]:
     return None
 
 
+def get_ffmpeg_executable_path() -> Optional[str]:
+    """
+    Localiza o executável do FFmpeg no sistema ou no ambiente virtual:
+    1. PATH do sistema (shutil.which)
+    2. Pacote imageio_ffmpeg (binário estático integrado)
+    3. Diretórios de Python / Conda (sys.prefix, Library/bin, Scripts)
+    4. Diretórios padrões do sistema Windows (C:/ffmpeg, Program Files, Chocolatey, etc.)
+    5. Diretório bin/ local do projeto SenpAI
+
+    Se localizado, adiciona o diretório ao os.environ["PATH"] e retorna o caminho absoluto.
+    """
+    # 1. PATH do sistema
+    exe = shutil.which("ffmpeg") or shutil.which("ffmpeg.exe")
+    if exe and os.path.isfile(exe):
+        return os.path.abspath(exe)
+
+    # 2. imageio_ffmpeg (fornece binário estático no Windows/Linux/macOS sem exigir instalação do sistema)
+    try:
+        import imageio_ffmpeg
+        img_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        if img_exe and os.path.isfile(img_exe):
+            ffmpeg_dir = os.path.dirname(img_exe)
+            if ffmpeg_dir and ffmpeg_dir not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+            return os.path.abspath(img_exe)
+    except Exception:
+        pass
+
+    # 3. Diretórios de Python / Conda
+    python_candidates = [
+        os.path.join(sys.prefix, "Library", "bin", "ffmpeg.exe"),
+        os.path.join(sys.prefix, "Scripts", "ffmpeg.exe"),
+        os.path.join(sys.prefix, "bin", "ffmpeg"),
+        os.path.join(sys.prefix, "bin", "ffmpeg.exe"),
+        os.path.join(os.path.dirname(sys.executable), "Library", "bin", "ffmpeg.exe"),
+        os.path.join(os.path.dirname(sys.executable), "Scripts", "ffmpeg.exe"),
+        os.path.join(os.path.dirname(sys.executable), "ffmpeg.exe"),
+    ]
+
+    home = os.path.expanduser("~")
+    user_candidates = [
+        os.path.join(home, "anaconda3", "Library", "bin", "ffmpeg.exe"),
+        os.path.join(home, "miniconda3", "Library", "bin", "ffmpeg.exe"),
+        os.path.join(home, "AppData", "Local", "Microsoft", "WinGet", "Links", "ffmpeg.exe"),
+        "C:\\ffmpeg\\bin\\ffmpeg.exe",
+        "C:\\Program Files\\ffmpeg\\bin\\ffmpeg.exe",
+        "C:\\Program Files (x86)\\ffmpeg\\bin\\ffmpeg.exe",
+        "C:\\ProgramData\\chocolatey\\bin\\ffmpeg.exe",
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "bin", "ffmpeg.exe"))
+    ]
+
+    for candidate in python_candidates + user_candidates:
+        if os.path.isfile(candidate):
+            ffmpeg_dir = os.path.dirname(candidate)
+            if ffmpeg_dir and ffmpeg_dir not in os.environ.get("PATH", ""):
+                os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+            return os.path.abspath(candidate)
+
+    return None
+
+
 def get_base_ydl_opts(
     timeout: int = 20,
     client_list: Optional[list] = None,
@@ -278,6 +341,10 @@ def get_base_ydl_opts(
         resolved_cookie = get_cookie_file_path(cookie_file)
         if resolved_cookie:
             opts["cookiefile"] = resolved_cookie
+
+    ffmpeg_exe = get_ffmpeg_executable_path()
+    if ffmpeg_exe:
+        opts["ffmpeg_location"] = ffmpeg_exe
 
     return opts
 
@@ -380,15 +447,33 @@ QUALITY_LABELS = {
 }
 
 
-def get_format_selector(quality: str = "media") -> str:
+def get_format_selector(quality: str = "media", has_ffmpeg: bool = True) -> str:
     """
     Retorna o seletor de formato do yt-dlp de acordo com a qualidade desejada:
     - 'alta': Máxima qualidade de resolução e FPS disponível.
     - 'media' (padrão): Resolução intermediária (até 720p).
     - 'baixa': Menor qualidade disponível (menor tamanho e download rápido).
     Prioriza protocolos HLS (m3u8) que contornam bloqueios de CDN (HTTP 403) em ambientes em nuvem/datacenters.
+    Se has_ffmpeg for False, seleciona formatos progressivos sem necessitar de mesclagem (merging) externa via ffmpeg.
     """
     q = quality.lower().strip() if quality else "media"
+    if not has_ffmpeg:
+        # Formatos únicos/progressivos que já contêm vídeo+áudio juntos (evita erro de ausência de ffmpeg)
+        if q in ["alta", "high"]:
+            return (
+                "best[protocol^=m3u8]/best[ext=mp4]/best/22/18"
+            )
+        elif q in ["baixa", "low"]:
+            return (
+                "worst[protocol^=m3u8]/worst[ext=mp4]/worst/18"
+            )
+        else:
+            return (
+                "best[protocol^=m3u8][height<=720]/"
+                "best[height<=720][ext=mp4]/"
+                "best[height<=720]/22/18/best"
+            )
+
     if q in ["alta", "high"]:
         return (
             "bestvideo[protocol^=m3u8]+bestaudio[protocol^=m3u8]/"
@@ -496,8 +581,10 @@ def download_video_stream(
 
     # 3. Configurações de Download com seletor de formato por qualidade e estratégias automáticas
     outtmpl_pattern = os.path.join(output_dir, f"yt_{video_id}_{quality_tag}_{safe_title}.%(ext)s")
-    format_choice = get_format_selector(quality_tag)
-    
+    ffmpeg_exe = get_ffmpeg_executable_path()
+    has_ffmpeg = bool(ffmpeg_exe)
+    format_choice = get_format_selector(quality_tag, has_ffmpeg=has_ffmpeg)
+
     # Estratégias automáticas de clientes para contornar qualquer bloqueio de IP, SABR streaming e PO token
     client_strategies = [
         ["visionos", "android"],
@@ -512,15 +599,25 @@ def download_video_stream(
     last_error_msg = ""
 
     for attempt_idx, clients in enumerate(client_strategies):
-        format_candidates = [
-            format_choice,
-            "bestvideo[protocol^=m3u8]+bestaudio[protocol^=m3u8]/best[protocol^=m3u8]/best",
-            "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
-            "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-            "best/bestvideo+bestaudio/worst",
-            "18/22/best",
-            "worst/worstvideo+worstaudio/worst"
-        ]
+        if has_ffmpeg:
+            format_candidates = [
+                format_choice,
+                "bestvideo[protocol^=m3u8]+bestaudio[protocol^=m3u8]/best[protocol^=m3u8]/best",
+                "bestvideo[height<=720]+bestaudio/best[height<=720]/best",
+                "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+                "best[protocol^=m3u8]/best[ext=mp4]/best",
+                "18/22/best",
+                "worst/worstvideo+worstaudio/worst"
+            ]
+        else:
+            format_candidates = [
+                format_choice,
+                "best[protocol^=m3u8][height<=720]/best[height<=720]/best[ext=mp4]/best",
+                "best[ext=mp4]/best",
+                "22/18/best",
+                "worst[protocol^=m3u8]/worst[ext=mp4]/worst"
+            ]
+
         # Remove duplicados preservando a ordem
         seen = set()
         unique_fmts = []
@@ -535,13 +632,15 @@ def download_video_stream(
                 "format": fmt_try,
                 "outtmpl": outtmpl_pattern,
                 "progress_hooks": [_yt_progress_hook],
-                "merge_output_format": "mp4",
             })
+            if has_ffmpeg and ffmpeg_exe:
+                ydl_opts["ffmpeg_location"] = ffmpeg_exe
+                ydl_opts["merge_output_format"] = "mp4"
 
             try:
                 log_event(
                     "INFO",
-                    f"Tentando download automático do YouTube ({quality_tag}, clientes: {clients}, formato: {fmt_try}): {url}",
+                    f"Tentando download automático do YouTube ({quality_tag}, clientes: {clients}, formato: {fmt_try}, ffmpeg: {bool(ffmpeg_exe)}): {url}",
                     "video_downloader"
                 )
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -556,9 +655,18 @@ def download_video_stream(
                     f"Tentativa com clientes {clients} e formato {fmt_try} falhou: {err_str}",
                     "video_downloader"
                 )
+                if "ffmpeg is not installed" in err_str.lower():
+                    # Se falhar especificamente por falta de ffmpeg, desativa merge e continua com formatos progressivos
+                    has_ffmpeg = False
+                    ffmpeg_exe = None
                 continue
             except Exception as e:
-                last_error_msg = str(e)
+                err_str = str(e)
+                last_error_msg = err_str
+                if "ffmpeg is not installed" in err_str.lower():
+                    has_ffmpeg = False
+                    ffmpeg_exe = None
+                    continue
                 break
 
         if download_success:
@@ -566,6 +674,11 @@ def download_video_stream(
 
     if not download_success:
         log_event("ERROR", f"Falha definitiva no download de vídeo do YouTube ({url}): {last_error_msg}", "video_downloader")
+        if "ffmpeg is not installed" in last_error_msg.lower():
+            raise VideoDownloadError(
+                "O download exigiu mesclagem de vídeo e áudio separados, mas o FFmpeg não foi encontrado. "
+                "Para resolver: instale o pacote 'imageio-ffmpeg' (`pip install imageio-ffmpeg`) ou instale o FFmpeg no sistema."
+            )
         if any(token in last_error_msg.lower() for token in [
             "requested format is not available", "only images are available",
             "sign in to confirm", "bot", "403", "forbidden", "empty"

@@ -362,7 +362,7 @@ def detect_connected_cameras() -> List[Dict[str, Any]]:
 
 def ensure_browser_compatible_video(video_path: str) -> bool:
     """
-    Garante que o arquivo de vídeo MP4 gerado pelo OpenCV (originalmente em codec MPEG-4 / mp4v)
+    Garante que o arquivo de vídeo MP4 gerado pelo OpenCV (originalmente em codec MPEG-4 / mp4v / FMP4)
     seja transcodificado de forma síncrona e ultrarrápida para H.264 (AVC1 com pixel format YUV420p
     e flag +faststart), permitindo reprodução direta, instantânea e compatível em todos os navegadores web
     modernos (Chrome, Edge, Firefox, Safari) dentro do player HTML5 do Streamlit.
@@ -370,20 +370,44 @@ def ensure_browser_compatible_video(video_path: str) -> bool:
     if not video_path or not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
         return False
 
+    # 1. Verifica se já está codificado em H.264 para evitar reprocessamento desnecessário
+    try:
+        import cv2
+        cap = cv2.VideoCapture(video_path)
+        fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+        fourcc_str = "".join([chr((fourcc >> 8 * i) & 0xFF) for i in range(4)]).lower()
+        cap.release()
+        if fourcc_str in ("h264", "x264", "avc1"):
+            return True
+    except Exception:
+        pass
+
+    # 2. Localiza o executável FFmpeg no sistema ou pacote imageio-ffmpeg
+    try:
+        from src.utils.video_downloader import get_ffmpeg_executable_path
+        ffmpeg_bin = get_ffmpeg_executable_path() or "ffmpeg"
+    except Exception:
+        ffmpeg_bin = "ffmpeg"
+
     tmp_converted = video_path + ".browser_h264.mp4"
-    encoders = ["h264_nvenc", "h264_mf", "libopenh264", "libx264", "h264"]
+    # Ordem de preferência de encoders: aceleradores de hardware primeiro (nvenc, mf), seguidos por libx264 ultrarrápido
+    encoders = ["h264_nvenc", "h264_mf", "libx264", "libopenh264", "h264"]
 
     for enc in encoders:
         cmd = [
-            "ffmpeg", "-y",
+            ffmpeg_bin, "-y",
             "-i", video_path,
             "-vcodec", enc,
+            "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",  # Garante largura e altura pares obrigatórias no yuv420p
             "-pix_fmt", "yuv420p",
             "-movflags", "+faststart",
-            tmp_converted
         ]
+        if enc in ("libx264", "libopenh264", "h264"):
+            cmd.extend(["-preset", "ultrafast"])
+        cmd.append(tmp_converted)
+
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
             if res.returncode == 0 and os.path.exists(tmp_converted) and os.path.getsize(tmp_converted) > 0:
                 os.replace(tmp_converted, video_path)
                 return True

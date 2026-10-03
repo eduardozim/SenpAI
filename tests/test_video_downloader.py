@@ -279,4 +279,19 @@ class TestVideoDownloader(unittest.TestCase):
             if os.path.exists(c_file):
                 os.remove(c_file)
 
+    def test_ffmpeg_detection_and_fallback_formats(self):
+        """Valida detecção do executável do FFmpeg e a seleção de formatos progressivos sem mesclagem."""
+        from src.utils.video_downloader import get_ffmpeg_executable_path
+
+        ffmpeg_path = get_ffmpeg_executable_path()
+        # No ambiente atual (com imageio-ffmpeg instalado ou Conda), deve encontrar um executável válido
+        if ffmpeg_path:
+            self.assertTrue(os.path.isfile(ffmpeg_path))
+
+        # Se has_ffmpeg for False, o seletor JAMAIS deve conter '+' (que exige mesclagem)
+        for q in ["alta", "media", "baixa"]:
+            fmt = get_format_selector(q, has_ffmpeg=False)
+            self.assertNotIn("+", fmt, f"Qualidade {q} sem ffmpeg não pode requisitar '+' (merging)")
+            self.assertTrue("best" in fmt or "worst" in fmt or "18" in fmt or "22" in fmt)
+
 

@@ -48,7 +48,7 @@ from src.analytics.training_analyzer import (
 from src.analytics.training_live_manager import LiveTrainingSessionManager
 from src.utils.hardware import (
     detect_nvidia_gpu, get_effective_device, check_cuda_framework_support,
-    validate_and_setup_gpu_requirements, detect_connected_cameras
+    validate_and_setup_gpu_requirements, detect_connected_cameras, ensure_browser_compatible_video
 )
 from src.utils.settings_manager import (
     load_settings, save_settings, get_processing_device, set_processing_device,
@@ -2486,14 +2486,17 @@ elif nav_page == "settings":
         with c_opt2:
             st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
             if st.button("⚡ Executar Otimização Matemática dos Pesos (Eixo 1)", key="btn_run_math_opt", width="stretch"):
-                with st.spinner("Executando otimização formal dos parâmetros com custo assimétrico e Platt Scaling..."):
-                    try:
-                        _, opt_res = auto_trainer.run_mathematical_optimization(prof_opt_choice)
-                        st.success(f"✅ Otimização concluída via {opt_res.get('optimization_method', 'otimizador')}!")
-                        for ch in opt_res.get("changes", []):
-                            st.write(f"- {ch}")
-                    except Exception as err:
-                        st.error(f"Erro na otimização: {err}")
+                if not prof_opt_choice:
+                    st.warning("⚠️ Selecione um perfil para otimizar.")
+                else:
+                    with st.spinner("Executando otimização formal dos parâmetros com custo assimétrico e Platt Scaling..."):
+                        try:
+                            _, opt_res = auto_trainer.run_mathematical_optimization(prof_opt_choice)
+                            st.success(f"✅ Otimização concluída via {opt_res.get('optimization_method', 'otimizador')}!")
+                            for ch in opt_res.get("changes", []):
+                                st.write(f"- {ch}")
+                        except Exception as err:
+                            st.error(f"Erro na otimização: {err}")
 
         # ----------------------------------------------------------------------
         # EIXO 2: CONVERSÃO DE PESQUISA EM PARÂMETROS FÍSICOS ACIONÁVEIS
@@ -2777,19 +2780,22 @@ elif nav_page == "settings":
                     ws_factor = st.slider("Fator Multiplicativo (%):", min_value=1.01, max_value=1.25, value=1.06, step=0.01, key="ws_factor_slider")
 
                 if st.button("🚀 Derivar Perfil com Warm Start", key="btn_derive_profile_ws", type="primary", width="stretch"):
-                    try:
-                        clean_key = new_prof_key.strip().lower().replace(" ", "_")
-                        derived_p = feedback_mgr.derive_profile_warm_start(
-                            source_profile_key=parent_choice,
-                            new_profile_key=clean_key,
-                            direction=ws_direction,
-                            factor=ws_factor,
-                            new_name=new_prof_name
-                        )
-                        st.success(f"🎉 Perfil '{derived_p.get('name')}' derivado com sucesso via Warm Start a partir de '{parent_choice}'! Limiar Global: {int(derived_p['min_total_score']*100)}%.")
-                        st.rerun()
-                    except Exception as err:
-                        st.error(f"Erro ao derivar perfil: {err}")
+                    if not parent_choice or not ws_direction:
+                        st.warning("⚠️ Selecione o perfil pai e a direção do ajuste.")
+                    else:
+                        try:
+                            clean_key = (new_prof_key or "torneio_especial").strip().lower().replace(" ", "_")
+                            derived_p = feedback_mgr.derive_profile_warm_start(
+                                source_profile_key=parent_choice,
+                                new_profile_key=clean_key,
+                                direction=ws_direction,
+                                factor=ws_factor,
+                                new_name=new_prof_name or "Perfil Derivado"
+                            )
+                            st.success(f"🎉 Perfil '{derived_p.get('name')}' derivado com sucesso via Warm Start a partir de '{parent_choice}'! Limiar Global: {int(derived_p['min_total_score']*100)}%.")
+                            st.rerun()
+                        except Exception as err:
+                            st.error(f"Erro ao derivar perfil: {err}")
 
     # --------------------------------------------------------------------------
     # GUIA 4: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA
@@ -4335,7 +4341,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 )
 
                 # Se o usuário alternar entre Upload e YouTube, limpar a análise e dados do vídeo anterior da tela
-                source_type_selected = "upload" if "Upload" in source_choice else "youtube"
+                source_type_selected = "upload" if (source_choice and "Upload" in source_choice) else "youtube"
                 prev_source_type = st.session_state.get("last_recorded_source_choice")
                 if prev_source_type is not None and prev_source_type != source_type_selected:
                     clear_analysis_results_only()
@@ -4724,6 +4730,8 @@ elif nav_page in ["match", "training", "analysis"]:
                         st.session_state["annotated_output"] = os.path.abspath(active_worker.output_video_path)
                         if getattr(active_worker, "video_path", None) and os.path.exists(active_worker.video_path):
                             st.session_state["video_file_path"] = os.path.abspath(active_worker.video_path)
+                        # Define por padrão o vídeo original como selecionado após a conclusão do processamento
+                        st.session_state["video_display_type_selector"] = "📹 Vídeo Original"
                         st.session_state["last_processing_time"] = res.get("processing_time_seconds", round(active_worker.elapsed_seconds, 2))
                         st.session_state["last_processing_fps"] = res.get("processing_fps", round(res.get("total_frames", 0) / max(0.001, active_worker.elapsed_seconds), 1))
                         st.session_state.pop("analysis_worker", None)
@@ -5148,6 +5156,11 @@ elif nav_page in ["match", "training", "analysis"]:
                             annotated_path = cand_annotated
                             st.session_state["annotated_output"] = annotated_path
                     has_annotated = bool(annotated_path and os.path.exists(annotated_path))
+                    if has_annotated and annotated_path:
+                        try:
+                            ensure_browser_compatible_video(annotated_path)
+                        except Exception:
+                            pass
                 else:
                     annotated_path = ""
                     has_annotated = False
@@ -5164,7 +5177,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 if has_annotated and has_original:
                     video_type = st.radio(
                         "Exibição do Vídeo:",
-                        ["🎥 Vídeo Anotado (Pose, Tracking & Golpes)", "📹 Vídeo Original"],
+                        ["📹 Vídeo Original", "🎥 Vídeo Anotado (Pose, Tracking & Golpes)"],
                         index=0,
                         horizontal=True,
                         key="video_display_type_selector"
@@ -5213,6 +5226,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     active_start_time = float(st.session_state.get("video_start_time", 0.0))
                     st.video(
                         selected_video,
+                        format="video/mp4",
                         start_time=active_start_time,
                         autoplay=("video_start_time" in st.session_state and st.session_state["video_start_time"] > 0)
                     )

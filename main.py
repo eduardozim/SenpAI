@@ -14,9 +14,11 @@ import warnings
 # Suprime aviso benigno interno de depreciação do protobuf com mediapipe
 warnings.filterwarnings("ignore", category=UserWarning, module="google.protobuf")
 
-if sys.stdout.encoding != 'utf-8':
+if getattr(sys.stdout, 'encoding', None) != 'utf-8':
     try:
-        sys.stdout.reconfigure(encoding='utf-8')
+        reconfigure_func = getattr(sys.stdout, 'reconfigure', None)
+        if callable(reconfigure_func):
+            reconfigure_func(encoding='utf-8')
     except Exception:
         pass
 
@@ -114,6 +116,10 @@ def main():
         print(f"\rProgress: {int(p * 100)}%", end="", flush=True)
 
     result = pipeline.process_video(video_path, output_video_path=args.output, progress_callback=on_progress)
+    if not result:
+        print("\n[SenpAI] Processamento cancelado ou sem resultados.")
+        return
+
     print("\n[SenpAI] Processamento concluído!")
     print("=" * 60)
     print(f"Vídeo: {result['video_path']}")
