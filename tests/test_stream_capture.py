@@ -122,6 +122,79 @@ class TestStreamCapture(unittest.TestCase):
         self.assertIn("Falha na conexão", diag["message"])
         self.assertIsNone(diag["frame_rgb"])
 
+    def test_is_web_streaming_url(self):
+        """Valida a identificação correta de URLs de streaming de rede e web."""
+        from src.utils.stream_capture import is_web_streaming_url
+        self.assertTrue(is_web_streaming_url("https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+        self.assertTrue(is_web_streaming_url("https://www.youtube.com/live/dQw4w9WgXcQ"))
+        self.assertTrue(is_web_streaming_url("rtsp://192.168.1.50:554/live"))
+        self.assertTrue(is_web_streaming_url("rtmp://stream.server/live/feed"))
+        self.assertTrue(is_web_streaming_url("http://192.168.1.10:8080/video.m3u8"))
+        self.assertFalse(is_web_streaming_url("0"))
+        self.assertFalse(is_web_streaming_url(1))
+        self.assertFalse(is_web_streaming_url(""))
+        self.assertFalse(is_web_streaming_url(None))
+
+    def test_resolve_streaming_url_direct_protocols(self):
+        """Valida que URLs diretas de rede RTSP, RTMP e HLS (.m3u8) são resolvidas diretamente sem yt-dlp."""
+        from src.utils.stream_capture import resolve_streaming_url
+        rtsp_url = "rtsp://192.168.1.100:554/ch1"
+        u1, m1 = resolve_streaming_url(rtsp_url)
+        self.assertEqual(u1, rtsp_url)
+        self.assertTrue(m1["is_live"])
+        self.assertEqual(m1["id"], "direct_stream")
+
+        hls_url = "https://example.com/live/kendo_stream.m3u8"
+        u2, m2 = resolve_streaming_url(hls_url)
+        self.assertEqual(u2, hls_url)
+        self.assertTrue(m2["is_live"])
+        self.assertEqual(m2["id"], "direct_hls")
+
+        direct_mp4 = "https://example.com/vod/match.mp4"
+        u3, m3 = resolve_streaming_url(direct_mp4)
+        self.assertEqual(u3, direct_mp4)
+        self.assertEqual(m3["id"], "direct_video")
+
+    def test_resolve_streaming_url_invalid_input(self):
+        """Valida que entradas vazias ou inválidas levantam ValueError."""
+        from src.utils.stream_capture import resolve_streaming_url
+        with self.assertRaises(ValueError):
+            resolve_streaming_url("")
+        with self.assertRaises(ValueError):
+            resolve_streaming_url(None)  # type: ignore
+
+    def test_resolve_streaming_url_mocked_ytdlp(self):
+        """Valida que a extração via yt-dlp formata metadados e retorna a URL direta."""
+        from unittest.mock import patch, MagicMock
+        from src.utils.stream_capture import resolve_streaming_url
+
+        mock_info = {
+            "id": "mock_yt_123",
+            "title": "Final Mundial Kendo Ao Vivo",
+            "uploader": "FIK Official",
+            "is_live": True,
+            "width": 1280,
+            "height": 720,
+            "fps": 60.0,
+            "duration": 0,
+            "url": "https://manifest.googlevideo.com/live/feed.m3u8",
+            "thumbnail": "https://img.youtube.com/mock.jpg"
+        }
+
+        mock_ydl_instance = MagicMock()
+        mock_ydl_instance.extract_info.return_value = mock_info
+        mock_ydl_class = MagicMock()
+        mock_ydl_class.return_value.__enter__.return_value = mock_ydl_instance
+
+        with patch("yt_dlp.YoutubeDL", mock_ydl_class):
+            direct_u, meta = resolve_streaming_url("https://www.youtube.com/watch?v=mock_yt_123", quality="alta")
+            self.assertEqual(direct_u, "https://manifest.googlevideo.com/live/feed.m3u8")
+            self.assertEqual(meta["title"], "Final Mundial Kendo Ao Vivo")
+            self.assertTrue(meta["is_live"])
+            self.assertEqual(meta["resolution"], "1280x720")
+            self.assertEqual(meta["duration_formatted"], "🔴 AO VIVO")
+
 
 if __name__ == "__main__":
     unittest.main()
+

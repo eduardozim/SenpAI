@@ -418,3 +418,152 @@ def probe_stream_connection(
 # Alias retrocompatível
 test_stream_connection = probe_stream_connection
 
+
+def is_web_streaming_url(url: Any) -> bool:
+    """
+    Verifica se a fonte informada é uma URL de streaming da web ou de rede
+    (YouTube, YouTube Live, Twitch, Vimeo, links HLS .m3u8, RTMP, RTSP, HTTP/HTTPS).
+    """
+    if not url or not isinstance(url, str):
+        return False
+    clean = url.strip().lower()
+    return any(clean.startswith(proto) for proto in ["rtsp://", "rtmp://", "http://", "https://"])
+
+
+def resolve_streaming_url(
+    url: str,
+    quality: str = "media",
+    timeout: int = 15,
+    cookie_file: Optional[str] = None
+) -> Tuple[str, Dict[str, Any]]:
+    """
+    Resolve uma URL de streaming da web (YouTube, YouTube Live, Twitch, Vimeo, HLS, RTMP, RTSP)
+    para um endereço direto decodificável pelo OpenCV / FFmpeg em tempo real com baixa latência.
+    
+    Retorna:
+    - direct_stream_url (str): URL direta do fluxo de vídeo decodificável.
+    - info (dict): Dicionário com metadados do stream (título, autor, status ao vivo, resolução, thumbnail).
+    """
+    if not url or not isinstance(url, str):
+        raise ValueError("URL de streaming inválida ou vazia.")
+
+    clean_url = url.strip()
+    clean_lower = clean_url.lower()
+
+    # 1. Fluxos diretos de rede (RTSP, RTMP)
+    if clean_lower.startswith(("rtsp://", "rtmp://")):
+        return clean_url, {
+            "id": "direct_stream",
+            "title": "Stream de Rede IP (RTSP/RTMP)",
+            "uploader": "Câmera / Servidor Local",
+            "is_live": True,
+            "resolution": "HD",
+            "fps": 30.0,
+            "duration_formatted": "🔴 AO VIVO",
+            "thumbnail": "",
+            "direct_url": clean_url
+        }
+
+    # 2. Arquivos de stream diretos (.m3u8 HLS ou arquivos diretos de vídeo HTTP/HTTPS)
+    if ".m3u8" in clean_lower or any(clean_lower.split("?")[0].endswith(ext) for ext in [".mp4", ".webm", ".avi", ".mov"]):
+        is_hls = ".m3u8" in clean_lower
+        return clean_url, {
+            "id": "direct_hls" if is_hls else "direct_video",
+            "title": "Fluxo HLS Ao Vivo (.m3u8)" if is_hls else "Stream de Vídeo HTTP Direto",
+            "uploader": "Servidor de Streaming",
+            "is_live": is_hls,
+            "resolution": "HD",
+            "fps": 30.0,
+            "duration_formatted": "🔴 AO VIVO" if is_hls else "00:00",
+            "thumbnail": "",
+            "direct_url": clean_url
+        }
+
+    # 3. Plataformas Web (YouTube, YouTube Live, Vimeo, Twitch, etc.) via yt-dlp
+    try:
+        from src.utils.video_downloader import get_base_ydl_opts, VideoDownloadError
+        import yt_dlp
+    except ImportError:
+        return clean_url, {
+            "id": "web_stream",
+            "title": "Transmissão Web",
+            "uploader": "Web",
+            "is_live": True,
+            "resolution": "HD",
+            "fps": 30.0,
+            "duration_formatted": "🔴 AO VIVO",
+            "thumbnail": "",
+            "direct_url": clean_url
+        }
+
+    q = quality.lower().strip() if quality else "media"
+    if q in ["alta", "high"]:
+        fmt = "best[protocol^=m3u8]/best[ext=mp4]/best/22/18"
+    elif q in ["baixa", "low"]:
+        fmt = "worst[protocol^=m3u8]/worst[ext=mp4]/worst/18"
+    else:  # media
+        fmt = "best[protocol^=m3u8][height<=720]/best[height<=720][ext=mp4]/best[height<=720]/22/18/best"
+
+    client_strategies = [
+        ["android", "visionos"],
+        ["visionos", "android"],
+        ["android"],
+        ["visionos"],
+        ["web", "android"],
+        ["default"]
+    ]
+
+    last_error = ""
+    for clients in client_strategies:
+        ydl_opts = get_base_ydl_opts(timeout=timeout, client_list=clients, cookie_file=cookie_file)
+        ydl_opts.update({
+            "format": fmt,
+            "skip_download": True,
+            "extract_flat": False
+        })
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(clean_url, download=False)
+                if not info:
+                    continue
+                if "entries" in info and info["entries"]:
+                    info = info["entries"][0]
+
+                direct = info.get("url")
+                if not direct and "formats" in info and info["formats"]:
+                    for f in reversed(info["formats"]):
+                        if f.get("url"):
+                            direct = f["url"]
+                            break
+
+                if direct:
+                    w = info.get("width") or 0
+                    h = info.get("height") or 0
+                    res_str = f"{w}x{h}" if w and h else (info.get("resolution") or "HD")
+                    fps_val = float(info.get("fps") or 30.0)
+                    is_live = bool(info.get("is_live", False))
+                    duration_sec = float(info.get("duration") or 0.0)
+                    dur_str = "🔴 AO VIVO" if is_live else f"{int(duration_sec // 60):02d}:{int(duration_sec % 60):02d}"
+
+                    meta = {
+                        "id": info.get("id", "stream"),
+                        "title": info.get("title", "Transmissão de Kendo"),
+                        "uploader": info.get("uploader", info.get("channel", "Canal Web")),
+                        "is_live": is_live,
+                        "resolution": res_str,
+                        "fps": fps_val,
+                        "duration_seconds": duration_sec,
+                        "duration_formatted": dur_str,
+                        "thumbnail": info.get("thumbnail", ""),
+                        "direct_url": direct
+                    }
+                    log_event("INFO", f"Stream resolvido com sucesso ({clients}): {meta['title']} ({res_str})", "stream_capture")
+                    return direct, meta
+        except Exception as e:
+            last_error = str(e)
+            continue
+
+    log_event("ERROR", f"Falha ao resolver streaming para {clean_url}: {last_error}", "stream_capture")
+    raise VideoDownloadError(f"Não foi possível obter o fluxo de vídeo deste streaming: {last_error or 'Link inacessível ou formato incompatível.'}")
+
+
