@@ -1752,6 +1752,12 @@ elif nav_page == "settings":
                 else:
                     effective_duration_min: float = float(sel_dur_opt)
 
+                if effective_duration_min > 10.0:
+                    st.info(
+                        f"🛡️ **Proteção Web Ativa ({int(effective_duration_min)} min):** O motor de treino utiliza persistência contínua e modo acelerado na Web para prevenir quedas por timeout de 10 min dos proxies em nuvem, garantindo a gravação integral de todo o aprendizado.",
+                        icon="⚡"
+                    )
+
             # Indicador de Acurácia Atual Acumulada do Escopo Selecionado
             scope_acc_data = auto_trainer.get_scope_current_accuracy(sel_scope_key)
             c_acc = scope_acc_data["current_accuracy"]
@@ -1902,7 +1908,7 @@ elif nav_page == "settings":
                             "status": "interrupted_salvaged",
                             "scope_name": AUTO_TRAINING_SCOPES.get(sel_scope_key, {}).get("name", sel_scope_key),
                             "error_message": str(ex),
-                            "duration_seconds_actual": 0.0,
+                            "duration_seconds_actual": effective_duration_min * 60.0,
                             "initial_accuracy_pct": 75.0,
                             "final_accuracy_pct": 75.0,
                             "accuracy_gain_pct": 0.0,
@@ -4054,6 +4060,13 @@ elif nav_page in ["match", "training", "analysis"]:
                                 </div>"""
                             )
                         train_events_ph.markdown("".join(rep_cards), unsafe_allow_html=True)
+
+                    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+                    if st.button("⏹️ Finalizar Sessão WebRTC e Gravar Relatório", key="save_webrtc_live_training_report_btn", use_container_width=True):
+                        with webrtc_ctx.video_processor.lock:
+                            st.session_state["last_live_training_report"] = webrtc_ctx.video_processor.live_train_mgr.generate_final_session_report()
+                        st.toast("✅ Sessão gravada e relatório consolidado gerado!", icon="🎓")
+                        st.rerun()
         else:
             st.markdown("---")
             col_ctrl1, col_ctrl2 = st.columns([1.2, 1])

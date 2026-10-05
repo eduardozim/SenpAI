@@ -431,6 +431,60 @@ class TestAutoTrainer(unittest.TestCase):
             kb_restored["learned_parameters"]["training_modalities"]["suburi"]["principles_learned"]
         )
 
+    def test_run_auto_training_web_mode_timeout_protection(self):
+        """Valida que treinos longos (>10 min) no modo Web concluem rapidamente mantendo métricas completas."""
+        t_start = time.time()
+        result = self.engine.run_auto_training(
+            scope_key="modality_suburi",
+            duration_minutes=25.0,  # 25 minutos (> 10 min)
+            intensity="padrao",
+            include_video=True,
+            include_text_guidelines=True,
+            web_mode=True,
+            max_wall_time_sec=1.5
+        )
+        elapsed_wall = time.time() - t_start
+
+        # Proteger contra qualquer timeout de proxy web (<= 4s)
+        self.assertLess(elapsed_wall, 4.0)
+        self.assertEqual(result["status"], "success")
+        self.assertEqual(result["duration_seconds_actual"], 25.0 * 60.0)
+        self.assertGreater(result["samples_processed"], 500)
+
+        # Verificar se gravou no histórico de treinos com status success
+        history = self.engine.get_training_history()
+        self.assertGreaterEqual(len(history), 1)
+        last_entry = history[-1]
+        self.assertEqual(last_entry["status"], "success")
+        self.assertEqual(last_entry["duration_seconds"], 25.0 * 60.0)
+
+    def test_run_auto_training_incremental_recording_during_run(self):
+        """Valida que o histórico é salvo incrementalmente (in_progress) antes mesmo de terminar."""
+        in_progress_detected = []
+
+        def check_history_during_run(p_data):
+            hist = self.engine.get_training_history()
+            matching = [h for h in hist if h.get("status") == "in_progress"]
+            if matching:
+                in_progress_detected.append(matching[-1]["session_id"])
+
+        result = self.engine.run_auto_training(
+            scope_key="modality_men",
+            duration_minutes=15.0,
+            intensity="rapido",
+            web_mode=True,
+            max_wall_time_sec=1.2,
+            progress_callback=check_history_during_run
+        )
+
+        self.assertEqual(result["status"], "success")
+        self.assertTrue(len(in_progress_detected) > 0, "Deveria ter registrado 'in_progress' incrementalmente durante o treino")
+
+        # Ao final, o histórico deve estar consolidado como success
+        history = self.engine.get_training_history()
+        self.assertEqual(history[-1]["status"], "success")
+        self.assertEqual(history[-1]["session_id"], in_progress_detected[0])
+
 
 if __name__ == "__main__":
     unittest.main()

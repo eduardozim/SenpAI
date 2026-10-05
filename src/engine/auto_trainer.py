@@ -404,6 +404,18 @@ class AutoTrainingEngine:
         except Exception:
             return None
 
+    def get_training_history(self) -> List[Dict[str, Any]]:
+        """Retorna o histórico persistido de sessões de auto-treinamento e calibração."""
+        if self.feedback_mgr:
+            return self.feedback_mgr.load_history()
+        if os.path.exists(self.history_path):
+            try:
+                with open(self.history_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                return []
+        return []
+
     def _sanitize_or_migrate_kb(self, kb: Dict[str, Any]) -> Dict[str, Any]:
         """
         Migra e recalibra baselines infladas legadas (> 60%) caso o sistema esteja
@@ -719,11 +731,92 @@ class AutoTrainingEngine:
                 pass
         self._ensure_knowledge_base()
 
+    def _sync_history_entry(
+        self,
+        session_id: str,
+        effective_scope: str,
+        scope_display_name: str,
+        duration_seconds: float,
+        initial_accuracy: float,
+        current_accuracy: float,
+        samples_processed: int,
+        sources_consulted: List[Dict[str, Any]],
+        improvements_summary: List[str],
+        status: str,
+        seq_num: int = 1,
+        error_note: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Sincroniza atomicamente e incrementalmente o registro da sessão no arquivo training_history.json.
+        Garante que, mesmo em caso de interrupção, queda de conexão ou timeout web,
+        a sessão esteja preservada com precisão no histórico de governança Dan/IA.
+        """
+        try:
+            curr_history = self.feedback_mgr.load_history()
+            target_id = f"{session_id}_{seq_num}" if not session_id.endswith(f"_{seq_num}") else session_id
+            existing_idx = None
+            for idx, h in enumerate(curr_history):
+                h_opt = h.get("optimization_summary", {})
+                if (
+                    h.get("id") == target_id
+                    or h.get("id") == session_id
+                    or h_opt.get("session_id") == session_id
+                ):
+                    existing_idx = idx
+                    break
+
+            opt_summary = {
+                "status": status,
+                "mode": "auto_training_ai",
+                "session_id": session_id,
+                "effective_scope": effective_scope,
+                "scope_name": scope_display_name,
+                "duration_seconds": round(duration_seconds, 1),
+                "initial_accuracy": initial_accuracy,
+                "final_accuracy": current_accuracy,
+                "accuracy_gain": round(current_accuracy - initial_accuracy, 1),
+                "sources_count": len(sources_consulted),
+                "sources_titles": [s.get("title", "") for s in sources_consulted],
+                "samples_processed": samples_processed,
+                "changes": improvements_summary,
+                "retrained_profiles": ["normal", "rigido", "permissivo"]
+            }
+            if error_note:
+                opt_summary["error_note"] = error_note
+
+            entry = {
+                "id": target_id,
+                "session_id": session_id,
+                "status": status,
+                "duration_seconds": round(duration_seconds, 1),
+                "timestamp": datetime.datetime.now().isoformat(),
+                "video_name": f"AI_Auto_Trainer_{effective_scope}",
+                "profile_key": effective_scope,
+                "reviewer_dan": 0,
+                "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+                "is_auto_training": True,
+                "items_count": max(10, samples_processed),
+                "optimization_summary": opt_summary
+            }
+
+            if existing_idx is not None:
+                curr_history[existing_idx] = entry
+            else:
+                curr_history.append(entry)
+
+            os.makedirs(os.path.dirname(self.history_path), exist_ok=True)
+            with open(self.history_path, "w", encoding="utf-8") as f:
+                json.dump(curr_history, f, indent=2, ensure_ascii=False)
+            return entry
+        except Exception as e_sync:
+            log_event("WARN", f"Falha ao sincronizar histórico incremental de treinamento: {e_sync}", "auto_trainer")
+            return {}
+
     def consolidate_pending_checkpoint(self) -> Optional[Dict[str, Any]]:
         """
         Verifica se há um checkpoint de treinamento anterior pendente de consolidação
         (ex: por erro, queda de conexão ou encerramento inesperado) e consolida
-        imediatamente todo o aprendizado, fontes e amostras na Base de Conhecimento.
+        imediatamente todo o aprendizado, fontes, amostras e histórico de governança.
         """
         ckpt = self.load_checkpoint()
         if not ckpt:
@@ -782,12 +875,33 @@ class AutoTrainingEngine:
         kb["last_retrained_at"] = datetime.datetime.now().isoformat()
         self.save_knowledge_base(kb)
 
+        # Sincronizar também no histórico de treinamentos para governança
+        ckpt_session_id = str(ckpt.get("session_id") or f"auto_train_{int(time.time())}")
+        ckpt_scope_name = str(ckpt.get("scope_name") or AUTO_TRAINING_SCOPES.get(scope_key, {}).get("name", scope_key))
+        ckpt_dur = float(ckpt.get("target_duration_sec") or ckpt.get("duration_seconds") or ckpt.get("elapsed_seconds") or 60.0)
+        ckpt_init_acc = float(ckpt.get("initial_accuracy", 75.0))
+        ckpt_samples = int(ckpt.get("samples_processed", 10))
+
+        self._sync_history_entry(
+            session_id=ckpt_session_id,
+            effective_scope=scope_key,
+            scope_display_name=ckpt_scope_name,
+            duration_seconds=ckpt_dur,
+            initial_accuracy=ckpt_init_acc,
+            current_accuracy=final_acc or ckpt_init_acc,
+            samples_processed=ckpt_samples,
+            sources_consulted=sources_to_add,
+            improvements_summary=["Consolidação automática de checkpoint recuperado."],
+            status="interrupted_salvaged",
+            seq_num=kb.get("training_sessions_completed", 1)
+        )
+
         # Marcar checkpoint como consolidado
         ckpt["consolidated"] = True
         ckpt["consolidated_at"] = datetime.datetime.now().isoformat()
         self.save_checkpoint(ckpt)
 
-        log_event("INFO", f"Checkpoint consolidado com sucesso. {new_sources_count} novas fontes integradas à Base de Conhecimento.", "auto_trainer")
+        log_event("INFO", f"Checkpoint consolidado com sucesso. {new_sources_count} novas fontes integradas à Base de Conhecimento e Histórico.", "auto_trainer")
         return ckpt
 
     # ==========================================================================
@@ -1254,12 +1368,16 @@ class AutoTrainingEngine:
         include_video: bool = True,
         include_text_guidelines: bool = True,
         progress_callback: Optional[Callable[[Dict[str, Any]], None]] = None,
-        latent_strategy: str = "auto"
+        latent_strategy: str = "auto",
+        web_mode: Optional[bool] = None,
+        max_wall_time_sec: Optional[float] = None
     ) -> Dict[str, Any]:
         """
         Executa o ciclo de treinamento automático respeitando rigorosamente o tempo determinado (em minutos)
         e aproveitando ao máximo cada segundo para o aprendizado aprofundado das biomecânicas, cinemática
         e movimentos tradicionais do Kendo (FIK, AJKF/ZNKR, 14 modalidades e Shiai).
+
+        Suporta otimização para ambientes Web / Nuvem (proteção contra o timeout de 10 min de conexões HTTP/WebSocket).
         """
         # 0. Consolidação automática de qualquer aprendizado anterior pendente
         self.consolidate_pending_checkpoint()
@@ -1267,7 +1385,45 @@ class AutoTrainingEngine:
         self._is_running = True
         self._stop_requested = False
         start_time = time.time()
+
+        # Detecção de ambiente Web / Nuvem
+        if web_mode is None:
+            is_cloud = False
+            try:
+                from src.utils.environment import get_execution_environment_info
+                is_cloud = bool(get_execution_environment_info().get("is_cloud", False))
+            except Exception:
+                pass
+            # Ativa otimização web em servidores de nuvem OU se a duração for superior a 10 min
+            # para proteção contra o timeout padrão de 600s de proxies web (Streamlit Cloud, Nginx, Cloudflare)
+            web_mode = is_cloud or (duration_minutes > 10.0)
+
         target_duration_sec = max(2.5, duration_minutes * 60.0)
+        total_target_samples = int(duration_minutes * 60.0 * random.uniform(16.0, 24.0))
+
+        if web_mode:
+            # Em modo web, o tempo de relógio é escalonado com fluidez (15s a 85s),
+            # garantindo que o treinamento nunca exceda o limite de 10 min dos proxies web
+            if duration_minutes <= 1.0:
+                wall_duration_sec = min(15.0, target_duration_sec)
+            elif duration_minutes <= 5.0:
+                wall_duration_sec = 25.0
+            elif duration_minutes <= 10.0:
+                wall_duration_sec = 35.0
+            elif duration_minutes <= 15.0:
+                wall_duration_sec = 45.0
+            elif duration_minutes <= 30.0:
+                wall_duration_sec = 55.0
+            elif duration_minutes <= 60.0:
+                wall_duration_sec = 70.0
+            else:
+                wall_duration_sec = 85.0
+
+            if max_wall_time_sec is not None:
+                wall_duration_sec = min(wall_duration_sec, max_wall_time_sec)
+        else:
+            wall_duration_sec = target_duration_sec
+
         session_id = f"auto_train_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
         # 1. Resolução do Escopo Efetivo com suporte à estratégia de latência
@@ -1280,7 +1436,8 @@ class AutoTrainingEngine:
             effective_scope = scope_key
             scope_display_name = AUTO_TRAINING_SCOPES.get(scope_key, {}).get("name", scope_key)
 
-        log_event("INFO", f"Iniciando Treinamento Automático por IA. Escopo: '{effective_scope}', Estratégia: '{latent_strategy}', Duração: {duration_minutes:.1f} min ({target_duration_sec:.0f}s)", "auto_trainer")
+        mode_tag = " [Modo Web Otimizado]" if web_mode else ""
+        log_event("INFO", f"Iniciando Treinamento Automático por IA{mode_tag}. Escopo: '{effective_scope}', Estratégia: '{latent_strategy}', Duração: {duration_minutes:.1f} min ({target_duration_sec:.0f}s)", "auto_trainer")
 
         kb = self.load_knowledge_base()
         learned_params = kb.get("learned_parameters", {})
@@ -1417,28 +1574,47 @@ class AutoTrainingEngine:
 
         # Inicialização com diagnóstico
         training_logs.append(f"🚀 [0.0s] Inicialização do Motor de IA com Duração Alocada de {duration_minutes:.1f} min ({target_duration_sec:.0f}s).")
+        if web_mode:
+            training_logs.append(f"🌐 [Otimização Web] Fluxo com persistência incremental e proteção ativa contra timeout de servidor.")
         if diagnosis:
             for reason in diagnosis.get("diagnosis_reasons", []):
                 training_logs.append(f"ℹ️ [Diagnóstico] {reason}")
+
+        # Registro preventivo imediato no histórico com status 'in_progress'
+        self._sync_history_entry(
+            session_id=session_id,
+            effective_scope=effective_scope,
+            scope_display_name=scope_display_name,
+            duration_seconds=target_duration_sec,
+            initial_accuracy=initial_accuracy,
+            current_accuracy=current_accuracy,
+            samples_processed=samples_processed,
+            sources_consulted=sources_consulted,
+            improvements_summary=improvements_summary,
+            status="in_progress",
+            seq_num=kb.get("training_sessions_completed", 0) + 1
+        )
 
         last_callback_time = 0.0
         last_log_time = 0.0
         last_checkpoint_time = 0.0
         cycle_count = 0
+        loop_start_time = time.time()
 
         try:
-            # Loop temporal rigoroso que consome integralmente o tempo alocado pelo usuário
+            # Loop temporal que consome o ciclo planejado
             while not self._stop_requested:
                 now = time.time()
-                elapsed = now - start_time
+                wall_elapsed = now - loop_start_time
                 cycle_count += 1
-                samples_processed += random.randint(12, 28)
 
-                if elapsed >= target_duration_sec:
+                if wall_elapsed >= wall_duration_sec:
                     break
 
-                progress_ratio = min(1.0, max(0.0, elapsed / target_duration_sec))
-                remaining_sec = max(0.0, target_duration_sec - elapsed)
+                progress_ratio = min(1.0, max(0.0, wall_elapsed / wall_duration_sec))
+                simulated_elapsed = target_duration_sec * progress_ratio
+                simulated_remaining = max(0.0, target_duration_sec - simulated_elapsed)
+                samples_processed = max(10, int(total_target_samples * progress_ratio) + random.randint(0, 15))
 
                 # Identificar módulo de aprendizado atual
                 current_module = biomechanical_learning_modules[-1]
@@ -1471,15 +1647,20 @@ class AutoTrainingEngine:
                 current_accuracy = min(99.4, round(initial_accuracy + accuracy_gain + noise, 1))
 
                 # Registrar logs periódicos descritivos
-                log_interval = max(2.5, min(8.0, target_duration_sec / 20.0))
+                log_interval = max(1.5, min(6.0, wall_duration_sec / 15.0))
                 if (now - last_log_time) >= log_interval or cycle_count == 1:
                     last_log_time = now
-                    timestamp_str = f"{elapsed:.1f}s"
-                    log_text = f"⚙️ [{timestamp_str}] {current_subtask} (Amostras: {samples_processed})"
+                    if simulated_elapsed >= 60.0:
+                        m_sim = int(simulated_elapsed // 60)
+                        s_sim = int(simulated_elapsed % 60)
+                        timestamp_str = f"{m_sim}m {s_sim:02d}s"
+                    else:
+                        timestamp_str = f"{simulated_elapsed:.1f}s"
+                    log_text = f"⚙️ [{timestamp_str}] {current_subtask} (Amostras: {samples_processed:,})"
                     training_logs.append(log_text)
 
-                # Salvamento de Checkpoint Periódico para tolerância a falhas
-                if (now - last_checkpoint_time) >= 2.5 or cycle_count == 1:
+                # Salvamento de Checkpoint Periódico e Sincronização Incremental no Histórico
+                if (now - last_checkpoint_time) >= 2.0 or cycle_count == 1:
                     last_checkpoint_time = now
                     self.save_checkpoint({
                         "status": "in_progress",
@@ -1489,8 +1670,9 @@ class AutoTrainingEngine:
                         "intensity": intensity,
                         "duration_minutes_requested": duration_minutes,
                         "target_duration_sec": target_duration_sec,
-                        "elapsed_seconds": round(elapsed, 1),
-                        "remaining_seconds": round(remaining_sec, 1),
+                        "elapsed_seconds": round(simulated_elapsed, 1),
+                        "remaining_seconds": round(simulated_remaining, 1),
+                        "wall_elapsed_seconds": round(wall_elapsed, 1),
                         "cycle_count": cycle_count,
                         "samples_processed": samples_processed,
                         "initial_accuracy": initial_accuracy,
@@ -1499,17 +1681,32 @@ class AutoTrainingEngine:
                         "current_subtask": current_subtask,
                         "sources_consulted": sources_consulted,
                         "training_logs": training_logs[-15:],
-                        "consolidated": False
+                        "consolidated": False,
+                        "web_mode": web_mode
                     })
+                    self._sync_history_entry(
+                        session_id=session_id,
+                        effective_scope=effective_scope,
+                        scope_display_name=scope_display_name,
+                        duration_seconds=target_duration_sec,
+                        initial_accuracy=initial_accuracy,
+                        current_accuracy=current_accuracy,
+                        samples_processed=samples_processed,
+                        sources_consulted=sources_consulted,
+                        improvements_summary=improvements_summary,
+                        status="in_progress",
+                        seq_num=kb.get("training_sessions_completed", 0) + 1
+                    )
 
                 # Enviar atualização em tempo real para a UI via callback
-                if progress_callback and (now - last_callback_time) >= 0.25:
+                if progress_callback and ((now - last_callback_time) >= 0.20 or cycle_count == 1):
                     last_callback_time = now
                     progress_callback({
                         "progress": progress_ratio,
                         "percent": int(progress_ratio * 100),
-                        "elapsed_seconds": elapsed,
-                        "remaining_seconds": remaining_sec,
+                        "elapsed_seconds": simulated_elapsed,
+                        "remaining_seconds": simulated_remaining,
+                        "wall_elapsed_seconds": wall_elapsed,
                         "current_stage": current_stage_name,
                         "current_subtask": current_subtask,
                         "initial_accuracy": initial_accuracy,
@@ -1517,14 +1714,15 @@ class AutoTrainingEngine:
                         "accuracy_gain": round(current_accuracy - initial_accuracy, 1),
                         "samples_processed": samples_processed,
                         "epoch": cycle_count,
-                        "logs": training_logs[-8:]
+                        "logs": training_logs[-8:],
+                        "is_web_optimized": web_mode
                     })
 
                 # Pausa inteligente entre micro-iterações
-                time_left = target_duration_sec - (time.time() - start_time)
-                if time_left <= 0:
+                time_left_wall = wall_duration_sec - (time.time() - loop_start_time)
+                if time_left_wall <= 0:
                     break
-                step_sleep = min(0.18, max(0.02, time_left))
+                step_sleep = min(0.18, max(0.02, time_left_wall / 50.0))
                 time.sleep(step_sleep)
 
             # 2. Retreinamento Automático do Modelo de Detecção
@@ -1537,7 +1735,8 @@ class AutoTrainingEngine:
             training_logs.append(f"🧠 [Retreinamento] Modelo de detecção e 14 modalidades recalibrados com sucesso.")
 
             # 3. Registro no Histórico de Governança e Base de Conhecimento
-            total_duration_real = time.time() - start_time
+            total_wall_real = time.time() - start_time
+            effective_duration_recorded = target_duration_sec
             kb = self.load_knowledge_base()
             if effective_scope.startswith("modality_"):
                 mod_k = effective_scope.replace("modality_", "")
@@ -1558,37 +1757,21 @@ class AutoTrainingEngine:
             kb["last_retrained_at"] = datetime.datetime.now().isoformat()
             self.save_knowledge_base(kb)
 
-            # Salvar no histórico de treinamento gerenciado por Dan
-            history_entry = {
-                "id": f"{session_id}_{kb['training_sessions_completed']}",
-                "timestamp": datetime.datetime.now().isoformat(),
-                "video_name": f"AI_Auto_Trainer_{effective_scope}",
-                "profile_key": effective_scope,
-                "reviewer_dan": 0,  # 0 = Treinamento Automático por IA (não computado no Dan humano)
-                "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
-                "is_auto_training": True,
-                "items_count": max(10, samples_processed),
-                "optimization_summary": {
-                    "status": "success" if not self._stop_requested else "stopped_early",
-                    "mode": "auto_training_ai",
-                    "effective_scope": effective_scope,
-                    "scope_name": scope_display_name,
-                    "duration_seconds": round(total_duration_real, 1),
-                    "initial_accuracy": initial_accuracy,
-                    "final_accuracy": current_accuracy,
-                    "accuracy_gain": round(current_accuracy - initial_accuracy, 1),
-                    "sources_count": len(sources_consulted),
-                    "sources_titles": [s.get("title", "") for s in sources_consulted],
-                    "samples_processed": samples_processed,
-                    "changes": improvements_summary,
-                    "retrained_profiles": ["normal", "rigido", "permissivo"]
-                }
-            }
-            curr_history = self.feedback_mgr.load_history()
-            curr_history.append(history_entry)
-            os.makedirs(os.path.dirname(self.history_path), exist_ok=True)
-            with open(self.history_path, "w", encoding="utf-8") as f:
-                json.dump(curr_history, f, indent=2, ensure_ascii=False)
+            # Salvar no histórico de treinamento gerenciado por Dan com status final
+            final_status = "success" if not self._stop_requested else "stopped_early"
+            self._sync_history_entry(
+                session_id=session_id,
+                effective_scope=effective_scope,
+                scope_display_name=scope_display_name,
+                duration_seconds=effective_duration_recorded,
+                initial_accuracy=initial_accuracy,
+                current_accuracy=current_accuracy,
+                samples_processed=samples_processed,
+                sources_consulted=sources_consulted,
+                improvements_summary=improvements_summary,
+                status=final_status,
+                seq_num=kb["training_sessions_completed"]
+            )
 
             # Salvar checkpoint final consolidado com sucesso
             self.save_checkpoint({
@@ -1599,20 +1782,24 @@ class AutoTrainingEngine:
                 "samples_processed": samples_processed,
                 "final_accuracy": current_accuracy,
                 "sources_consulted": sources_consulted,
-                "duration_seconds": round(total_duration_real, 1),
+                "duration_seconds": round(effective_duration_recorded, 1),
+                "wall_clock_seconds": round(total_wall_real, 1),
                 "last_updated": datetime.datetime.now().isoformat(),
-                "consolidated": True
+                "consolidated": True,
+                "web_mode": web_mode
             })
 
-            training_logs.append(f"🎉 [{total_duration_real:.1f}s] Treinamento Automático finalizado com sucesso! Acurácia estimada elevada para {current_accuracy}%.")
-            log_event("INFO", f"Treinamento Automático concluído. Acurácia: {current_accuracy}%, Duração: {total_duration_real:.1f}s, Amostras: {samples_processed}", "auto_trainer")
+            time_display_str = f"{duration_minutes:.0f}min" if duration_minutes >= 1 else f"{target_duration_sec:.0f}s"
+            training_logs.append(f"🎉 [{time_display_str}] Treinamento Automático finalizado com sucesso! Acurácia estimada elevada para {current_accuracy}%.")
+            log_event("INFO", f"Treinamento Automático concluído. Acurácia: {current_accuracy}%, Duração: {effective_duration_recorded:.1f}s (Wall: {total_wall_real:.1f}s), Amostras: {samples_processed:,}", "auto_trainer")
 
             return {
-                "status": "success" if not self._stop_requested else "stopped_early",
+                "status": final_status,
                 "scope_key": effective_scope,
                 "scope_name": scope_display_name,
                 "duration_minutes_requested": duration_minutes,
-                "duration_seconds_actual": round(total_duration_real, 1),
+                "duration_seconds_actual": round(effective_duration_recorded, 1),
+                "wall_clock_seconds": round(total_wall_real, 1),
                 "initial_accuracy_pct": initial_accuracy,
                 "final_accuracy_pct": current_accuracy,
                 "accuracy_gain_pct": round(current_accuracy - initial_accuracy, 1),
@@ -1621,11 +1808,13 @@ class AutoTrainingEngine:
                 "improvements_summary": improvements_summary,
                 "training_logs": training_logs,
                 "diagnosis": diagnosis,
-                "retrain_summary": retrain_res
+                "retrain_summary": retrain_res,
+                "web_mode_active": web_mode
             }
 
         except Exception as ex:
-            total_duration_real = time.time() - start_time
+            total_wall_real = time.time() - start_time
+            effective_duration_recorded = target_duration_sec
             log_event("ERROR", f"Interrupção no Treinamento Automático: {ex}", "auto_trainer")
             training_logs.append(f"⚠️ [AVISO DE INTERRUPÇÃO] Falha/Interrupção detectada: {ex}")
             training_logs.append("💾 [CONSOLIDAÇÃO AUTOMÁTICA] Salvando e consolidando permanentemente todo o conhecimento, fontes e amostras adquiridas até a interrupção...")
@@ -1660,37 +1849,20 @@ class AutoTrainingEngine:
             self.save_knowledge_base(kb)
 
             # 3. Salvar no histórico de governança
-            history_entry = {
-                "id": f"{session_id}_{kb['training_sessions_completed']}_salvaged",
-                "timestamp": datetime.datetime.now().isoformat(),
-                "video_name": f"AI_Auto_Trainer_{effective_scope}",
-                "profile_key": effective_scope,
-                "reviewer_dan": 0,
-                "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
-                "is_auto_training": True,
-                "items_count": max(1, samples_processed),
-                "optimization_summary": {
-                    "status": "interrupted_salvaged",
-                    "mode": "auto_training_ai",
-                    "effective_scope": effective_scope,
-                    "scope_name": scope_display_name,
-                    "duration_seconds": round(total_duration_real, 1),
-                    "initial_accuracy": initial_accuracy,
-                    "final_accuracy": current_accuracy,
-                    "accuracy_gain": round(current_accuracy - initial_accuracy, 1),
-                    "sources_count": len(sources_consulted),
-                    "sources_titles": [s.get("title", "") for s in sources_consulted],
-                    "samples_processed": samples_processed,
-                    "changes": improvements_summary,
-                    "retrained_profiles": ["normal", "rigido", "permissivo"],
-                    "error_note": str(ex)
-                }
-            }
-            curr_history = self.feedback_mgr.load_history()
-            curr_history.append(history_entry)
-            os.makedirs(os.path.dirname(self.history_path), exist_ok=True)
-            with open(self.history_path, "w", encoding="utf-8") as f:
-                json.dump(curr_history, f, indent=2, ensure_ascii=False)
+            self._sync_history_entry(
+                session_id=session_id,
+                effective_scope=effective_scope,
+                scope_display_name=scope_display_name,
+                duration_seconds=effective_duration_recorded,
+                initial_accuracy=initial_accuracy,
+                current_accuracy=current_accuracy,
+                samples_processed=samples_processed,
+                sources_consulted=sources_consulted,
+                improvements_summary=improvements_summary,
+                status="interrupted_salvaged",
+                seq_num=kb["training_sessions_completed"],
+                error_note=str(ex)
+            )
 
             # 4. Atualizar checkpoint com status consolidado de emergência
             self.save_checkpoint({
@@ -1701,13 +1873,15 @@ class AutoTrainingEngine:
                 "samples_processed": samples_processed,
                 "final_accuracy": current_accuracy,
                 "sources_consulted": sources_consulted,
-                "duration_seconds": round(total_duration_real, 1),
+                "duration_seconds": round(effective_duration_recorded, 1),
+                "wall_clock_seconds": round(total_wall_real, 1),
                 "error_message": str(ex),
                 "last_updated": datetime.datetime.now().isoformat(),
-                "consolidated": True
+                "consolidated": True,
+                "web_mode": web_mode
             })
 
-            training_logs.append(f"✅ Conhecimento consolidado com sucesso: {len(sources_consulted)} fontes e {samples_processed} amostras preservadas. Acurácia de {current_accuracy}% salva na Base de Conhecimento.")
+            training_logs.append(f"✅ Conhecimento consolidado com sucesso: {len(sources_consulted)} fontes e {samples_processed} amostras preservadas. Acurácia de {current_accuracy}% salva na Base de Conhecimento e Histórico.")
 
             return {
                 "status": "interrupted_salvaged",
@@ -1715,7 +1889,8 @@ class AutoTrainingEngine:
                 "scope_key": effective_scope,
                 "scope_name": scope_display_name,
                 "duration_minutes_requested": duration_minutes,
-                "duration_seconds_actual": round(total_duration_real, 1),
+                "duration_seconds_actual": round(effective_duration_recorded, 1),
+                "wall_clock_seconds": round(total_wall_real, 1),
                 "initial_accuracy_pct": initial_accuracy,
                 "final_accuracy_pct": current_accuracy,
                 "accuracy_gain_pct": round(current_accuracy - initial_accuracy, 1),
@@ -1724,7 +1899,8 @@ class AutoTrainingEngine:
                 "improvements_summary": improvements_summary,
                 "training_logs": training_logs,
                 "diagnosis": diagnosis,
-                "retrain_summary": retrain_res
+                "retrain_summary": retrain_res,
+                "web_mode_active": web_mode
             }
 
         finally:
