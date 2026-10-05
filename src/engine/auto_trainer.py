@@ -375,6 +375,8 @@ class AutoTrainingEngine:
         self.prior_injector = BayesianPriorInjector(knowledge_base_path=self.knowledge_base_path)
         self._is_running = False
         self._stop_requested = False
+        self._training_thread = None
+        self._last_train_result = None
         self._ensure_knowledge_base()
 
     @property
@@ -415,6 +417,51 @@ class AutoTrainingEngine:
             except Exception:
                 return []
         return []
+
+    def request_stop(self) -> None:
+        """Solicita a interrupção graciosa do treinamento em andamento, salvando todo o progresso."""
+        self._stop_requested = True
+
+    def is_running(self) -> bool:
+        """Retorna True se houver um treinamento automático em execução."""
+        return getattr(self, "_is_running", False)
+
+    def get_last_result(self) -> Optional[Dict[str, Any]]:
+        """Retorna o resultado consolidado do último ciclo de treinamento executado."""
+        return getattr(self, "_last_train_result", None)
+
+    def start_training_thread(
+        self,
+        scope_key: str = "latent_need",
+        duration_minutes: float = 10.0,
+        intensity: str = "padrao",
+        include_video: bool = True,
+        include_text_guidelines: bool = True,
+        latent_strategy: str = "auto"
+    ) -> bool:
+        """
+        Inicia o ciclo de treinamento em uma thread de background independente,
+        garantindo execução contínua pelo tempo integral programado e resiliência
+        contra quedas ou desconexões temporárias de navegadores web.
+        """
+        if getattr(self, "_is_running", False):
+            return False
+        import threading
+        self._stop_requested = False
+        self._training_thread = threading.Thread(
+            target=self.run_auto_training,
+            kwargs={
+                "scope_key": scope_key,
+                "duration_minutes": duration_minutes,
+                "intensity": intensity,
+                "include_video": include_video,
+                "include_text_guidelines": include_text_guidelines,
+                "latent_strategy": latent_strategy
+            },
+            daemon=True
+        )
+        self._training_thread.start()
+        return True
 
     def _sanitize_or_migrate_kb(self, kb: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -1401,26 +1448,10 @@ class AutoTrainingEngine:
         target_duration_sec = max(2.5, duration_minutes * 60.0)
         total_target_samples = int(duration_minutes * 60.0 * random.uniform(16.0, 24.0))
 
-        if web_mode:
-            # Em modo web, o tempo de relógio é escalonado com fluidez (15s a 85s),
-            # garantindo que o treinamento nunca exceda o limite de 10 min dos proxies web
-            if duration_minutes <= 1.0:
-                wall_duration_sec = min(15.0, target_duration_sec)
-            elif duration_minutes <= 5.0:
-                wall_duration_sec = 25.0
-            elif duration_minutes <= 10.0:
-                wall_duration_sec = 35.0
-            elif duration_minutes <= 15.0:
-                wall_duration_sec = 45.0
-            elif duration_minutes <= 30.0:
-                wall_duration_sec = 55.0
-            elif duration_minutes <= 60.0:
-                wall_duration_sec = 70.0
-            else:
-                wall_duration_sec = 85.0
-
-            if max_wall_time_sec is not None:
-                wall_duration_sec = min(wall_duration_sec, max_wall_time_sec)
+        # A execução é real e contínua durante todo o período determinado pelo usuário
+        # max_wall_time_sec é aplicado apenas quando explicitamente fornecido (ex: testes unitários)
+        if max_wall_time_sec is not None:
+            wall_duration_sec = min(target_duration_sec, max_wall_time_sec)
         else:
             wall_duration_sec = target_duration_sec
 
@@ -1436,8 +1467,7 @@ class AutoTrainingEngine:
             effective_scope = scope_key
             scope_display_name = AUTO_TRAINING_SCOPES.get(scope_key, {}).get("name", scope_key)
 
-        mode_tag = " [Modo Web Otimizado]" if web_mode else ""
-        log_event("INFO", f"Iniciando Treinamento Automático por IA{mode_tag}. Escopo: '{effective_scope}', Estratégia: '{latent_strategy}', Duração: {duration_minutes:.1f} min ({target_duration_sec:.0f}s)", "auto_trainer")
+        log_event("INFO", f"Iniciando Treinamento Automático por IA. Escopo: '{effective_scope}', Estratégia: '{latent_strategy}', Duração: {duration_minutes:.1f} min ({target_duration_sec:.0f}s)", "auto_trainer")
 
         kb = self.load_knowledge_base()
         learned_params = kb.get("learned_parameters", {})
@@ -1598,6 +1628,7 @@ class AutoTrainingEngine:
         last_callback_time = 0.0
         last_log_time = 0.0
         last_checkpoint_time = 0.0
+        last_web_search_time = time.time()
         cycle_count = 0
         loop_start_time = time.time()
 
@@ -1659,6 +1690,23 @@ class AutoTrainingEngine:
                     log_text = f"⚙️ [{timestamp_str}] {current_subtask} (Amostras: {samples_processed:,})"
                     training_logs.append(log_text)
 
+                # Mineração web ativa adicional periódica a cada ~3 minutos durante sessões longas
+                if (now - last_web_search_time) >= 180.0 and len(sources_consulted) < 35:
+                    last_web_search_time = now
+                    try:
+                        extra_sources = self.search_web_kendo_knowledge(effective_scope, max_results=2)
+                        for es in extra_sources:
+                            if not any(s.get("title") == es.get("title") for s in sources_consulted):
+                                sources_consulted.append(es)
+                                s_title = es.get("title", "")
+                                s_key = s_title.lower().replace(" ", "_")[:40] if s_title else f"src_{random.randint(1000, 9999)}"
+                                kb.setdefault("sources", {})[s_key] = es
+                                kb["total_web_sources_indexed"] = len(kb["sources"])
+                                self.save_knowledge_base(kb)
+                                training_logs.append(f"🌐 [Pesquisa Ativa Web] Nova diretriz técnica indexada: {s_title[:45]}")
+                    except Exception:
+                        pass
+
                 # Salvamento de Checkpoint Periódico e Sincronização Incremental no Histórico
                 if (now - last_checkpoint_time) >= 2.0 or cycle_count == 1:
                     last_checkpoint_time = now
@@ -1670,7 +1718,7 @@ class AutoTrainingEngine:
                         "intensity": intensity,
                         "duration_minutes_requested": duration_minutes,
                         "target_duration_sec": target_duration_sec,
-                        "elapsed_seconds": round(simulated_elapsed, 1),
+                        "elapsed_seconds": round(wall_elapsed, 1),
                         "remaining_seconds": round(simulated_remaining, 1),
                         "wall_elapsed_seconds": round(wall_elapsed, 1),
                         "cycle_count": cycle_count,
@@ -1688,7 +1736,7 @@ class AutoTrainingEngine:
                         session_id=session_id,
                         effective_scope=effective_scope,
                         scope_display_name=scope_display_name,
-                        duration_seconds=target_duration_sec,
+                        duration_seconds=round(wall_elapsed, 1),
                         initial_accuracy=initial_accuracy,
                         current_accuracy=current_accuracy,
                         samples_processed=samples_processed,
@@ -1736,7 +1784,10 @@ class AutoTrainingEngine:
 
             # 3. Registro no Histórico de Governança e Base de Conhecimento
             total_wall_real = time.time() - start_time
-            effective_duration_recorded = target_duration_sec
+            if self._stop_requested:
+                effective_duration_recorded = max(round(time.time() - loop_start_time, 1), 1.0)
+            else:
+                effective_duration_recorded = target_duration_sec
             kb = self.load_knowledge_base()
             if effective_scope.startswith("modality_"):
                 mod_k = effective_scope.replace("modality_", "")
@@ -1793,7 +1844,7 @@ class AutoTrainingEngine:
             training_logs.append(f"🎉 [{time_display_str}] Treinamento Automático finalizado com sucesso! Acurácia estimada elevada para {current_accuracy}%.")
             log_event("INFO", f"Treinamento Automático concluído. Acurácia: {current_accuracy}%, Duração: {effective_duration_recorded:.1f}s (Wall: {total_wall_real:.1f}s), Amostras: {samples_processed:,}", "auto_trainer")
 
-            return {
+            res_obj = {
                 "status": final_status,
                 "scope_key": effective_scope,
                 "scope_name": scope_display_name,
@@ -1811,10 +1862,12 @@ class AutoTrainingEngine:
                 "retrain_summary": retrain_res,
                 "web_mode_active": web_mode
             }
+            self._last_train_result = res_obj
+            return res_obj
 
-        except Exception as ex:
-            total_wall_real = time.time() - start_time
-            effective_duration_recorded = target_duration_sec
+        except BaseException as ex:
+            total_wall_real = time.time() - loop_start_time
+            effective_duration_recorded = max(round(total_wall_real, 1), 1.0)
             log_event("ERROR", f"Interrupção no Treinamento Automático: {ex}", "auto_trainer")
             training_logs.append(f"⚠️ [AVISO DE INTERRUPÇÃO] Falha/Interrupção detectada: {ex}")
             training_logs.append("💾 [CONSOLIDAÇÃO AUTOMÁTICA] Salvando e consolidando permanentemente todo o conhecimento, fontes e amostras adquiridas até a interrupção...")
@@ -1883,7 +1936,7 @@ class AutoTrainingEngine:
 
             training_logs.append(f"✅ Conhecimento consolidado com sucesso: {len(sources_consulted)} fontes e {samples_processed} amostras preservadas. Acurácia de {current_accuracy}% salva na Base de Conhecimento e Histórico.")
 
-            return {
+            salvaged_res = {
                 "status": "interrupted_salvaged",
                 "error_message": str(ex),
                 "scope_key": effective_scope,
@@ -1902,7 +1955,8 @@ class AutoTrainingEngine:
                 "retrain_summary": retrain_res,
                 "web_mode_active": web_mode
             }
-
+            self._last_train_result = salvaged_res
+            return salvaged_res
         finally:
             self._is_running = False
             self._stop_requested = False

@@ -485,6 +485,42 @@ class TestAutoTrainer(unittest.TestCase):
         self.assertEqual(history[-1]["status"], "success")
         self.assertEqual(history[-1]["session_id"], in_progress_detected[0])
 
+    def test_background_training_thread_and_stop(self):
+        """Valida que o treinamento pode ser lançado em thread de background e interrompido graciosamente."""
+        started = self.engine.start_training_thread(
+            scope_key="modality_suburi",
+            duration_minutes=60.0,
+            intensity="rapido"
+        )
+        self.assertTrue(started)
+
+        # Aguardar início e verificar se is_running() é True
+        for _ in range(20):
+            if self.engine.is_running():
+                break
+            time.sleep(0.05)
+        self.assertTrue(self.engine.is_running())
+
+        # Solicitar parada precoce
+        self.engine.request_stop()
+
+        # Aguardar finalização graciosa
+        for _ in range(50):
+            if not self.engine.is_running():
+                break
+            time.sleep(0.05)
+        self.assertFalse(self.engine.is_running())
+
+        # Verificar se o resultado foi registrado
+        last_res = self.engine.get_last_result()
+        self.assertIsNotNone(last_res)
+        self.assertIn(last_res.get("status"), ["stopped_early", "success"])
+        self.assertGreater(last_res.get("duration_seconds_actual", 0.0), 0.0)
+
+        # Histórico deve registrar o treinamento
+        hist = self.engine.get_training_history()
+        self.assertGreaterEqual(len(hist), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
