@@ -1,7 +1,7 @@
 {
   "version": "2.0.0",
-  "last_updated": "2026-10-02T17:34:34.093705",
-  "total_web_sources_indexed": 3,
+  "last_updated": "2026-10-04T22:42:40.275815",
+  "total_web_sources_indexed": 31,
   "sources": {
     "fik_regulations": {
       "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
@@ -75,10 +75,653 @@
         ],
         "stamina_retention_ratio_target": 0.88
       }
+    },
+    "the_philosophy_and_practice_of_ji-geiko_": {
+      "title": "The Philosophy and Practice of Ji-geiko in Contemporary Kendo",
+      "type": "Manual Oficial AJKF / FIK",
+      "url": "https://www.kendo.or.jp/knowledge/ji_geiko",
+      "focus": "Ji-geiko (地稽古)",
+      "summary": "Diretrizes oficiais de execução para Ji-geiko (地稽古) (地稽古): foco em Construção de oportunidade com Seme, Manutenção da compostura e centro, Variedade técnica inteligente, Postura digna sob pressão.",
+      "principles": [
+        "Pressão com Seme (攻め): Rompimento da guarda e quebra da postura mental do adversário antes de desferir o ataque.",
+        "Ki-Ken-Tai-Ichi em Combate Livre: Aplicação plena dos fundamentos de golpe, corte e pés sem pré-determinação.",
+        "Chushin-sen: Disputa e domínio ininterrupto da linha central de corte e defesa."
+      ],
+      "biomechanical_thresholds": {
+        "cadence_cpm": [
+          8,
+          25
+        ],
+        "seme_retention_ratio": 0.88
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "cadence_cpm": {
+          "min": 8.0,
+          "max": 25.0
+        },
+        "seme_retention_ratio": 0.88
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "fik_international_kendo_regulations_(art": {
+      "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+      "type": "Manual Oficial FIK"
+    },
+    "treatise_on_nihon_kendo_kata_technical_&": {
+      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+      "type": "Tratado Técnico Kata"
+    },
+    "ajkf_/_znkr_kendo_shinpan_&_shiai_practi": {
+      "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+      "type": "Manual de Arbitragem AJKF"
+    },
+    "all_japan_kendo_championship_finals_-_ki": {
+      "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+      "type": "Corpus de Vídeo HD"
+    },
+    "kirikaeshi_continuous_stroke_cadence_&_d": {
+      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+      "type": "Corpus de Vídeo Dojo"
+    },
+    "high-speed_motion_capture_of_fumikomi-as": {
+      "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+      "type": "Mocap Científico"
+    },
+    "physiological_&_biomechanical_load_in_su": {
+      "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+      "type": "Estudo Biomecânico"
+    },
+    "kendo_pedagogical_training_curriculum:_1": {
+      "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+      "type": "Currículo Pedagógico"
+    },
+    "multi-view_neural_consensus_&_perspectiv": {
+      "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+      "type": "Modelo Neural"
+    },
+    "reinforcement_optimization_on_dan_review": {
+      "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+      "type": "Dataset de Calibração"
+    },
+    "senpai_knowledge_base_&_calibration_prof": {
+      "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+      "type": "Base de Conhecimento"
+    },
+    "web:_kendo_(general_all)": {
+      "title": "Web: Kendo (general_all)",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Kendo",
+      "focus": "general_all",
+      "summary": "Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039;) is a modern Japanese martial art, descended from kenjutsu",
+      "principles": [
+        "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "web:_kendo_kata_(general_all)": {
+      "title": "Web: Kendo Kata (general_all)",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Kendo_Kata",
+      "focus": "general_all",
+      "summary": "originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or schools of kendo and kenjutsu had their own",
+      "principles": [
+        "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "web:_zen_nihon_kendō_renmei_jōdō_(genera": {
+      "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D",
+      "focus": "general_all",
+      "summary": "Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Takaji and presented to the All Japan",
+      "principles": [
+        "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "fik_-_the_regulations_of_kendo_shiai_and": {
+      "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+      "type": "official_manual",
+      "url": "https://www.kendo-fik.org/regulations",
+      "focus": "Princípios Gerais de Kendo",
+      "summary": "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin. | Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+      "principles": [
+        "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+        "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+        "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+        "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai)."
+      ],
+      "biomechanical_thresholds": {
+        "men_strike_height_ratio": [
+          0.85,
+          1.05
+        ],
+        "kote_strike_wrist_angle": [
+          145.0,
+          180.0
+        ],
+        "do_strike_body_angle": [
+          35.0,
+          55.0
+        ],
+        "tsuki_thrust_collinear_tolerance": 0.08,
+        "fumikomi_sync_max_delay_ms": 70.0,
+        "zanshin_duration_min_sec": 0.8
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "spine_tilt_max_deg": 8.5,
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "zanshin_duration_min_sec": 0.8,
+        "hasuji_max_deviation_deg": 12.0,
+        "men_strike_height_ratio": {
+          "min": 0.85,
+          "max": 1.05
+        },
+        "kote_strike_wrist_angle": {
+          "min": 145.0,
+          "max": 180.0
+        },
+        "do_strike_body_angle": {
+          "min": 35.0,
+          "max": 55.0
+        },
+        "tsuki_thrust_collinear_tolerance": 0.08,
+        "fumikomi_sync_max_delay_ms": 70.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "ajkf_/_znkr_-_kendo_refereeing_&_judging": {
+      "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+      "type": "official_manual",
+      "url": "https://www.kendo.or.jp/knowledge/rules/",
+      "focus": "Princípios Gerais de Kendo",
+      "summary": "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact. | Hasuji: Blade angle alignment preventing flat slapping hits.",
+      "principles": [
+        "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+        "Hasuji: Blade angle alignment preventing flat slapping hits.",
+        "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+        "Chushin-sen: Dominance and defense of the central line."
+      ],
+      "biomechanical_thresholds": {
+        "spine_upright_max_tilt_deg": 10.0,
+        "left_heel_elevation_min_cm": 2.5,
+        "shoulder_symmetry_tolerance": 0.05,
+        "elbow_extension_furikaburi_deg": [
+          115.0,
+          140.0
+        ]
+      },
+      "authority_tier": 2,
+      "authority_name": "AJKF Referee Handbook",
+      "authority_desc": "Alta",
+      "authority_weight": 0.85,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "spine_upright_max_tilt_deg": 10.0,
+        "left_heel_elevation_min_cm": 2.5,
+        "shoulder_symmetry_tolerance": 0.05,
+        "elbow_extension_furikaburi_deg": {
+          "min": 115.0,
+          "max": 140.0
+        }
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "kinematic_&_kinetic_analysis_of_elite_ke": {
+      "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+      "type": "scientific_study",
+      "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi",
+      "focus": "Princípios Gerais de Kendo",
+      "summary": "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms. | Forward impulse transfer: Left foot spring drive (Hiki-tsuke) generates horizontal acceleration.",
+      "principles": [
+        "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms.",
+        "Forward impulse transfer: Left foot spring drive (Hiki-tsuke) generates horizontal acceleration.",
+        "Suburi fatigue degradation: Progressive posture collapse manifests in excessive forward pelvic tilt."
+      ],
+      "biomechanical_thresholds": {
+        "fumikomi_knee_flexion_deg": [
+          95.0,
+          120.0
+        ],
+        "suburi_cadence_optimal_cpm": [
+          35.0,
+          60.0
+        ],
+        "kirikaeshi_cadence_optimal_cpm": [
+          55.0,
+          85.0
+        ],
+        "stamina_retention_ratio_target": 0.88
+      },
+      "authority_tier": 4,
+      "authority_name": "Artigos acadêmicos / Biomecânica",
+      "authority_desc": "Baixa",
+      "authority_weight": 0.45,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -50.0,
+          "max": 50.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "elbow_extension_impact_deg": {
+          "min": 150.0,
+          "max": 175.0,
+          "ideal": 165.0,
+          "unit": "deg"
+        },
+        "blade_contact_zone": "monouchi",
+        "fumikomi_knee_flexion_deg": {
+          "min": 95.0,
+          "max": 120.0
+        },
+        "suburi_cadence_optimal_cpm": {
+          "min": 35.0,
+          "max": 60.0
+        },
+        "kirikaeshi_cadence_optimal_cpm": {
+          "min": 55.0,
+          "max": 85.0
+        },
+        "stamina_retention_ratio_target": 0.88
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "web:_kendo_(waza-geiko_(技稽古))": {
+      "title": "Web: Kendo (Waza-geiko (技稽古))",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Kendo",
+      "focus": "Waza-geiko (技稽古)",
+      "summary": "correct technique while building spirit and stamina. Waza-geiko (技稽古) Waza or technique practice in which the student learns and refines the techniques of",
+      "principles": [
+        "Conceito Técnico (Kendo): correct technique while building spirit and stamina. Waza-geiko (技稽古) Waza or technique practice in which the student le..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "advanced_waza_analysis_in_modern_kendo_(": {
+      "title": "Advanced Waza Analysis in Modern Kendo (Debana, Hiki, Nuki)",
+      "type": "Manual Oficial AJKF / FIK",
+      "url": "https://www.kendo.or.jp/knowledge/waza_geiko",
+      "focus": "Waza-geiko (技稽古)",
+      "summary": "Diretrizes oficiais de execução para Waza-geiko (技稽古) (技稽古): foco em Timing do gatilho de ataque, Mecanismo biomecânico do golpe, Precisão do ponto de impacto, Fluidez na execução.",
+      "principles": [
+        "Automatização Técnica: Repetição exaustiva de técnicas ofensivas complexas (Debana-waza, Hiki-waza).",
+        "Gatilho de Oportunidade: Percepção do momento exato em que o adversário inicia o movimento ou recua a guarda."
+      ],
+      "biomechanical_thresholds": {
+        "cadence_cpm": [
+          12,
+          35
+        ],
+        "trigger_delay_ms": 120.0
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "cadence_cpm": {
+          "min": 12.0,
+          "max": 35.0
+        },
+        "trigger_delay_ms": 120.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "physiological_&_biomechanical_load_in_hi": {
+      "title": "Physiological & Biomechanical Load in High-Intensity Kakari-geiko",
+      "type": "Manual Oficial AJKF / FIK",
+      "url": "https://www.kendo.or.jp/knowledge/kakari_geiko",
+      "focus": "Kakari-geiko (掛稽古)",
+      "summary": "Diretrizes oficiais de execução para Kakari-geiko (掛稽古) (掛稽古): foco em Cadência máxima e espírito inquebrantável, Ataque contínuo sem hesitação, Preservação da postura sob exaustão, Fumikomi potente.",
+      "principles": [
+        "Kiai Inabalável: Ataques agressivos e contínuos em intensidade máxima sem hesitação durante períodos curtos (20s a 60s).",
+        "Preservação da Postura sob Fadiga: Resistência muscular preservando a retidão da coluna e guarda mesmo sob exaustão extrema."
+      ],
+      "biomechanical_thresholds": {
+        "cadence_cpm": [
+          35,
+          75
+        ],
+        "fatigue_tolerance_ratio": 0.8
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "cadence_cpm": {
+          "min": 35.0,
+          "max": 75.0
+        },
+        "fatigue_tolerance_ratio": 0.8
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "web:_kendo_(shiai-geiko_(試合稽古))": {
+      "title": "Web: Kendo (Shiai-geiko (試合稽古))",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Kendo",
+      "focus": "Shiai-geiko (試合稽古)",
+      "summary": "skill level. Hikitate-geiko (引立稽古) Practice where a senior kendōka guides a junior through practice. Shiai-geiko (試合稽古) Competition practice which may also",
+      "principles": [
+        "Conceito Técnico (Kendo): skill level. Hikitate-geiko (引立稽古) Practice where a senior kendōka guides a junior through practice. Shiai-geiko (試合稽古) ..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "web:_kendo_(oji-waza_(応じ技))": {
+      "title": "Web: Kendo (Oji-waza (応じ技))",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Kendo",
+      "focus": "Oji-waza (応じ技)",
+      "summary": "practice which may also be judged. Techniques are divided into shikake-waza (仕掛け技; to initiate a strike) and ōji-waza (応じ技; a response to an attempted strike)",
+      "principles": [
+        "Conceito Técnico (Kendo): practice which may also be judged. Techniques are divided into shikake-waza (仕掛け技; to initiate a strike) and ōji-waza (応..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "web:_list_of_ranma_½_chapters_(oji-waza_": {
+      "title": "Web: List of Ranma ½ chapters (Oji-waza (応じ技))",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/List_of_Ranma_%C2%BD_chapters",
+      "focus": "Oji-waza (応じ技)",
+      "summary": "held during one of Kuno&#039;s kendo matches. Mariko initially has the advantage, fueled by her love for Kuno, but Ranma counters with pictures of himself as",
+      "principles": [
+        "Conceito Técnico (List of Ranma ½ chapters): held during one of Kuno&#039;s kendo matches. Mariko initially has the advantage, fueled by her love for Kuno, but Ranma..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "ajkf_technical_manual:_principles_of_oji": {
+      "title": "AJKF Technical Manual: Principles of Oji-waza and Counters",
+      "type": "Manual Oficial AJKF / FIK",
+      "url": "https://www.kendo.or.jp/knowledge/oji_waza",
+      "focus": "Oji-waza (応じ技)",
+      "summary": "Diretrizes oficiais de execução para Oji-waza (応じ技) (応じ技): foco em Tempo de antecipação e leitura de corte, Movimento mínimo e preciso no desvio, Contra-golpe instantâneo sem perda de centro, Zanshin seguro.",
+      "principles": [
+        "Técnicas de Resposta (Oji-waza): Nuki (esquiva por baixo), Kaeshi (deflexão giratória), Suriage (deslize ascendente) e Uchiotoshi.",
+        "Economia de Movimento: Desvio milimétrico da espada adversária seguido de contragolpe imediato pelo centro (Chushin-sen)."
+      ],
+      "biomechanical_thresholds": {
+        "cadence_cpm": [
+          10,
+          30
+        ],
+        "counter_strike_delay_ms": 160.0
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "zanshin_duration_min_sec": 0.8,
+        "hasuji_max_deviation_deg": 12.0,
+        "cadence_cpm": {
+          "min": 10.0,
+          "max": 30.0
+        },
+        "counter_strike_delay_ms": 160.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "fik_&_ajkf_official_examination_&_dan_ra": {
+      "title": "FIK & AJKF Official Examination & Dan Ranking Standard Regulations",
+      "type": "Manual Oficial AJKF / FIK",
+      "url": "https://www.kendo.or.jp/knowledge/shinsa",
+      "focus": "Shinsa (審査)",
+      "summary": "Diretrizes oficiais de execução para Shinsa (審査) (審査): foco em Postura impecável (Shisei), Etiqueta e respeito marcial (Reigi), Kiai forte e confiante, Técnica limpa e Zanshin decisivo.",
+      "principles": [
+        "Critérios Oficiais de Exame Dan: Postura digna (Shisei), etiqueta impecável (Reigi), Kiai penetrante e domínio dos fundamentos.",
+        "Ataque Resoluto e Zanshin: Demonstração de coragem e técnica limpa sem hesitação, recuo ou movimentos desnecessários."
+      ],
+      "biomechanical_thresholds": {
+        "cadence_cpm": [
+          6,
+          22
+        ],
+        "posture_strictness": 0.92,
+        "kiai_presence": 0.9
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "spine_tilt_max_deg": 8.5,
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "zanshin_duration_min_sec": 0.8,
+        "hasuji_max_deviation_deg": 12.0,
+        "cadence_cpm": {
+          "min": 6.0,
+          "max": 22.0
+        },
+        "posture_strictness": 0.92,
+        "kiai_presence": 0.9
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "pedagogical_kendo:_structured_pair_exerc": {
+      "title": "Pedagogical Kendo: Structured Pair Exercises (Yakusoku-geiko)",
+      "type": "Manual Oficial AJKF / FIK",
+      "url": "https://www.kendo.or.jp/knowledge/yakusoku_geiko",
+      "focus": "Yakusoku-geiko (約束稽古)",
+      "summary": "Diretrizes oficiais de execução para Yakusoku-geiko (約束稽古) (約束稽古): foco em Sincronismo entre os parceiros, Precisão na execução combinada, Controle de distância (Maai), Postura correta na transição.",
+      "principles": [
+        "Sincronismo Combinado: Execução harmoniosa e exata de sequências previamente combinadas entre os parceiros.",
+        "Maai de Transição: Ajuste consciente da distância a cada golpe combinado sem quebras de ritmo."
+      ],
+      "biomechanical_thresholds": {
+        "cadence_cpm": [
+          12,
+          35
+        ],
+        "transition_smoothness": 0.82
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "cadence_cpm": {
+          "min": 12.0,
+          "max": 35.0
+        },
+        "transition_smoothness": 0.82
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "ajkf_teaching_methodology:_motodachi_&_k": {
+      "title": "AJKF Teaching Methodology: Motodachi & Kakarite Dynamics",
+      "type": "Manual Oficial AJKF / FIK",
+      "url": "https://www.kendo.or.jp/knowledge/uchikomi_geiko",
+      "focus": "Uchikomi-geiko (打込稽古)",
+      "summary": "Diretrizes oficiais de execução para Uchikomi-geiko (打込稽古) (打込稽古): foco em Velocidade de reação na abertura, Aceleração e Fumikomi, Passagem rápida (Nuke), Retorno imediato em Kamae.",
+      "principles": [
+        "Explosão na Abertura: Reconhecimento e ataque instantâneo no milissegundo em que o Motodachi abre o alvo.",
+        "Fumikomi Potente: Aterrissagem com a planta do pé direito sincrônica ao impacto no alvo (Ki-Ken-Tai-Ichi).",
+        "Passagem Rápida (Nuke): Cruzamento ágil pelo lado do oponente sem perder o equilíbrio e giro veloz em Zanshin."
+      ],
+      "biomechanical_thresholds": {
+        "cadence_cpm": [
+          20,
+          50
+        ],
+        "fumikomi_sync_ms": 50.0
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "zanshin_duration_min_sec": 0.8,
+        "hasuji_max_deviation_deg": 12.0,
+        "cadence_cpm": {
+          "min": 20.0,
+          "max": 50.0
+        },
+        "fumikomi_sync_ms": 50.0
+      },
+      "structured_concept": "do_strike_biomechanics"
     }
   },
   "learned_parameters": {
-    "auto_learning_sequence_step": 0,
+    "auto_learning_sequence_step": 1,
     "general_kendo_principles": [
       "Ki-Ken-Tai-Ichi (気剣体一致): Unidade completa e simultânea de espírito (Ki), espada (Ken) e corpo/pés (Tai).",
       "Maai (間合い): Domínio da distância espacial e temporal (Toma, Issoku-itto-no-maai e Chikama).",
@@ -103,16 +746,27 @@
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 41.0,
-        "current_accuracy": 41.0,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 55.5,
+        "last_calibrated": "04/10/2026 20:24",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "Okuri-ashi (送り足): Deslocamento fundamental deslizante impulsionado pela perna esquerda sem cruzar as pernas.",
           "Calcanhar Esquerdo Suspenso: Elevação contínua de 2 a 3 cm do calcanhar esquerdo para prontidão instantânea de arranque (Hiki-tsuke).",
-          "Estabilidade do Centro de Gravidade: Manutenção do quadril nivelado durante deslocamentos rápidos (Ayumi-ashi, Tsugi-ashi, Hiraki-ashi)."
+          "Estabilidade do Centro de Gravidade: Manutenção do quadril nivelado durante deslocamentos rápidos (Ayumi-ashi, Tsugi-ashi, Hiraki-ashi).",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -131,6 +785,91 @@
             "title": "AJKF Kendo Manual - Section 3: Ashi-sabaki & Footwork Mechanics",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/ashi_sabaki"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
           }
         ],
         "evolution_log": [
@@ -138,25 +877,60 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 43.4%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 46.3%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 49.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 52.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 55.0%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 5
       },
       "suburi": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 46.5,
-        "current_accuracy": 46.5,
-        "last_calibrated": "Inicial Calibrado",
+        "current_accuracy": 61.0,
+        "last_calibrated": "04/10/2026 20:24",
         "mastery_level": "Em Calibração",
         "principles_learned": [
           "Hasuji (刃筋): Alinhamento estrito do corte sem desvio lateral da lâmina (Monouchi).",
           "Tenouchi (手の内): Aperto coordenado dos dedos mínimo e anelar no momento da parada na altura do alvo.",
           "Furikaburi (振りかぶり): Amplitude de elevação dos cotovelos entre 115° e 140° mantendo o queixo recolhido.",
-          "Shisei (姿勢): Manutenção da verticalidade da coluna vertebral com inclinação máxima < 8.5°."
+          "Shisei (姿勢): Manutenção da verticalidade da coluna vertebral com inclinação máxima < 8.5°.",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -175,6 +949,91 @@
             "title": "FIK & AJKF Pedagogical Suburi Standards & Biomechanics",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/suburi"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
           }
         ],
         "evolution_log": [
@@ -182,24 +1041,60 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 48.9%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 51.8%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 54.7%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 57.6%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 60.5%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 5
       },
       "kihon": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 44.0,
-        "current_accuracy": 44.0,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 58.5,
+        "last_calibrated": "04/10/2026 20:24",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "Chudan no Kamae (中段の構え): Guarda fundamental inexpugnável com ponta do Shinai direcionada à garganta do oponente.",
           "Maai (間合い): Manutenção precisa da distância de um passo e um golpe (Issoku-itto-no-maai).",
-          "Zanshin (残心): Prontidão mental e física imediata após a conclusão de qualquer golpe básico."
+          "Zanshin (残心): Prontidão mental e física imediata após a conclusão de qualquer golpe básico.",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -218,6 +1113,91 @@
             "title": "AJKF Fundamental Kendo (Kihon) Teaching Curriculum",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/kihon"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
           }
         ],
         "evolution_log": [
@@ -225,24 +1205,60 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 46.4%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 49.3%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 52.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 55.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 58.0%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 5
       },
       "kirikaeshi": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 39.5,
-        "current_accuracy": 39.5,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 54.0,
+        "last_calibrated": "04/10/2026 20:24",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "Cadência Contínua e Respiração: Execução ininterrupta de cortes Shōmen e Sayū-men a 45° de Hasuji em respiração única (Iki-tsugi).",
           "Taiatari (体当たり): Contato e choque corporal pelo centro sem colapsar a postura e sem recuar os ombros.",
-          "Tenouchi Dinâmico: Relaxamento dos ombros na elevação e compressão elástica no impacto alternado dos dois lados do Men."
+          "Tenouchi Dinâmico: Relaxamento dos ombros na elevação e compressão elástica no impacto alternado dos dois lados do Men.",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -261,6 +1277,91 @@
             "title": "Kinematic Analysis of Continuous Strikes in Kirikaeshi (Sports Biomechanics)",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/kirikaeshi"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
           }
         ],
         "evolution_log": [
@@ -268,24 +1369,60 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 41.9%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 44.8%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 47.7%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 50.6%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 53.5%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 5
       },
       "uchikomi_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 38.0,
-        "current_accuracy": 38.0,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 55.8,
+        "last_calibrated": "04/10/2026 22:30",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "Explosão na Abertura: Reconhecimento e ataque instantâneo no milissegundo em que o Motodachi abre o alvo.",
           "Fumikomi Potente: Aterrissagem com a planta do pé direito sincrônica ao impacto no alvo (Ki-Ken-Tai-Ichi).",
-          "Passagem Rápida (Nuke): Cruzamento ágil pelo lado do oponente sem perder o equilíbrio e giro veloz em Zanshin."
+          "Passagem Rápida (Nuke): Cruzamento ágil pelo lado do oponente sem perder o equilíbrio e giro veloz em Zanshin.",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -304,6 +1441,91 @@
             "title": "AJKF Teaching Methodology: Motodachi & Kakarite Dynamics",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/uchikomi_geiko"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
           }
         ],
         "evolution_log": [
@@ -311,23 +1533,65 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 40.4%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 43.3%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 46.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 49.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 52.0%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 22:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_uchikomi_geiko). Acurácia elevada para 54.9%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 6
       },
       "kakari_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 33.5,
-        "current_accuracy": 33.5,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 54.8,
+        "last_calibrated": "04/10/2026 21:25",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "Kiai Inabalável: Ataques agressivos e contínuos em intensidade máxima sem hesitação durante períodos curtos (20s a 60s).",
-          "Preservação da Postura sob Fadiga: Resistência muscular preservando a retidão da coluna e guarda mesmo sob exaustão extrema."
+          "Preservação da Postura sob Fadiga: Resistência muscular preservando a retidão da coluna e guarda mesmo sob exaustão extrema.",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line.",
+          "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -346,6 +1610,91 @@
             "title": "Physiological & Biomechanical Load in High-Intensity Kakari-geiko",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/kakari_geiko"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
           }
         ],
         "evolution_log": [
@@ -353,23 +1702,70 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 35.9%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 02:08",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_kakari_geiko). Acurácia elevada para 38.8%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 42.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 45.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 48.0%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 50.9%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 21:25",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_kakari_geiko). Acurácia elevada para 53.8%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 7
       },
       "yakusoku_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 37.5,
-        "current_accuracy": 37.5,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 52.7,
+        "last_calibrated": "04/10/2026 21:30",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "Sincronismo Combinado: Execução harmoniosa e exata de sequências previamente combinadas entre os parceiros.",
-          "Maai de Transição: Ajuste consciente da distância a cada golpe combinado sem quebras de ritmo."
+          "Maai de Transição: Ajuste consciente da distância a cada golpe combinado sem quebras de ritmo.",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line.",
+          "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -388,6 +1784,91 @@
             "title": "Pedagogical Kendo: Structured Pair Exercises (Yakusoku-geiko)",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/yakusoku_geiko"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
           }
         ],
         "evolution_log": [
@@ -395,23 +1876,60 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 39.9%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 42.8%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 45.7%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 48.6%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 51.5%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 5
       },
       "waza_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 36.5,
-        "current_accuracy": 36.5,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 54.3,
+        "last_calibrated": "04/10/2026 20:24",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "Automatização Técnica: Repetição exaustiva de técnicas ofensivas complexas (Debana-waza, Hiki-waza).",
-          "Gatilho de Oportunidade: Percepção do momento exato em que o adversário inicia o movimento ou recua a guarda."
+          "Gatilho de Oportunidade: Percepção do momento exato em que o adversário inicia o movimento ou recua a guarda.",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line.",
+          "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -430,6 +1948,96 @@
             "title": "Advanced Waza Analysis in Modern Kendo (Debana, Hiki, Nuki)",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/waza_geiko"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
+          },
+          {
+            "title": "Web: Kendo (Waza-geiko (技稽古))",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
           }
         ],
         "evolution_log": [
@@ -437,23 +2045,65 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 38.9%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 01:08",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_waza_geiko). Acurácia elevada para 41.8%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 45.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 48.0%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 50.9%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 53.8%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 6
       },
       "oji_waza": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 35.5,
-        "current_accuracy": 35.5,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 53.4,
+        "last_calibrated": "04/10/2026 20:24",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "Técnicas de Resposta (Oji-waza): Nuki (esquiva por baixo), Kaeshi (deflexão giratória), Suriage (deslize ascendente) e Uchiotoshi.",
-          "Economia de Movimento: Desvio milimétrico da espada adversária seguido de contragolpe imediato pelo centro (Chushin-sen)."
+          "Economia de Movimento: Desvio milimétrico da espada adversária seguido de contragolpe imediato pelo centro (Chushin-sen).",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line.",
+          "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -472,6 +2122,101 @@
             "title": "AJKF Technical Manual: Principles of Oji-waza and Counters",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/oji_waza"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
+          },
+          {
+            "title": "Web: Kendo (Oji-waza (応じ技))",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: List of Ranma ½ chapters (Oji-waza (応じ技))",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/List_of_Ranma_%C2%BD_chapters"
           }
         ],
         "evolution_log": [
@@ -479,24 +2224,65 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 37.9%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 40.8%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 43.7%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:20",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_oji_waza). Acurácia elevada para 46.6%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 50.0%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 52.9%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 6
       },
       "ji_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 32.0,
-        "current_accuracy": 32.0,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 56.8,
+        "last_calibrated": "04/10/2026 20:24",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "Pressão com Seme (攻め): Rompimento da guarda e quebra da postura mental do adversário antes de desferir o ataque.",
           "Ki-Ken-Tai-Ichi em Combate Livre: Aplicação plena dos fundamentos de golpe, corte e pés sem pré-determinação.",
-          "Chushin-sen: Disputa e domínio ininterrupto da linha central de corte e defesa."
+          "Chushin-sen: Disputa e domínio ininterrupto da linha central de corte e defesa.",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -515,6 +2301,91 @@
             "title": "The Philosophy and Practice of Ji-geiko in Contemporary Kendo",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/ji_geiko"
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
           }
         ],
         "evolution_log": [
@@ -522,24 +2393,75 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "03/10/2026 23:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_ji_geiko). Acurácia elevada para 34.6%. 3 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 38.0%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 40.9%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 06:11",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_ji_geiko). Acurácia elevada para 43.8%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 47.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 15:20",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_ji_geiko). Acurácia elevada para 50.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 53.4%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 56.3%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 8
       },
       "shiai_geiko": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 34.0,
-        "current_accuracy": 34.0,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 55.3,
+        "last_calibrated": "04/10/2026 20:24",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "Yuko-Datotsu Oficial: Validação rigorosa dos 4 critérios regulamentares de Ippon da FIK (Impacto, Fumikomi, Postura, Zanshin).",
           "Sonkyō Protocolar: Entrada, cumprimento cerimonial e agachamento formal respeitando a etiqueta marcial de Shiai.",
-          "Gestão do Tempo e Distância de Combate: Ataques decisivos dentro do tempo regulamentar sem acúmulo de faltas (Hansoku)."
+          "Gestão do Tempo e Distância de Combate: Ataques decisivos dentro do tempo regulamentar sem acúmulo de faltas (Hansoku).",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -558,6 +2480,96 @@
             "title": "FIK - The Regulations of Kendo Shiai and Shinpan",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/shiai_geiko"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
+          },
+          {
+            "title": "Web: Kendo (Shiai-geiko (試合稽古))",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
           }
         ],
         "evolution_log": [
@@ -565,24 +2577,70 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 36.4%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 39.3%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 07:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_shiai_geiko). Acurácia elevada para 42.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 45.6%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 48.5%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 18:20",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_shiai_geiko). Acurácia elevada para 51.4%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 54.8%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 7
       },
       "nihon_kendo_kata": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 45.0,
-        "current_accuracy": 45.0,
-        "last_calibrated": "Inicial Calibrado",
+        "current_accuracy": 59.5,
+        "last_calibrated": "04/10/2026 20:24",
         "mastery_level": "Em Calibração",
         "principles_learned": [
           "Formas Tradicionais com Bokutō: Katas oficiais 1 a 10 entre Uchidachi (mestre) e Shidachi (aprendiz) com rigor estético milenar.",
           "Hasuji de Espada de Madeira: Trajetória precisa de corte com Bokutō parando a milímetros do alvo sem contato violento.",
-          "Reigi e Respiração Cerimonial: Etiqueta, respeito marcial, ritmo cadenciado e presença espiritual silenciosa (Zanshin)."
+          "Reigi e Respiração Cerimonial: Etiqueta, respeito marcial, ritmo cadenciado e presença espiritual silenciosa (Zanshin).",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -601,6 +2659,91 @@
             "title": "AJKF / ZNKR Nihon Kendo Kata Official Technical Guide",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/nihon_kendo_kata"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
           }
         ],
         "evolution_log": [
@@ -608,23 +2751,60 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 47.4%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 50.3%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 53.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 56.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 59.0%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 5
       },
       "bokuto_kihon_waza": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 42.5,
-        "current_accuracy": 42.5,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 57.0,
+        "last_calibrated": "04/10/2026 20:24",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "9 Fundamentos com Bokutō (Bokutō ni yoru Kendō Kihon Waza Keiko Hō): Fixação da mecânica do corte e transição correta de espada.",
-          "Empunhadura e Hasuji: Correção de vícios de Shinai através da empunhadura oval e peso sólido do Bokutō."
+          "Empunhadura e Hasuji: Correção de vícios de Shinai através da empunhadura oval e peso sólido do Bokutō.",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line.",
+          "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -643,6 +2823,91 @@
             "title": "ZNKR Instructional Manual for Bokuto Kihon Waza Keiko Ho",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/bokuto_kihon_waza"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
           }
         ],
         "evolution_log": [
@@ -650,23 +2915,60 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 44.9%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 47.8%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 50.7%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 53.6%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 56.5%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 5
       },
       "shinsa": {
         "movement_weight": 0.35,
         "precision_weight": 0.35,
         "constancy_weight": 0.3,
-        "cadence_tolerance_pct": 0.15,
-        "posture_strictness": 0.8,
+        "cadence_tolerance_pct": 0.12,
+        "posture_strictness": 0.85,
         "initial_accuracy": 36.0,
-        "current_accuracy": 36.0,
-        "last_calibrated": "Inicial Calibrado",
-        "mastery_level": "Fase Inicial (Falsos Positivos)",
+        "current_accuracy": 53.8,
+        "last_calibrated": "04/10/2026 20:24",
+        "mastery_level": "Em Calibração",
         "principles_learned": [
           "Critérios Oficiais de Exame Dan: Postura digna (Shisei), etiqueta impecável (Reigi), Kiai penetrante e domínio dos fundamentos.",
-          "Ataque Resoluto e Zanshin: Demonstração de coragem e técnica limpa sem hesitação, recuo ou movimentos desnecessários."
+          "Ataque Resoluto e Zanshin: Demonstração de coragem e técnica limpa sem hesitação, recuo ou movimentos desnecessários.",
+          "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039...",
+          "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho...",
+          "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta...",
+          "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+          "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+          "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+          "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai).",
+          "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+          "Hasuji: Blade angle alignment preventing flat slapping hits.",
+          "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+          "Chushin-sen: Dominance and defense of the central line.",
+          "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms."
         ],
         "biomechanical_profile": {
           "cadence_optimal": [
@@ -685,6 +2987,91 @@
             "title": "FIK & AJKF Official Examination & Dan Ranking Standard Regulations",
             "type": "Manual Oficial AJKF",
             "url": "https://www.kendo.or.jp/knowledge/shinsa"
+          },
+          {
+            "title": "Web: Kendo (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo"
+          },
+          {
+            "title": "Web: Kendo Kata (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kendo_Kata"
+          },
+          {
+            "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D"
+          },
+          {
+            "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+            "type": "official_manual",
+            "url": "https://www.kendo-fik.org/regulations"
+          },
+          {
+            "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+            "type": "official_manual",
+            "url": "https://www.kendo.or.jp/knowledge/rules/"
+          },
+          {
+            "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+            "type": "scientific_study",
+            "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi"
+          },
+          {
+            "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+            "type": "Manual de Arbitragem AJKF",
+            "url": ""
+          },
+          {
+            "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+            "type": "Tratado Técnico Kata",
+            "url": ""
+          },
+          {
+            "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+            "type": "Manual Oficial FIK",
+            "url": ""
+          },
+          {
+            "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+            "type": "Corpus de Vídeo HD",
+            "url": ""
+          },
+          {
+            "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+            "type": "Corpus de Vídeo Dojo",
+            "url": ""
+          },
+          {
+            "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+            "type": "Mocap Científico",
+            "url": ""
+          },
+          {
+            "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+            "type": "Currículo Pedagógico",
+            "url": ""
+          },
+          {
+            "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+            "type": "Estudo Biomecânico",
+            "url": ""
+          },
+          {
+            "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+            "type": "Modelo Neural",
+            "url": ""
+          },
+          {
+            "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+            "type": "Dataset de Calibração",
+            "url": ""
+          },
+          {
+            "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+            "type": "Base de Conhecimento",
+            "url": ""
           }
         ],
         "evolution_log": [
@@ -692,11 +3079,386 @@
             "date": "02/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
+          },
+          {
+            "date": "04/10/2026 00:07",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 38.4%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 05:09",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 41.3%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 08:13",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 44.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 16:29",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 47.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 19:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_shinsa). Acurácia elevada para 50.0%. 14 princípios consolidados."
+          },
+          {
+            "date": "04/10/2026 20:24",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 53.3%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 0
+        "sessions_count": 6
+      }
+    },
+    "physical_constraints": {
+      "men_strike_biomechanics": {
+        "concept": "men_strike_biomechanics",
+        "modality": "men",
+        "source": "AJKF / FIK Referee Handbook",
+        "authority_tier": 1,
+        "authority_name": "FIK Official Rulebook",
+        "constraints": {
+          "elbow_extension_impact_deg": {
+            "min": 150.0,
+            "max": 175.0,
+            "ideal": 165.0,
+            "unit": "deg"
+          },
+          "spine_tilt_max_deg": 8.5,
+          "fumikomi_hand_foot_window_ms": {
+            "min": -45.0,
+            "max": 30.0,
+            "ideal": 0.0,
+            "unit": "ms"
+          },
+          "zanshin_duration_min_sec": 0.8,
+          "hasuji_max_deviation_deg": 12.0,
+          "blade_contact_zone": "monouchi"
+        }
+      },
+      "kote_strike_biomechanics": {
+        "concept": "kote_strike_biomechanics",
+        "modality": "kote",
+        "source": "FIK Official Regulations - Datotsu-bui Kote",
+        "authority_tier": 1,
+        "authority_name": "FIK Official Rulebook",
+        "constraints": {
+          "wrist_snap_flexion_deg": {
+            "min": 140.0,
+            "max": 175.0,
+            "ideal": 160.0,
+            "unit": "deg"
+          },
+          "spine_tilt_max_deg": 9.0,
+          "fumikomi_hand_foot_window_ms": {
+            "min": -40.0,
+            "max": 35.0,
+            "ideal": 0.0,
+            "unit": "ms"
+          },
+          "zanshin_duration_min_sec": 0.75,
+          "hasuji_max_deviation_deg": 14.0,
+          "blade_contact_zone": "monouchi"
+        }
+      },
+      "do_strike_biomechanics": {
+        "concept": "do_strike_biomechanics",
+        "modality": "do",
+        "source": "AJKF Kendo Manual - Section 4: Do-uchi",
+        "authority_tier": 2,
+        "authority_name": "AJKF Referee Handbook",
+        "constraints": {
+          "body_traverse_angle_deg": {
+            "min": 35.0,
+            "max": 55.0,
+            "ideal": 45.0,
+            "unit": "deg"
+          },
+          "spine_tilt_max_deg": 11.0,
+          "fumikomi_hand_foot_window_ms": {
+            "min": -50.0,
+            "max": 40.0,
+            "ideal": 0.0,
+            "unit": "ms"
+          },
+          "zanshin_duration_min_sec": 0.85,
+          "hasuji_max_deviation_deg": 10.0,
+          "blade_contact_zone": "monouchi"
+        }
+      },
+      "tsuki_thrust_biomechanics": {
+        "concept": "tsuki_thrust_biomechanics",
+        "modality": "tsuki",
+        "source": "FIK Regulations - Tsuki Datotsu-bui & Shisei",
+        "authority_tier": 1,
+        "authority_name": "FIK Official Rulebook",
+        "constraints": {
+          "collinear_thrust_tolerance": 0.07,
+          "spine_tilt_max_deg": 7.0,
+          "fumikomi_hand_foot_window_ms": {
+            "min": -35.0,
+            "max": 25.0,
+            "ideal": 0.0,
+            "unit": "ms"
+          },
+          "zanshin_duration_min_sec": 0.9,
+          "hasuji_max_deviation_deg": 6.0,
+          "blade_contact_zone": "kensaki"
+        }
+      },
+      "tenouchi_and_hasuji_core": {
+        "concept": "tenouchi_and_hasuji_core",
+        "modality": "general",
+        "source": "AJKF / ZNKR Shinpan Practical Handbook",
+        "authority_tier": 2,
+        "authority_name": "AJKF Referee Handbook",
+        "constraints": {
+          "tenouchi_grip_elasticity_ratio": {
+            "min": 0.7,
+            "max": 0.95,
+            "ideal": 0.85,
+            "unit": "ratio"
+          },
+          "hasuji_cut_angle_max_drift_deg": 12.0,
+          "left_heel_elevation_min_cm": 2.5
+        }
+      }
+    },
+    "empirical_distributions": {
+      "MEN": {
+        "target_impact": {
+          "mean": 0.8517,
+          "std": 0.0339,
+          "min": 0.8,
+          "max": 0.9,
+          "p25": 0.8275,
+          "p50": 0.855,
+          "p75": 0.875,
+          "p90": 0.89,
+          "sample_count": 6
+        },
+        "fumikomi_sync": {
+          "mean": 0.806,
+          "std": 0.0344,
+          "min": 0.76,
+          "max": 0.85,
+          "p25": 0.78,
+          "p50": 0.8,
+          "p75": 0.84,
+          "p90": 0.846,
+          "sample_count": 5
+        },
+        "posture": {
+          "mean": 0.85,
+          "std": 0.0224,
+          "min": 0.82,
+          "max": 0.88,
+          "p25": 0.835,
+          "p50": 0.85,
+          "p75": 0.865,
+          "p90": 0.874,
+          "sample_count": 4
+        },
+        "zanshin": {
+          "mean": 0.8025,
+          "std": 0.0334,
+          "min": 0.75,
+          "max": 0.84,
+          "p25": 0.7875,
+          "p50": 0.81,
+          "p75": 0.825,
+          "p90": 0.834,
+          "sample_count": 4
+        },
+        "hasuji": {
+          "mean": 0.8375,
+          "std": 0.0303,
+          "min": 0.8,
+          "max": 0.88,
+          "p25": 0.815,
+          "p50": 0.835,
+          "p75": 0.8575,
+          "p90": 0.871,
+          "sample_count": 4
+        }
+      },
+      "KOTE": {
+        "target_impact": {
+          "mean": 0.8375,
+          "std": 0.0303,
+          "min": 0.8,
+          "max": 0.88,
+          "p25": 0.815,
+          "p50": 0.835,
+          "p75": 0.8575,
+          "p90": 0.871,
+          "sample_count": 4
+        },
+        "fumikomi_sync": {
+          "mean": 0.805,
+          "std": 0.0296,
+          "min": 0.76,
+          "max": 0.84,
+          "p25": 0.79,
+          "p50": 0.81,
+          "p75": 0.825,
+          "p90": 0.834,
+          "sample_count": 4
+        },
+        "posture": {
+          "mean": 0.8133,
+          "std": 0.0249,
+          "min": 0.78,
+          "max": 0.84,
+          "p25": 0.8,
+          "p50": 0.82,
+          "p75": 0.83,
+          "p90": 0.836,
+          "sample_count": 3
+        },
+        "zanshin": {
+          "mean": 0.7667,
+          "std": 0.034,
+          "min": 0.72,
+          "max": 0.8,
+          "p25": 0.75,
+          "p50": 0.78,
+          "p75": 0.79,
+          "p90": 0.796,
+          "sample_count": 3
+        },
+        "hasuji": {
+          "mean": 0.8,
+          "std": 0.0163,
+          "min": 0.78,
+          "max": 0.82,
+          "p25": 0.79,
+          "p50": 0.8,
+          "p75": 0.81,
+          "p90": 0.816,
+          "sample_count": 3
+        }
+      },
+      "DO": {
+        "target_impact": {
+          "mean": 0.8567,
+          "std": 0.017,
+          "min": 0.84,
+          "max": 0.88,
+          "p25": 0.845,
+          "p50": 0.85,
+          "p75": 0.865,
+          "p90": 0.874,
+          "sample_count": 3
+        },
+        "fumikomi_sync": {
+          "mean": 0.7767,
+          "std": 0.0205,
+          "min": 0.75,
+          "max": 0.8,
+          "p25": 0.765,
+          "p50": 0.78,
+          "p75": 0.79,
+          "p90": 0.796,
+          "sample_count": 3
+        },
+        "posture": {
+          "mean": 0.77,
+          "std": 0.0216,
+          "min": 0.75,
+          "max": 0.8,
+          "p25": 0.755,
+          "p50": 0.76,
+          "p75": 0.78,
+          "p90": 0.792,
+          "sample_count": 3
+        },
+        "zanshin": {
+          "mean": 0.8233,
+          "std": 0.0205,
+          "min": 0.8,
+          "max": 0.85,
+          "p25": 0.81,
+          "p50": 0.82,
+          "p75": 0.835,
+          "p90": 0.844,
+          "sample_count": 3
+        },
+        "hasuji": {
+          "mean": 0.84,
+          "std": 0.0163,
+          "min": 0.82,
+          "max": 0.86,
+          "p25": 0.83,
+          "p50": 0.84,
+          "p75": 0.85,
+          "p90": 0.856,
+          "sample_count": 3
+        }
+      },
+      "TSUKI": {
+        "target_impact": {
+          "mean": 0.9,
+          "std": 0.0163,
+          "min": 0.88,
+          "max": 0.92,
+          "p25": 0.89,
+          "p50": 0.9,
+          "p75": 0.91,
+          "p90": 0.916,
+          "sample_count": 3
+        },
+        "fumikomi_sync": {
+          "mean": 0.8233,
+          "std": 0.0205,
+          "min": 0.8,
+          "max": 0.85,
+          "p25": 0.81,
+          "p50": 0.82,
+          "p75": 0.835,
+          "p90": 0.844,
+          "sample_count": 3
+        },
+        "posture": {
+          "mean": 0.8767,
+          "std": 0.0205,
+          "min": 0.85,
+          "max": 0.9,
+          "p25": 0.865,
+          "p50": 0.88,
+          "p75": 0.89,
+          "p90": 0.896,
+          "sample_count": 3
+        },
+        "zanshin": {
+          "mean": 0.85,
+          "std": 0.0245,
+          "min": 0.82,
+          "max": 0.88,
+          "p25": 0.835,
+          "p50": 0.85,
+          "p75": 0.865,
+          "p90": 0.874,
+          "sample_count": 3
+        },
+        "hasuji": {
+          "mean": 0.8767,
+          "std": 0.0205,
+          "min": 0.85,
+          "max": 0.9,
+          "p25": 0.865,
+          "p50": 0.88,
+          "p75": 0.89,
+          "p90": 0.896,
+          "sample_count": 3
+        }
       }
     }
   },
-  "training_sessions_completed": 0
+  "training_sessions_completed": 16,
+  "last_retrained_at": "2026-10-04T22:30:00.578677"
 }

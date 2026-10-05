@@ -28,6 +28,9 @@ def _dummy_webrtc_streamer(*args: Any, **kwargs: Any) -> Any:
     return _DummyWebRtcContext()
 
 
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="google_crc32c")
+
 if TYPE_CHECKING:
     from streamlit_webrtc import (
         webrtc_streamer,

@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-10-03T03:17:57Z",
+  "updated_at": "2026-10-05T01:41:13Z",
   "profiles": {
     "KENSHI_SOLO": {
       "kenshi_id": "KENSHI_SOLO",
       "display_name": "Kendoca Principal",
       "created_at": "2026-10-02T20:05:46Z",
-      "last_updated_at": "2026-10-03T02:58:32Z",
-      "sessions_count": 37,
+      "last_updated_at": "2026-10-04T01:02:54Z",
+      "sessions_count": 38,
       "strikes_count": 0,
       "metrics": {
         "posture_resting_angle_deg": {
@@ -29,7 +29,7 @@
           "m2": 0.0
         },
         "spine_tilt_strike_deg": {
-          "count": 5,
+          "count": 6,
           "mean": 92.0,
           "std_dev": 0.001,
           "m2": 0.0
@@ -72,9 +72,9 @@
       "kenshi_id": "KENSHI_SHIRO",
       "display_name": "Kendoca Shiro (Esquerda)",
       "created_at": "2026-10-02T20:06:13Z",
-      "last_updated_at": "2026-10-03T03:17:57Z",
-      "sessions_count": 11,
-      "strikes_count": 143,
+      "last_updated_at": "2026-10-05T01:41:13Z",
+      "sessions_count": 15,
+      "strikes_count": 242,
       "metrics": {
         "posture_resting_angle_deg": {
           "count": 0,
@@ -83,22 +83,22 @@
           "m2": 0.0
         },
         "fumikomi_window_ms": {
-          "count": 143,
-          "mean": 7.4518,
-          "std_dev": 46.8305,
-          "m2": 311419.7702
+          "count": 242,
+          "mean": 5.6418,
+          "std_dev": 44.9975,
+          "m2": 487971.2389
         },
         "cadence_cpm": {
-          "count": 11,
-          "mean": 9.1,
-          "std_dev": 2.5255,
-          "m2": 63.7795
+          "count": 15,
+          "mean": 9.3867,
+          "std_dev": 2.3567,
+          "m2": 77.7567
         },
         "spine_tilt_strike_deg": {
-          "count": 11,
-          "mean": 95.1909,
-          "std_dev": 2.5575,
-          "m2": 65.4091
+          "count": 15,
+          "mean": 95.7333,
+          "std_dev": 2.3563,
+          "m2": 77.7333
         },
         "zanshin_duration_s": {
           "count": 0,
@@ -138,9 +138,9 @@
       "kenshi_id": "KENSHI_AKA",
       "display_name": "Kendoca Aka (Direita)",
       "created_at": "2026-10-02T20:06:13Z",
-      "last_updated_at": "2026-10-03T03:17:57Z",
-      "sessions_count": 11,
-      "strikes_count": 157,
+      "last_updated_at": "2026-10-05T01:41:13Z",
+      "sessions_count": 15,
+      "strikes_count": 253,
       "metrics": {
         "posture_resting_angle_deg": {
           "count": 0,
@@ -149,22 +149,22 @@
           "m2": 0.0
         },
         "fumikomi_window_ms": {
-          "count": 157,
-          "mean": 4.6662,
-          "std_dev": 61.8932,
-          "m2": 597599.9202
+          "count": 253,
+          "mean": 4.0802,
+          "std_dev": 59.8195,
+          "m2": 901751.1321
         },
         "cadence_cpm": {
-          "count": 11,
-          "mean": 10.2182,
-          "std_dev": 3.2707,
-          "m2": 106.9765
+          "count": 15,
+          "mean": 10.1267,
+          "std_dev": 2.9548,
+          "m2": 122.2293
         },
         "spine_tilt_strike_deg": {
-          "count": 11,
-          "mean": 95.1182,
-          "std_dev": 2.7946,
-          "m2": 78.0964
+          "count": 15,
+          "mean": 95.8133,
+          "std_dev": 2.6511,
+          "m2": 98.3971
         },
         "zanshin_duration_s": {
           "count": 0,

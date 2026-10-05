@@ -16,8 +16,9 @@ import html
 os.environ["STREAMLIT_SERVER_MAX_UPLOAD_SIZE"] = "51200"
 os.environ["STREAMLIT_SERVER_MAX_MESSAGE_SIZE"] = "51200"
 
-# Suprime aviso benigno interno de depreciação do protobuf com mediapipe
+# Suprime aviso benigno interno de depreciação do protobuf com mediapipe e crc32c
 warnings.filterwarnings("ignore", category=UserWarning, module="google.protobuf")
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="google_crc32c")
 
 import cv2
 import numpy as np
