@@ -1752,6 +1752,11 @@ elif nav_page == "settings":
                 else:
                     effective_duration_min: float = float(sel_dur_opt)
 
+                if effective_duration_min >= 10.0:
+                    st.caption(
+                        f"⏱️ **Pesquisa Ativa Contínua ({int(effective_duration_min)} min):** O motor de IA pesquisará referências técnicas e processará amostras biomecânicas durante todo o período programado, com gravação incremental contínua."
+                    )
+
             # Indicador de Acurácia Atual Acumulada do Escopo Selecionado
             scope_acc_data = auto_trainer.get_scope_current_accuracy(sel_scope_key)
             c_acc = scope_acc_data["current_accuracy"]
@@ -1834,89 +1839,79 @@ elif nav_page == "settings":
                 depth_sel: str = str(depth_sel_raw or "padrao")
 
             # Botão de Execução
-            btn_start_train = st.button(
-                "🚀 Iniciar Procura por IA & Treinamento Automático",
-                type="primary",
-                width="stretch",
-                key="btn_run_auto_trainer"
-            )
+            # Exibição e controle de Treinamento Ativo
+            if auto_trainer.is_running():
+                ckpt = auto_trainer.load_checkpoint() or {}
+                t_dur = max(1.0, float(ckpt.get("target_duration_sec") or (effective_duration_min * 60.0)))
+                elap_s = float(ckpt.get("elapsed_seconds") or 0.0)
+                rem_s = max(0.0, float(ckpt.get("remaining_seconds") or (t_dur - elap_s)))
+                pct = int(min(100, max(0, (elap_s / t_dur) * 100)))
 
-            # Placeholders para exibição dinâmica
-            if btn_start_train:
-                progress_bar = st.progress(0)
-                status_placeholder = st.empty()
-                metrics_placeholder = st.empty()
-                logs_placeholder = st.empty()
+                st.progress(pct)
+                acc_val = float(ckpt.get("current_accuracy") or 75.0)
+                init_acc_val = float(ckpt.get("initial_accuracy") or 75.0)
+                acc_gain = round(acc_val - init_acc_val, 1)
+                gain_signal = f"+{acc_gain:.1f}%" if acc_gain >= 0 else f"{acc_gain:.1f}%"
+                samples = int(ckpt.get("samples_processed") or 0)
+                stage_lbl = str(ckpt.get("current_stage") or "Mineração e Aprendizado Biomecânico")
+                subtask_lbl = str(ckpt.get("current_subtask") or "Pesquisa Ativa Contínua")
 
-                def update_progress_ui(data: Dict[str, Any]):
-                    pct = int(data.get("percent") or 0)
-                    progress_bar.progress(pct)
-                    stage_lbl = str(data.get("current_stage") or "")
-                    subtask_lbl = str(data.get("current_subtask") or "")
-                    rem_s = float(data.get("remaining_seconds") or 0.0)
-                    elap_s = float(data.get("elapsed_seconds") or 0.0)
-                    acc_val = float(data.get("current_accuracy") or 75.0)
-                    init_acc_val = float(data.get("initial_accuracy") or 75.0)
-                    raw_gain = data.get("accuracy_gain")
-                    acc_gain: float = float(raw_gain) if raw_gain is not None else round(acc_val - init_acc_val, 1)
-                    gain_signal = f"+{acc_gain:.1f}%" if acc_gain >= 0 else f"{acc_gain:.1f}%"
-                    samples = int(data.get("samples_processed") or 0)
+                def _fmt_sec(s_val: float) -> str:
+                    if s_val >= 60:
+                        m = int(s_val // 60)
+                        s = int(s_val % 60)
+                        return f"{m}m {s:02d}s"
+                    return f"{s_val:.1f}s"
 
-                    # Formatação de tempo decorrido e restante
-                    def _fmt_sec(s_val: float) -> str:
-                        if s_val >= 60:
-                            m = int(s_val // 60)
-                            s = int(s_val % 60)
-                            return f"{m}m {s:02d}s"
-                        return f"{s_val:.1f}s"
+                st.markdown(
+                    f"**Etapa Atual:** `{stage_lbl}`\n\n"
+                    f"🥋 **Aprendizado Ativo:** *{subtask_lbl}*\n\n"
+                    f"⏱️ **Decorrido:** `{_fmt_sec(elap_s)}` &nbsp;|&nbsp; "
+                    f"⏳ **Restante:** `{_fmt_sec(rem_s)}` &nbsp;|&nbsp; "
+                    f"📊 **Progresso:** `{pct}%` &nbsp;|&nbsp; "
+                    f"🔬 **Amostras Biomecânicas:** `{samples:,}`"
+                )
+                st.metric("🎯 Acurácia Biomecânica Estimada", f"{acc_val:.1f}%", gain_signal)
 
-                    status_placeholder.markdown(
-                        f"**Etapa Atual:** `{stage_lbl}`\n\n"
-                        f"🥋 **Aprendizado Ativo:** *{subtask_lbl}*\n\n"
-                        f"⏱️ **Decorrido:** `{_fmt_sec(elap_s)}` &nbsp;|&nbsp; "
-                        f"⏳ **Restante:** `{_fmt_sec(rem_s)}` &nbsp;|&nbsp; "
-                        f"📊 **Progresso:** `{pct}%` &nbsp;|&nbsp; "
-                        f"🔬 **Amostras Biomecânicas:** `{samples:,}`"
-                    )
-                    metrics_placeholder.metric("🎯 Acurácia Biomecânica Estimada", f"{acc_val:.1f}%", gain_signal)
-                    
-                    recent_logs = data.get("logs", [])
-                    if recent_logs:
-                        logs_md = "\n".join(f"- {log_line}" for log_line in recent_logs)
-                        logs_placeholder.markdown(f"**Logs da Execução de IA:**\n{logs_md}")
+                recent_logs = ckpt.get("training_logs", [])
+                if recent_logs:
+                    logs_md = "\n".join(f"- {log_line}" for log_line in recent_logs[-8:])
+                    st.markdown(f"**Logs da Execução de IA:**\n{logs_md}")
 
-                with st.spinner("Conectando aos repositórios técnicos e executando mineração de conhecimento..."):
-                    try:
-                        train_res = auto_trainer.run_auto_training(
-                            scope_key=sel_scope_key,
-                            duration_minutes=effective_duration_min,
-                            intensity=depth_sel,
-                            include_video=inc_vid_chk,
-                            include_text_guidelines=inc_txt_chk,
-                            latent_strategy=latent_strategy,
-                            progress_callback=update_progress_ui
-                        )
-                    except Exception as ex:
-                        auto_trainer.consolidate_pending_checkpoint()
-                        train_res = {
-                            "status": "interrupted_salvaged",
-                            "scope_name": AUTO_TRAINING_SCOPES.get(sel_scope_key, {}).get("name", sel_scope_key),
-                            "error_message": str(ex),
-                            "duration_seconds_actual": 0.0,
-                            "initial_accuracy_pct": 75.0,
-                            "final_accuracy_pct": 75.0,
-                            "accuracy_gain_pct": 0.0,
-                            "sources_consulted": [],
-                            "improvements_summary": ["Conhecimento e estado do treinamento salvos com segurança na Base de Conhecimento."],
-                            "training_logs": [f"⚠️ Interrupção: {ex}"]
-                        }
+                col_stop, _ = st.columns([1.2, 2])
+                with col_stop:
+                    if st.button("⏹️ Parar Treinamento e Salvar Agora", type="secondary", use_container_width=True, key="btn_stop_auto_train"):
+                        auto_trainer.request_stop()
+                        st.toast("Salvando e consolidando treinamento...", icon="💾")
+                        time.sleep(1.0)
+                        st.rerun()
 
-                st.session_state["last_auto_train_res"] = train_res
-                if train_res.get("status") == "interrupted_salvaged":
-                    st.toast("💾 Aprendizado salvo e consolidado com sucesso na Base de Conhecimento!", icon="🛡️")
-                else:
-                    st.toast(f"🎉 Treinamento Automático ({train_res['scope_name']}) concluído!", icon="🚀")
+                time.sleep(1.5)
                 st.rerun()
+            else:
+                # Sincroniza resultado final assim que o treino em background termina
+                last_bg_res = auto_trainer.get_last_result()
+                if last_bg_res and st.session_state.get("last_auto_train_res") != last_bg_res:
+                    st.session_state["last_auto_train_res"] = last_bg_res
+
+                btn_start_train = st.button(
+                    "🚀 Iniciar Procura por IA & Treinamento Automático",
+                    type="primary",
+                    width="stretch",
+                    key="btn_run_auto_trainer"
+                )
+
+                if btn_start_train:
+                    auto_trainer.start_training_thread(
+                        scope_key=sel_scope_key,
+                        duration_minutes=effective_duration_min,
+                        intensity=depth_sel,
+                        include_video=inc_vid_chk,
+                        include_text_guidelines=inc_txt_chk,
+                        latent_strategy=latent_strategy
+                    )
+                    st.toast(f"🚀 Treinamento de {int(effective_duration_min)} min iniciado! Executando pesquisa contínua...", icon="🥋")
+                    st.rerun()
 
             # Exibição dos resultados do último treinamento se disponível
             if "last_auto_train_res" in st.session_state:
@@ -4054,6 +4049,13 @@ elif nav_page in ["match", "training", "analysis"]:
                                 </div>"""
                             )
                         train_events_ph.markdown("".join(rep_cards), unsafe_allow_html=True)
+
+                    st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+                    if st.button("⏹️ Finalizar Sessão WebRTC e Gravar Relatório", key="save_webrtc_live_training_report_btn", use_container_width=True):
+                        with webrtc_ctx.video_processor.lock:
+                            st.session_state["last_live_training_report"] = webrtc_ctx.video_processor.live_train_mgr.generate_final_session_report()
+                        st.toast("✅ Sessão gravada e relatório consolidado gerado!", icon="🎓")
+                        st.rerun()
         else:
             st.markdown("---")
             col_ctrl1, col_ctrl2 = st.columns([1.2, 1])
