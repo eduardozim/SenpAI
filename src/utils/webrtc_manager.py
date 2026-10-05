@@ -28,6 +28,9 @@ def _dummy_webrtc_streamer(*args: Any, **kwargs: Any) -> Any:
     return _DummyWebRtcContext()
 
 
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="google_crc32c")
+
 if TYPE_CHECKING:
     from streamlit_webrtc import (
         webrtc_streamer,
@@ -61,10 +64,77 @@ from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA
 
 def _patch_aioice_for_python314() -> None:
     """
-    Previne exceção não tratada no aioice quando rodando em Python 3.14+ em ambientes de nuvem.
-    No Python 3.14, ao falhar uma transação UDP de STUN e fechar o transport, o _sock interno
-    é anulado e a chamada Transaction.__retry() lança AttributeError: 'NoneType' object has no attribute 'sendto'.
+    Previne exceções não tratadas no asyncio / aioice quando rodando em Python 3.14+ em ambientes de nuvem.
+    No Python 3.14 em Linux/containers, ao fechar o datagram transport UDP de STUN, o _sock interno
+    e o _loop são anulados, e chamadas subsequentes de retry/sendto disparam:
+    - AttributeError: 'NoneType' object has no attribute 'sendto'
+    - AttributeError: 'NoneType' object has no attribute 'call_exception_handler'
     """
+    # 1. Patch no asyncio selector_events DatagramTransport
+    try:
+        import asyncio.selector_events
+        transport_cls = getattr(asyncio.selector_events, "_SelectorDatagramTransport", None)
+        if transport_cls and not getattr(transport_cls, "_senpai_sendto_patched", False):
+            orig_sendto = transport_cls.sendto
+            orig_fatal = transport_cls._fatal_error
+
+            def safe_sendto(self: Any, data: Any, addr: Any = None) -> Any:
+                if getattr(self, "_sock", None) is None or getattr(self, "_loop", None) is None:
+                    return
+                if hasattr(self, "is_closing") and self.is_closing():
+                    return
+                try:
+                    return orig_sendto(self, data, addr)
+                except (AttributeError, OSError):
+                    return
+
+            def safe_fatal_error(self: Any, exc: Any, message: str = "Fatal error on transport") -> Any:
+                if getattr(self, "_loop", None) is None:
+                    try:
+                        self._force_close(exc)
+                    except Exception:
+                        pass
+                    return
+                try:
+                    return orig_fatal(self, exc, message)
+                except Exception:
+                    try:
+                        self._force_close(exc)
+                    except Exception:
+                        pass
+
+            transport_cls.sendto = safe_sendto  # type: ignore
+            transport_cls._fatal_error = safe_fatal_error  # type: ignore
+            transport_cls._senpai_sendto_patched = True  # type: ignore
+    except Exception:
+        pass
+
+    # 2. Patch no aioice.ice.StunProtocol.send_stun
+    try:
+        import aioice.ice
+        stun_proto_cls = getattr(aioice.ice, "StunProtocol", None)
+        if stun_proto_cls and not getattr(stun_proto_cls, "_senpai_send_stun_patched", False):
+            orig_send_stun = stun_proto_cls.send_stun
+
+            def safe_send_stun(self: Any, message: Any, addr: Any) -> Any:
+                transport = getattr(self, "transport", None)
+                if transport is None:
+                    return
+                if getattr(transport, "_sock", 1) is None or getattr(transport, "_loop", 1) is None:
+                    return
+                if hasattr(transport, "is_closing") and transport.is_closing():
+                    return
+                try:
+                    return orig_send_stun(self, message, addr)
+                except Exception:
+                    return
+
+            stun_proto_cls.send_stun = safe_send_stun  # type: ignore
+            stun_proto_cls._senpai_send_stun_patched = True  # type: ignore
+    except Exception:
+        pass
+
+    # 3. Patch no aioice.stun.Transaction.__retry
     try:
         import aioice.stun
         orig_retry = getattr(aioice.stun.Transaction, "_Transaction__retry", None)
@@ -72,16 +142,16 @@ def _patch_aioice_for_python314() -> None:
             def safe_retry(self: Any) -> Any:
                 try:
                     return orig_retry(self)
-                except (AttributeError, OSError):
+                except BaseException:
                     pass
+
             aioice.stun.Transaction._Transaction__retry = safe_retry  # type: ignore
             aioice.stun.Transaction._senpai_patched = True  # type: ignore
     except Exception:
         pass
 
 
-if HAS_WEBRTC:
-    _patch_aioice_for_python314()
+_patch_aioice_for_python314()
 
 
 def get_rtc_configuration() -> Optional[Any]:

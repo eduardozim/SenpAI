@@ -256,7 +256,9 @@ class KendokaTrainingProfile:
         strengths: Optional[List[str]] = None,
         improvements: Optional[List[str]] = None,
         recommended_exercises: Optional[List[Dict[str, str]]] = None,
-        repetition_timeline: Optional[List[Dict[str, Any]]] = None
+        repetition_timeline: Optional[List[Dict[str, Any]]] = None,
+        kinesthetic_deviations: Optional[Dict[str, Any]] = None,
+        kinesthetic_insights: Optional[List[str]] = None,
     ):
         self.kendoka_id = kendoka_id  # "KENSHI_SHIRO", "KENSHI_AKA" ou "KENSHI_SOLO"
         self.default_name = default_name
@@ -267,6 +269,8 @@ class KendokaTrainingProfile:
         self.improvements = improvements or []
         self.recommended_exercises = recommended_exercises or []
         self.repetition_timeline = repetition_timeline or []
+        self.kinesthetic_deviations = kinesthetic_deviations or {}
+        self.kinesthetic_insights = kinesthetic_insights or []
 
     def set_custom_name(self, name: str):
         if name and name.strip():
@@ -356,6 +360,20 @@ class KendokaTrainingProfile:
         else:
             md_lines.append("- *Manter rotina padrão de Suburi e Kihon diário.*")
 
+        # Seção 3: Modelagem do Estilo Individual & Baseline Cinestésico (Eixo 6)
+        if self.kinesthetic_insights or self.kinesthetic_deviations:
+            md_lines.append(f"---")
+            md_lines.append(f"")
+            md_lines.append(f"## 3. Análise Comparativa com o Baseline Cinestésico Individual (Eixo 6)")
+            md_lines.append(f"")
+            md_lines.append(f"O SenpAI compara a execução atual com o estilo e padrão habitual histórico do praticante:")
+            if self.kinesthetic_insights:
+                for ins in self.kinesthetic_insights:
+                    md_lines.append(f"- 🧬 {ins}")
+            else:
+                md_lines.append(f"- 🧬 *Padrão biomecânico perfeitamente alinhado com o baseline histórico do praticante.*")
+
+        md_lines.append(f"")
         md_lines.append(f"---")
         md_lines.append(f"*Relatório gerado automaticamente pelo SenpAI (Sistema de Avaliação Biomecânica de Kendo com IA).*")
         return "\n".join(md_lines)
@@ -371,7 +389,9 @@ class KendokaTrainingProfile:
             "strengths": self.strengths,
             "improvements": self.improvements,
             "recommended_exercises": self.recommended_exercises,
-            "repetition_timeline": self.repetition_timeline
+            "repetition_timeline": self.repetition_timeline,
+            "kinesthetic_deviations": self.kinesthetic_deviations,
+            "kinesthetic_insights": self.kinesthetic_insights
         }
 
 
@@ -868,6 +888,31 @@ class TrainingAnalyzer:
             pillars_k1 = self.calculate_pillar_metrics(primary_history, strikes_k1, modality_key, fps=fps)
             str_k1, imp_k1, exe_k1 = self.generate_pedagogical_feedback(pillars_k1, modality_key, c_name)
 
+            # Eixo 6: Integração com o Baseline Cinestésico Individual
+            kin_devs_k1 = {}
+            kin_ins_k1 = []
+            try:
+                from src.analytics.kenshi_style_model import KinestheticProfileManager
+                kin_mgr = KinestheticProfileManager()
+                # Avalia contra o baseline existente
+                prof_k1 = kin_mgr.get_or_create_profile(k_id, display_name=c_name)
+                eval_k1 = prof_k1.evaluate_strike_against_baseline(
+                    strike_type="MEN",
+                    observed_spine_tilt_deg=pillars_k1.movimentacao_submetrics.get("verticalidade_coluna")
+                )
+                kin_devs_k1 = eval_k1.get("deviations", {})
+                kin_ins_k1 = eval_k1.get("insights", [])
+
+                # Atualiza com a sessão atual
+                kin_mgr.record_training_session(
+                    kenshi_id=k_id,
+                    display_name=c_name,
+                    cadence_cpm=pillars_k1.cadence_cpm,
+                    mean_spine_tilt=pillars_k1.movimentacao_submetrics.get("verticalidade_coluna")
+                )
+            except Exception:
+                pass
+
             rep_timeline = [
                 {"repetition": i + 1, "timestamp": getattr(s, "timestamp_impact", getattr(s, "timestamp", f"{i*2}s")), "technique": getattr(s, "type", "MEN")}
                 for i, s in enumerate(strikes_k1)
@@ -882,7 +927,9 @@ class TrainingAnalyzer:
                 strengths=str_k1,
                 improvements=imp_k1,
                 recommended_exercises=exe_k1,
-                repetition_timeline=rep_timeline
+                repetition_timeline=rep_timeline,
+                kinesthetic_deviations=kin_devs_k1,
+                kinesthetic_insights=kin_ins_k1
             ))
         else:
             # 2 Kendocas em Treino (ex: Kirikaeshi, Uchikomi, Kakari, Kata, Shinsa, Ji-geiko)
@@ -910,6 +957,29 @@ class TrainingAnalyzer:
                 {"repetition": i + 1, "timestamp": getattr(s, "timestamp_impact", getattr(s, "timestamp", f"{i*2}s")), "technique": getattr(s, "type", "MEN")}
                 for i, s in enumerate(strikes_k1)
             ]
+
+            kin_devs_k1 = {}
+            kin_ins_k1 = []
+            try:
+                from src.analytics.kenshi_style_model import KinestheticProfileManager
+                kin_mgr = KinestheticProfileManager()
+                prof_k1 = kin_mgr.get_or_create_profile(k1_id, display_name=k1_c_name)
+                eval_k1 = prof_k1.evaluate_strike_against_baseline(
+                    strike_type="MEN",
+                    observed_spine_tilt_deg=pillars_k1.movimentacao_submetrics.get("verticalidade_coluna")
+                )
+                kin_devs_k1 = eval_k1.get("deviations", {})
+                kin_ins_k1 = eval_k1.get("insights", [])
+
+                kin_mgr.record_training_session(
+                    kenshi_id=k1_id,
+                    display_name=k1_c_name,
+                    cadence_cpm=pillars_k1.cadence_cpm,
+                    mean_spine_tilt=pillars_k1.movimentacao_submetrics.get("verticalidade_coluna")
+                )
+            except Exception:
+                pass
+
             kendokas_list.append(KendokaTrainingProfile(
                 kendoka_id=k1_id,
                 default_name=k1_def_name,
@@ -919,7 +989,9 @@ class TrainingAnalyzer:
                 strengths=str_k1,
                 improvements=imp_k1,
                 recommended_exercises=exe_k1,
-                repetition_timeline=rep_tl_k1
+                repetition_timeline=rep_tl_k1,
+                kinesthetic_deviations=kin_devs_k1,
+                kinesthetic_insights=kin_ins_k1
             ))
 
             # Kendoca 2 (Aka / Direita)
@@ -932,6 +1004,29 @@ class TrainingAnalyzer:
                 {"repetition": i + 1, "timestamp": getattr(s, "timestamp_impact", getattr(s, "timestamp", f"{i*2}s")), "technique": getattr(s, "type", "MEN")}
                 for i, s in enumerate(strikes_k2)
             ]
+
+            kin_devs_k2 = {}
+            kin_ins_k2 = []
+            try:
+                from src.analytics.kenshi_style_model import KinestheticProfileManager
+                kin_mgr = KinestheticProfileManager()
+                prof_k2 = kin_mgr.get_or_create_profile(k2_id, display_name=k2_c_name)
+                eval_k2 = prof_k2.evaluate_strike_against_baseline(
+                    strike_type="MEN",
+                    observed_spine_tilt_deg=pillars_k2.movimentacao_submetrics.get("verticalidade_coluna")
+                )
+                kin_devs_k2 = eval_k2.get("deviations", {})
+                kin_ins_k2 = eval_k2.get("insights", [])
+
+                kin_mgr.record_training_session(
+                    kenshi_id=k2_id,
+                    display_name=k2_c_name,
+                    cadence_cpm=pillars_k2.cadence_cpm,
+                    mean_spine_tilt=pillars_k2.movimentacao_submetrics.get("verticalidade_coluna")
+                )
+            except Exception:
+                pass
+
             kendokas_list.append(KendokaTrainingProfile(
                 kendoka_id=k2_id,
                 default_name=k2_def_name,
@@ -941,7 +1036,9 @@ class TrainingAnalyzer:
                 strengths=str_k2,
                 improvements=imp_k2,
                 recommended_exercises=exe_k2,
-                repetition_timeline=rep_tl_k2
+                repetition_timeline=rep_tl_k2,
+                kinesthetic_deviations=kin_devs_k2,
+                kinesthetic_insights=kin_ins_k2
             ))
 
         # 3. Resumo Textual da Sessão de Treinamento

@@ -302,16 +302,17 @@ class MultiCameraFusionEngine:
         posture_score = self.biomechanics.evaluate_posture(impact_pose)
         zanshin_score = self.biomechanics.evaluate_zanshin(pose_history, best_peak_f, min(total_len - 1, best_peak_f + 15))
 
-        # 3. Avaliação pelo Motor de Calibração (Training Model)
+        # Classificação da técnica neste ângulo antes da calibração (Eixo 1.4)
+        detected_tech = self.event_spotter._classify_technique(pose_history, max(0, best_peak_f - 10), best_peak_f)
+
+        # 3. Avaliação pelo Motor de Calibração com pesos especializados por golpe
         calib_eval = self.calibrator.evaluate_strike(
             target_score=target_score,
             fumikomi_score=fumikomi_score,
             posture_score=posture_score,
-            zanshin_score=zanshin_score
+            zanshin_score=zanshin_score,
+            strike_type=detected_tech
         )
-
-        # Classificação da técnica neste ângulo
-        detected_tech = self.event_spotter._classify_technique(pose_history, max(0, best_peak_f - 10), best_peak_f)
 
         # Critérios de confirmação baseados estritamente no modelo de treinamento:
         # 1. Movimentação real acima do limiar físico mínimo do perfil (descarta repouso/ruído)
@@ -430,11 +431,13 @@ class MultiCameraFusionEngine:
         avg_zanshin = float(np.mean([ev.zanshin_score for ev in evidences])) if evidences else 0.0
         avg_offset = float(np.mean([ev.fumikomi_offset_ms for ev in evidences])) if evidences else 0.0
 
+        chosen_tech = evidences[0].technique if (evidences and hasattr(evidences[0], "technique")) else "MEN"
         joint_calib = self.calibrator.evaluate_strike(
             target_score=avg_target / 100.0,
             fumikomi_score=avg_fumikomi / 100.0,
             posture_score=avg_posture / 100.0,
-            zanshin_score=avg_zanshin / 100.0
+            zanshin_score=avg_zanshin / 100.0,
+            strike_type=chosen_tech
         )
 
         is_overall_ippon = is_confirmed and joint_calib["is_valid"]

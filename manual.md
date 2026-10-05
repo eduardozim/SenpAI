@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.0.0`
+> **Versão Oficial do Sistema**: `v 0.3.5.0`
 
 ---
 
@@ -143,6 +143,8 @@ Dev/
 ├── src/
 │   ├── analytics/
 │   │   ├── biomechanics.py         # Cálculo numérico dos critérios de Yuko-Datotsu e Maai
+│   │   ├── camera_invariance.py    # Invariância de câmera, compensação de perspectiva e Maai 3D (Eixo 5)
+│   │   ├── kenshi_style_model.py   # Modelagem de baseline cinestésico individual e warm start de perfis (Eixo 6)
 │   │   ├── event_spotter.py        # Detecção temporal de picos cinemáticos, debounce e NMS de golpes
 │   │   ├── multi_camera_fusion.py  # Fusão de consenso multi-câmeras e avaliação Yuko-Datotsu
 │   │   ├── sonkyo_detector.py      # Identificação de Sonkyō, delimitação da luta e aprendizado
@@ -172,6 +174,8 @@ Dev/
 │   └── pipeline.py                 # Pipeline orquestrador end-to-end de vídeo e validação de Maai
 ├── tests/
 │   ├── test_active_learning_eixo4.py # Testes de aprendizado ativo, golden benchmark e assistente LLM
+│   ├── test_camera_invariance_eixo5.py # Testes de invariância de câmera, perspectiva e Maai 3D (Eixo 5)
+│   ├── test_kenshi_style_model_eixo6.py # Testes de baseline cinestésico e warm start de perfis (Eixo 6)
 │   ├── test_auto_trainer.py        # Testes de auto-treinamento, baselines < 50% e tolerância a falhas
 │   ├── test_dan_training_governance.py # Testes da governança por Dan, pacotes e retreinamento
 │   ├── test_environment.py         # Testes de detecção de ambiente virtual
@@ -325,9 +329,9 @@ Gerenciador de Sessão de Treinamento em Tempo Real para dojos e academias com c
 
 ---
 
-### 4.3. Engine de Calibração ([calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py) & [calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))
+### 4.3. Engine de Calibração & Motor Matemático ([calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py), [mathematical_calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/mathematical_calibrator.py) & [calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))
 
-O motor calcula a **Pontuação Total Ponderada**:
+O motor calcula a **Pontuação Total Ponderada** com base no tipo de golpe desferido e nas regras biomecânicas da FIK/AJKF:
 
 $$\text{Score}_{\text{Total}} = (w_{\text{target}} \cdot S_{\text{target}}) + (w_{\text{fumikomi}} \cdot S_{\text{fumikomi}}) + (w_{\text{posture}} \cdot S_{\text{posture}}) + (w_{\text{zanshin}} \cdot S_{\text{zanshin}})$$
 
@@ -335,13 +339,42 @@ Para um golpe ser validado como **Yuko-Datotsu** (Ponto Válido / *Ippon*):
 1. $\text{Score}_{\text{Total}}$ deve ser maior ou igual a `min_total_score` do perfil ativo.
 2. Cada sub-pontuação individual deve satisfazer o respectivo `sub_threshold`.
 
+#### 4.3.1. Pesos Especializados por Tipo de Golpe (`weights_by_strike_type` — Eixo 1.4)
+Em vez de pesos homogêneos para todas as técnicas, a importância relativa de cada pilar biomecânico adapta-se dinamicamente conforme a técnica executada:
+
+| Golpe (Waza) | Pilar Mais Crítico | Alvo ($w_{\text{target}}$) | Fumikomi ($w_{\text{fumikomi}}$) | Postura ($w_{\text{posture}}$) | Zanshin ($w_{\text{zanshin}}$) |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| 🔴 **Men** | Sincronismo Ki-Ken-Tai-Ichi | 35% | 30% | 20% | 15% |
+| 🟡 **Kote** | Extensão de cotovelo e contato no Bogu | 45% | 25% | 18% | 12% |
+| 🟢 **Do** | Ângulo de corte lateral (Hasuji) | 45% | 15% | 20% | 20% |
+| 🔵 **Tsuki** | Alinhamento da lâmina e colinearidade | 50% | 20% | 15% | 15% |
+
+#### 4.3.2. Classificador Probabilístico Calibrado (Platt Scaling — Eixo 1.2)
+Além da classificação booleana (*Ippon* vs *Não-Ippon*), o sistema calcula a probabilidade real contínua de validação arbitral:
+
+$$P(\text{Yuko-Datotsu}=1 \mid s) = \sigma(A \cdot s + B) = \frac{1}{1 + e^{-(A \cdot s + B)}}$$
+
+Onde os parâmetros $A$ e $B$ são calibrados por máxima verossimilhança com regularização L2 sobre os feedbacks validados. O resultado é disponibilizado em `probability` $[0.0, 1.0]$ e `probability_pct` (ex: `88.4%`).
+
+#### 4.3.3. Monitoramento de Deriva Temporal (Concept Drift — Eixo 1.3)
+Para detectar alterações nos padrões de julgamento arbitral ou defasagem temporal dos modelos:
+* **Fator de Decaimento Exponencial:** $W_i = \text{DanWeight}_i \times e^{-\lambda \cdot \Delta t}$, com meia-vida regulamentar de 30 dias ($\lambda = \ln(2)/30$), conferindo maior autoridade a anotações recentes.
+* **Teste Bilateral Kolmogorov-Smirnov (`scipy.stats.ks_2samp`):** Compara a distribuição dos scores recentes com a base histórica de calibração. Se $p\text{-valor} < 0.05$, o sistema emite um alerta de `drift_alert` recomendando recalibração.
+
+#### 4.3.4. Otimização Formal com Custo Assimétrico (`BayesianCalibrationOptimizer` — Eixo 1.1)
+Substituição definitiva de acréscimos manuais fixos por otimização de parâmetros com:
+* **Motor Híbrido:** Optuna (TPE Sampler) com fallback automático para SciPy SLSQP (Sequential Least Squares Programming).
+* **Restrições Rígidas:** $\sum w_i = 1.0$, cada peso individual $w_i \ge 0.10$, $T_{\text{global}} \in [0.50, 0.90]$, sub-limiares em $[0.30, 0.85]$.
+* **Penalização Assimétrica de Competição:** Custo 3x maior para Falso Positivo ($C_{\text{FP}} = 3.0 \times C_{\text{FN}}$), em conformidade com o regulamento da FIK que proíbe Ippons duvidosos.
+
 #### Perfis Pré-configurados ([calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))
 
-| Perfil | $\text{min\_total\_score}$ | Pesos ($w_{\text{target}}, w_{\text{fumikomi}}, w_{\text{posture}}, w_{\text{zanshin}}$) | Aplicação Principal |
+| Perfil | $\text{min\_total\_score}$ | Pesos Globais ($w_{\text{target}}, w_{\text{fumikomi}}, w_{\text{posture}}, w_{\text{zanshin}}$) | Aplicação Principal |
 | :--- | :---: | :--- | :--- |
-| **Rígido** | `82%` | Target: 35%, Fumikomi: 25%, Posture: 20%, Zanshin: 20% | Campeonatos / Exames de Dan |
-| **Normal** | `65%` | Target: 40%, Fumikomi: 25%, Posture: 20%, Zanshin: 15% | Treinos de Dojang e Avaliação Geral |
-| **Permissivo** | `45%` | Target: 55%, Fumikomi: 20%, Posture: 15%, Zanshin: 10% | Iniciantes / Avaliação Educacional |
+| **Rígido** | `78%` | Target: 45%, Fumikomi: 25%, Posture: 15%, Zanshin: 15% | Campeonatos / Exames de Dan |
+| **Normal** | `74%` | Target: 40%, Fumikomi: 25%, Posture: 20%, Zanshin: 15% | Treinos de Dojang e Avaliação Geral |
+| **Permissivo** | `50%` | Target: 35%, Fumikomi: 25%, Posture: 20%, Zanshin: 20% | Iniciantes / Avaliação Educacional |
+| **Shiai** | `65%` | Target: 40%, Fumikomi: 25%, Posture: 20%, Zanshin: 15% | Competições Oficiais (Custo 3x FP) |
 | **Custom** | Dinâmico | Definido pelo usuário via sliders no Streamlit | Pesquisa e Ajustes Finos |
 
 ---
@@ -554,6 +587,80 @@ Integração de Modelos de Linguagem de Grande Porte (LLMs) multimodal e textual
 
 ---
 
+### 4.13. Invariância de Câmera e Normalização Espacial 3D (Eixo 5) ([camera_invariance.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/camera_invariance.py))
+
+O módulo de invariância de câmera garante que a avaliação biomecânica e o julgamento de *Yuko-Datotsu* permaneçam consistentes e precisos independentemente do ângulo em que o smartphone, filmadora ou câmera de dojo for posicionado:
+
+- **Compensação de Perspectiva por Ângulo de Filmagem (`CombatVectorEstimator`)**:
+  - **Estimativa do Vetor de Combate**: Extrai as coordenadas 2D dos quadris dos dois atletas (`Kenshi Aka` e `Kenshi Shiro`) para traçar a linha principal de enfrentamento.
+  - **Classificação de Ângulo**:
+    - **Frontal ($0^\circ - 30^\circ$)**: Visão alinhada ao vetor de ataque; excelente para avaliar centralidade (*Chushin-sen*) e estocadas (*Tsuki*), porém sujeita a achatamento da inclinação da coluna.
+    - **Oblíquo ($30^\circ - 60^\circ$)**: Posição angular mista, comum em arquibancadas ou cantos do Shiaijo.
+    - **Lateral ($60^\circ - 90^\circ$)**: Plano canônico de referência para medição visual de avanço de pé (*Fumikomi*) e postura ereta (*Shisei*).
+  - **Detecção em Treinamento Solo**: Caso apenas um Kendoca esteja presente no dojo, o vetor é deduzido a partir da linha biacromial (largura entre ombros normalizada).
+  - **Normalização Trigonométrica de Postura (*Shisei*)**:
+    - Aplica o fator multiplicador $1 / \sin(\theta)$ (com clamp em $\sin(20^\circ)$ para prevenir singularidades) sobre a inclinação observada na câmera:
+      $$\theta_{\text{real}} = \frac{\theta_{\text{observado}}}{\sin(\max(\theta_{\text{câmera}}, 20^\circ))}$$
+    - Recupera o ângulo físico real do tronco no espaço tridimensional mesmo quando filmado de frente.
+
+- **Estimativa de Profundidade Monocular 3D & Maai 3D (`MonocularDepthEstimator`)**:
+  - **Reconstrução de Pseudo-Keypoints 3D $(x, y, z)$**:
+    - Estima o canal de profundidade $Z$ a partir de restrições antropométricas da altura em pixels e posições de articulações em relação ao plano canônico do solo.
+  - **Distância Euclidiana Tridimensional (*Maai 3D*)**:
+    - Substitui a distância euclidiana puramente bidimensional pela métrica tridimensional completa:
+      $$d_{\text{3D}} = \sqrt{(x_{\text{aka}} - x_{\text{shiro}})^2 + (y_{\text{aka}} - y_{\text{shiro}})^2 + (z_{\text{aka}} - z_{\text{shiro}})^2}$$
+    - **Eliminação Definitiva de Ku-totsu (Golpe no Vazio)**: Em tomadas frontais ou oblíquas, o atacante pode parecer sobreposto ao defensor no plano 2D $(x, y)$, mas estar a metros de distância no eixo $Z$. O *Maai 3D* detecta a separação real em profundidade e rejeita sumariamente o golpe caso $d_{\text{3D}} > 0.55$, eliminando marcações indevidas.
+
+- **Diagnóstico Automático de Qualidade de Ângulo (`CameraQualityDiagnostic`)**:
+  - Emite notas individuais de confiabilidade $[0.0, 1.0]$ para cada critério técnico conforme o enquadramento:
+    - *Fumikomi*: Alta confiança em tomadas laterais ($\ge 60^\circ$); penalizado em tomadas frontais com aviso de oclusão de pés.
+    - *Hasuji*: Avaliação ideal em tomadas oblíquas e laterais; penalizado quando o plano da lâmina fica colinear à lente.
+    - *Shisei*: Compensado trigonometricamente em ângulos frontais com margem de erro documentada.
+    - *Tsuki*: Confiabilidade máxima em tomadas frontais e oblíquas.
+    - *Zanshin*: Alta confiabilidade em todos os ângulos com correção de perspectiva.
+  - **Matriz de Modificadores de Peso**: Fornece multiplicadores adaptativos para o motor de calibração atenuar critérios de baixa visibilidade e reforçar os de alta certeza no ângulo ativo.
+
+---
+
+### 4.14. Modelagem do Estilo Individual do Kenshi & Warm Start (Eixo 6) ([kenshi_style_model.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/kenshi_style_model.py))
+
+A modelagem do estilo individual personaliza a avaliação biomecânica, reconhecendo que cada Kenshi possui proporções corporais e características cinestésicas únicas, avaliando o praticante em relação ao seu próprio histórico evolutivo e transferindo conhecimento prévio entre perfis:
+
+- **Aprendizado Contínuo Online do Baseline Cinestésico (`MetricDistribution` & Algoritmo de Welford)**:
+  - Atualização recursiva e estatisticamente estável da média ($\mu_n$) e variância ($\sigma_n^2$) a cada nova repetição ou sessão de treino, sem necessidade de recalcular todo o histórico:
+    $$M_{1} = x_1, \quad M_{k} = M_{k-1} + \frac{x_k - M_{k-1}}{k}$$
+    $$S_k = S_{k-1} + (x_k - M_{k-1})(x_k - M_k), \quad \sigma^2 = \frac{S_k}{k - 1}$$
+  - Rastreamento contínuo de 5 dimensões biomotoras:
+    - Ângulo de postura de repouso em *Chudan* / *Shisei*;
+    - Janela temporal de sincronismo habitual de *Fumikomi* (tempo em ms entre aceleração e impacto);
+    - Extensão de braço típica por golpe (`MEN`, `KOTE`, `DO`, `TSUKI`);
+    - Cadência de cortes em Golpes por Minuto (**CPM**);
+    - Inclinação média habitual da coluna.
+
+- **Avaliação Comparativa em Z-Score e Diagnóstico Humanizado (`KinestheticBaselineModel`)**:
+  - Mede o desvio padronizado da execução atual em relação à média pessoal do próprio atleta:
+    $$Z = \frac{x_{\text{observado}} - \mu_{\text{kenshi}}}{\sigma_{\text{kenshi}}}$$
+  - Geração de diagnósticos pedagógicos humanizados em linguagem natural com ícone 🧬:
+    - *Fumikomi*: *"Seu Fumikomi foi 35ms mais rápido que seu habitual (1.4σ), indicando excelente explosão do pé direito."*
+    - *Coluna*: *"Atenção: inclinação da coluna 5.4° maior que seu padrão habitual (Z=+1.9σ). Mantenha o Shisei ereto."*
+    - *Extensão*: *"Extensão de braço no Men perfeitamente alinhada com seu baseline histórico."*
+
+- **Gestão Centralizada e Persistência Multi-Praticante (`KinestheticProfileManager`)**:
+  - Armazenamento atômico em `data/kenshi_baselines.json`.
+  - Integração no `SenpAIPipeline` e no `TrainingAnalyzer`, registrando e avaliando tanto praticantes solo (`KENSHI_SOLO`) quanto duplas de combate (`KENSHI_SHIRO`, `KENSHI_AKA`).
+  - Inclusão automática da **Seção 3: Análise Comparativa com o Baseline Cinestésico Individual** nos relatórios exportáveis de treino em Markdown.
+
+- **Transferência de Conhecimento entre Perfis com Warm Start (`ProfileWarmStartManager`)**:
+  - Permite derivar novos perfis de calibração (`rigido`, `shiai` ou perfis para clubes e graduações específicas) reaproveitando o conhecimento otimizado do perfil pai.
+  - **Preservação Integral de Pesos Ótimos**: Copia os pesos globais, a matriz `weights_by_strike_type` (`MEN`, `KOTE`, `DO`, `TSUKI`), calibração de Platt Scaling e priors de Dan.
+  - **Ajuste Direcional de Rigidez**:
+    - `more_strict`: Eleva a pontuação mínima em +10% e sub-limiares em +8% (respeitando tetos de segurança);
+    - `more_permissive`: Reduz a pontuação mínima em -10% e sub-limiares em -8% (respeitando pisos de segurança);
+    - `neutral`: Mantém limiares idênticos para direcionamento a novo segmento.
+  - **Governança e Rastreamento de Linhagem**: Registra `parent_profile_id`, data/hora de criação e direção de ajuste em `config/calibration_profiles.json`.
+
+---
+
 ## 5. Suíte de Testes Automatizados e Relatório de Execução
 
 O projeto inclui suíte completa de testes automatizados em `unittest` com runner customizado ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py)) e script de execução dedicado ([run_tests.py](file:///d:/Projetos/SenpAI/Dev/run_tests.py)).
@@ -601,7 +708,9 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_video_player_controls.py` (5 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
 - **`test_training_live_manager.py` (5 testes)**: Valida a máquina de estados de golpes em tempo real (`LiveStrikeState`), rastreamento biomecânico contínuo da coluna (*Shisei*) e simetria de ombros, contagem de repetições, cadência em Golpes por Minuto (CPM), renderização do HUD em tempo real dos 3 Pilares e geração de relatórios de sessão em Markdown e JSON.
 
-Total de **181 testes automatizados** distribuídos em 19 módulos, executados e aprovados com 100% de sucesso.
+- **`test_kenshi_style_model_eixo6.py` (9 testes)**: Valida a atualização online via algoritmo de Welford (MetricDistribution), cálculo de desvios em Z-score e geração de insights humanizados (KinestheticBaselineModel), persistência atômica e gestão multi-praticante em JSON (KinestheticProfileManager), derivação direcional de perfis com Warm Start mais rígido e mais permissivo preservando pesos e linhagem (ProfileWarmStartManager), integração com FeedbackManager e inclusão da Seção 3 no relatório de treino do Kendoca.
+
+Total de **232 testes automatizados** distribuídos em 25 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -609,7 +718,139 @@ Total de **181 testes automatizados** distribuídos em 19 módulos, executados e
 
 ---
 
-### `[v 0.3.0.0]` — 2026-10-01 *(Versão Atual)*
+### `[v 0.3.5.0]` — 2026-10-02 *(Versão Atual)*
+
+- **Implementação do Eixo 6: Modelagem do Estilo Individual do Kenshi & Warm Start de Perfis ([kenshi_style_model.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/kenshi_style_model.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py), [training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Perfil Cinestésico Individual (Kinesthetic Baseline) & Algoritmo de Welford**:
+    - Rastreamento estatístico contínuo online de cada praticante com atualização estável de média e variância (`MetricDistribution`) para ângulo de repouso em *Chudan*, janela temporal de *Fumikomi* (em ms), extensão de braço por golpe (`MEN`, `KOTE`, `DO`, `TSUKI`), cadência em Golpes por Minuto (**CPM**) e inclinação da coluna.
+    - Avaliação de golpes através do desvio em Z-score em relação ao baseline pessoal do atleta, gerando diagnósticos humanizados e construtivos em linguagem natural.
+  - **Persistência Multi-Praticante & Relatório Individual Enriquecido**:
+    - Armazenamento atômico dos baselines em `data/kenshi_baselines.json` através do `KinestheticProfileManager`.
+    - Injeção automática da **Seção 3: Análise Comparativa com o Baseline Cinestésico Individual** nos relatórios em Markdown e telemetria de corte.
+  - **Transferência de Conhecimento entre Perfis (Warm Start)**:
+    - Derivação de novos perfis de calibração herdando integralmente os pesos matematicamente otimizados de Ki-Ken-Tai-Ichi, matriz `weights_by_strike_type`, parâmetros de Platt Scaling e priors de Dan.
+    - Ajuste direcional com clamping seguro (`more_strict`, `more_permissive`, `neutral`) e rastreamento de linhagem (`parent_profile_id`).
+  - **Interface Web Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+    - Adição de painel interativo de Perfis Cinestésicos Individuais e assistente em 1 clique para Derivação de Novos Perfis com Warm Start na aba de Calibração.
+  - **Suíte de Testes Automatizados**:
+    - Criação de [test_kenshi_style_model_eixo6.py](file:///d:/Projetos/SenpAI/Dev/tests/test_kenshi_style_model_eixo6.py) com 9 testes automatizados cobrindo todo o Eixo 6 com 100% de sucesso.
+    - Suíte geral de testes do SenpAI atinge **232 testes automatizados em 25 módulos aprovados sem regressões**.
+
+---
+
+### `[v 0.3.4.0]` — 2026-10-02
+
+- **Implementação do Eixo 5: Invariância de Câmera e Normalização Espacial 3D ([camera_invariance.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/camera_invariance.py), [biomechanics.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/biomechanics.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Compensação de Perspectiva por Ângulo de Filmagem (`CombatVectorEstimator`)**:
+    - Extração contínua do vetor de combate Kenshi Aka <-> Kenshi Shiro através dos centros de quadril e estimação do ângulo de incidência da câmera $\theta_{\text{camera}} \in [0^\circ, 90^\circ]$.
+    - Classificação automática em 3 categorias operacionais:
+      - **Frontal ($0^\circ - 30^\circ$)**: Foco no Chushin-sen e alinhamento central;
+      - **Oblíquo ($30^\circ - 60^\circ$)**: Enquadramento diagonal de arquibancada / córner;
+      - **Lateral ($60^\circ - 90^\circ$)**: Referencial canônico para análise de perfil e Fumikomi.
+    - Suporte a treinamento solo deduzindo a rotação do praticante a partir da largura biacromial dos ombros.
+    - **Normalização Trigonométrica de Postura (*Shisei*)**:
+      - Compensação do achatamento visual em tomadas frontais através da escala $1 / \sin(\theta)$ no cálculo da inclinação da coluna, mapeando a leitura observada para o plano lateral canônico.
+  - **Estimativa de Profundidade Monocular 3D & Maai 3D (`MonocularDepthEstimator`)**:
+    - Reconstrução de pseudo-keypoints tridimensionais $(x, y, z)$ a partir de restrições antropométricas e avanço cinemático corporal.
+    - **Distância Euclidiana Tridimensional (*Maai 3D*)**: Cálculo da distância de combate $\sqrt{\Delta x^2 + \Delta y^2 + \Delta z^2}$, permitindo a detecção e eliminação definitiva de *Ku-totsu* (golpes no vazio) quando atacante e defensor parecem sobrepostos em 2D mas estão distantes no eixo $Z$.
+    - Rejeição reforçada no pipeline caso $d_{\text{3D}} > 0.55$.
+  - **Diagnóstico Automático de Qualidade do Ângulo (`CameraQualityDiagnostic`)**:
+    - Avaliação de confiabilidade para cada um dos 5 critérios regulamentares (*Fumikomi*, *Hasuji*, *Shisei*, *Tsuki*, *Zanshin*), cálculo de erro angular esperado e matriz de modificadores multiplicativos de peso.
+  - **Exibição Visual no Web App Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py)) & Relatórios ([reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py))**:
+    - Badges em tempo real nos cards de golpes com ângulo de filmagem (ex: `📐 Câmera: 78.5° (Lateral - Alta Precisão)`) e diagnóstico de enquadramento nos relatórios textuais.
+  - **Suíte de Testes Automatizados**:
+    - Criação de [test_camera_invariance_eixo5.py](file:///d:/Projetos/SenpAI/Dev/tests/test_camera_invariance_eixo5.py) com 8 testes cobrindo todo o Eixo 5 com 100% de sucesso.
+    - Suíte geral de testes do SenpAI atinge **231 testes automatizados em 24 módulos aprovados sem regressões**.
+
+---
+
+### `[v 0.3.3.0]` — 2026-10-02
+
+- **Implementação do Eixo 3: Reconhecimento Multimodal de Golpes Válidos (Yuko-Datotsu) ([multimodal_yuko_datotsu.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/multimodal_yuko_datotsu.py), [biomechanics.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/biomechanics.py), [calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Interação Atacante ↔ Defensor & Eliminação de Ku-totsu (`TargetImpactEvaluator`)**:
+    - Avaliação geométrica de colisão entre o *Datotsu-bu* (terço final / Kensen do Shinai) e as regiões regulamentares do Bogu do oponente (*Men*, *Kote*, *Do*, *Tsuki*).
+    - Discriminação de distância (*Maai*): rejeição sumária e automática de golpes no vazio (*Ku-totsu*), penalizando golpes desferidos fora da distância física de combate.
+  - **Hasuji — O Ângulo da Lâmina como 5° Pilar de Avaliação (`HasujiEvaluator`)**:
+    - Extração contínua da orientação angular do Shinai (`angle_deg`) gerado pelo rastreador e comparação com os planos regulamentares de corte:
+      - *Men*: Vertical puro com tolerância de $\pm 15^\circ$ (desvio $> 25^\circ$ reprova por corte de chapa).
+      - *Do*: Diagonal descendente entre $30^\circ$ e $45^\circ$.
+      - *Tsuki*: Horizontal frontal colinear com desvio $\le 10^\circ$.
+      - *Kote*: Diagonal descendente moderada entre $15^\circ$ e $35^\circ$.
+    - Integração de `hasuji_score` no [calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py) com peso balanceado de 15%, verificação de sub-limiar mínimo e feedback detalhado no [reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py).
+  - **Detecção do Seme e Pressão Pré-Golpe (`SemeDetector`)**:
+    - Avaliação retroativa de 20 a 30 frames antes do impacto: verifica avanço com tronco ereto em direção ao oponente mantendo o centro (*Chudan/Chushin-sen*).
+    - Penalização no score quando o ataque se origina de recuo descontrolado ou guarda quebrada.
+  - **Detecção de Técnicas de Resposta (Oji-waza e Debana - `CounterattackDetector`)**:
+    - Análise de janela de 10 a 15 frames para identificar se o adversário iniciou o movimento ofensivo (*Furikaburi*) antes do atacante responder.
+    - Classificação automática em *Debana-waza* (interceptação no nascimento do golpe), *Kaeshi-waza* ou *Nuki-waza*, com detecção dinâmica da inversão de papéis.
+  - **Fusão Multimodal com Faixa de Áudio (`AudioKiaiFusion`)**:
+    - Detecção de *Datotsu-on* (transiente acústico seco de alta frequência entre $1.5\text{ kHz}$ e $4.0\text{ kHz}$) e *Kiai* vocal ($200\text{ Hz}$ a $1.0\text{ kHz}$).
+    - Critério de sincronismo síncrono $\Delta t \le 40\text{ ms}$ entre pico sonoro e vídeo, com fallback gracioso e transparente para vídeos sem faixa de áudio.
+  - **Modelo Temporal de Sequência de Poses (Action Spotting TCN - `TemporalActionSpotter`)**:
+    - Classificador de convolução temporal sobre janela de 30 frames em 10 classes fundamentais de Kendo (`IDLE_KAMAE`, `TSUBAZERIAI`, `SEME_ADVANCE`, `MEN_ATTACK`, `KOTE_ATTACK`, `DO_ATTACK`, `TSUKI_ATTACK`, `DEFENSE_BLOCK`, `COUNTERATTACK`, `ZANSHIN_RETREAT`).
+    - Supressão de falsos disparos durante movimentações de guarda, fintas e clinch prolongado (*Tsubazeriai*).
+  - **Painel Interativo de Yuko-Datotsu no Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+    - Cartões de golpe ao vivo atualizados com grid de 6 métricas: Alvo, Fumikomi, Postura, Zanshin, Hasuji (5° Pilar) e Seme.
+  - **Suíte de Testes Automatizados**:
+    - Criação do módulo [test_multimodal_yuko_datotsu_eixo3.py](file:///d:/Projetos/SenpAI/Dev/tests/test_multimodal_yuko_datotsu_eixo3.py) com 14 testes cobrindo todos os módulos do Eixo 3 com 100% de sucesso.
+    - Suíte geral de testes do SenpAI atinge **205 testes automatizados em 21 módulos aprovados sem regressões**.
+
+---
+
+### `[v 0.3.2.0]` — 2026-10-02
+
+- **Implementação do Eixo 2: Conversão da Pesquisa Web em Parâmetros Físicos Acionáveis ([actionable_research.py](file:///d:/Projetos/SenpAI/Dev/src/engine/actionable_research.py), [auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py), [llm_assistant.py](file:///d:/Projetos/SenpAI/Dev/src/engine/llm_assistant.py) & [mathematical_calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/mathematical_calibrator.py))**:
+  - **Pipeline de Extração Estruturada (Knowledge → JSON Schema - `PhysicalConstraintExtractor`)**:
+    - Extração automática de restrições biomecânicas numéricas rígidas a partir de manuais e pesquisas da web para os conceitos e modalidades de Kendo (*Yuko-Datotsu*, *Tenouchi*, *Hasuji*, *Fumikomi-ashi*, *Men*, *Kote*, *Do*, *Tsuki*).
+    - Validação de faixas físicas biologicamente plausíveis em formato estrito (`elbow_extension_impact_deg`, `spine_tilt_max_deg`, `fumikomi_hand_foot_window_ms`, `zanshin_duration_min_sec`, `hasuji_max_deviation_deg`, `blade_contact_zone`).
+    - Integração no `KendoLLMAssistant.extract_physical_constraints` com suporte a execução remota e fallback especialista determinístico offline.
+  - **Hierarquia Estrita de Fontes e Resolução de Conflitos (`SourceHierarchyResolver`)**:
+    - Implementação das 5 camadas de autoridade marcial:
+      - **Tier 1 (Prioridade 1, Peso 1.00)**: *FIK Official Rulebook* — Máxima autoridade, prevalece sempre.
+      - **Tier 2 (Prioridade 2, Peso 0.85)**: *AJKF Referee Handbook* — Alta autoridade.
+      - **Tier 3 (Prioridade 3, Peso 0.65)**: *Literatura arbitral especializada* — Média autoridade.
+      - **Tier 4 (Prioridade 4, Peso 0.45)**: *Artigos acadêmicos e estudos laboratoriais* — Baixa autoridade.
+      - **Tier 5 (Prioridade 5, Peso 0.00)**: *Blogs e fóruns abertos* — Descartados como prior de calibração.
+    - **Princípio do Conservadorismo Técnico**: Em caso de empate de autoridade entre fontes, o critério que impõe maior rigor técnico e menor tolerância a falhas prevalece incondicionalmente (menor inclinação de coluna, menor atraso de Fumikomi, maior tempo de Zanshin).
+    - Histórico e trilha de auditoria de decisões de desempate mantido em `conflict_history`.
+  - **Mineração de Vídeos de Referência Oficial (`EmpiricalDistributionLearner`)**:
+    - Mineração estatística de clipes de combates oficiais confirmados por árbitros (2 ou 3 bandeiras levantadas).
+    - Construção das distribuições empíricas de referência por tipo de golpe (`MEN`, `KOTE`, `DO`, `TSUKI`), calculando média ($\mu$), desvio padrão ($\sigma$), mínimo, máximo e percentis completos ($p_{25}, p_{50} \text{ [mediana]}, p_{75}, p_{90}$) para cada dimensão de Ki-Ken-Tai-Ichi.
+    - Armazenamento dedicado em `data/empirical_reference_distributions.json` e sincronização direta com a Base de Conhecimento da IA.
+  - **Injeção de Priors Bayesianos no Otimizador Numérico (`BayesianPriorInjector`)**:
+    - Vinculação direta das restrições físicas e medianas empíricas como fronteiras rígidas intransponíveis (*boundary conditions*) do `BayesianCalibrationOptimizer`.
+    - Garantia formal de que sub-limiares (postura, fumikomi, impacto e zanshin) e piso do score global não possam ser degradados além dos limites canônicos estabelecidos pela FIK/AJKF.
+  - **Painel Interativo do Eixo 2 no Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+    - Visualização em 3 abas interativas dedicadas: *Restrições Biomecânicas (JSON Schema com Badges de Autoridade)*, *Distribuições Empíricas de Vídeos Oficiais (Tabelas com percentis por golpe e botão de mineração em 1 clique)* e *Hierarquia de Fontes & Log de Resolução de Conflitos*.
+  - **Suíte de Testes Automatizados**:
+    - Criação de `tests/test_actionable_research_eixo2.py` com 10 testes rigorosos cobrindo todas as funcionalidades com 100% de aprovação.
+
+---
+
+### `[v 0.3.1.0]` — 2026-10-02
+
+- **Implementação do Eixo 1: Otimização Matemática e Calibração dos Pesos ([mathematical_calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/mathematical_calibrator.py), [calibrator.py](file:///d:/Projetos/SenpAI/Dev/src/engine/calibrator.py) & [calibration_profiles.json](file:///d:/Projetos/SenpAI/Dev/config/calibration_profiles.json))**:
+  - **Otimizador Numérico Bayesiano (`BayesianCalibrationOptimizer`)**:
+    - Substituição definitiva de saltos fixos (`+0.05` / `-0.04`) por otimização formal com Optuna (TPE) e SciPy SLSQP.
+    - Restrições lineares estritas: $\sum w_i = 1.0$, $w_i \ge 0.10$, $T_{\text{global}} \in [0.50, 0.90]$, sub-limiares em $[0.30, 0.85]$.
+    - **Penalização Assimétrica de Competição**: Custo 3x maior para Falso Positivo ($C_{\text{FP}} = 3.0 \times C_{\text{FN}}$) fundamentado na regra da FIK que veda pontos duvidosos.
+    - Ponderação por autoridade Dan (Shinpan: 4.5, Dan: 1 a 8, Kyu: 0.8) e decaimento temporal exponencial com meia-vida regulamentar de 30 dias ($e^{-\lambda \Delta t}$).
+  - **Classificador Probabilístico Calibrado (Platt Scaling - `ProbabilisticPlattCalibrator`)**:
+    - Cálculo contínuo da probabilidade real de validação do golpe: $P(\text{Yuko-Datotsu}=1 \mid s) = \sigma(A \cdot s + B)$, com parâmetros ajustados por máxima verossimilhança e regularização L2.
+    - Exibição de `probability` e `probability_pct` na interface gráfica e relatórios diagnósticos.
+  - **Monitoramento de Deriva Temporal (Concept Drift - `ConceptDriftDetector`)**:
+    - Teste bilateral Kolmogorov-Smirnov (`scipy.stats.ks_2samp`) comparando a distribuição recente de scores contra a base histórica para detecção precoce de defasagem de regras ou critérios arbitrais.
+  - **Ponderação Especializada por Tipo de Golpe (`weights_by_strike_type`)**:
+    - Vetores customizados de Ki-Ken-Tai-Ichi por técnica: `MEN` (ênfase em sincronia mão-pé), `KOTE` (ênfase em extensão de cotovelo e contato), `DO` (ênfase em Hasuji/ângulo de corte), `TSUKI` (ênfase em colinearidade e alvo).
+    - Roteamento dinâmico em `pipeline.py` e `multi_camera_fusion.py` através da passagem contextual do `strike_type`.
+  - **Painel Interativo de Calibração Matemática no Streamlit ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+    - Visualização gráfica de status do motor numérico, parâmetros de Platt Scaling, alertas de Concept Drift e tabela de pesos especializados por golpe com botão de execução rápida da otimização.
+  - **Suíte de Testes Automatizados**:
+    - Criação do módulo `tests/test_mathematical_calibration_eixo1.py` com 10 testes dedicados com 100% de aprovação.
+
+---
+
+### `[v 0.3.0.0]` — 2026-10-01
 
 - **Implementação do Eixo 4: Aprendizado Ativo & Salvaguarda Golden Benchmark ([active_learning.py](file:///d:/Projetos/SenpAI/Dev/src/engine/active_learning.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py) & [auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py))**:
   - **Amostragem por Incerteza (`UncertaintySampler`)**:

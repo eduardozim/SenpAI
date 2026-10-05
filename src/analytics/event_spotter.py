@@ -7,6 +7,8 @@ impacto e fim de um golpe (Men, Kote, Do, Tsuki).
 import numpy as np
 from typing import List, Dict, Any, Optional
 
+from src.analytics.multimodal_yuko_datotsu import TemporalActionSpotter
+
 class StrikeEvent:
     def __init__(
         self,
@@ -56,6 +58,7 @@ class EventSpotter:
     def __init__(self, velocity_threshold: float = 0.025, min_event_gap_frames: int = 35):
         self.velocity_threshold = velocity_threshold
         self.min_event_gap_frames = min_event_gap_frames
+        self.action_spotter = TemporalActionSpotter()
 
     def detect_strikes(
         self,
@@ -142,6 +145,20 @@ class EventSpotter:
 
                 # Classificar o tipo de golpe baseado no movimento da mão e na altura do esqueleto
                 strike_type = self._classify_technique(pose_history, start_f, peak_idx)
+
+                # Classificação Temporal de Sequência de Poses (Action Spotting TCN - Eixo 3.6)
+                # Verifica a janela de 30 frames para eliminar disparos falsos em Tsubazeriai ou guarda estática
+                w_start = max(0, peak_idx - 15)
+                w_end = min(n_frames, peak_idx + 15)
+                action_classification = self.action_spotter.classify_sequence(
+                    pose_sequence=list(pose_history[w_start:w_end]),
+                    strike_type_hint=strike_type
+                )
+
+                if action_classification.get("suppress_false_trigger", False):
+                    # Falso disparo suprimido pelo modelo temporal (ex: Tsubazeriai ou Kamae)
+                    i = peak_idx + 15
+                    continue
                 
                 is_within = (start_bound_frame <= peak_idx <= end_bound_frame)
 

@@ -17,10 +17,17 @@ from src.engine.active_learning import (
     ReviewerTrustManager
 )
 from src.engine.llm_assistant import KendoLLMAssistant
+from src.engine.mathematical_calibrator import (
+    BayesianCalibrationOptimizer,
+    ProbabilisticPlattCalibrator,
+    ConceptDriftDetector,
+    DEFAULT_WEIGHTS_BY_STRIKE_TYPE,
+    SHINPAN_REVIEWER_WEIGHT
+)
 
 SHINPAN_REV_KEY: str = "shinpan"
 SHINPAN_NAME: str = "Decisão dos Shinpans"
-SHINPAN_CALIBRATION_WEIGHT: float = 4.5  # Constante média equilibrada (mediana de 1º a 8º Dan)
+SHINPAN_CALIBRATION_WEIGHT: float = SHINPAN_REVIEWER_WEIGHT  # Constante equilibrada oficial (4.5)
 
 
 class DuplicateShinpanReviewError(ValueError):
@@ -104,21 +111,27 @@ DEFAULT_CALIBRATION_PROFILES: Dict[str, Any] = {
         "description": "Tolerância ampliada para feedback formativo com praticantes de níveis iniciais.",
         "min_total_score": 0.50,
         "weights": {"target_impact": 0.35, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.20},
-        "sub_thresholds": {"target_impact": 0.45, "fumikomi_sync": 0.35, "posture": 0.35, "zanshin": 0.30}
+        "sub_thresholds": {"target_impact": 0.45, "fumikomi_sync": 0.35, "posture": 0.35, "zanshin": 0.30},
+        "weights_by_strike_type": json.loads(json.dumps(DEFAULT_WEIGHTS_BY_STRIKE_TYPE)),
+        "platt_scaling": {"a": 10.0, "b": -5.0, "is_fitted": False}
     },
     "normal": {
         "name": "Treino Geral / Keiko (Normal)",
         "description": "Equilíbrio padrão para treinos do dia a dia e avaliações gerais de Keiko.",
-        "min_total_score": 0.65,
+        "min_total_score": 0.74,
         "weights": {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15},
-        "sub_thresholds": {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45}
+        "sub_thresholds": {"target_impact": 0.72, "fumikomi_sync": 0.75, "posture": 0.75, "zanshin": 0.72},
+        "weights_by_strike_type": json.loads(json.dumps(DEFAULT_WEIGHTS_BY_STRIKE_TYPE)),
+        "platt_scaling": {"a": 12.0, "b": -8.8, "is_fitted": False}
     },
     "rigido": {
         "name": "Campeonato / Audit de Dan (Rígido)",
         "description": "Alta exigência em Ki-Ken-Tai-Ichi e Zanshin. Recomendado para exames de graduação e torneios oficiais.",
         "min_total_score": 0.78,
         "weights": {"target_impact": 0.45, "fumikomi_sync": 0.25, "posture": 0.15, "zanshin": 0.15},
-        "sub_thresholds": {"target_impact": 0.70, "fumikomi_sync": 0.60, "posture": 0.60, "zanshin": 0.55}
+        "sub_thresholds": {"target_impact": 0.70, "fumikomi_sync": 0.60, "posture": 0.60, "zanshin": 0.55},
+        "weights_by_strike_type": json.loads(json.dumps(DEFAULT_WEIGHTS_BY_STRIKE_TYPE)),
+        "platt_scaling": {"a": 14.0, "b": -10.9, "is_fitted": False}
     }
 }
 
@@ -143,10 +156,98 @@ class FeedbackManager:
         self._ensure_files_exist()
         
         # Componentes do Eixo 4: Aprendizado Ativo, Padrão-Ouro e Governança
-        self.golden_benchmark = GoldenBenchmark()
-        self.llm_assistant = KendoLLMAssistant()
-        self.uncertainty_sampler = UncertaintySampler(llm_assistant=self.llm_assistant)
-        self.reviewer_trust_manager = ReviewerTrustManager()
+        self._golden_benchmark = None
+        self._llm_assistant = None
+        self._uncertainty_sampler = None
+        self._reviewer_trust_manager = None
+        # Componentes do Eixo 1: Otimização Matemática e Calibração Formal
+        self._bayesian_optimizer = None
+
+        try:
+            self._golden_benchmark = GoldenBenchmark()
+        except Exception:
+            pass
+        try:
+            self._llm_assistant = KendoLLMAssistant()
+        except Exception:
+            pass
+        try:
+            self._uncertainty_sampler = UncertaintySampler(llm_assistant=self._llm_assistant)
+        except Exception:
+            pass
+        try:
+            self._reviewer_trust_manager = ReviewerTrustManager()
+        except Exception:
+            pass
+
+    @property
+    def bayesian_optimizer(self) -> BayesianCalibrationOptimizer:
+        if getattr(self, "_bayesian_optimizer", None) is None:
+            try:
+                self._bayesian_optimizer = BayesianCalibrationOptimizer()
+            except Exception:
+                pass
+        return self._bayesian_optimizer
+
+    @bayesian_optimizer.setter
+    def bayesian_optimizer(self, val):
+        self._bayesian_optimizer = val
+
+    @property
+    def golden_benchmark(self) -> GoldenBenchmark:
+        if getattr(self, "_golden_benchmark", None) is None:
+            try:
+                from src.engine.active_learning import GoldenBenchmark
+                self._golden_benchmark = GoldenBenchmark()
+            except Exception:
+                pass
+        return self._golden_benchmark
+
+    @golden_benchmark.setter
+    def golden_benchmark(self, val):
+        self._golden_benchmark = val
+
+    @property
+    def llm_assistant(self) -> KendoLLMAssistant:
+        if getattr(self, "_llm_assistant", None) is None:
+            try:
+                from src.engine.llm_assistant import KendoLLMAssistant
+                self._llm_assistant = KendoLLMAssistant()
+            except Exception:
+                pass
+        return self._llm_assistant
+
+    @llm_assistant.setter
+    def llm_assistant(self, val):
+        self._llm_assistant = val
+
+    @property
+    def uncertainty_sampler(self) -> UncertaintySampler:
+        if getattr(self, "_uncertainty_sampler", None) is None:
+            try:
+                from src.engine.active_learning import UncertaintySampler
+                self._uncertainty_sampler = UncertaintySampler(llm_assistant=self.llm_assistant)
+            except Exception:
+                pass
+        return self._uncertainty_sampler
+
+    @uncertainty_sampler.setter
+    def uncertainty_sampler(self, val):
+        self._uncertainty_sampler = val
+
+    @property
+    def reviewer_trust_manager(self) -> ReviewerTrustManager:
+        if getattr(self, "_reviewer_trust_manager", None) is None:
+            try:
+                from src.engine.active_learning import ReviewerTrustManager
+                self._reviewer_trust_manager = ReviewerTrustManager()
+            except Exception:
+                pass
+        return self._reviewer_trust_manager
+
+    @reviewer_trust_manager.setter
+    def reviewer_trust_manager(self, val):
+        self._reviewer_trust_manager = val
 
     def _ensure_files_exist(self):
         os.makedirs(os.path.dirname(self.dataset_path), exist_ok=True)
@@ -1406,10 +1507,11 @@ class FeedbackManager:
 
     def optimize_profile_config(self, profile_key: str, current_config: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
-        Aplica otimização por reforço baseada nos feedbacks gravados para o perfil ativo.
-        Pondera anotações por revisores de maior graduação Dan (1 a 8) e Decisão dos Shinpans
-        com constante média equilibrada (SHINPAN_CALIBRATION_WEIGHT = 4.5).
-        Recalibra min_total_score, sub_thresholds e os pesos de validação (weights).
+        Aplica otimização formal bayesiana/numérica dos pesos (Eixo 1).
+        Substitui saltos heurísticos manuais (+0.05 / -0.04) por otimização formal
+        de hiperparâmetros (Optuna TPE / Scipy SLSQP), ponderação Dan, decaimento
+        temporal exponencial e penalização assimétrica (FP = 3x FN).
+        Recalibra min_total_score, sub_thresholds, weights globais e weights_by_strike_type.
         """
         feedback_list = [d for d in self.load_feedback() if d.get("profile_key") == profile_key or not d.get("profile_key")]
 
@@ -1423,96 +1525,38 @@ class FeedbackManager:
                 "message": "Nenhum feedback registrado para otimizar este perfil."
             }
 
-        new_config = json.loads(json.dumps(current_config))
-        weights = new_config.get("weights", {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15})
-        sub_thresholds = new_config.get("sub_thresholds", {"target_impact": 0.60, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.45})
-        min_total = new_config.get("min_total_score", 0.65)
+        # Executa Otimizador Bayesiano / SLSQP com custo assimétrico (FP=3.0, FN=1.0) e decaimento temporal
+        new_config, opt_summary = self.bayesian_optimizer.optimize(
+            current_config=current_config,
+            feedbacks=feedback_list
+        )
 
         changes_summary = []
+        old_min = current_config.get("min_total_score", 0.65)
+        new_min = new_config.get("min_total_score", old_min)
+        if abs(new_min - old_min) >= 0.01:
+            changes_summary.append(f"Calibração da Pontuação Mínima Global: {int(old_min*100)}% ➔ {int(new_min*100)}%")
 
-        def _get_item_weight(item: Dict[str, Any]) -> float:
-            if item.get("is_shinpan_decision") or is_shinpan_reviewer(item.get("reviewer_dan")):
-                return SHINPAN_CALIBRATION_WEIGHT
-            r_dan = item.get("reviewer_dan", 1)
-            if isinstance(r_dan, (int, float)) and 1 <= r_dan <= 8:
-                return float(r_dan)
-            return 1.0
+        old_w = current_config.get("weights", {})
+        new_w = new_config.get("weights", {})
+        if any(abs(new_w.get(k, 0.0) - old_w.get(k, 0.0)) >= 0.005 for k in ["target_impact", "fumikomi_sync", "posture", "zanshin"]):
+            method_label = opt_summary.get("method", "otimizador")
+            changes_summary.append(
+                f"Otimização Numérica dos Pesos Globais ({method_label}): "
+                f"Alvo={int(new_w.get('target_impact', 0.4)*100)}%, "
+                f"Fumikomi={int(new_w.get('fumikomi_sync', 0.25)*100)}%, "
+                f"Postura={int(new_w.get('posture', 0.2)*100)}%, "
+                f"Zanshin={int(new_w.get('zanshin', 0.15)*100)}%"
+            )
 
-        # Ponderação e ajuste de limiares
-        if fps:
-            max_fp_total_score = max([d.get("total_score", 0.0) for d in fps]) / 100.0 if fps else 0.0
-            if max_fp_total_score >= min_total:
-                old_min = min_total
-                min_total = min(0.90, max(min_total + 0.05, max_fp_total_score + 0.02))
-                changes_summary.append(f"Elevação da Pontuação Mínima Global: {int(old_min*100)}% ➔ {int(min_total*100)}%")
+        if "weights_by_strike_type" in new_config:
+            changes_summary.append("Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.")
 
-            sub_keys = ["target_impact", "fumikomi_sync", "posture", "zanshin"]
-            for skey in sub_keys:
-                fp_items = [d for d in fps if "sub_scores" in d and skey in d.get("sub_scores", {})]
-                tp_items = [d for d in tps if "sub_scores" in d and skey in d.get("sub_scores", {})]
-
-                if fp_items:
-                    fp_w_sum = sum(_get_item_weight(d) for d in fp_items)
-                    tp_w_sum = sum(_get_item_weight(d) for d in tp_items)
-
-                    avg_fp_sub = sum((d["sub_scores"][skey] / 100.0) * _get_item_weight(d) for d in fp_items) / (fp_w_sum if fp_w_sum > 0 else 1.0)
-                    avg_tp_sub = (sum((d["sub_scores"][skey] / 100.0) * _get_item_weight(d) for d in tp_items) / (tp_w_sum if tp_w_sum > 0 else 1.0)) if tp_items else 0.80
-
-                    if avg_tp_sub > avg_fp_sub:
-                        old_sub = sub_thresholds.get(skey, 0.50)
-                        target_new_sub = min(0.85, max(old_sub + 0.05, avg_fp_sub + 0.05))
-                        sub_thresholds[skey] = round(target_new_sub, 2)
-                        changes_summary.append(f"Reforço no Limiar de '{skey}': {int(old_sub*100)}% ➔ {int(target_new_sub*100)}%")
-
-        elif fns and not fps:
-            old_min = min_total
-            min_total = max(0.40, min_total - 0.04)
-            changes_summary.append(f"Suavização da Pontuação Mínima Global para capturar golpes perdidos: {int(old_min*100)}% ➔ {int(min_total*100)}%")
-
-        # Recalibração adaptativa dos pesos dos 4 pilares (weights)
-        if tps or fps:
-            sub_keys = ["target_impact", "fumikomi_sync", "posture", "zanshin"]
-            tp_weight_sums = {k: 0.0 for k in sub_keys}
-            total_tp_w = 0.0
-
-            for item in tps:
-                w_factor = _get_item_weight(item)
-                scores = item.get("sub_scores", {})
-                has_scores = any(k in scores for k in sub_keys)
-                total_tp_w += w_factor
-                for k in sub_keys:
-                    s_val = (scores.get(k, 80.0) if has_scores else 80.0) / 100.0
-                    tp_weight_sums[k] += s_val * w_factor
-
-            if total_tp_w > 0:
-                raw_proportions = {k: tp_weight_sums[k] / total_tp_w for k in sub_keys}
-                prop_sum = sum(raw_proportions.values())
-                if prop_sum > 0:
-                    target_w = {k: raw_proportions[k] / prop_sum for k in sub_keys}
-                    alpha = min(0.20, 0.03 * (total_tp_w / 5.0))
-                    new_w_calc = {}
-                    for k in sub_keys:
-                        cur_w = weights.get(k, 0.25)
-                        new_w_calc[k] = (1.0 - alpha) * cur_w + alpha * target_w[k]
-
-                    w_sum = sum(new_w_calc.values())
-                    new_weights = {k: round(new_w_calc[k] / w_sum, 3) for k in sub_keys}
-                    diff_sum = round(1.0 - sum(new_weights.values()), 3)
-                    new_weights["target_impact"] = round(new_weights["target_impact"] + diff_sum, 3)
-
-                    if any(abs(new_weights[k] - weights.get(k, 0.0)) >= 0.005 for k in sub_keys):
-                        changes_summary.append(
-                            f"Recalibração dos Pesos de Validação dos Golpes: "
-                            f"Alvo={int(new_weights['target_impact']*100)}%, "
-                            f"Fumikomi={int(new_weights['fumikomi_sync']*100)}%, "
-                            f"Postura={int(new_weights['posture']*100)}%, "
-                            f"Zanshin={int(new_weights['zanshin']*100)}%"
-                        )
-                        weights = new_weights
-
-        new_config["min_total_score"] = round(min_total, 2)
-        new_config["sub_thresholds"] = sub_thresholds
-        new_config["weights"] = weights
+        if "loss_reduction_pct" in opt_summary and opt_summary["loss_reduction_pct"] > 0:
+            changes_summary.append(
+                f"Redução da Perda Assimétrica: -{opt_summary['loss_reduction_pct']}% "
+                f"(F1 ponderado: {opt_summary.get('final_f1', 0.0):.3f})"
+            )
 
         # Eixo 4.2: Salvaguarda Obrigatória no Golden Benchmark (Prevenção contra Catastrophic Forgetting)
         try:
@@ -1539,7 +1583,11 @@ class FeedbackManager:
             "fps_analyzed": len(fps),
             "tps_analyzed": len(tps),
             "fns_analyzed": len(fns),
-            "changes": changes_summary if changes_summary else ["Parâmetros já otimizados para o conjunto de dados atual."]
+            "optimization_method": opt_summary.get("method"),
+            "f1_score": opt_summary.get("final_f1"),
+            "accuracy": opt_summary.get("accuracy"),
+            "loss_reduction_pct": opt_summary.get("loss_reduction_pct"),
+            "changes": changes_summary if changes_summary else ["Parâmetros já matematicamente ótimos para o conjunto atual."]
         }
 
         return new_config, opt_stats
@@ -1578,5 +1626,86 @@ class FeedbackManager:
     def get_reviewer_trust_weight(self, reviewer_id: str, dan: int) -> float:
         """Retorna o peso efetivo do revisor com decaimento temporal e consistência."""
         return self.reviewer_trust_manager.get_effective_weight(reviewer_id, dan)
+
+    # --------------------------------------------------------------------------
+    # MÉTODOS DE APOIO AO EIXO 6 (MODELAGEM INDIVIDUAL & WARM START DE PERFIS)
+    # --------------------------------------------------------------------------
+    @property
+    def kinesthetic_manager(self):
+        """Gerenciador central de baselines cinestésicos individuais dos kenshis."""
+        if getattr(self, "_kinesthetic_manager", None) is None:
+            try:
+                from src.analytics.kenshi_style_model import KinestheticProfileManager
+                self._kinesthetic_manager = KinestheticProfileManager()
+            except Exception:
+                pass
+        return self._kinesthetic_manager
+
+    def save_profiles(self, profiles: Dict[str, Any]) -> bool:
+        """Salva o dicionário de perfis de calibração em config/calibration_profiles.json."""
+        try:
+            os.makedirs(os.path.dirname(self.profiles_path) or ".", exist_ok=True)
+            with open(self.profiles_path, "w", encoding="utf-8") as f:
+                json.dump(profiles, f, indent=2, ensure_ascii=False)
+            return True
+        except Exception:
+            return False
+
+    def derive_profile_warm_start(
+        self,
+        source_profile_key: str,
+        new_profile_key: str,
+        direction: str = "more_strict",
+        factor: float = 1.05,
+        new_name: Optional[str] = None,
+        description: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Deriva um novo perfil de calibração utilizando Warm Start (Eixo 6.2).
+        Herda os pesos calibrados de Ki-Ken-Tai-Ichi do perfil pai, ajusta os limiares
+        direcionalmente e persiste em config/calibration_profiles.json.
+        """
+        from src.analytics.kenshi_style_model import ProfileWarmStartManager
+
+        profiles = self.load_profiles()
+        source_cfg = profiles.get(source_profile_key)
+        if not source_cfg:
+            source_cfg = DEFAULT_CALIBRATION_PROFILES.get(source_profile_key, DEFAULT_CALIBRATION_PROFILES.get("normal", {}))
+
+        derived = ProfileWarmStartManager.derive_profile(
+            source_profile_config=source_cfg,
+            new_profile_key=new_profile_key,
+            direction=direction,
+            adjustment_factor=factor,
+            new_profile_name=new_name,
+            new_description=description
+        )
+
+        profiles[new_profile_key] = derived
+        self.save_profiles(profiles)
+
+        log_event(
+            "INFO",
+            f"PERFIL DERIVADO COM WARM START: '{new_profile_key}' derivado de '{source_profile_key}' ({direction}, fator={factor})",
+            "feedback_manager"
+        )
+        return derived
+
+    def list_profiles_with_lineage(self) -> List[Dict[str, Any]]:
+        """Lista todos os perfis disponíveis com metadados de derivação e linhagem."""
+        profiles = self.load_profiles()
+        lineage_list = []
+        for key, p in profiles.items():
+            lineage_list.append({
+                "key": key,
+                "name": p.get("name", key),
+                "description": p.get("description", ""),
+                "min_total_score": p.get("min_total_score", 0.70),
+                "derived_from": p.get("derived_from"),
+                "warm_started": bool(p.get("warm_started", False)),
+                "warm_start_direction": p.get("warm_start_direction"),
+                "derived_at": p.get("derived_at")
+            })
+        return lineage_list
 
 

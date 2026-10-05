@@ -72,17 +72,52 @@ class DiagnosticReporter:
         else:
             lines.append(f"- ⚠️ **Zanshin ({sub['zanshin']}%):** Perda de postura ou desaceleração abrupta imediatamente após o golpe.")
 
+        # 5. Hasuji (5° Pilar do Eixo 3.2)
+        if "hasuji" in sub:
+            h_score = sub["hasuji"]
+            if h_score >= 65:
+                lines.append(f"- ✅ **Hasuji / Ângulo da Lâmina ({h_score}%):** Corte alinhado com o fio do Shinai no plano regulamentar.")
+            else:
+                lines.append(f"- ⚠️ **Hasuji / Ângulo da Lâmina ({h_score}%):** Lâmina desalinhada; golpe desferido com a lateral ou costas do Shinai.")
+
+        # Seme e Contrataque (Eixo 3.3 e 3.4)
+        if "seme" in sub:
+            s_score = sub["seme"]
+            if s_score >= 60:
+                lines.append(f"- ✅ **Seme / Pressão Pré-Golpe ({s_score}%):** Domínio do centro (Chushin-sen) e iniciativa ofensiva.")
+            else:
+                lines.append(f"- ⚠️ **Seme / Pressão Pré-Golpe ({s_score}%):** Falta de pressão prévia ou ataque desferido a partir de recuo.")
+
+        if event_info.get("is_counterattack"):
+            lines.append(f"- ⚔️ **Técnica de Contrataque:** Reconhecido como {event_info.get('counterattack_type', 'Oji-waza')}.")
+
+        # Perspectiva e Enquadramento da Câmera (Eixo 5)
+        if "camera_angle_deg" in event_info:
+            c_angle = event_info["camera_angle_deg"]
+            c_cat = event_info.get("camera_category", "LATERAL")
+            c_qual = event_info.get("camera_quality_score", 85.0)
+            lines.append(f"- 📹 **Enquadramento de Câmera ({c_cat} ~{c_angle:.0f}° - Qualidade {c_qual:.0f}%):** Compensação geométrica de perspectiva aplicada.")
+
+        # Modelagem do Estilo Individual do Kenshi (Eixo 6)
+        if "kinesthetic_insights" in event_info and event_info["kinesthetic_insights"]:
+            for ins in event_info["kinesthetic_insights"]:
+                lines.append(f"- 🧬 **Estilo Individual:** {ins}")
+
         lines.append("")
         if not is_valid:
             lines.append("**O que faltou para o Ponto Válido:**")
             failed = evaluation.get("failed_subcriteria", [])
+            if "KU_TOTSU_VAZIO" in failed:
+                lines.append(" 1. Golpe no vazio (Ku-totsu): Fora do alcance de combate (Maai) sem contato com o oponente.")
             if "ALVO_FORA" in failed or sub["target_impact"] < 60:
-                lines.append(" 1. Focar o contato com a parte correta do Shinai (Datotsu-bu) no centro do alvo.")
+                lines.append(" 2. Focar o contato com a parte correta do Shinai (Datotsu-bu) no centro do alvo.")
             if "SEM_FUMIKOMI" in failed or sub["fumikomi_sync"] < 60:
-                lines.append(" 2. Sincronizar a pisada forte do pé direito exatamente no instante do corte.")
+                lines.append(" 3. Sincronizar a pisada forte do pé direito exatamente no instante do corte.")
             if "POSTURA_INCLINADA" in failed or sub["posture"] < 60:
-                lines.append(" 3. Manter a coluna ereta sem projetar o ombro excessivamente à frente.")
+                lines.append(" 4. Manter a coluna ereta sem projetar o ombro excessivamente à frente.")
             if "SEM_ZANSHIN" in failed or sub["zanshin"] < 50:
-                lines.append(" 4. Sustentar a guarda e prontidão (Zanshin) após ultrapassar/finalizar o golpe.")
+                lines.append(" 5. Sustentar a guarda e prontidão (Zanshin) após ultrapassar/finalizar o golpe.")
+            if "HASUJI_INCORRETO" in failed:
+                lines.append(" 6. Corrigir o Hasuji: Garantir que o plano da lâmina corresponda ao ângulo de corte regulamentar.")
 
         return "\n".join(lines)

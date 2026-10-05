@@ -1,77 +1,298 @@
 {
-  "status": "completed_consolidated",
-  "session_id": "auto_train_20261001_214214",
-  "scope_key": "modality_ji_geiko",
-  "scope_name": "🎯 Necessidade Mais Latente (🥋 Modalidade: Ji-geiko (地稽古))",
-  "samples_processed": 32831,
-  "final_accuracy": 35.7,
+  "status": "in_progress",
+  "session_id": "auto_train_20261004_224239",
+  "scope_key": "general_all",
+  "scope_name": "🎯 Necessidade Mais Latente (🌐 Treinamento Geral Unificado (Todos os Modos & 14 Modalidades))",
+  "intensity": "profundo",
+  "duration_minutes_requested": 60.0,
+  "target_duration_sec": 3600.0,
+  "elapsed_seconds": 1342.0,
+  "remaining_seconds": 2258.0,
+  "cycle_count": 7393,
+  "samples_processed": 147555,
+  "initial_accuracy": 55.8,
+  "current_accuracy": 58.2,
+  "current_stage": "📹 Extração de Padrões Cinemáticos e Biomecânica de Vídeos de Referência",
+  "current_subtask": "Aceleração Angular: Dinâmica de desaceleração de impacto na Shinai (Monouchi)",
   "sources_consulted": [
     {
-      "title": "The Philosophy and Practice of Ji-geiko in Contemporary Kendo",
-      "type": "Manual Oficial AJKF / FIK",
-      "url": "https://www.kendo.or.jp/knowledge/ji_geiko",
-      "focus": "Ji-geiko (地稽古)",
-      "summary": "Diretrizes oficiais de execução para Ji-geiko (地稽古) (地稽古): foco em Construção de oportunidade com Seme, Manutenção da compostura e centro, Variedade técnica inteligente, Postura digna sob pressão.",
+      "title": "Web: Kendo (general_all)",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Kendo",
+      "focus": "general_all",
+      "summary": "Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039;) is a modern Japanese martial art, descended from kenjutsu",
       "principles": [
-        "Pressão com Seme (攻め): Rompimento da guarda e quebra da postura mental do adversário antes de desferir o ataque.",
-        "Ki-Ken-Tai-Ichi em Combate Livre: Aplicação plena dos fundamentos de golpe, corte e pés sem pré-determinação.",
-        "Chushin-sen: Disputa e domínio ininterrupto da linha central de corte e defesa."
+        "Conceito Técnico (Kendo): Kendo (Japanese: 剣道, Hepburn: Kendō; lit. &#039;sword way&#039; or &#039;sword path&#039; or &#039;way of the sword&#039..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    {
+      "title": "Web: Kendo Kata (general_all)",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Kendo_Kata",
+      "focus": "general_all",
+      "summary": "originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or schools of kendo and kenjutsu had their own",
+      "principles": [
+        "Conceito Técnico (Kendo Kata): originally used to preserve the techniques and history of kenjutsu for future generations. In the past, many ryu or scho..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    {
+      "title": "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Zen_Nihon_kend%C5%8D_renmei_J%C5%8Dd%C5%8D",
+      "focus": "general_all",
+      "summary": "Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Takaji and presented to the All Japan",
+      "principles": [
+        "Conceito Técnico (Zen Nihon kendō renmei Jōdō): Nihon Kendō Renmei Jōdō, or Seitei Jōdō in short, is a modern form of jōdō created by Japanese martial artist Shimizu Ta..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    {
+      "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+      "type": "official_manual",
+      "url": "https://www.kendo-fik.org/regulations",
+      "focus": "Princípios Gerais de Kendo",
+      "summary": "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin. | Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+      "principles": [
+        "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+        "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+        "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+        "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai)."
       ],
       "biomechanical_thresholds": {
-        "cadence_cpm": [
-          8,
-          25
+        "men_strike_height_ratio": [
+          0.85,
+          1.05
         ],
-        "seme_retention_ratio": 0.88
-      }
+        "kote_strike_wrist_angle": [
+          145.0,
+          180.0
+        ],
+        "do_strike_body_angle": [
+          35.0,
+          55.0
+        ],
+        "tsuki_thrust_collinear_tolerance": 0.08,
+        "fumikomi_sync_max_delay_ms": 70.0,
+        "zanshin_duration_min_sec": 0.8
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "spine_tilt_max_deg": 8.5,
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "zanshin_duration_min_sec": 0.8,
+        "hasuji_max_deviation_deg": 12.0,
+        "men_strike_height_ratio": {
+          "min": 0.85,
+          "max": 1.05
+        },
+        "kote_strike_wrist_angle": {
+          "min": 145.0,
+          "max": 180.0
+        },
+        "do_strike_body_angle": {
+          "min": 35.0,
+          "max": 55.0
+        },
+        "tsuki_thrust_collinear_tolerance": 0.08,
+        "fumikomi_sync_max_delay_ms": 70.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    {
+      "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+      "type": "official_manual",
+      "url": "https://www.kendo.or.jp/knowledge/rules/",
+      "focus": "Princípios Gerais de Kendo",
+      "summary": "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact. | Hasuji: Blade angle alignment preventing flat slapping hits.",
+      "principles": [
+        "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+        "Hasuji: Blade angle alignment preventing flat slapping hits.",
+        "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+        "Chushin-sen: Dominance and defense of the central line."
+      ],
+      "biomechanical_thresholds": {
+        "spine_upright_max_tilt_deg": 10.0,
+        "left_heel_elevation_min_cm": 2.5,
+        "shoulder_symmetry_tolerance": 0.05,
+        "elbow_extension_furikaburi_deg": [
+          115.0,
+          140.0
+        ]
+      },
+      "authority_tier": 2,
+      "authority_name": "AJKF Referee Handbook",
+      "authority_desc": "Alta",
+      "authority_weight": 0.85,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "spine_upright_max_tilt_deg": 10.0,
+        "left_heel_elevation_min_cm": 2.5,
+        "shoulder_symmetry_tolerance": 0.05,
+        "elbow_extension_furikaburi_deg": {
+          "min": 115.0,
+          "max": 140.0
+        }
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    {
+      "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+      "type": "scientific_study",
+      "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi",
+      "focus": "Princípios Gerais de Kendo",
+      "summary": "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms. | Forward impulse transfer: Left foot spring drive (Hiki-tsuke) generates horizontal acceleration.",
+      "principles": [
+        "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms.",
+        "Forward impulse transfer: Left foot spring drive (Hiki-tsuke) generates horizontal acceleration.",
+        "Suburi fatigue degradation: Progressive posture collapse manifests in excessive forward pelvic tilt."
+      ],
+      "biomechanical_thresholds": {
+        "fumikomi_knee_flexion_deg": [
+          95.0,
+          120.0
+        ],
+        "suburi_cadence_optimal_cpm": [
+          35.0,
+          60.0
+        ],
+        "kirikaeshi_cadence_optimal_cpm": [
+          55.0,
+          85.0
+        ],
+        "stamina_retention_ratio_target": 0.88
+      },
+      "authority_tier": 4,
+      "authority_name": "Artigos acadêmicos / Biomecânica",
+      "authority_desc": "Baixa",
+      "authority_weight": 0.45,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -50.0,
+          "max": 50.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "elbow_extension_impact_deg": {
+          "min": 150.0,
+          "max": 175.0,
+          "ideal": 165.0,
+          "unit": "deg"
+        },
+        "blade_contact_zone": "monouchi",
+        "fumikomi_knee_flexion_deg": {
+          "min": 95.0,
+          "max": 120.0
+        },
+        "suburi_cadence_optimal_cpm": {
+          "min": 35.0,
+          "max": 60.0
+        },
+        "kirikaeshi_cadence_optimal_cpm": {
+          "min": 55.0,
+          "max": 85.0
+        },
+        "stamina_retention_ratio_target": 0.88
+      },
+      "structured_concept": "do_strike_biomechanics"
     },
     {
       "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
       "type": "Manual de Arbitragem AJKF"
     },
     {
-      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
-      "type": "Tratado Técnico Kata"
-    },
-    {
       "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
       "type": "Manual Oficial FIK"
     },
     {
-      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
-      "type": "Corpus de Vídeo Dojo"
-    },
-    {
-      "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
-      "type": "Mocap Científico"
+      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+      "type": "Tratado Técnico Kata"
     },
     {
       "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
       "type": "Corpus de Vídeo HD"
     },
     {
-      "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
-      "type": "Currículo Pedagógico"
+      "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+      "type": "Mocap Científico"
     },
     {
-      "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
-      "type": "Estudo Biomecânico"
-    },
-    {
-      "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
-      "type": "Dataset de Calibração"
-    },
-    {
-      "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
-      "type": "Modelo Neural"
-    },
-    {
-      "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
-      "type": "Base de Conhecimento"
+      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+      "type": "Corpus de Vídeo Dojo"
     }
   ],
-  "duration_seconds": 300.0,
-  "last_updated": "2026-10-01T21:47:14.312671",
-  "consolidated": true,
-  "last_checkpoint_timestamp": "2026-10-01T21:47:14.312671"
+  "training_logs": [
+    "⚙️ [1225.6s] Aceleração Angular: Dinâmica de desaceleração de impacto na Shinai (Monouchi) (Amostras: 134822)",
+    "⚙️ [1233.7s] Aceleração Angular: Dinâmica de desaceleração de impacto na Shinai (Monouchi) (Amostras: 135640)",
+    "⚙️ [1241.9s] Shisei Tridimensional: Tolerância de inclinação da coluna vertebral restrita a ≤ 8.5° (Amostras: 136522)",
+    "⚙️ [1250.1s] Propulsão Hiki-tsuke: Tração horizontal do pé esquerdo e elevação de calcanhar ≥ 2.5cm (Amostras: 137451)",
+    "⚙️ [1258.2s] Shisei Tridimensional: Tolerância de inclinação da coluna vertebral restrita a ≤ 8.5° (Amostras: 138379)",
+    "⚙️ [1266.4s] Propulsão Hiki-tsuke: Tração horizontal do pé esquerdo e elevação de calcanhar ≥ 2.5cm (Amostras: 139263)",
+    "⚙️ [1274.6s] Propulsão Hiki-tsuke: Tração horizontal do pé esquerdo e elevação de calcanhar ≥ 2.5cm (Amostras: 140110)",
+    "⚙️ [1282.7s] Propulsão Hiki-tsuke: Tração horizontal do pé esquerdo e elevação de calcanhar ≥ 2.5cm (Amostras: 140996)",
+    "⚙️ [1290.9s] Propulsão Hiki-tsuke: Tração horizontal do pé esquerdo e elevação de calcanhar ≥ 2.5cm (Amostras: 141962)",
+    "⚙️ [1299.1s] Invariância de Sonkyō: Segmentação de centro de massa sob oclusão volumétrica de Hakama (Amostras: 142849)",
+    "⚙️ [1307.2s] Aceleração Angular: Dinâmica de desaceleração de impacto na Shinai (Monouchi) (Amostras: 143750)",
+    "⚙️ [1315.4s] Propulsão Hiki-tsuke: Tração horizontal do pé esquerdo e elevação de calcanhar ≥ 2.5cm (Amostras: 144654)",
+    "⚙️ [1323.6s] Cinemática de Fumikomi: Ground Reaction Force com sincronismo impacto-pé ≤ 48ms (Amostras: 145561)",
+    "⚙️ [1331.7s] Invariância de Sonkyō: Segmentação de centro de massa sob oclusão volumétrica de Hakama (Amostras: 146421)",
+    "⚙️ [1339.9s] Shisei Tridimensional: Tolerância de inclinação da coluna vertebral restrita a ≤ 8.5° (Amostras: 147325)"
+  ],
+  "consolidated": false,
+  "last_checkpoint_timestamp": "2026-10-04T23:05:01.498196"
 }

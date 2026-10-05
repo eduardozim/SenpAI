@@ -1,0 +1,204 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-10-05T01:41:13Z",
+  "profiles": {
+    "KENSHI_SOLO": {
+      "kenshi_id": "KENSHI_SOLO",
+      "display_name": "Kendoca Principal",
+      "created_at": "2026-10-02T20:05:46Z",
+      "last_updated_at": "2026-10-04T01:02:54Z",
+      "sessions_count": 38,
+      "strikes_count": 0,
+      "metrics": {
+        "posture_resting_angle_deg": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "fumikomi_window_ms": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "cadence_cpm": {
+          "count": 4,
+          "mean": 10.0,
+          "std_dev": 0.001,
+          "m2": 0.0
+        },
+        "spine_tilt_strike_deg": {
+          "count": 6,
+          "mean": 92.0,
+          "std_dev": 0.001,
+          "m2": 0.0
+        },
+        "zanshin_duration_s": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      },
+      "strike_extensions": {
+        "MEN": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "KOTE": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "DO": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "TSUKI": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      }
+    },
+    "KENSHI_SHIRO": {
+      "kenshi_id": "KENSHI_SHIRO",
+      "display_name": "Kendoca Shiro (Esquerda)",
+      "created_at": "2026-10-02T20:06:13Z",
+      "last_updated_at": "2026-10-05T01:41:13Z",
+      "sessions_count": 15,
+      "strikes_count": 242,
+      "metrics": {
+        "posture_resting_angle_deg": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "fumikomi_window_ms": {
+          "count": 242,
+          "mean": 5.6418,
+          "std_dev": 44.9975,
+          "m2": 487971.2389
+        },
+        "cadence_cpm": {
+          "count": 15,
+          "mean": 9.3867,
+          "std_dev": 2.3567,
+          "m2": 77.7567
+        },
+        "spine_tilt_strike_deg": {
+          "count": 15,
+          "mean": 95.7333,
+          "std_dev": 2.3563,
+          "m2": 77.7333
+        },
+        "zanshin_duration_s": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      },
+      "strike_extensions": {
+        "MEN": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "KOTE": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "DO": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "TSUKI": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      }
+    },
+    "KENSHI_AKA": {
+      "kenshi_id": "KENSHI_AKA",
+      "display_name": "Kendoca Aka (Direita)",
+      "created_at": "2026-10-02T20:06:13Z",
+      "last_updated_at": "2026-10-05T01:41:13Z",
+      "sessions_count": 15,
+      "strikes_count": 253,
+      "metrics": {
+        "posture_resting_angle_deg": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "fumikomi_window_ms": {
+          "count": 253,
+          "mean": 4.0802,
+          "std_dev": 59.8195,
+          "m2": 901751.1321
+        },
+        "cadence_cpm": {
+          "count": 15,
+          "mean": 10.1267,
+          "std_dev": 2.9548,
+          "m2": 122.2293
+        },
+        "spine_tilt_strike_deg": {
+          "count": 15,
+          "mean": 95.8133,
+          "std_dev": 2.6511,
+          "m2": 98.3971
+        },
+        "zanshin_duration_s": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      },
+      "strike_extensions": {
+        "MEN": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "KOTE": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "DO": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        },
+        "TSUKI": {
+          "count": 0,
+          "mean": 0.0,
+          "std_dev": 1.0,
+          "m2": 0.0
+        }
+      }
+    }
+  }
+}
