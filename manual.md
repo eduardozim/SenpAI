@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.5.0`
+> **Versão Oficial do Sistema**: `v 0.3.6.0`
 
 ---
 

@@ -83,7 +83,7 @@ from src.utils.video_player_controls import render_video_playback_controls
 setup_system_logger()
 
 # Versão Oficial do Sistema
-SYSTEM_VERSION = "v 0.3.5.0"
+SYSTEM_VERSION = "v 0.3.6.0"
 
 st.set_page_config(
     page_title=f"SenpAI ({SYSTEM_VERSION}) - AI Kendo Referee & Analysis System",

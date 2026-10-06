@@ -380,7 +380,7 @@ class AutoTrainingEngine:
         self._ensure_knowledge_base()
 
     @property
-    def feedback_mgr(self) -> FeedbackManager:
+    def feedback_mgr(self) -> Optional[FeedbackManager]:
         if getattr(self, "_feedback_mgr", None) is None:
             try:
                 self._feedback_mgr = FeedbackManager(
@@ -968,7 +968,7 @@ class AutoTrainingEngine:
             clips_dataset = []
             try:
                 if self.feedback_mgr:
-                    feedbacks = self.feedback_mgr.load_feedbacks()
+                    feedbacks = self.feedback_mgr.load_feedback()
                     # Seleciona feedbacks com bandeiras ou confirmados por Dan alto
                     for fb in feedbacks:
                         if fb.get("label") in ["TP", "CONFIRMED", "VALID", "IPPON"]:

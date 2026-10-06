@@ -4,7 +4,7 @@
 
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
 
-                              Versão: v 0.3.5.0
+                              Versão: v 0.3.6.0
 
 ===============================================================================
 
