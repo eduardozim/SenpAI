@@ -1,8 +1,8 @@
 """
 SenpAI - Web Dashboard Interativo de Análise de Kendo (Streamlit App)
 Suporta 2 Modos Principais de Operação:
-1. ⚔️ Modo de Análise de Lutas (Tempo Real Multi-Câmeras e Detecção Gravada)
-2. 🎓 Modo de Treinamento & Aprendizado (Vídeos Gravados e Tempo Real Multi-Câmeras)
+1. ⚔️ Modo de Análise de Lutas (Tempo Real Multi-Câmeras, Streaming e Detecção Gravada)
+2. 🎓 Modo de Treinamento & Aprendizado (Tempo Real Multi-Câmeras, Streaming e Vídeos Gravados)
 """
 
 import streamlit as st
@@ -961,7 +961,7 @@ def render_welcome_home_page():
                 </div>
                 <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Formato de Entrada</div>
                 <div style="color: #94A3B8; font-size: 12px; line-height: 1.4;">
-                    Escolha entre <b>🔴 Tempo Real</b> (Webcam / RTSP) ou <b>📹 Vídeo Gravado</b> (upload local, link ou vídeo demo).
+                    Escolha entre <b>🔴 Tempo Real</b> (Webcam / RTSP), <b>🌐 Streaming</b> (YouTube / Ao Vivo) ou <b>📹 Vídeo Gravado</b> (upload local, link ou vídeo demo).
                 </div>
             </div>
             """,
@@ -975,9 +975,9 @@ def render_welcome_home_page():
                     <span style="background: #10B981; color: #FFFFFF; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">3</span>
                     <span style="font-size: 20px;">📹</span>
                 </div>
-                <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Vídeo ou Câmeras</div>
+                <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Vídeo, Stream ou Câmeras</div>
                 <div style="color: #94A3B8; font-size: 12px; line-height: 1.4;">
-                    Conecte de 1 a 4 câmeras simultâneas com teste de ping ou carregue vídeos. Use <b>"Gerar Vídeo Demonstrativo"</b> para teste instantâneo!
+                    Conecte de 1 a 4 câmeras simultâneas com teste de ping, insira links de streaming ou carregue vídeos. Use <b>"Gerar Vídeo Demonstrativo"</b> para teste instantâneo!
                 </div>
             </div>
             """,
@@ -1025,6 +1025,7 @@ def render_welcome_home_page():
                     <div style="color: #F8FAFC; font-weight: 700; font-size: 12px; margin-bottom: 4px;">📡 Formatos Suportados:</div>
                     <ul style="color: #94A3B8; font-size: 12px; margin: 0; padding-left: 18px; line-height: 1.5;">
                         <li><b>🔴 Detecção em Tempo Real:</b> 1 a 4 câmeras simultâneas (Webcams / RTSP / Câmeras IP) com fusão geométrica e consenso multicâmera.</li>
+                        <li><b>🌐 Detecção via Streaming:</b> Transmissões ao vivo e links web (YouTube Live/VOD, Twitch, HLS .m3u8, RTMP, RTSP) com análise direta sem download prévio.</li>
                         <li><b>📹 Detecção Gravada:</b> Vídeos pré-gravados, upload local sem limite, YouTube e linha do tempo com governança por Dan e exportação Excel.</li>
                     </ul>
                 </div>
@@ -1049,8 +1050,9 @@ def render_welcome_home_page():
                 <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px;">
                     <div style="color: #F8FAFC; font-weight: 700; font-size: 12px; margin-bottom: 4px;">📡 Formatos Suportados:</div>
                     <ul style="color: #94A3B8; font-size: 12px; margin: 0; padding-left: 18px; line-height: 1.5;">
-                        <li><b>📹 Análise de Vídeos Gravados:</b> Rastreamento detalhado por Kendoka, diagnósticos com prescrições de treinos e relatórios individuais (.MD e .JSON).</li>
                         <li><b>🔴 Análise em Tempo Real (Webcam / RTSP):</b> Análise ao vivo na mesma dinâmica do tempo real, com HUD dos 3 Pilares, contagem de repetições, cadência (CPM) e biofeedback postural instantâneo.</li>
+                        <li><b>🌐 Análise via Streaming:</b> Sessões ao vivo e treinos remotos (YouTube, Twitch, HLS, RTMP) com projeção do HUD dos 3 Pilares e telemetria em tempo real.</li>
+                        <li><b>📹 Análise de Vídeos Gravados:</b> Rastreamento detalhado por Kendoka, diagnósticos com prescrições de treinos e relatórios individuais (.MD e .JSON).</li>
                     </ul>
                 </div>
             </div>
@@ -2941,7 +2943,7 @@ elif nav_page == "settings":
             st.markdown("#### 📖 Manual do Usuário e Técnico do SenpAI (`manual.md`)")
             doc_c1, doc_c2 = st.columns([3, 1])
             with doc_c1:
-                st.caption("Guia abrangente cobrindo instalação, aceleração GPU/CPU, os 2 grandes modos de operação (Análise de Lutas e Treinamento & Aprendizado, ambos com suporte a Tempo Real e Gravado), 14 modalidades pedagógicas e governança de IA.")
+                st.caption("Guia abrangente cobrindo instalação, aceleração GPU/CPU, os 2 grandes modos de operação (Análise de Lutas e Treinamento & Aprendizado, ambos com suporte a Tempo Real, Streaming e Gravado), 14 modalidades pedagógicas e governança de IA.")
             with doc_c2:
                 m_content = get_documentation_content("manual.md")
                 st.download_button(
