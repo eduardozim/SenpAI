@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.5.0`
+> **Versão Oficial do Sistema**: `v 0.3.6.0`
 
 ---
 
@@ -458,16 +458,18 @@ A interface web conta com uma arquitetura de navegação com visibilidade estrit
   - **Barra de Atalhos de Ação Rápida**: Botões para transição imediata para a Análise de Lutas, acesso ao Menu de Configurações e download direto da documentação oficial (`manual.md`).
   - **Guia Demonstrativo em 4 Passos (*Como Iniciar o Uso*)**:
     1. *Navegação no Menu*: Seleção primária na barra lateral entre **⚔️ Análise de Lutas** ou **🎓 Treinamento e Aprendizado**.
-    2. *Escolha do Submodo*: Seleção entre **🔴 Tempo Real** (câmeras ao vivo / RTSP) ou **📹 Vídeo Gravado** (arquivos locais / YouTube).
-    3. *Vídeo ou Câmera*: Configuração dos feeds RTSP/Webcam ou upload de arquivos e vídeo sintético de demonstração.
+    2. *Escolha do Formato de Entrada*: Seleção entre **🔴 Detecção em Tempo Real** (câmeras ao vivo / Webcams / RTSP), **🌐 Detecção via Streaming** (transmissões do YouTube Live/VOD, Twitch, HLS `.m3u8`, RTMP/HTTP) ou **📹 Vídeo Gravado** (arquivos locais / YouTube).
+    3. *Vídeo, Streaming ou Câmera*: Configuração dos feeds RTSP/Webcam, inserção do link de streaming com teste de conexão ou upload de arquivos locais.
     4. *Diagnósticos & Exportação*: Acompanhamento ao vivo com telemetria dos 3 Pilares e exportação completa em Markdown/JSON/Excel.
   - **Apresentação dos 2 Modos de Operação Principais**:
     - **1. ⚔️ Modo de Análise de Lutas (Combate / Shiai)**:
       - *🔴 Detecção em Tempo Real*: Fusão multi-câmera síncrona (1 a 4 câmeras RTSP ou Webcams), feed ao vivo com placar Sanbon-shobu e detecção de Ippons segundo as regras oficiais da FIK.
+      - *🌐 Detecção via Streaming*: Análise contínua e direta de transmissões da web (YouTube Live, vídeos do YouTube, Twitch, HLS `.m3u8` ou RTMP) na mesma dinâmica da detecção em tempo real, com placar Sanbon-Shobu oficial, banner de alertas imediatos e histórico de golpes avaliados.
       - *📹 Detecção Gravada*: Upload local, YouTube ou vídeo de demonstração, análise de Yūko-Datotsu (Ki-Ken-Tai-Ichi), rituais de Sonkyō, VAR interativo quadro a quadro, governança por Dan e retreinamento via planilha Excel.
     - **2. 🎓 Modo de Treinamento e Aprendizado (Dojo / Keiko)**:
-      - *📹 Análise de Vídeo Gravado*: Avaliação diagnóstica pós-treino nas 14 modalidades oficiais do Kendo com cálculo dos 3 Pilares Fundamentais (Movimentação, Precisão, Constância) e exportação em Markdown e JSON.
       - *🔴 Análise em Tempo Real*: Monitoramento ao vivo de dojos via câmeras RTSP ou Webcams, com contagem de repetições/golpes, cadência dinâmica em Golpes por Minuto (CPM), HUD em tempo real dos 3 Pilares e biofeedback postural.
+      - *🌐 Análise via Streaming*: Avaliação biomecânica do treino ao vivo em transmissões da web (YouTube Live, vídeos do YouTube, Twitch, HLS ou IP) com projeção do HUD dos 3 Pilares, classificação contínua das 14 modalidades oficiais de Kendo, contagem de repetições e relatório consolidado pós-treino (.md e .json).
+      - *📹 Análise de Vídeo Gravado*: Avaliação diagnóstica pós-treino nas 14 modalidades oficiais do Kendo com cálculo dos 3 Pilares Fundamentais (Movimentação, Precisão, Constância) e exportação em Markdown e JSON.
   - **Transparência de Inteligência Artificial & Governança por Dan**: Esclarecimento didático sobre a calibração inicial realista (< 50%) e a governança com auditoria de árbitros (1º ao 8º Dan).
 
 ---
@@ -661,6 +663,46 @@ A modelagem do estilo individual personaliza a avaliação biomecânica, reconhe
 
 ---
 
+### 4.15. Detecção e Análise em Tempo Real via Streaming Web ([stream_capture.py](file:///d:/Projetos/SenpAI/Dev/src/utils/stream_capture.py))
+
+O módulo de captura assíncrona foi expandido para fornecer o **Formato de Entrada via Streaming**, permitindo que o SenpAI processe transmissões ao vivo e fluxos da web na mesma dinâmica e com a mesma riqueza analítica da detecção em tempo real por Webcams locais:
+
+- **Resolução Dinâmica de Links de Streaming (`resolve_streaming_url`)**:
+  - Aceita links do **YouTube** (transmissões Ao Vivo / Live, vídeos gravados e Shorts), **Twitch**, **Vimeo**, playlists **HLS (`.m3u8`)**, fluxos **RTMP (`rtmp://`)**, **RTSP (`rtsp://`)** e fluxos **HTTP diretos** (`http://...:8080/video`).
+  - Utiliza o motor `yt-dlp` com estratégias resilientes de clientes InnerTube móveis (`android`, `visionos`) para extrair diretamente a rota de fluxo de vídeo (HLS manifest ou stream de vídeo MP4) sem realizar o download prévio do arquivo inteiro no disco rígido.
+  - Seletor de qualidade integrado (`media` até 720p a 30 FPS, `alta` com resolução original máxima, ou `baixa` para redes com menor largura de banda).
+- **Captura Assíncrona com Zero-Latency Buffer (`ThreadedVideoStream`)**:
+  - Thread dedicada em background com tamanho de buffer unitário (`CAP_PROP_BUFFERSIZE = 1`).
+  - Descarta automaticamente quadros defasados para eliminar latência acumulada, garantindo que o pipeline de IA analise estritamente o instante atual da transmissão.
+  - Reconexão transparente em oscilações de rede com controle exponencial de retentativas.
+- **Diagnóstico Prévio de Conectividade (`probe_stream_connection`)**:
+  - Botão *"🔍 Testar Conexão"* no dashboard executa uma sondagem não-bloqueante de até 4 segundos.
+  - Exibe prévia do frame capturado, resolução nativa (ex: `1280x720`), taxa de quadros (FPS) e latência de abertura da conexão em milissegundos.
+  - Apresenta card com metadados do stream: Título do combate/treino, Canal/Criador, indicador de status (`🔴 AO VIVO` ou `📹 Transmissão Web`) e duração.
+- **Controle de Velocidade e Navegação do Vídeo no Streaming**:
+  - **4 Níveis de Velocidade de Reprodução**:
+    - `0.5x` (*Câmera Lenta*): desacelera a cadência de extração e espaçamento temporal, ideal para escrutínio milimétrico da trajetória do Shinai (*Hasuji*), sincronismo de *Fumikomi-ashi* e impacto;
+    - `1.0x` (*Normal*): cadência padrão de tempo real correspondente à taxa de quadros original da transmissão;
+    - `1.5x` (*Acelerado*): avanço dinâmico para varredura de treinos longos ou lutas preliminares;
+    - `2.0x` (*Rápido*): aceleração com decodificação otimizada (`cap.grab()`) para localização rápida de combates e técnicas.
+  - **Navegação Temporal no Fluxo (Seek & Pausa)**:
+    - Botões de retrocesso rápido (`⏪ -10s`, `⏪ -5s`), avanço rápido (`⏩ +5s`, `⏩ +10s`) e alternância de pausa/retomada (`⏸️ / ▶️`);
+    - O `ThreadedVideoStream` suporta busca relativa (`seek`) e absoluta (`seek_to`), aplicando comandos via `cv2.CAP_PROP_POS_MSEC` ou `cv2.CAP_PROP_POS_FRAMES` diretamente na thread de captura sem interromper a conexão;
+    - **Persistência de Conexão na Interface**: O objeto de streaming é preservado no estado da sessão do Streamlit, permitindo que o usuário clique repetidamente nos botões de navegação e alterne as velocidades sem sofrer congelamentos de reconexão;
+    - **Telemetria de Tempo no Player**: O caption de reprodução exibe continuamente a taxa real de FPS, o tempo decorrido no vídeo formatado em minutos/segundos (`⏱️ MM:SS.s`) e a velocidade ativa.
+- **Operação no Modo de Análise de Lutas (Combate / Shiai)**:
+  - Processamento instantâneo quadro a quadro com MediaPipe Pose e rastreamento contínuo dos combatentes (*Aka* e *Shiro*).
+  - Avaliação de golpes segundo as 5 condições oficiais de Yūko-Datotsu da FIK (*Datotsu-bui*, *Ki-Ken-Tai-Ichi*, *Hasuji*, *Zanshin* e *Shisei*).
+  - Atualização contínua do **Placar Sanbon-Shobu Oficial** com Ippons e tentativas totais ao vivo.
+  - Banner dinâmico de alerta imediato de golpes e histórico em ordem cronológica invertida com detalhamento expansível.
+- **Operação no Modo de Treinamento e Aprendizado (Dojo / Keiko)**:
+  - Classificação periódica contínua da modalidade praticada dentre as **14 modalidades oficiais de Kendo com kanji** (Suburi, Kirikaeshi, Uchikomi-geiko, Kakari-geiko, Ji-geiko, etc.).
+  - Projeção do **HUD Dinâmico dos 3 Pilares Fundamentais**: Movimentação (35%), Precisão (35%) e Constância (30%).
+  - Contagem automática de repetições e cortes com cadência dinâmica em Golpes por Minuto (CPM) e biofeedback postural imediato.
+  - Ao pausar ou encerrar a transmissão, o sistema compila o **Resumo Consolidado da Sessão via Streaming**, disponibilizando botões para download completo do relatório em Markdown (`.md`) e dos dados estruturados em JSON (`.json`).
+
+---
+
 ## 5. Suíte de Testes Automatizados e Relatório de Execução
 
 O projeto inclui suíte completa de testes automatizados em `unittest` com runner customizado ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py)) e script de execução dedicado ([run_tests.py](file:///d:/Projetos/SenpAI/Dev/run_tests.py)).
@@ -686,7 +728,7 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **Política de Retenção Única**:
   - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
 
-### Módulos de Testes Incluídos (181 Testes em 19 Módulos)
+### Módulos de Testes Incluídos (240 Testes em 25 Módulos)
 
 - **`test_active_learning_eixo4.py` (10 testes)**: Valida o cálculo de amostragem por incerteza (faixa 45%-65%), enfileiramento inteligente, avaliação de acurácia contra o dataset padrão-ouro canônico (`GoldenBenchmark`), salvaguarda mandatória contra esquecimento catastrófico (`validate_no_regression`), bloqueio de regressão no retreinamento adaptativo e auto-treinamento, consenso multi-árbitro 2-de-3 ponderado por Dan, detecção de divergência arbitral, decaimento exponencial de autoridade por inatividade (`ReviewerTrustManager`), rotulagem de lances pelo Assistente LLM Especialista FIK e explicação pedagógica de lances controversos.
 - **`test_auto_trainer.py` (14 testes)**: Valida a inicialização da base de conhecimento de Kendo, diagnóstico autônomo de necessidade mais latente, ciclo de auto-treinamento com tempo controlado, baselines preliminares realistas (< 50%), recalibração de perfis de arbitragem e das 14 modalidades pedagógicas, persistência incremental em governança e checkpoints de tolerância a falhas.
@@ -702,15 +744,14 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_scoreboard_and_flag_detection.py` (7 testes)**: Valida o placar eletrônico Sanbon-shobu, detecção cromática de flag dorsal (Tasukuki) e inversão Aka ⇄ Shiro.
 - **`test_shinai_tracking.py` (6 testes)**: Valida rastreamento de Shinai, estimação do Kensen, zonas anatômicas de alvo e predição vetorial de impacto.
 - **`test_sonkyo_and_plane_filtering.py` (21 testes)**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes/árbitros em primeiro plano), delimitação da quadra de luta (Shiai-jo ROI), travamento K=2, interpolação cinemática de pulsos/pés sob oclusão, supressão de falsos positivos, debounce e NMS de 35 frames do `EventSpotter`, e persistência de aprendizado de Sonkyō.
-- **`test_stream_capture.py` (8 testes)**: Valida a captura assíncrona com threading, reconexão automática e otimizações de rede para câmeras IP / RTSP / Webcams.
+- **`test_stream_capture.py` (15 testes)**: Valida a captura assíncrona com threading, reconexão automática e otimizações de rede para câmeras IP / RTSP / Webcams, detecção heurística de URLs web de streaming (`is_web_streaming_url`), resolução de protocolos diretos e fluxos de vídeo em tempo real (YouTube Live/VOD, Twitch, HLS, RTMP) via `yt-dlp` sem download prévio, controle de velocidade de reprodução (0.5x, 1.0x, 1.5x, 2.0x), navegação por seek relativo e absoluto, alternância de pausa/retomada e formatação amigável de tempo (`format_stream_time`).
 - **`test_training_modes.py` (7 testes)**: Valida as 14 modalidades pedagógicas de treino, cálculo dos 3 Pilares (Movimentação, Precisão, Constância) e perfil do Kendoca.
 - **`test_video_downloader.py` (12 testes)**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
 - **`test_video_player_controls.py` (5 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
 - **`test_training_live_manager.py` (5 testes)**: Valida a máquina de estados de golpes em tempo real (`LiveStrikeState`), rastreamento biomecânico contínuo da coluna (*Shisei*) e simetria de ombros, contagem de repetições, cadência em Golpes por Minuto (CPM), renderização do HUD em tempo real dos 3 Pilares e geração de relatórios de sessão em Markdown e JSON.
-
 - **`test_kenshi_style_model_eixo6.py` (9 testes)**: Valida a atualização online via algoritmo de Welford (MetricDistribution), cálculo de desvios em Z-score e geração de insights humanizados (KinestheticBaselineModel), persistência atômica e gestão multi-praticante em JSON (KinestheticProfileManager), derivação direcional de perfis com Warm Start mais rígido e mais permissivo preservando pesos e linhagem (ProfileWarmStartManager), integração com FeedbackManager e inclusão da Seção 3 no relatório de treino do Kendoca.
 
-Total de **232 testes automatizados** distribuídos em 25 módulos, executados e aprovados com 100% de sucesso.
+Total de **243 testes automatizados** distribuídos em 25 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -718,7 +759,41 @@ Total de **232 testes automatizados** distribuídos em 25 módulos, executados e
 
 ---
 
-### `[v 0.3.5.0]` — 2026-10-02 *(Versão Atual)*
+### `[v 0.3.6.0]` — 2026-10-05 *(Versão Atual)*
+
+- **Novo Formato de Entrada: Detecção via Streaming no Modo de Lutas e no Modo de Treinamento ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py), [stream_capture.py](file:///d:/Projetos/SenpAI/Dev/src/utils/stream_capture.py), [test_stream_capture.py](file:///d:/Projetos/SenpAI/Dev/tests/test_stream_capture.py), [manual.md](file:///d:/Projetos/SenpAI/Dev/manual.md) & [README.TXT](file:///d:/Projetos/SenpAI/Dev/README.TXT))**:
+  - **Inclusão do 3º Formato de Entrada nos 2 Modos Operacionais**:
+    - **Modo de Análise de Lutas (Combate / Shiai)**:
+      1. `🔴 Detecção em Tempo Real`: Múltiplas câmeras de quadra / RTSP / webcams locais.
+      2. `📡 Detecção via Streaming`: **(Novo)** Links de transmissões ao vivo ou vídeos web (YouTube Live/VOD, Twitch, HLS `.m3u8`, RTMP, RTSP, HTTP/HTTPS).
+      3. `📹 Detecção Gravada`: Upload de arquivos locais ou links de vídeo com download prévio integral.
+    - **Modo de Treinamento e Aprendizado (Dojo / Keiko)**:
+      1. `🔴 Detecção em Tempo Real`: Análise ao vivo com câmeras locais/RTSP.
+      2. `📡 Detecção via Streaming`: **(Novo)** Análise em tempo real consumindo links de streaming sem necessidade de baixar o arquivo.
+      3. `📹 Análise de Vídeo Gravado`: Processamento pós-sessão de vídeos locais ou baixados.
+  - **Controle Interativo de Velocidade e Navegação do Vídeo no Streaming (Ambos os Modos)**:
+    - Barra de controles integrada diretamente acima do player em Lutas e Treino via Streaming;
+    - **4 Velocidades de Reprodução**: `0.5x` (câmera lenta para escrutínio minucioso), `1.0x` (velocidade normal em tempo real), `1.5x` (aceleração para sessões longas) e `2.0x` (rápido com frame-skip otimizado via `cap.grab()`);
+    - **Navegação Temporal Instantânea**: Botões de retroceder (`⏪ -10s`, `⏪ -5s`), avançar (`⏩ +5s`, `⏩ +10s`) e alternância de pausa/retomada (`⏸️ / ▶️`);
+    - **Persistência de Sessão**: O objeto `ThreadedVideoStream` permanece ativo e conectado em `st.session_state` entre os cliques do usuário, sem reconectar ou travar o fluxo;
+    - **Telemetria no Player**: Exibição contínua do tempo do vídeo (`⏱️ MM:SS.s`), duração total, velocidade ativa e taxa de FPS em tempo real.
+  - **Resolução de Fluxos de Vídeo Diretos e Resilientes (`resolve_streaming_url`)**:
+    - Suporte a protocolos diretos de baixa latência (`rtsp://`, `rtmp://`), manifestos HLS (`.m3u8`), arquivos de vídeo HTTP/HTTPS diretos e plataformas web (YouTube, Twitch, Vimeo).
+    - Extração assíncrona do fluxo direto de mídia através de `yt-dlp` utilizando os clientes InnerTube `android` e `visionos` e seletores de formato adaptados à qualidade selecionada (`media`, `alta`, `baixa`), permitindo conexão direta com `cv2.VideoCapture` e `ThreadedVideoStream` com buffer zero (`CAP_PROP_BUFFERSIZE = 1`).
+  - **Experiência em Tempo Real Idêntica à Detecção ao Vivo**:
+    - **Modo de Lutas via Streaming (`app_mode == "streaming"`)**:
+      - Teste de conexão (`probe_stream_connection`) com miniatura de validação, resolução, FPS e tempo de resposta.
+      - Reprodução contínua e análise em tempo real: rastreamento de Kenshis (`🔴 AKA` e `⚪ SHIRO`), vetor do Shinai, placar oficial eletrônico Sanbon-Shobu ao vivo, badges de Ippon/Técnica e histórico cronológico instantâneo de golpes com análise completa de Yūko-Datotsu (Alvo, Fumikomi, Postura, Zanshin, Hasuji e Seme).
+    - **Modo de Treinamento via Streaming (`app_mode == "training_streaming"`)**:
+      - Teste de conexão preliminar, seleção de modalidades ou reconhecimento automático transversal entre as 14 modalidades de Kendo.
+      - Execução do `LiveTrainingSessionManager` sobre o fluxo de streaming: HUD dinâmico dos 3 Pilares Fundamentais (Movimentação, Precisão, Constância), contagem de repetições, cadência em Golpes por Minuto (CPM), cards de biofeedback postural e compilação do relatório executivo final com download em Markdown (`.md`) e JSON.
+  - **Expansão da Suíte de Testes Automatizados**:
+    - Inclusão de novos testes unitários em `tests/test_stream_capture.py` cobrindo identificação de URLs web, protocolos diretos, controle de velocidade (`0.5x`, `1.0x`, `1.5x`, `2.0x`), busca temporal (`seek`/`seek_to`), pause e formatação de tempo.
+    - Total de **243 testes automatizados** aprovados com 100% de sucesso.
+
+---
+
+### `[v 0.3.5.0]` — 2026-10-02
 
 - **Implementação do Eixo 6: Modelagem do Estilo Individual do Kenshi & Warm Start de Perfis ([kenshi_style_model.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/kenshi_style_model.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py), [training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [reporter.py](file:///d:/Projetos/SenpAI/Dev/src/engine/reporter.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - **Perfil Cinestésico Individual (Kinesthetic Baseline) & Algoritmo de Welford**:

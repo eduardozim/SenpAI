@@ -279,6 +279,8 @@ class FeedbackManager:
                     return []
         return []
 
+    load_feedbacks = load_feedback
+
     def load_history(self) -> List[Dict[str, Any]]:
         if os.path.exists(self.history_path):
             with open(self.history_path, "r", encoding="utf-8") as f:

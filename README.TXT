@@ -4,7 +4,7 @@
 
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
 
-                              Versão: v 0.3.5.0
+                              Versão: v 0.3.6.0
 
 ===============================================================================
 
@@ -169,6 +169,10 @@ Recursos da Interface Web:
 - Destaque Visual na Linha do Tempo: golpes responsáveis pela marcação de Ippon são destacados com a nomenclatura oficial Katakana (メ MEN, コ KOTE, ド DO, ツ TSUKI), banner cromático por lutador e identificação no seletor de navegação rápida.
 
 - Seleção de Origem do Vídeo no Modo de Detecção Gravada: suporte completo tanto para Upload de Arquivo Local (.mp4, .avi, .mov) quanto para inclusão e download direto de Links do YouTube / Streaming Web com extração de metadados, miniatura e cache inteligente.
+
+- Novo Formato de Detecção via Streaming (Modos de Lutas e Treinamento): Suporte direto a transmissões ao vivo ou vídeos da web (YouTube Live, YouTube VOD/Shorts, Twitch, playlists HLS .m3u8, RTMP e HTTP/RTSP). O motor decodifica o stream contínuo com zero buffer, executando a análise na mesma dinâmica da detecção em tempo real, com placar Sanbon-Shobu e alertas de golpe (em Lutas) ou HUD dos 3 Pilares e contagem de repetições (em Treinamento), incluindo teste prévio de conectividade com amostra, resolução, FPS e latência.
+
+- Controle de Velocidade e Navegação do Vídeo no Streaming (Ambos os Modos): Barra de controle interativa acoplada diretamente à reprodução do streaming permitindo selecionar 4 velocidades de reprodução (0.5x câmera lenta, 1.0x velocidade normal, 1.5x acelerada e 2.0x rápida), além de botões para retroceder (⏪ -10s, ⏪ -5s), pausar/retomar (⏸️/▶️) e avançar (⏩ +5s, ⏩ +10s). O stream mantém conexão persistente sem reconectar a cada comando, regulando a cadência de leitura de frames no motor assíncrono e exibindo o tempo decorrido do vídeo (MM:SS.s) e taxa de FPS em tempo real.
 
 - Navegação Interativa no Vídeo com Salto Temporal Calibrado: clique no evento (Sonkyō Inicial, Golpe ou Sonkyō Final) ou selecione no dropdown para posicionar o player 1 segundo antes (-1.0s) do início do evento para revisão detalhada.
 
@@ -378,7 +382,7 @@ Opções disponíveis:
 
    golpe com base nas 5 condições de Yūko-Datotsu da FIK, delimita o tempo de combate
 
-   por Sonkyō e gerencia o placar Sanbon-Shobu (Aka vs Shiro). Possui 2 formatos:
+   por Sonkyō e gerencia o placar Sanbon-Shobu (Aka vs Shiro). Possui 3 formatos:
 
 
 
@@ -394,7 +398,19 @@ Opções disponíveis:
 
 
 
-   B) Detecção Gravada (recorded):
+   B) Detecção via Streaming (streaming): [NOVO]
+
+      - Conexão e análise direta em tempo real de links de streaming da web (YouTube Live, YouTube VOD/Shorts, Twitch, HLS .m3u8, RTMP ou HTTP/RTSP).
+
+      - Decodificação de fluxo de alta velocidade com buffer zero sem necessidade de download prévio completo do arquivo.
+
+      - Avaliação biomecânica instantânea de Yūko-Datotsu, placar Sanbon-Shobu oficial (Shiro vs Aka) e banner de golpes em tempo real.
+
+      - Diagnóstico e teste de conexão prévio com amostra em miniatura, métricas de resolução, FPS e latência da rede.
+
+
+
+   C) Detecção Gravada (recorded):
 
       - Análise biomecânica completa de vídeos gravados (upload local ou YouTube).
 
@@ -422,25 +438,13 @@ Opções disponíveis:
 
    • Constância (30%): Regularidade rítmica, cadência (CPM) e resistência à fadiga.
 
-   Possui 2 formatos:
+   Possui 3 formatos:
 
 
 
-   A) Análise de Vídeos Gravados (recorded):
+   A) Análise em Tempo Real (realtime):
 
-      - Rastreamento individual e nomeação de cada Kendoca presente.
-
-      - Diagnósticos pedagógicos: Pontos Fortes, Pontos de Atenção e Prescrições de Exercícios do Dojo.
-
-      - Emissão de relatórios individuais em Markdown (.md) e dados da sessão em JSON (.json).
-
-      - Layout ergonômico lado a lado e botão de inversão de lados dos atletas.
-
-
-
-   B) Análise em Tempo Real (realtime):
-
-      - Executada na mesma dinâmica do modo de detecção em tempo real via Webcams ou streams RTSP (1 a 4 câmeras simultâneas).
+      - Executada via Webcams locais USB ou câmeras de rede RTSP (1 a 4 câmeras simultâneas).
 
       - Configuração e teste de câmeras com detecção automática de dispositivos e diagramas de layout no Dojo.
 
@@ -451,6 +455,32 @@ Opções disponíveis:
       - Biofeedback postural instantâneo (alertas de Shisei ereto, calcanhar suspenso, alinhamento de ombros).
 
       - Geração e download de Relatório Consolidado de Treinamento da Sessão Ao Vivo (.md e .json).
+
+
+
+   B) Detecção via Streaming (streaming): [NOVO]
+
+      - Avaliação biomecânica do treinamento ao vivo em transmissões da web (YouTube Live, YouTube VOD, Twitch, HLS .m3u8, RTMP ou RTSP) na mesma dinâmica da análise em tempo real.
+
+      - Identificação contínua da modalidade praticada dentre as 14 oficiais de Kendo com ideogramas Kanji.
+
+      - Projeção do HUD dos 3 Pilares Fundamentais com pontuação e barras de progresso ao vivo.
+
+      - Contagem automática de repetições e biofeedback biomecânico instantâneo durante a exibição do stream.
+
+      - Resumo consolidado pós-treino com emissão de relatórios para download (.md e .json).
+
+
+
+   C) Análise de Vídeos Gravados (recorded):
+
+      - Rastreamento individual e nomeação de cada Kendoca presente.
+
+      - Diagnósticos pedagógicos: Pontos Fortes, Pontos de Atenção e Prescrições de Exercícios do Dojo.
+
+      - Emissão de relatórios individuais em Markdown (.md) e dados da sessão em JSON (.json).
+
+      - Layout ergonômico lado a lado e botão de inversão de lados dos atletas.
 
 
 

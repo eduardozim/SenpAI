@@ -396,6 +396,150 @@
     "status": "pending_curation"
   },
   {
+    "id": "unc_1791232733861_27",
+    "timestamp": "2026-10-05T17:38:53.861321",
+    "video_source": "match_eixo4.mp4",
+    "strike_type": "MEN",
+    "confidence": 0.52,
+    "uncertainty_score": 0.96,
+    "strike_data": {
+      "strike_type": "MEN",
+      "scores": {
+        "target_impact": 0.52,
+        "fumikomi_sync": 0.5,
+        "posture": 0.5,
+        "zanshin": 0.5
+      },
+      "sub_scores": {
+        "target_impact": 0.52,
+        "fumikomi_sync": 0.5,
+        "posture": 0.5,
+        "zanshin": 0.5
+      },
+      "total_score": 52.0,
+      "label": "TP",
+      "notes": ""
+    },
+    "profile_name": "normal",
+    "llm_triage": {
+      "verdict": "DOUBTFUL",
+      "recommended_p_ippon": 0.504,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
+    "id": "unc_1791242101210_30",
+    "timestamp": "2026-10-05T20:15:01.210832",
+    "video_source": "match_eixo4.mp4",
+    "strike_type": "MEN",
+    "confidence": 0.52,
+    "uncertainty_score": 0.96,
+    "strike_data": {
+      "strike_type": "MEN",
+      "scores": {
+        "target_impact": 0.52,
+        "fumikomi_sync": 0.5,
+        "posture": 0.5,
+        "zanshin": 0.5
+      },
+      "sub_scores": {
+        "target_impact": 0.52,
+        "fumikomi_sync": 0.5,
+        "posture": 0.5,
+        "zanshin": 0.5
+      },
+      "total_score": 52.0,
+      "label": "TP",
+      "notes": ""
+    },
+    "profile_name": "normal",
+    "llm_triage": {
+      "verdict": "DOUBTFUL",
+      "recommended_p_ippon": 0.504,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
+    "id": "unc_1791243560856_33",
+    "timestamp": "2026-10-05T20:39:20.856960",
+    "video_source": "match_eixo4.mp4",
+    "strike_type": "MEN",
+    "confidence": 0.52,
+    "uncertainty_score": 0.96,
+    "strike_data": {
+      "strike_type": "MEN",
+      "scores": {
+        "target_impact": 0.52,
+        "fumikomi_sync": 0.5,
+        "posture": 0.5,
+        "zanshin": 0.5
+      },
+      "sub_scores": {
+        "target_impact": 0.52,
+        "fumikomi_sync": 0.5,
+        "posture": 0.5,
+        "zanshin": 0.5
+      },
+      "total_score": 52.0,
+      "label": "TP",
+      "notes": ""
+    },
+    "profile_name": "normal",
+    "llm_triage": {
+      "verdict": "DOUBTFUL",
+      "recommended_p_ippon": 0.504,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
+    "id": "unc_1791245153486_36",
+    "timestamp": "2026-10-05T21:05:53.487352",
+    "video_source": "match_eixo4.mp4",
+    "strike_type": "MEN",
+    "confidence": 0.52,
+    "uncertainty_score": 0.96,
+    "strike_data": {
+      "strike_type": "MEN",
+      "scores": {
+        "target_impact": 0.52,
+        "fumikomi_sync": 0.5,
+        "posture": 0.5,
+        "zanshin": 0.5
+      },
+      "sub_scores": {
+        "target_impact": 0.52,
+        "fumikomi_sync": 0.5,
+        "posture": 0.5,
+        "zanshin": 0.5
+      },
+      "total_score": 52.0,
+      "label": "TP",
+      "notes": ""
+    },
+    "profile_name": "normal",
+    "llm_triage": {
+      "verdict": "DOUBTFUL",
+      "recommended_p_ippon": 0.504,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
     "id": "unc_1790901489554_3",
     "timestamp": "2026-10-01T21:38:09.554695",
     "video_source": "test_match.mp4",
@@ -938,6 +1082,294 @@
   {
     "id": "unc_1790972068127_26",
     "timestamp": "2026-10-02T17:14:28.127747",
+    "video_source": "shiai_tokyo.mp4",
+    "strike_type": "KOTE",
+    "confidence": 0.55,
+    "uncertainty_score": 0.9,
+    "strike_data": {
+      "strike_type": "KOTE",
+      "scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "sub_scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "total_score": 55.0,
+      "label": "FP",
+      "notes": "Fumikomi atrasado"
+    },
+    "profile_name": "shiai",
+    "llm_triage": {
+      "verdict": "VALID_IPPON",
+      "recommended_p_ippon": 0.85,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
+    "id": "unc_1791232827290_28",
+    "timestamp": "2026-10-05T17:40:27.291676",
+    "video_source": "test_match.mp4",
+    "strike_type": "KOTE",
+    "confidence": 0.55,
+    "uncertainty_score": 0.9,
+    "strike_data": {
+      "strike_type": "KOTE",
+      "scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "sub_scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "total_score": 55.0,
+      "label": "FP",
+      "notes": "Fumikomi atrasado"
+    },
+    "profile_name": "normal",
+    "llm_triage": {
+      "verdict": "VALID_IPPON",
+      "recommended_p_ippon": 0.85,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
+    "id": "unc_1791232827356_29",
+    "timestamp": "2026-10-05T17:40:27.356804",
+    "video_source": "shiai_tokyo.mp4",
+    "strike_type": "KOTE",
+    "confidence": 0.55,
+    "uncertainty_score": 0.9,
+    "strike_data": {
+      "strike_type": "KOTE",
+      "scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "sub_scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "total_score": 55.0,
+      "label": "FP",
+      "notes": "Fumikomi atrasado"
+    },
+    "profile_name": "shiai",
+    "llm_triage": {
+      "verdict": "VALID_IPPON",
+      "recommended_p_ippon": 0.85,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
+    "id": "unc_1791242204074_31",
+    "timestamp": "2026-10-05T20:16:44.075148",
+    "video_source": "test_match.mp4",
+    "strike_type": "KOTE",
+    "confidence": 0.55,
+    "uncertainty_score": 0.9,
+    "strike_data": {
+      "strike_type": "KOTE",
+      "scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "sub_scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "total_score": 55.0,
+      "label": "FP",
+      "notes": "Fumikomi atrasado"
+    },
+    "profile_name": "normal",
+    "llm_triage": {
+      "verdict": "VALID_IPPON",
+      "recommended_p_ippon": 0.85,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
+    "id": "unc_1791242204123_32",
+    "timestamp": "2026-10-05T20:16:44.124307",
+    "video_source": "shiai_tokyo.mp4",
+    "strike_type": "KOTE",
+    "confidence": 0.55,
+    "uncertainty_score": 0.9,
+    "strike_data": {
+      "strike_type": "KOTE",
+      "scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "sub_scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "total_score": 55.0,
+      "label": "FP",
+      "notes": "Fumikomi atrasado"
+    },
+    "profile_name": "shiai",
+    "llm_triage": {
+      "verdict": "VALID_IPPON",
+      "recommended_p_ippon": 0.85,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
+    "id": "unc_1791243608945_34",
+    "timestamp": "2026-10-05T20:40:08.946413",
+    "video_source": "test_match.mp4",
+    "strike_type": "KOTE",
+    "confidence": 0.55,
+    "uncertainty_score": 0.9,
+    "strike_data": {
+      "strike_type": "KOTE",
+      "scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "sub_scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "total_score": 55.0,
+      "label": "FP",
+      "notes": "Fumikomi atrasado"
+    },
+    "profile_name": "normal",
+    "llm_triage": {
+      "verdict": "VALID_IPPON",
+      "recommended_p_ippon": 0.85,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
+    "id": "unc_1791243608993_35",
+    "timestamp": "2026-10-05T20:40:08.994052",
+    "video_source": "shiai_tokyo.mp4",
+    "strike_type": "KOTE",
+    "confidence": 0.55,
+    "uncertainty_score": 0.9,
+    "strike_data": {
+      "strike_type": "KOTE",
+      "scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "sub_scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "total_score": 55.0,
+      "label": "FP",
+      "notes": "Fumikomi atrasado"
+    },
+    "profile_name": "shiai",
+    "llm_triage": {
+      "verdict": "VALID_IPPON",
+      "recommended_p_ippon": 0.85,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
+    "id": "unc_1791245201503_37",
+    "timestamp": "2026-10-05T21:06:41.504178",
+    "video_source": "test_match.mp4",
+    "strike_type": "KOTE",
+    "confidence": 0.55,
+    "uncertainty_score": 0.9,
+    "strike_data": {
+      "strike_type": "KOTE",
+      "scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "sub_scores": {
+        "target_impact": 50.0,
+        "fumikomi_sync": 60.0,
+        "posture": 60.0,
+        "zanshin": 50.0
+      },
+      "total_score": 55.0,
+      "label": "FP",
+      "notes": "Fumikomi atrasado"
+    },
+    "profile_name": "normal",
+    "llm_triage": {
+      "verdict": "VALID_IPPON",
+      "recommended_p_ippon": 0.85,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
+    "id": "unc_1791245201548_38",
+    "timestamp": "2026-10-05T21:06:41.549261",
     "video_source": "shiai_tokyo.mp4",
     "strike_type": "KOTE",
     "confidence": 0.55,
