@@ -194,6 +194,65 @@ class TestStreamCapture(unittest.TestCase):
             self.assertEqual(meta["resolution"], "1280x720")
             self.assertEqual(meta["duration_formatted"], "🔴 AO VIVO")
 
+    def test_threaded_video_stream_speed_control(self):
+        """Valida que o ThreadedVideoStream aceita e aplica velocidades 0.5x, 1.0x, 1.5x e 2.0x."""
+        from src.utils.stream_capture import ThreadedVideoStream
+        stream = ThreadedVideoStream(self.demo_video_path, name="TestSpeed", auto_start=False)
+        self.assertEqual(stream.get_speed(), 1.0)
+        
+        # Testar velocidade 0.5x (câmera lenta)
+        stream.set_speed(0.5)
+        self.assertEqual(stream.get_speed(), 0.5)
+        
+        # Testar velocidade 1.5x (acelerada)
+        stream.set_speed(1.5)
+        self.assertEqual(stream.get_speed(), 1.5)
+
+        # Testar velocidade 2.0x (rápida)
+        stream.set_speed(2.0)
+        self.assertEqual(stream.get_speed(), 2.0)
+
+        # Testar retorno aos 1.0x (normal)
+        stream.set_speed(1.0)
+        self.assertEqual(stream.get_speed(), 1.0)
+
+        stats = stream.get_stats()
+        self.assertEqual(stats["playback_speed"], 1.0)
+        stream.stop()
+
+    def test_threaded_video_stream_seek_and_pause(self):
+        """Valida que seek relativo, absoluto e pause alternam o estado sem travar a thread."""
+        from src.utils.stream_capture import ThreadedVideoStream
+        stream = ThreadedVideoStream(self.demo_video_path, name="TestSeek", auto_start=True)
+        connected = stream.wait_until_connected(timeout_seconds=3.0)
+        self.assertTrue(connected)
+
+        # Testar pause e resume
+        self.assertFalse(stream.is_paused)
+        stream.toggle_pause()
+        self.assertTrue(stream.is_paused)
+        self.assertTrue(stream.get_stats()["is_paused"])
+        stream.toggle_pause()
+        self.assertFalse(stream.is_paused)
+
+        # Testar seek relativo e absoluto
+        self.assertTrue(stream.is_alive())
+        self.assertTrue(stream.seek(1.0))
+        self.assertTrue(stream.seek(-0.5))
+        self.assertTrue(stream.seek_to(0.0))
+
+        stream.stop()
+        self.assertFalse(stream.is_alive())
+
+    def test_format_stream_time(self):
+        """Valida a formatação de timestamps de streaming em formato amigável MM:SS.s."""
+        from src.utils.stream_capture import format_stream_time
+        self.assertEqual(format_stream_time(0.0), "00:00.0")
+        self.assertEqual(format_stream_time(9.5), "00:09.5")
+        self.assertEqual(format_stream_time(65.4), "01:05.4")
+        self.assertEqual(format_stream_time(125.9), "02:05.9")
+        self.assertEqual(format_stream_time(-5.0), "00:00.0")
+
 
 if __name__ == "__main__":
     unittest.main()

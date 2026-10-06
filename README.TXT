@@ -172,6 +172,8 @@ Recursos da Interface Web:
 
 - Novo Formato de Detecção via Streaming (Modos de Lutas e Treinamento): Suporte direto a transmissões ao vivo ou vídeos da web (YouTube Live, YouTube VOD/Shorts, Twitch, playlists HLS .m3u8, RTMP e HTTP/RTSP). O motor decodifica o stream contínuo com zero buffer, executando a análise na mesma dinâmica da detecção em tempo real, com placar Sanbon-Shobu e alertas de golpe (em Lutas) ou HUD dos 3 Pilares e contagem de repetições (em Treinamento), incluindo teste prévio de conectividade com amostra, resolução, FPS e latência.
 
+- Controle de Velocidade e Navegação do Vídeo no Streaming (Ambos os Modos): Barra de controle interativa acoplada diretamente à reprodução do streaming permitindo selecionar 4 velocidades de reprodução (0.5x câmera lenta, 1.0x velocidade normal, 1.5x acelerada e 2.0x rápida), além de botões para retroceder (⏪ -10s, ⏪ -5s), pausar/retomar (⏸️/▶️) e avançar (⏩ +5s, ⏩ +10s). O stream mantém conexão persistente sem reconectar a cada comando, regulando a cadência de leitura de frames no motor assíncrono e exibindo o tempo decorrido do vídeo (MM:SS.s) e taxa de FPS em tempo real.
+
 - Navegação Interativa no Vídeo com Salto Temporal Calibrado: clique no evento (Sonkyō Inicial, Golpe ou Sonkyō Final) ou selecione no dropdown para posicionar o player 1 segundo antes (-1.0s) do início do evento para revisão detalhada.
 
 - Delimitação Temporal da Luta por Sonkyō: identificação automática da postura ritualística de Sonkyō de início e término do combate, com filtragem estrita de golpes na janela regulamentar.

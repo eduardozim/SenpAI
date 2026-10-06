@@ -75,7 +75,7 @@ from src.utils.webrtc_manager import (
 )
 from src.utils.stream_capture import (
     ThreadedVideoStream, probe_stream_connection, normalize_stream_source, apply_ffmpeg_network_optimizations,
-    resolve_streaming_url, is_web_streaming_url
+    resolve_streaming_url, is_web_streaming_url, format_stream_time
 )
 from src.utils.video_player_controls import render_video_playback_controls
 
@@ -3893,6 +3893,13 @@ elif nav_page in ["match", "training", "analysis"]:
         st.markdown("---")
         run_streaming_detection = st.checkbox("▶️ Iniciar Análise de Streaming em Tempo Real", value=False, key="run_match_streaming_checkbox")
         if not run_streaming_detection:
+            if "match_active_stream_obj" in st.session_state:
+                try:
+                    st.session_state["match_active_stream_obj"].stop()
+                except Exception:
+                    pass
+                st.session_state.pop("match_active_stream_obj", None)
+            st.session_state.pop("match_last_drawn_frame", None)
             st.caption("💡 *Marque a caixa acima para conectar ao fluxo de streaming e iniciar a avaliação dos golpes ao vivo.*")
         else:
             if not stream_url_input or not stream_url_input.strip():
@@ -3924,6 +3931,36 @@ elif nav_page in ["match", "training", "analysis"]:
 
                 with col_live_stream:
                     st.markdown("##### 🎥 Reprodução do Streaming & HUD Biomecânico")
+                    
+                    # Barra de Controle de Velocidade e Navegação do Vídeo
+                    stream_ctrl_card = st.container()
+                    with stream_ctrl_card:
+                        c_speed, c_nav = st.columns([5, 7])
+                        with c_speed:
+                            speed_choice = st.radio(
+                                "⚡ Velocidade:",
+                                options=["0.5x", "1.0x", "1.5x", "2.0x"],
+                                index=1,
+                                horizontal=True,
+                                key="match_stream_speed_select",
+                                help="Controle de velocidade de análise e reprodução do streaming (0.5x Câmera Lenta, 1.0x Normal, 1.5x Acelerado, 2.0x Rápido)."
+                            )
+                        with c_nav:
+                            st.markdown("<div style='font-size: 0.78rem; font-weight: 600; color: #94A3B8; margin-bottom: 2px;'>Navegação no Vídeo:</div>", unsafe_allow_html=True)
+                            nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns(5)
+                            with nav_col1:
+                                btn_r10 = st.button("⏪ -10s", key="match_btn_r10", help="Retroceder 10 segundos")
+                            with nav_col2:
+                                btn_r5 = st.button("⏪ -5s", key="match_btn_r5", help="Retroceder 5 segundos")
+                            with nav_col3:
+                                btn_pause = st.button("⏸️/▶️", key="match_btn_pause", help="Alternar Pausa / Retomada do streaming")
+                            with nav_col4:
+                                btn_f5 = st.button("⏩ +5s", key="match_btn_f5", help="Avançar 5 segundos")
+                            with nav_col5:
+                                btn_f10 = st.button("⏩ +10s", key="match_btn_f10", help="Avançar 10 segundos")
+
+                    speed_map: dict[str, float] = {"0.5x": 0.5, "1.0x": 1.0, "1.5x": 1.5, "2.0x": 2.0}
+                    active_match_speed: float = speed_map.get(str(speed_choice or "1.0x"), 1.0)
                     stream_frame_ph = st.empty()
 
                 resolved_stream_src = st.session_state.get("match_resolved_stream_url")
@@ -3943,23 +3980,60 @@ elif nav_page in ["match", "training", "analysis"]:
                             resolved_stream_src = None
 
                 if resolved_stream_src:
-                    stream_obj = ThreadedVideoStream(
-                        src=resolved_stream_src,
-                        name="MatchStreaming",
-                        max_reconnect_attempts=5,
-                        reconnect_delay=1.5,
-                        auto_start=True
-                    )
-
-                    with st.spinner("📡 Estabelecendo conexão com o fluxo de streaming..."):
-                        connected_ok = stream_obj.wait_until_connected(timeout_seconds=6.0)
-
-                    if not connected_ok and not stream_obj.is_connected():
-                        st.error(f"❌ Não foi possível obter o fluxo de vídeo do streaming: {stream_obj.error_message or 'Tempo limite esgotado.'}")
-                        stream_obj.stop()
+                    active_stream_inst = st.session_state.get("match_active_stream_obj")
+                    if active_stream_inst and active_stream_inst.is_alive() and active_stream_inst.src == resolved_stream_src:
+                        stream_obj = active_stream_inst
                     else:
+                        if active_stream_inst:
+                            try:
+                                active_stream_inst.stop()
+                            except Exception:
+                                pass
+                        stream_obj = ThreadedVideoStream(
+                            src=resolved_stream_src,
+                            name="MatchStreaming",
+                            playback_speed=active_match_speed,
+                            max_reconnect_attempts=5,
+                            reconnect_delay=1.5,
+                            auto_start=True
+                        )
+                        st.session_state["match_active_stream_obj"] = stream_obj
+
+                        with st.spinner("📡 Estabelecendo conexão com o fluxo de streaming..."):
+                            connected_ok = stream_obj.wait_until_connected(timeout_seconds=6.0)
+
+                        if not connected_ok and not stream_obj.is_connected():
+                            st.error(f"❌ Não foi possível obter o fluxo de vídeo do streaming: {stream_obj.error_message or 'Tempo limite esgotado.'}")
+                            stream_obj.stop()
+                            st.session_state.pop("match_active_stream_obj", None)
+                            stream_obj = None
+
+                    if stream_obj and (stream_obj.is_connected() or stream_obj.status in ["INITIALIZING", "CONNECTING", "RECONNECTING"]):
+                        # Processar comandos de navegação rápida e velocidade
+                        if btn_r10:
+                            stream_obj.seek(-10.0)
+                            st.toast("⏪ Retrocedendo 10 segundos no streaming...", icon="⏪")
+                        elif btn_r5:
+                            stream_obj.seek(-5.0)
+                            st.toast("⏪ Retrocedendo 5 segundos no streaming...", icon="⏪")
+                        elif btn_f5:
+                            stream_obj.seek(5.0)
+                            st.toast("⏩ Avançando 5 segundos no streaming...", icon="⏩")
+                        elif btn_f10:
+                            stream_obj.seek(10.0)
+                            st.toast("⏩ Avançando 10 segundos no streaming...", icon="⏩")
+
+                        if btn_pause:
+                            is_p = stream_obj.toggle_pause()
+                            if is_p:
+                                st.toast("⏸️ Streaming pausado.", icon="⏸️")
+                            else:
+                                st.toast("▶️ Streaming retomado.", icon="▶️")
+
+                        stream_obj.set_speed(active_match_speed)
+
                         live_pose_histories = [[]]
-                        latest_drawn_frames: list[Optional[np.ndarray]] = [None]
+                        latest_drawn_frames: list[Optional[np.ndarray]] = [st.session_state.get("match_last_drawn_frame", None)]
                         live_strike_history: list[str] = []
                         score_shiro = 0
                         score_aka = 0
@@ -3975,6 +4049,29 @@ elif nav_page in ["match", "training", "analysis"]:
 
                         try:
                             while run_streaming_detection:
+                                if stream_obj.is_paused:
+                                    disp_frame = latest_drawn_frames[0]
+                                    if disp_frame is None:
+                                        ret_p, frame_p = stream_obj.read(copy=False)
+                                        if ret_p and frame_p is not None:
+                                            disp_frame = frame_p
+                                    if disp_frame is not None:
+                                        frame_rgb = cv2.cvtColor(disp_frame, cv2.COLOR_BGR2RGB)
+                                        pos_sec = stream_obj.get_position_seconds()
+                                        pos_str = format_stream_time(pos_sec)
+                                        dur_sec = stream_obj.get_duration_seconds()
+                                        dur_str = f" / {format_stream_time(dur_sec)}" if dur_sec > 0 else ""
+                                        stream_frame_ph.image(
+                                            frame_rgb,
+                                            caption=f"🌐 Transmissão (⏸️ PAUSADO — ⏱️ {pos_str}{dur_str} | ⚡ {active_match_speed:.1f}x)",
+                                            channels="RGB",
+                                            width="stretch"
+                                        )
+                                    time.sleep(0.08)
+                                    start_time = time.time()
+                                    frame_count = 0
+                                    continue
+
                                 ret, frame = stream_obj.read(copy=False)
                                 if not ret or frame is None:
                                     if stream_obj.status in ["INITIALIZING", "RECONNECTING"]:
@@ -4012,13 +4109,19 @@ elif nav_page in ["match", "training", "analysis"]:
                                 active_lm = aka_lm or shiro_lm
                                 live_pose_histories[0].append(active_lm)
                                 latest_drawn_frames[0] = drawn_frame
+                                st.session_state["match_last_drawn_frame"] = drawn_frame
 
                                 frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
                                 stream_stats = stream_obj.get_stats()
                                 stream_fps_val = stream_stats.get("fps", 30.0)
+                                pos_sec = stream_obj.get_position_seconds()
+                                pos_str = format_stream_time(pos_sec)
+                                dur_sec = stream_obj.get_duration_seconds()
+                                dur_str = f" / {format_stream_time(dur_sec)}" if dur_sec > 0 else ""
+                                pause_tag = " [PAUSADO]" if stream_obj.is_paused else ""
                                 stream_frame_ph.image(
                                     frame_rgb,
-                                    caption=f"🌐 Transmissão de Streaming ({'🟢 CONECTADO' if stream_obj.is_connected() else '🟡 BUFFER'} — {stream_fps_val:.1f} FPS)",
+                                    caption=f"🌐 Transmissão ({'🟢 CONECTADO' if stream_obj.is_connected() else '🟡 BUFFER'} — {stream_fps_val:.1f} FPS | ⏱️ {pos_str}{dur_str} | ⚡ {active_match_speed:.1f}x{pause_tag})",
                                     channels="RGB",
                                     width="stretch"
                                 )
@@ -4136,10 +4239,12 @@ elif nav_page in ["match", "training", "analysis"]:
                                     f"Latência: {stream_stats.get('latency_ms', 0.0):.0f}ms"
                                 )
                         finally:
-                            try:
-                                stream_obj.stop()
-                            except Exception:
-                                pass
+                            if not st.session_state.get("run_match_streaming_checkbox", False):
+                                try:
+                                    stream_obj.stop()
+                                except Exception:
+                                    pass
+                                st.session_state.pop("match_active_stream_obj", None)
 
 
     # ==========================================================================
@@ -4795,6 +4900,13 @@ elif nav_page in ["match", "training", "analysis"]:
         st.markdown("---")
         run_streaming_train = st.checkbox("▶️ Iniciar Análise de Treinamento em Tempo Real", value=False, key="run_train_streaming_checkbox")
         if not run_streaming_train:
+            if "train_active_stream_obj" in st.session_state:
+                try:
+                    st.session_state["train_active_stream_obj"].stop()
+                except Exception:
+                    pass
+                st.session_state.pop("train_active_stream_obj", None)
+            st.session_state.pop("train_last_drawn_frame", None)
             st.caption("💡 *Marque a caixa acima para conectar ao streaming de treino e iniciar a avaliação dos 3 Pilares e contagem de repetições.*")
         else:
             if not train_stream_url_input or not train_stream_url_input.strip():
@@ -4825,6 +4937,36 @@ elif nav_page in ["match", "training", "analysis"]:
 
                 with col_train_stream:
                     st.markdown("##### 🎥 Reprodução do Streaming de Treino & HUD")
+                    
+                    # Barra de Controle de Velocidade e Navegação do Vídeo de Treino
+                    train_stream_ctrl_card = st.container()
+                    with train_stream_ctrl_card:
+                        ct_speed, ct_nav = st.columns([5, 7])
+                        with ct_speed:
+                            train_speed_choice = st.radio(
+                                "⚡ Velocidade:",
+                                options=["0.5x", "1.0x", "1.5x", "2.0x"],
+                                index=1,
+                                horizontal=True,
+                                key="train_stream_speed_select",
+                                help="Controle de velocidade de análise e reprodução do treino (0.5x Câmera Lenta, 1.0x Normal, 1.5x Acelerado, 2.0x Rápido)."
+                            )
+                        with ct_nav:
+                            st.markdown("<div style='font-size: 0.78rem; font-weight: 600; color: #94A3B8; margin-bottom: 2px;'>Navegação no Vídeo:</div>", unsafe_allow_html=True)
+                            tr_col1, tr_col2, tr_col3, tr_col4, tr_col5 = st.columns(5)
+                            with tr_col1:
+                                train_btn_r10 = st.button("⏪ -10s", key="train_btn_r10", help="Retroceder 10 segundos")
+                            with tr_col2:
+                                train_btn_r5 = st.button("⏪ -5s", key="train_btn_r5", help="Retroceder 5 segundos")
+                            with tr_col3:
+                                train_btn_pause = st.button("⏸️/▶️", key="train_btn_pause", help="Alternar Pausa / Retomada do streaming")
+                            with tr_col4:
+                                train_btn_f5 = st.button("⏩ +5s", key="train_btn_f5", help="Avançar 5 segundos")
+                            with tr_col5:
+                                train_btn_f10 = st.button("⏩ +10s", key="train_btn_f10", help="Avançar 10 segundos")
+
+                    speed_map_train: dict[str, float] = {"0.5x": 0.5, "1.0x": 1.0, "1.5x": 1.5, "2.0x": 2.0}
+                    active_train_speed: float = speed_map_train.get(str(train_speed_choice or "1.0x"), 1.0)
                     train_stream_frame_ph = st.empty()
 
                 resolved_train_src = st.session_state.get("train_resolved_stream_url")
@@ -4844,29 +4986,89 @@ elif nav_page in ["match", "training", "analysis"]:
                             resolved_train_src = None
 
                 if resolved_train_src:
-                    train_stream_obj = ThreadedVideoStream(
-                        src=resolved_train_src,
-                        name="TrainStreaming",
-                        max_reconnect_attempts=5,
-                        reconnect_delay=1.5,
-                        auto_start=True
-                    )
-
-                    with st.spinner("📡 Estabelecendo conexão com o fluxo de treino..."):
-                        connected_ok = train_stream_obj.wait_until_connected(timeout_seconds=6.0)
-
-                    if not connected_ok and not train_stream_obj.is_connected():
-                        st.error(f"❌ Não foi possível obter o fluxo de vídeo do treino: {train_stream_obj.error_message or 'Tempo limite esgotado.'}")
-                        train_stream_obj.stop()
+                    active_train_stream_inst = st.session_state.get("train_active_stream_obj")
+                    if active_train_stream_inst and active_train_stream_inst.is_alive() and active_train_stream_inst.src == resolved_train_src:
+                        train_stream_obj = active_train_stream_inst
                     else:
+                        if active_train_stream_inst:
+                            try:
+                                active_train_stream_inst.stop()
+                            except Exception:
+                                pass
+                        train_stream_obj = ThreadedVideoStream(
+                            src=resolved_train_src,
+                            name="TrainStreaming",
+                            playback_speed=active_train_speed,
+                            max_reconnect_attempts=5,
+                            reconnect_delay=1.5,
+                            auto_start=True
+                        )
+                        st.session_state["train_active_stream_obj"] = train_stream_obj
+
+                        with st.spinner("📡 Estabelecendo conexão com o fluxo de treino..."):
+                            connected_ok = train_stream_obj.wait_until_connected(timeout_seconds=6.0)
+
+                        if not connected_ok and not train_stream_obj.is_connected():
+                            st.error(f"❌ Não foi possível obter o fluxo de vídeo do treino: {train_stream_obj.error_message or 'Tempo limite esgotado.'}")
+                            train_stream_obj.stop()
+                            st.session_state.pop("train_active_stream_obj", None)
+                            train_stream_obj = None
+
+                    if train_stream_obj and (train_stream_obj.is_connected() or train_stream_obj.status in ["INITIALIZING", "CONNECTING", "RECONNECTING"]):
+                        # Processar comandos de navegação rápida e velocidade
+                        if train_btn_r10:
+                            train_stream_obj.seek(-10.0)
+                            st.toast("⏪ Retrocedendo 10 segundos no treino...", icon="⏪")
+                        elif train_btn_r5:
+                            train_stream_obj.seek(-5.0)
+                            st.toast("⏪ Retrocedendo 5 segundos no treino...", icon="⏪")
+                        elif train_btn_f5:
+                            train_stream_obj.seek(5.0)
+                            st.toast("⏩ Avançando 5 segundos no treino...", icon="⏩")
+                        elif train_btn_f10:
+                            train_stream_obj.seek(10.0)
+                            st.toast("⏩ Avançando 10 segundos no treino...", icon="⏩")
+
+                        if train_btn_pause:
+                            is_p = train_stream_obj.toggle_pause()
+                            if is_p:
+                                st.toast("⏸️ Streaming de treino pausado.", icon="⏸️")
+                            else:
+                                st.toast("▶️ Streaming de treino retomado.", icon="▶️")
+
+                        train_stream_obj.set_speed(active_train_speed)
+
                         live_pose_histories = [[]]
-                        latest_drawn_frames: list[Optional[np.ndarray]] = [None]
+                        latest_drawn_frames: list[Optional[np.ndarray]] = [st.session_state.get("train_last_drawn_frame", None)]
                         frame_count = 0
                         start_time = time.time()
                         current_fps = 30.0
 
                         try:
                             while run_streaming_train:
+                                if train_stream_obj.is_paused:
+                                    disp_frame = latest_drawn_frames[0]
+                                    if disp_frame is None:
+                                        ret_p, frame_p = train_stream_obj.read(copy=False)
+                                        if ret_p and frame_p is not None:
+                                            disp_frame = frame_p
+                                    if disp_frame is not None:
+                                        frame_rgb = cv2.cvtColor(disp_frame, cv2.COLOR_BGR2RGB)
+                                        pos_sec = train_stream_obj.get_position_seconds()
+                                        pos_str = format_stream_time(pos_sec)
+                                        dur_sec = train_stream_obj.get_duration_seconds()
+                                        dur_str = f" / {format_stream_time(dur_sec)}" if dur_sec > 0 else ""
+                                        train_stream_frame_ph.image(
+                                            frame_rgb,
+                                            caption=f"🌐 Transmissão de Treino (⏸️ PAUSADO — ⏱️ {pos_str}{dur_str} | ⚡ {active_train_speed:.1f}x)",
+                                            channels="RGB",
+                                            width="stretch"
+                                        )
+                                    time.sleep(0.08)
+                                    start_time = time.time()
+                                    frame_count = 0
+                                    continue
+
                                 ret, frame = train_stream_obj.read(copy=False)
                                 if not ret or frame is None:
                                     if train_stream_obj.status in ["INITIALIZING", "RECONNECTING"]:
@@ -4904,13 +5106,19 @@ elif nav_page in ["match", "training", "analysis"]:
                                 active_lm = aka_lm or shiro_lm
                                 live_pose_histories[0].append(active_lm)
                                 latest_drawn_frames[0] = drawn_frame
+                                st.session_state["train_last_drawn_frame"] = drawn_frame
 
                                 frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
                                 stream_stats = train_stream_obj.get_stats()
                                 stream_fps_val = stream_stats.get("fps", 30.0)
+                                pos_sec = train_stream_obj.get_position_seconds()
+                                pos_str = format_stream_time(pos_sec)
+                                dur_sec = train_stream_obj.get_duration_seconds()
+                                dur_str = f" / {format_stream_time(dur_sec)}" if dur_sec > 0 else ""
+                                pause_label = " [PAUSADO]" if train_stream_obj.is_paused else ""
                                 train_stream_frame_ph.image(
                                     frame_rgb,
-                                    caption=f"🌐 Transmissão de Treino ({'🟢 ATIVO' if train_stream_obj.is_connected() else '🟡 BUFFER'} — {stream_fps_val:.1f} FPS)",
+                                    caption=f"🌐 Transmissão de Treino ({'🟢 ATIVO' if train_stream_obj.is_connected() else '🟡 BUFFER'} — {stream_fps_val:.1f} FPS | ⏱️ {pos_str}{dur_str} | ⚡ {active_train_speed:.1f}x{pause_label})",
                                     channels="RGB",
                                     width="stretch"
                                 )
@@ -4948,10 +5156,12 @@ elif nav_page in ["match", "training", "analysis"]:
                                         )
                                     train_events_placeholder.markdown("".join(rep_cards), unsafe_allow_html=True)
                         finally:
-                            try:
-                                train_stream_obj.stop()
-                            except Exception:
-                                pass
+                            if not st.session_state.get("run_train_streaming_checkbox", False):
+                                try:
+                                    train_stream_obj.stop()
+                                except Exception:
+                                    pass
+                                st.session_state.pop("train_active_stream_obj", None)
 
                             st.session_state["last_live_training_report"] = live_train_mgr.generate_final_session_report()
                             st.toast("✅ Sessão de treinamento via streaming finalizada!", icon="🎓")
