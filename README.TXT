@@ -54,8 +54,13 @@ Dependências principais:
 
 
 
-Guia de Instalação no Windows (Passo a Passo Oficial):
+Guia de Instalação no Windows via Script (Recomendado):
 
+O SenpAI disponibiliza um script automatizado para Windows (`install_windows.bat`).
+1. Instale o Python 3.11 Oficial (via comando: winget install Python.Python.3.11 ou baixe em python.org).
+2. Dê um duplo clique no arquivo `install_windows.bat` no Explorador de Arquivos.
+
+Guia de Instalação no Windows (Passo a Passo Manual):
 
 
 1. Instalar o Python 3.11 Oficial (assinado digitalmente pela PSF via Winget):
@@ -100,6 +105,21 @@ Guia de Instalação no Windows (Passo a Passo Oficial):
 
 
 
+Guia de Instalação no Linux (Ubuntu/Debian) via Script:
+
+O SenpAI disponibiliza um script automatizado para Linux (`install_linux.sh`) que instala as dependências nativas (Python, OpenCV), cria o ambiente virtual e configura o projeto em um único passo.
+
+1. No terminal, conceda permissão de execução ao script:
+   chmod +x install_linux.sh
+
+2. Execute o instalador:
+   ./install_linux.sh
+
+Após a conclusão, para ativar o ambiente virtual e iniciar o aplicativo web:
+   source .venv/bin/activate
+   python -m streamlit run app.py
+
+
 Nota de Compatibilidade Windows (Smart App Control / WDAC):
 
 O uso do Python 3.11 oficial assinado pela PSF garante total conformidade
@@ -126,7 +146,9 @@ Para iniciar o dashboard web com o ambiente virtual (.venv) ativo:
 
    python -m streamlit run app.py
 
-   (ou: .\.venv\Scripts\python.exe -m streamlit run app.py)
+   (ou no Windows: .\.venv\Scripts\python.exe -m streamlit run app.py)
+
+   (ou no Linux/macOS: ./.venv/bin/python -m streamlit run app.py)
 
 
 
@@ -276,6 +298,8 @@ Para processar vídeos diretamente no terminal:
 
    (ou no Windows: .\.venv\Scripts\python.exe run_tests.py)
 
+   (ou no Linux/macOS: ./.venv/bin/python run_tests.py)
+
    * Executa a suíte de 232 testes automatizados distribuídos em 25 módulos com 100% de aprovação
 
    * Validações especializadas de rastreamento K=2, supressão de Shinpans, governança Dan, Decisão dos Shinpans e Aprendizado Ativo (Eixo 4)
@@ -288,7 +312,11 @@ Para processar vídeos diretamente no terminal:
 
 - Ou executar via runner padrão unittest:
 
-   .\.venv\Scripts\python.exe -m unittest discover tests
+   python -m unittest discover tests
+
+   (ou no Windows: .\.venv\Scripts\python.exe -m unittest discover tests)
+
+   (ou no Linux/macOS: ./.venv/bin/python -m unittest discover tests)
 
 
 

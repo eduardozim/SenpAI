@@ -32,7 +32,22 @@ O SenpAI traduz esses princípios marciais em algoritmos numéricos de alta prec
 
 ---
 
-### 2.2. Guia de Instalação no Windows (Passo a Passo Oficial)
+### 2.2. Guia de Instalação no Windows via Script (Recomendado)
+
+O SenpAI disponibiliza um script automatizado para Windows (`install_windows.bat`) que resolve dependências nativas, cria o ambiente virtual isolado e instala os pacotes em um clique.
+
+#### 1. Instalar o Python 3.11 Oficial via Winget
+Execute no terminal:
+```powershell
+winget install Python.Python.3.11
+```
+
+#### 2. Executar o Instalador
+No Explorador de Arquivos do Windows, dê um **duplo clique** no arquivo `install_windows.bat` presente na pasta raiz. O script executará toda a configuração automaticamente.
+
+---
+
+### 2.2.1. Guia de Instalação no Windows (Passo a Passo Manual)
 
 Para assegurar compatibilidade absoluta com as políticas de integridade do sistema operacional Windows (**Controle de Aplicativo Inteligente / Smart App Control / WDAC**), recomenda-se a instalação oficial do Python 3.11 assinado digitalmente:
 
@@ -74,16 +89,39 @@ pip install ultralytics
 
 ---
 
-### 2.3. Instruções de Execução
+### 2.3. Guia de Instalação no Linux (Ubuntu/Debian) via Script
+
+O SenpAI fornece um script de instalação automatizado para sistemas Linux (`install_linux.sh`) que resolve dependências nativas (como as bibliotecas OpenGL para o OpenCV), cria o ambiente virtual isolado e instala os pacotes do projeto em uma única execução.
+
+#### 1. Executar o Script de Instalação
+No terminal, dentro do diretório raiz do projeto, execute:
+```bash
+chmod +x install_linux.sh
+./install_linux.sh
+```
+
+#### 2. Ativar o Ambiente e Iniciar o Aplicativo
+Após a instalação ser concluída com sucesso pelo script, ative o ambiente virtual e inicie o sistema:
+```bash
+source .venv/bin/activate
+python -m streamlit run app.py
+```
+
+---
+
+### 2.4. Instruções de Execução
 
 #### A. Interface Web Interativa (Streamlit — Recomendado)
 Com o ambiente virtual (`.venv`) ativado, execute o Streamlit através do módulo Python:
-```powershell
+```bash
 # Execução recomendada (invoca o Streamlit via interpretador oficial assinado):
 python -m streamlit run app.py
 
-# Ou especificando o caminho completo do interpretador:
+# Ou especificando o caminho completo do interpretador no Windows:
 .\.venv\Scripts\python.exe -m streamlit run app.py
+
+# Ou especificando o caminho completo do interpretador no Linux/macOS:
+./.venv/bin/python -m streamlit run app.py
 ```
 
 > [!NOTE]
@@ -103,9 +141,15 @@ python main.py --video "caminho/do/video.mp4" --device gpu --model yolov11
 ```
 
 #### C. Execução da Suíte de Testes Automatizados
-```powershell
+```bash
 # Execução completa com relatório descritivo salvo em logs/senpai_test_report.log:
 python run_tests.py
+
+# Ou especificando o caminho no Windows:
+.\.venv\Scripts\python.exe run_tests.py
+
+# Ou especificando o caminho no Linux/macOS:
+./.venv/bin/python run_tests.py
 
 # Ou via runner padrão unittest:
 python -m unittest discover tests
