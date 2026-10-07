@@ -1,7 +1,7 @@
 {
   "version": "2.0.0",
-  "last_updated": "2026-10-07T07:26:29.057170",
-  "total_web_sources_indexed": 34,
+  "last_updated": "2026-10-07T18:26:21.075089",
+  "total_web_sources_indexed": 37,
   "sources": {
     "fik_regulations": {
       "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
@@ -806,6 +806,121 @@
         "spine_tilt_max_deg": 8.0
       },
       "structured_concept": "do_strike_biomechanics"
+    },
+    "web:_kashima_shinden_jikishinkage-ryū_(s": {
+      "title": "Web: Kashima Shinden Jikishinkage-ryū (Suburi (素振り))",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Kashima_Shinden_Jikishinkage-ry%C5%AB",
+      "focus": "Suburi (素振り)",
+      "summary": "has many differences when compared to modern kendō, especially in its footwork and breathing techniques. The unpō (運法) is the footwork used in the Jikishinkage-ryū",
+      "principles": [
+        "Conceito Técnico (Kashima Shinden Jikishinkage-ryū): has many differences when compared to modern kendō, especially in its footwork and breathing techniques. The unpō (運法) i..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "elbow_extension_impact_deg": {
+          "min": 150.0,
+          "max": 175.0,
+          "ideal": 165.0,
+          "unit": "deg"
+        },
+        "blade_contact_zone": "monouchi"
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "web:_yoseikan_aikido_(suburi_(素振り))": {
+      "title": "Web: Yoseikan Aikido (Suburi (素振り))",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Yoseikan_Aikido",
+      "focus": "Suburi (素振り)",
+      "summary": "Waza: Seated techniques Han Suwari Waza: Half seated techniques Ninin Dori Sanin Dori: 2 person &amp; 3 person grab Kenjutsu: Sword Work Suburi: Practice cuts",
+      "principles": [
+        "Conceito Técnico (Yoseikan Aikido): Waza: Seated techniques Han Suwari Waza: Half seated techniques Ninin Dori Sanin Dori: 2 person &amp; 3 person grab Kenj..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "elbow_extension_impact_deg": {
+          "min": 150.0,
+          "max": 175.0,
+          "ideal": 165.0,
+          "unit": "deg"
+        },
+        "blade_contact_zone": "monouchi"
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "fik_&_ajkf_pedagogical_suburi_standards_": {
+      "title": "FIK & AJKF Pedagogical Suburi Standards & Biomechanics",
+      "type": "Manual Oficial AJKF / FIK",
+      "url": "https://www.kendo.or.jp/knowledge/suburi",
+      "focus": "Suburi (素振り)",
+      "summary": "Diretrizes oficiais de execução para Suburi (素振り) (素振り): foco em Amplitude de Furikaburi, Verticalidade da coluna, Parada firme na altura do alvo, Simetria de braços (Tenouchi).",
+      "principles": [
+        "Hasuji (刃筋): Alinhamento estrito do corte sem desvio lateral da lâmina (Monouchi).",
+        "Tenouchi (手の内): Aperto coordenado dos dedos mínimo e anelar no momento da parada na altura do alvo.",
+        "Furikaburi (振りかぶり): Amplitude de elevação dos cotovelos entre 115° e 140° mantendo o queixo recolhido.",
+        "Shisei (姿勢): Manutenção da verticalidade da coluna vertebral com inclinação máxima < 8.5°."
+      ],
+      "biomechanical_thresholds": {
+        "cadence_cpm": [
+          25,
+          60
+        ],
+        "furikaburi_angle_deg": [
+          115,
+          140
+        ],
+        "spine_tilt_max_deg": 8.5
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "elbow_extension_impact_deg": {
+          "min": 150.0,
+          "max": 175.0,
+          "ideal": 165.0,
+          "unit": "deg"
+        },
+        "blade_contact_zone": "monouchi",
+        "cadence_cpm": {
+          "min": 25.0,
+          "max": 60.0
+        },
+        "furikaburi_angle_deg": {
+          "min": 115.0,
+          "max": 140.0
+        },
+        "spine_tilt_max_deg": 8.5
+      },
+      "structured_concept": "do_strike_biomechanics"
     }
   },
   "learned_parameters": {
@@ -837,9 +952,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 41.0,
-        "current_accuracy": 64.7,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 70.5,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Okuri-ashi (送り足): Deslocamento fundamental deslizante impulsionado pela perna esquerda sem cruzar as pernas.",
           "Calcanhar Esquerdo Suspenso: Elevação contínua de 2 a 3 cm do calcanhar esquerdo para prontidão instantânea de arranque (Hiki-tsuke).",
@@ -1015,9 +1130,19 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 64.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 67.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 70.0%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 8
+        "sessions_count": 10
       },
       "suburi": {
         "movement_weight": 0.35,
@@ -1026,8 +1151,8 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 46.5,
-        "current_accuracy": 66.8,
-        "last_calibrated": "07/10/2026 02:32",
+        "current_accuracy": 75.9,
+        "last_calibrated": "07/10/2026 12:31",
         "mastery_level": "Calibrado",
         "principles_learned": [
           "Hasuji (刃筋): Alinhamento estrito do corte sem desvio lateral da lâmina (Monouchi).",
@@ -1147,6 +1272,16 @@
             "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
             "type": "Base de Conhecimento",
             "url": ""
+          },
+          {
+            "title": "Web: Kashima Shinden Jikishinkage-ryū (Suburi (素振り))",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Kashima_Shinden_Jikishinkage-ry%C5%AB"
+          },
+          {
+            "title": "Web: Yoseikan Aikido (Suburi (素振り))",
+            "type": "Artigo Web / Enciclopédia Técnica",
+            "url": "https://en.wikipedia.org/wiki/Yoseikan_Aikido"
           }
         ],
         "evolution_log": [
@@ -1189,9 +1324,24 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 66.3%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 69.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 72.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 12:31",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_suburi). Acurácia elevada para 75.0%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 7
+        "sessions_count": 10
       },
       "kihon": {
         "movement_weight": 0.35,
@@ -1200,9 +1350,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 44.0,
-        "current_accuracy": 64.3,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 70.1,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Chudan no Kamae (中段の構え): Guarda fundamental inexpugnável com ponta do Shinai direcionada à garganta do oponente.",
           "Maai (間合い): Manutenção precisa da distância de um passo e um golpe (Issoku-itto-no-maai).",
@@ -1363,9 +1513,19 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 63.8%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 66.7%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 69.6%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 7
+        "sessions_count": 9
       },
       "kirikaeshi": {
         "movement_weight": 0.35,
@@ -1374,9 +1534,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 39.5,
-        "current_accuracy": 59.8,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 65.6,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Cadência Contínua e Respiração: Execução ininterrupta de cortes Shōmen e Sayū-men a 45° de Hasuji em respiração única (Iki-tsugi).",
           "Taiatari (体当たり): Contato e choque corporal pelo centro sem colapsar a postura e sem recuar os ombros.",
@@ -1537,9 +1697,19 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 59.3%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 62.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 65.1%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 7
+        "sessions_count": 9
       },
       "uchikomi_geiko": {
         "movement_weight": 0.35,
@@ -1548,9 +1718,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 38.0,
-        "current_accuracy": 61.6,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 67.4,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Explosão na Abertura: Reconhecimento e ataque instantâneo no milissegundo em que o Motodachi abre o alvo.",
           "Fumikomi Potente: Aterrissagem com a planta do pé direito sincrônica ao impacto no alvo (Ki-Ken-Tai-Ichi).",
@@ -1716,9 +1886,19 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 61.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 64.0%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 66.9%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 8
+        "sessions_count": 10
       },
       "kakari_geiko": {
         "movement_weight": 0.35,
@@ -1727,9 +1907,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 33.5,
-        "current_accuracy": 60.6,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 66.8,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Kiai Inabalável: Ataques agressivos e contínuos em intensidade máxima sem hesitação durante períodos curtos (20s a 60s).",
           "Preservação da Postura sob Fadiga: Resistência muscular preservando a retidão da coluna e guarda mesmo sob exaustão extrema.",
@@ -1900,9 +2080,24 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 60.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 63.0%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 09:12",
+            "gain": "+1.6%",
+            "note": "Treinamento Padrao (modality_kakari_geiko). Acurácia elevada para 65.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 66.3%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 9
+        "sessions_count": 12
       },
       "yakusoku_geiko": {
         "movement_weight": 0.35,
@@ -1911,9 +2106,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 37.5,
-        "current_accuracy": 65.1,
-        "last_calibrated": "07/10/2026 03:33",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 70.9,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Sincronismo Combinado: Execução harmoniosa e exata de sequências previamente combinadas entre os parceiros.",
           "Maai de Transição: Ajuste consciente da distância a cada golpe combinado sem quebras de ritmo.",
@@ -2084,9 +2279,19 @@
             "date": "07/10/2026 03:33",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (modality_yakusoku_geiko). Acurácia elevada para 64.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 67.5%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 70.4%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 9
+        "sessions_count": 11
       },
       "waza_geiko": {
         "movement_weight": 0.35,
@@ -2095,9 +2300,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 36.5,
-        "current_accuracy": 60.1,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 65.9,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Automatização Técnica: Repetição exaustiva de técnicas ofensivas complexas (Debana-waza, Hiki-waza).",
           "Gatilho de Oportunidade: Percepção do momento exato em que o adversário inicia o movimento ou recua a guarda.",
@@ -2268,9 +2473,19 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 59.6%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 62.5%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 65.4%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 8
+        "sessions_count": 10
       },
       "oji_waza": {
         "movement_weight": 0.35,
@@ -2279,9 +2494,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 35.5,
-        "current_accuracy": 59.2,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 68.4,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Técnicas de Resposta (Oji-waza): Nuki (esquiva por baixo), Kaeshi (deflexão giratória), Suriage (deslize ascendente) e Uchiotoshi.",
           "Economia de Movimento: Desvio milimétrico da espada adversária seguido de contragolpe imediato pelo centro (Chushin-sen).",
@@ -2457,9 +2672,24 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 58.7%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 04:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_oji_waza). Acurácia elevada para 61.6%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 65.0%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 67.9%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 8
+        "sessions_count": 11
       },
       "ji_geiko": {
         "movement_weight": 0.35,
@@ -2468,9 +2698,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 32.0,
-        "current_accuracy": 62.6,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 68.4,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Pressão com Seme (攻め): Rompimento da guarda e quebra da postura mental do adversário antes de desferir o ataque.",
           "Ki-Ken-Tai-Ichi em Combate Livre: Aplicação plena dos fundamentos de golpe, corte e pés sem pré-determinação.",
@@ -2646,9 +2876,19 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 62.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 65.0%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 67.9%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 10
+        "sessions_count": 12
       },
       "shiai_geiko": {
         "movement_weight": 0.35,
@@ -2657,9 +2897,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 34.0,
-        "current_accuracy": 61.1,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 66.9,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Yuko-Datotsu Oficial: Validação rigorosa dos 4 critérios regulamentares de Ippon da FIK (Impacto, Fumikomi, Postura, Zanshin).",
           "Sonkyō Protocolar: Entrada, cumprimento cerimonial e agachamento formal respeitando a etiqueta marcial de Shiai.",
@@ -2835,9 +3075,19 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 60.6%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 63.5%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 66.4%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 9
+        "sessions_count": 11
       },
       "nihon_kendo_kata": {
         "movement_weight": 0.35,
@@ -2846,9 +3096,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 45.0,
-        "current_accuracy": 65.3,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 71.1,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Formas Tradicionais com Bokutō: Katas oficiais 1 a 10 entre Uchidachi (mestre) e Shidachi (aprendiz) com rigor estético milenar.",
           "Hasuji de Espada de Madeira: Trajetória precisa de corte com Bokutō parando a milímetros do alvo sem contato violento.",
@@ -3009,9 +3259,19 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 64.8%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 67.7%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 70.6%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 7
+        "sessions_count": 9
       },
       "bokuto_kihon_waza": {
         "movement_weight": 0.35,
@@ -3020,9 +3280,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 42.5,
-        "current_accuracy": 62.8,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 68.6,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "9 Fundamentos com Bokutō (Bokutō ni yoru Kendō Kihon Waza Keiko Hō): Fixação da mecânica do corte e transição correta de espada.",
           "Empunhadura e Hasuji: Correção de vícios de Shinai através da empunhadura oval e peso sólido do Bokutō.",
@@ -3183,9 +3443,19 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 62.3%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 65.2%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 68.1%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 7
+        "sessions_count": 9
       },
       "shinsa": {
         "movement_weight": 0.35,
@@ -3194,9 +3464,9 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 36.0,
-        "current_accuracy": 59.6,
-        "last_calibrated": "07/10/2026 02:32",
-        "mastery_level": "Em Calibração",
+        "current_accuracy": 68.7,
+        "last_calibrated": "07/10/2026 11:30",
+        "mastery_level": "Calibrado",
         "principles_learned": [
           "Critérios Oficiais de Exame Dan: Postura digna (Shisei), etiqueta impecável (Reigi), Kiai penetrante e domínio dos fundamentos.",
           "Ataque Resoluto e Zanshin: Demonstração de coragem e técnica limpa sem hesitação, recuo ou movimentos desnecessários.",
@@ -3362,9 +3632,24 @@
             "date": "07/10/2026 02:32",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 59.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 05:34",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 62.0%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 10:12",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_shinsa). Acurácia elevada para 64.9%. 14 princípios consolidados."
+          },
+          {
+            "date": "07/10/2026 11:30",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (general_all). Acurácia elevada para 68.2%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 8
+        "sessions_count": 11
       }
     },
     "physical_constraints": {
@@ -3712,6 +3997,6 @@
       }
     }
   },
-  "training_sessions_completed": 21,
-  "last_retrained_at": "2026-10-07T03:33:11.554893"
+  "training_sessions_completed": 27,
+  "last_retrained_at": "2026-10-07T12:31:17.239557"
 }

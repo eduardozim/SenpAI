@@ -992,5 +992,303 @@
         "permissivo"
       ]
     }
+  },
+  {
+    "id": "auto_train_20261007_033422_22",
+    "session_id": "auto_train_20261007_033422",
+    "status": "success",
+    "duration_seconds": 3600.0,
+    "timestamp": "2026-10-07T04:34:22.511229",
+    "video_name": "AI_Auto_Trainer_modality_oji_waza",
+    "profile_key": "modality_oji_waza",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 82434,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261007_033422",
+      "effective_scope": "modality_oji_waza",
+      "scope_name": "🎯 Necessidade Mais Latente (🥋 Modalidade: Oji-waza (応じ技))",
+      "duration_seconds": 3600.0,
+      "initial_accuracy": 59.2,
+      "final_accuracy": 62.6,
+      "accuracy_gain": 3.4,
+      "sources_count": 14,
+      "sources_titles": [
+        "Web: Kendo (Oji-waza (応じ技))",
+        "Web: List of Ranma ½ chapters (Oji-waza (応じ技))",
+        "AJKF Technical Manual: Principles of Oji-waza and Counters",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+        "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+        "Reinforcement Optimization on Dan Review Feedback Dataset",
+        "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+        "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0"
+      ],
+      "samples_processed": 82434,
+      "changes": [
+        "Recalibração biomecânica dos 3 Pilares (Movimentação, Precisão e Constância) e assimilação de princípios nas 14 Modalidades Pedagógicas."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261007_043452_23",
+    "session_id": "auto_train_20261007_043452",
+    "status": "success",
+    "duration_seconds": 3600.0,
+    "timestamp": "2026-10-07T05:34:52.821069",
+    "video_name": "AI_Auto_Trainer_general_all",
+    "profile_key": "general_all",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 65708,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261007_043452",
+      "effective_scope": "general_all",
+      "scope_name": "🎯 Necessidade Mais Latente (🌐 Treinamento Geral Unificado (Todos os Modos & 14 Modalidades))",
+      "duration_seconds": 3600.0,
+      "initial_accuracy": 62.6,
+      "final_accuracy": 65.9,
+      "accuracy_gain": 3.3,
+      "sources_count": 17,
+      "sources_titles": [
+        "Web: Kendo (general_all)",
+        "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+        "Web: Kendo Kata (general_all)",
+        "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+        "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+        "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+        "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+        "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+        "Reinforcement Optimization on Dan Review Feedback Dataset",
+        "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0"
+      ],
+      "samples_processed": 65708,
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) chancelado pelo Golden Benchmark.",
+        "Recalibração biomecânica dos 3 Pilares (Movimentação, Precisão e Constância) e assimilação de princípios nas 14 Modalidades Pedagógicas.",
+        "Otimização da matriz de consenso multi-câmeras para rejeição de artefatos de perspectiva com baixa latência."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261007_091155_24",
+    "session_id": "auto_train_20261007_091155",
+    "status": "stopped_early",
+    "duration_seconds": 11.1,
+    "timestamp": "2026-10-07T09:12:07.120318",
+    "video_name": "AI_Auto_Trainer_modality_kakari_geiko",
+    "profile_key": "modality_kakari_geiko",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 267,
+    "optimization_summary": {
+      "status": "stopped_early",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261007_091155",
+      "effective_scope": "modality_kakari_geiko",
+      "scope_name": "🎯 Necessidade Mais Latente (🥋 Modalidade: Kakari-geiko (掛稽古))",
+      "duration_seconds": 11.1,
+      "initial_accuracy": 63.5,
+      "final_accuracy": 63.9,
+      "accuracy_gain": 0.4,
+      "sources_count": 4,
+      "sources_titles": [
+        "Physiological & Biomechanical Load in High-Intensity Kakari-geiko",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook"
+      ],
+      "samples_processed": 267,
+      "changes": [
+        "Recalibração biomecânica dos 3 Pilares (Movimentação, Precisão e Constância) e assimilação de princípios nas 14 Modalidades Pedagógicas."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261007_091218_25",
+    "session_id": "auto_train_20261007_091218",
+    "status": "success",
+    "duration_seconds": 3600.0,
+    "timestamp": "2026-10-07T10:12:19.519921",
+    "video_name": "AI_Auto_Trainer_modality_shinsa",
+    "profile_key": "modality_shinsa",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 84735,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261007_091218",
+      "effective_scope": "modality_shinsa",
+      "scope_name": "🎯 Necessidade Mais Latente (🥋 Modalidade: Shinsa (審査))",
+      "duration_seconds": 3600.0,
+      "initial_accuracy": 62.5,
+      "final_accuracy": 65.8,
+      "accuracy_gain": 3.3,
+      "sources_count": 12,
+      "sources_titles": [
+        "FIK & AJKF Official Examination & Dan Ranking Standard Regulations",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+        "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+        "Reinforcement Optimization on Dan Review Feedback Dataset",
+        "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+        "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0"
+      ],
+      "samples_processed": 84735,
+      "changes": [
+        "Recalibração biomecânica dos 3 Pilares (Movimentação, Precisão e Constância) e assimilação de princípios nas 14 Modalidades Pedagógicas."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261007_103031_26",
+    "session_id": "auto_train_20261007_103031",
+    "status": "success",
+    "duration_seconds": 3600.0,
+    "timestamp": "2026-10-07T11:30:31.849982",
+    "video_name": "AI_Auto_Trainer_general_all",
+    "profile_key": "general_all",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 59586,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261007_103031",
+      "effective_scope": "general_all",
+      "scope_name": "🎯 Necessidade Mais Latente (🌐 Treinamento Geral Unificado (Todos os Modos & 14 Modalidades))",
+      "duration_seconds": 3600.0,
+      "initial_accuracy": 65.8,
+      "final_accuracy": 69.2,
+      "accuracy_gain": 3.4,
+      "sources_count": 17,
+      "sources_titles": [
+        "Web: Kendo (general_all)",
+        "Web: Kendo Kata (general_all)",
+        "Web: Zen Nihon kendō renmei Jōdō (general_all)",
+        "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+        "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+        "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+        "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+        "Reinforcement Optimization on Dan Review Feedback Dataset",
+        "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+        "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0"
+      ],
+      "samples_processed": 59586,
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) chancelado pelo Golden Benchmark.",
+        "Recalibração biomecânica dos 3 Pilares (Movimentação, Precisão e Constância) e assimilação de princípios nas 14 Modalidades Pedagógicas.",
+        "Otimização da matriz de consenso multi-câmeras para rejeição de artefatos de perspectiva com baixa latência."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261007_113116_27",
+    "session_id": "auto_train_20261007_113116",
+    "status": "success",
+    "duration_seconds": 3600.0,
+    "timestamp": "2026-10-07T12:31:17.250619",
+    "video_name": "AI_Auto_Trainer_modality_suburi",
+    "profile_key": "modality_suburi",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 62929,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261007_113116",
+      "effective_scope": "modality_suburi",
+      "scope_name": "🎯 Necessidade Mais Latente (🥋 Modalidade: Suburi (素振り))",
+      "duration_seconds": 3600.0,
+      "initial_accuracy": 72.6,
+      "final_accuracy": 75.9,
+      "accuracy_gain": 3.3,
+      "sources_count": 14,
+      "sources_titles": [
+        "Web: Kashima Shinden Jikishinkage-ryū (Suburi (素振り))",
+        "Web: Yoseikan Aikido (Suburi (素振り))",
+        "FIK & AJKF Pedagogical Suburi Standards & Biomechanics",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+        "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+        "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+        "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+        "Reinforcement Optimization on Dan Review Feedback Dataset",
+        "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0"
+      ],
+      "samples_processed": 62929,
+      "changes": [
+        "Recalibração biomecânica dos 3 Pilares (Movimentação, Precisão e Constância) e assimilação de princípios nas 14 Modalidades Pedagógicas."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
   }
 ]
