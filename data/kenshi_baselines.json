@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-10-07T10:28:38Z",
+  "updated_at": "2026-10-07T23:01:24Z",
   "profiles": {
     "KENSHI_SOLO": {
       "kenshi_id": "KENSHI_SOLO",
@@ -72,9 +72,9 @@
       "kenshi_id": "KENSHI_SHIRO",
       "display_name": "Kendoca Shiro (Esquerda)",
       "created_at": "2026-10-02T20:06:13Z",
-      "last_updated_at": "2026-10-07T10:28:38Z",
-      "sessions_count": 22,
-      "strikes_count": 295,
+      "last_updated_at": "2026-10-07T23:01:24Z",
+      "sessions_count": 24,
+      "strikes_count": 347,
       "metrics": {
         "posture_resting_angle_deg": {
           "count": 0,
@@ -83,22 +83,22 @@
           "m2": 0.0
         },
         "fumikomi_window_ms": {
-          "count": 295,
-          "mean": 5.0797,
-          "std_dev": 44.2924,
-          "m2": 576773.2504
+          "count": 347,
+          "mean": 4.7023,
+          "std_dev": 43.8542,
+          "m2": 665423.5752
         },
         "cadence_cpm": {
-          "count": 22,
-          "mean": 9.6637,
-          "std_dev": 1.9834,
-          "m2": 82.6098
+          "count": 24,
+          "mean": 9.7501,
+          "std_dev": 1.9176,
+          "m2": 84.5785
         },
         "spine_tilt_strike_deg": {
-          "count": 22,
-          "mean": 95.009,
-          "std_dev": 2.5785,
-          "m2": 139.6168
+          "count": 24,
+          "mean": 95.1832,
+          "std_dev": 2.5335,
+          "m2": 147.6327
         },
         "zanshin_duration_s": {
           "count": 0,
@@ -138,9 +138,9 @@
       "kenshi_id": "KENSHI_AKA",
       "display_name": "Kendoca Aka (Direita)",
       "created_at": "2026-10-02T20:06:13Z",
-      "last_updated_at": "2026-10-07T10:28:38Z",
-      "sessions_count": 22,
-      "strikes_count": 296,
+      "last_updated_at": "2026-10-07T23:01:24Z",
+      "sessions_count": 24,
+      "strikes_count": 340,
       "metrics": {
         "posture_resting_angle_deg": {
           "count": 0,
@@ -149,22 +149,22 @@
           "m2": 0.0
         },
         "fumikomi_window_ms": {
-          "count": 296,
-          "mean": 4.2749,
-          "std_dev": 59.6042,
-          "m2": 1048035.9478
+          "count": 340,
+          "mean": 4.897,
+          "std_dev": 59.5097,
+          "m2": 1200536.5583
         },
         "cadence_cpm": {
-          "count": 22,
-          "mean": 9.9818,
-          "std_dev": 2.442,
-          "m2": 125.2327
+          "count": 24,
+          "mean": 9.9084,
+          "std_dev": 2.3467,
+          "m2": 126.6583
         },
         "spine_tilt_strike_deg": {
-          "count": 22,
-          "mean": 95.1363,
-          "std_dev": 2.8429,
-          "m2": 169.729
+          "count": 24,
+          "mean": 95.3666,
+          "std_dev": 2.8264,
+          "m2": 183.7318
         },
         "zanshin_duration_s": {
           "count": 0,

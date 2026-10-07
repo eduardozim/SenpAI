@@ -1458,7 +1458,7 @@ elif nav_page == "settings":
             st.html(card_html)
 
             # Diagnóstico de Hardware em Tempo Real
-            with st.expander("🔍 Detalhes de Hardware & Diagnóstico CUDA", expanded=False):
+            with st.expander("🔍 Detalhes de Hardware & Diagnóstico CUDA", expanded=st.session_state.get("is_installing_cuda", False)):
                 gpu_check_info = detect_nvidia_gpu()
                 cuda_fw = check_cuda_framework_support()
 
@@ -1470,14 +1470,56 @@ elif nav_page == "settings":
                         st.info(f"✅ **Ambiente PyTorch CUDA Ativo:** Dispositivo `{cuda_fw['torch_device_name']}` pronto para inferência rápida com {chosen_info['name']}.")
                     else:
                         st.warning("⚠️ **Dependências CUDA incompletas:** Suporte PyTorch CUDA não detectado.")
-                        if st.button("🚀 Instalar Requisitos CUDA para GPU NVIDIA", width="stretch", key="btn_install_cuda_tab"):
-                            with st.spinner(f"Instalando pacotes PyTorch CUDA para {gpu_check_info['gpu_name']}..."):
-                                install_res = validate_and_setup_gpu_requirements(auto_install=True)
-                                if install_res["cuda_ready"]:
-                                    st.success("✅ Pacotes CUDA instalados com sucesso!")
+                        install_cuda_btn = st.button("🚀 Instalar Requisitos CUDA para GPU NVIDIA", width="stretch", key="btn_install_cuda_tab")
+                        if install_cuda_btn:
+                            st.session_state["is_installing_cuda"] = True
+                            with st.container(border=True):
+                                st.markdown(
+                                    f'<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">'
+                                    f'<span style="font-size: 1.25rem;">🚀</span>'
+                                    f'<span style="font-size: 1.02rem; font-weight: 700; color: #38BDF8;">'
+                                    f'Instalando Dependências CUDA para {html.escape(gpu_check_info["gpu_name"])}'
+                                    f'</span>'
+                                    f'</div>',
+                                    unsafe_allow_html=True
+                                )
+                                st.caption("Configurando pacotes PyTorch com aceleração CUDA e Ultralytics para processamento em GPU. Acompanhe a barra de progresso e os detalhes em tempo real abaixo:")
+
+                                prog_bar = st.progress(0.0)
+                                status_box = st.empty()
+                                log_expander = st.expander("📜 Terminal & Logs de Instalação (Tempo Real)", expanded=True)
+                                with log_expander:
+                                    log_code = st.empty()
+
+                                collected_logs = []
+                                def _cuda_ui_cb(pct: float, phase: str, detail: Optional[str] = None):
+                                    safe_pct = max(0.0, min(1.0, float(pct)))
+                                    pct_int = int(safe_pct * 100)
+                                    prog_bar.progress(safe_pct, text=f"Progresso: {pct_int}% - {phase}")
+                                    status_box.markdown(
+                                        f"<div style='font-size: 0.86rem; color: #60a5fa; margin: 4px 0 8px 0;'>"
+                                        f"⏳ <b>Etapa Atual:</b> {html.escape(phase)}"
+                                        f"</div>",
+                                        unsafe_allow_html=True
+                                    )
+                                    if detail and detail.strip():
+                                        clean_d = detail.strip()
+                                        collected_logs.append(clean_d)
+                                        tail = "\n".join(collected_logs[-25:])
+                                        log_code.code(tail, language="bash")
+
+                                _cuda_ui_cb(0.02, "Iniciando instalador e verificando repositórios CUDA...", "Iniciando instalador...")
+                                install_res = validate_and_setup_gpu_requirements(auto_install=True, force_install=True, progress_callback=_cuda_ui_cb)
+                                st.session_state["is_installing_cuda"] = False
+
+                                is_success = install_res.get("auto_installed", False) or install_res.get("cuda_ready", False)
+                                if is_success:
+                                    prog_bar.progress(1.0, text="100% - Instalação concluída com sucesso!")
+                                    st.success(f"✅ **Pacotes CUDA instalados com sucesso para {gpu_check_info['gpu_name']}!** Reiniciando aplicação...")
+                                    time.sleep(2.0)
                                     st.rerun()
                                 else:
-                                    st.error(install_res["message"])
+                                    st.error(f"❌ {install_res.get('message', 'Erro ao instalar dependências CUDA.')}")
                 else:
                     st.info("💻 **Computador rodando em Modo CPU.** Nenhuma GPU NVIDIA dedicada detectada.")
 
