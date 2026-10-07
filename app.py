@@ -2620,10 +2620,11 @@ elif nav_page == "settings":
         with gb_col1:
             st.markdown("#### 🛡️ Conjunto de Validação Padrão-Ouro")
             try:
+                fm = getattr(auto_trainer, "feedback_mgr", None)
                 if hasattr(auto_trainer, "get_golden_benchmark_metrics"):
                     gb_metrics = auto_trainer.get_golden_benchmark_metrics("normal")
-                elif hasattr(getattr(auto_trainer, "feedback_mgr", None), "get_golden_benchmark_metrics"):
-                    gb_metrics = auto_trainer.feedback_mgr.get_golden_benchmark_metrics("normal")
+                elif fm is not None and hasattr(fm, "get_golden_benchmark_metrics"):
+                    gb_metrics = fm.get_golden_benchmark_metrics("normal")
                 elif hasattr(feedback_mgr, "get_golden_benchmark_metrics"):
                     gb_metrics = feedback_mgr.get_golden_benchmark_metrics("normal")
                 else:
@@ -2661,10 +2662,11 @@ elif nav_page == "settings":
         # Fila de Curadoria Ativa
         unc_queue = []
         try:
+            fm = getattr(auto_trainer, "feedback_mgr", None)
             if hasattr(auto_trainer, "get_active_learning_queue"):
                 unc_queue = auto_trainer.get_active_learning_queue(status="pending_curation")
-            elif hasattr(getattr(auto_trainer, "feedback_mgr", None), "get_active_learning_queue"):
-                unc_queue = auto_trainer.feedback_mgr.get_active_learning_queue(status="pending_curation")
+            elif fm is not None and hasattr(fm, "get_active_learning_queue"):
+                unc_queue = fm.get_active_learning_queue(status="pending_curation")
             elif hasattr(feedback_mgr, "get_active_learning_queue"):
                 unc_queue = feedback_mgr.get_active_learning_queue(status="pending_curation")
         except Exception:
@@ -2686,19 +2688,21 @@ elif nav_page == "settings":
                         btn_c1, btn_c2 = st.columns(2)
                         with btn_c1:
                             if st.button("✅ Ippon", key=f"btn_cur_ok_{idx}"):
+                                fm = getattr(auto_trainer, "feedback_mgr", None)
                                 if hasattr(auto_trainer, "resolve_active_learning_item"):
                                     auto_trainer.resolve_active_learning_item(unc_item.get("id", ""), True, 5, notes="Homologado via Curadoria Ativa")
-                                elif hasattr(getattr(auto_trainer, "feedback_mgr", None), "resolve_active_learning_item"):
-                                    auto_trainer.feedback_mgr.resolve_active_learning_item(unc_item.get("id", ""), True, 5, notes="Homologado via Curadoria Ativa")
+                                elif fm is not None and hasattr(fm, "resolve_active_learning_item"):
+                                    fm.resolve_active_learning_item(unc_item.get("id", ""), True, 5, notes="Homologado via Curadoria Ativa")
                                 elif hasattr(feedback_mgr, "resolve_active_learning_item"):
                                     feedback_mgr.resolve_active_learning_item(unc_item.get("id", ""), True, 5, notes="Homologado via Curadoria Ativa")
                                 st.rerun()
                         with btn_c2:
                             if st.button("❌ Inválido", key=f"btn_cur_no_{idx}"):
+                                fm = getattr(auto_trainer, "feedback_mgr", None)
                                 if hasattr(auto_trainer, "resolve_active_learning_item"):
                                     auto_trainer.resolve_active_learning_item(unc_item.get("id", ""), False, 5, notes="Reprovado via Curadoria Ativa")
-                                elif hasattr(getattr(auto_trainer, "feedback_mgr", None), "resolve_active_learning_item"):
-                                    auto_trainer.feedback_mgr.resolve_active_learning_item(unc_item.get("id", ""), False, 5, notes="Reprovado via Curadoria Ativa")
+                                elif fm is not None and hasattr(fm, "resolve_active_learning_item"):
+                                    fm.resolve_active_learning_item(unc_item.get("id", ""), False, 5, notes="Reprovado via Curadoria Ativa")
                                 elif hasattr(feedback_mgr, "resolve_active_learning_item"):
                                     feedback_mgr.resolve_active_learning_item(unc_item.get("id", ""), False, 5, notes="Reprovado via Curadoria Ativa")
                                 st.rerun()

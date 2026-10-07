@@ -57,10 +57,10 @@
       "zanshin": 0.15
     },
     "sub_thresholds": {
-      "target_impact": 0.6,
-      "fumikomi_sync": 0.55,
-      "posture": 0.55,
-      "zanshin": 0.45
+      "target_impact": 0.58,
+      "fumikomi_sync": 0.48,
+      "posture": 0.48,
+      "zanshin": 0.44
     },
     "weights_by_strike_type": {
       "MEN": {
