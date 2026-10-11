@@ -288,6 +288,9 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
         else:
             badge_perf = ("⚠️ NECESSITA AJUSTES DE FUNDAMENTO", "#EF4444", "rgba(239, 68, 68, 0.15)", "#B91C1C")
 
+        pres_sec = float(k_prof.get("presence_seconds", 0.0))
+        reentries = int(k_prof.get("reentry_count", 0))
+
         st.markdown(
             f"""
             <div style="background: #0B1120; border: 1.5px solid #334155; border-radius: 10px; padding: 14px 18px; margin-bottom: 12px;">
@@ -300,10 +303,12 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                         <span style="color: {badge_perf[1]}; font-weight: 800; font-size: 13px;">{badge_perf[0]} — {overall:.1f}/100</span>
                     </div>
                 </div>
-                <div style="background: rgba(30, 41, 59, 0.4); border-radius: 6px; padding: 6px 12px; margin-bottom: 4px; display: flex; justify-content: space-around; font-size: 12px;">
+                <div style="background: rgba(30, 41, 59, 0.4); border-radius: 6px; padding: 6px 12px; margin-bottom: 4px; display: flex; justify-content: space-around; font-size: 12px; flex-wrap: wrap; gap: 8px;">
                     <span>⏱️ Cadência: <b style="color:#F8FAFC;">{cadence_cpm:.1f} CPM</b></span>
                     <span>🔁 Repetições: <b style="color:#F8FAFC;">{reps}</b></span>
                     <span>📊 Desvio: <b style="color:#F8FAFC;">{pillars.get('cadence_std_dev_seconds', 0.0):.2f}s DP</b></span>
+                    {f"<span>👁️ Presença em Cena: <b style='color:#38BDF8;'>{pres_sec:.1f}s</b></span>" if pres_sec > 0 else ""}
+                    {f"<span>🔄 Retornos (Re-ID): <b style='color:#A855F7;'>{reentries}x</b></span>" if reentries > 0 else ""}
                 </div>
             </div>
             """,
@@ -5630,13 +5635,15 @@ elif nav_page in ["match", "training", "analysis"]:
                         )
 
                     annotated_output = os.path.abspath("annotated_match.mp4")
+                    target_analysis_mode = "training" if app_mode == "training" else "match"
                     worker = AnalysisWorker(
                         pipeline=pipeline,
                         video_path=video_file_path,
                         output_video_path=annotated_output,
                         invert_combatants=st.session_state.get("invert_aka_shiro", False),
                         training_modality_override=st.session_state.get("training_modality_selected"),
-                        custom_kendoka_names=st.session_state.get("training_kendoka_names", {})
+                        custom_kendoka_names=st.session_state.get("training_kendoka_names", {}),
+                        analysis_mode=target_analysis_mode
                     )
                     worker.start()
                     st.session_state["analysis_worker"] = worker

@@ -4,7 +4,7 @@
 
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
 
-                              Versão: v 0.3.6.0
+                              Versão: v 0.3.7.0
 
 ===============================================================================
 
@@ -200,7 +200,16 @@ Recursos da Interface Web:
 
 - Delimitação Temporal da Luta por Sonkyō: identificação automática da postura ritualística de Sonkyō de início e término do combate, com filtragem estrita de golpes na janela regulamentar.
 
-- Rastreamento dos 2 Kenshi Principais e Filtragem de Planos: descarte inteligente de elementos de fundo (outras lutas, arquibancadas), árbitros (Shinpans) e oclusões de primeiro plano, com aplicação automática de margens da quadra (Shiai-jo) e supressão de ruído visual no vídeo anotado.
+- Rastreamento dos 2 Kenshi Principais no Modo de Luta (CombatantTracker): Rastreamento contínuo e isolado dos 2 combatentes (Aka e Shiro) no Shiaijo, com detecção da fita dorsal (Tasuki), filtro de árbitros (Shinpans) e delimitação por Sonkyō.
+
+- Rastreador Dedicado de Múltiplos Kenshis no Modo de Treinamento (TrainingMultiKenshiTracker): Motor de visão e tracking completamente separado e exclusivo para o modo de Treinamento e Aprendizado. Rastreia simultaneamente N praticantes no Dojo sem restrição a 2 pessoas, sem busca de fitas Aka/Shiro e sem dependência de Sonkyō.
+
+- Sistema de Re-identificação Multimodal no Treinamento (KenshiReID): Mecanismo avançado de reconhecimento contínuo de Kenshis que saem do enquadramento da câmera e retornam mais tarde durante a sessão, reassociando o praticante ao seu ID original através da combinação de:
+  1. Zekken frontal: nome e dojo fixados no Tare (quando voltado de frente para a câmera);
+  2. Tenugui dorsal: visto por trás da cabeça, sob o Men (quando de costas);
+  3. Identificação lateral do Tare: nome/dojo nas abas laterais (em perfil);
+  4. Biometria postural: proporções corporais e altura normalizada corrigida por perspectiva.
+  A cadência (CPM) e as métricas dos 3 Pilares são calculadas estritamente sobre o tempo real de presença do praticante no enquadramento.
 
 - Delimitação de Quadra (Shiai-jo) & Descarte Silencioso de Não-Kendocas: isolamento estrito dos combatentes centrais na área regulamentar de combate, eliminando caixas de anotação sobre árbitros e espectadores externos.
 

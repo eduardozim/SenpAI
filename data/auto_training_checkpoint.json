@@ -1,77 +1,28 @@
 {
   "status": "completed_consolidated",
-  "session_id": "auto_train_20261005_090827",
-  "scope_key": "modality_ashi_sabaki",
-  "scope_name": "🎯 Necessidade Mais Latente (🥋 Modalidade: Ashi-sabaki (足捌き))",
-  "samples_processed": 397411,
-  "final_accuracy": 61.8,
+  "session_id": "auto_train_20261009_113952",
+  "scope_key": "modality_uchikomi_geiko",
+  "scope_name": "🎯 Necessidade Mais Latente (🥋 Modalidade: Uchikomi-geiko (打込稽古))",
+  "samples_processed": 363098,
+  "final_accuracy": 85.7,
   "sources_consulted": [
     {
-      "title": "Web: Tai sabaki (Ashi-sabaki (足捌き))",
-      "type": "Artigo Web / Enciclopédia Técnica",
-      "url": "https://en.wikipedia.org/wiki/Tai_sabaki",
-      "focus": "Ashi-sabaki (足捌き)",
-      "summary": "See hard and soft (martial arts) Tai sabaki is related to ashi sabaki (footwork) and te sabaki (handwork). Tai sabaki is also the name of a group of kata",
-      "principles": [
-        "Conceito Técnico (Tai sabaki): See hard and soft (martial arts) Tai sabaki is related to ashi sabaki (footwork) and te sabaki (handwork). Tai sabaki is..."
-      ],
-      "authority_tier": 5,
-      "authority_name": "Blogs, fóruns e redes",
-      "authority_desc": "Descartado como prior",
-      "authority_weight": 0.0,
-      "physical_constraints": {
-        "fumikomi_hand_foot_window_ms": {
-          "min": -45.0,
-          "max": 30.0,
-          "ideal": 0.0,
-          "unit": "ms"
-        },
-        "hasuji_max_deviation_deg": 12.0
-      },
-      "structured_concept": "general_strike_biomechanics"
-    },
-    {
-      "title": "Web: Kashima Shinden Jikishinkage-ryū (Ashi-sabaki (足捌き))",
-      "type": "Artigo Web / Enciclopédia Técnica",
-      "url": "https://en.wikipedia.org/wiki/Kashima_Shinden_Jikishinkage-ry%C5%AB",
-      "focus": "Ashi-sabaki (足捌き)",
-      "summary": "differences when compared to modern kendō, especially in its footwork and breathing techniques. The unpō (運法) is the footwork used in the Jikishinkage-ryū style",
-      "principles": [
-        "Conceito Técnico (Kashima Shinden Jikishinkage-ryū): differences when compared to modern kendō, especially in its footwork and breathing techniques. The unpō (運法) is the foo..."
-      ],
-      "authority_tier": 5,
-      "authority_name": "Blogs, fóruns e redes",
-      "authority_desc": "Descartado como prior",
-      "authority_weight": 0.0,
-      "physical_constraints": {
-        "fumikomi_hand_foot_window_ms": {
-          "min": -45.0,
-          "max": 30.0,
-          "ideal": 0.0,
-          "unit": "ms"
-        },
-        "hasuji_max_deviation_deg": 12.0
-      },
-      "structured_concept": "do_strike_biomechanics"
-    },
-    {
-      "title": "AJKF Kendo Manual - Section 3: Ashi-sabaki & Footwork Mechanics",
+      "title": "AJKF Teaching Methodology: Motodachi & Kakarite Dynamics",
       "type": "Manual Oficial AJKF / FIK",
-      "url": "https://www.kendo.or.jp/knowledge/ashi_sabaki",
-      "focus": "Ashi-sabaki (足捌き)",
-      "summary": "Diretrizes oficiais de execução para Ashi-sabaki (足捌き) (足捌き): foco em Alinhamento de pés, Calcanhar esquerdo elevado, Estabilidade do quadril, Fluidez de deslocamento.",
+      "url": "https://www.kendo.or.jp/knowledge/uchikomi_geiko",
+      "focus": "Uchikomi-geiko (打込稽古)",
+      "summary": "Diretrizes oficiais de execução para Uchikomi-geiko (打込稽古) (打込稽古): foco em Velocidade de reação na abertura, Aceleração e Fumikomi, Passagem rápida (Nuke), Retorno imediato em Kamae.",
       "principles": [
-        "Okuri-ashi (送り足): Deslocamento fundamental deslizante impulsionado pela perna esquerda sem cruzar as pernas.",
-        "Calcanhar Esquerdo Suspenso: Elevação contínua de 2 a 3 cm do calcanhar esquerdo para prontidão instantânea de arranque (Hiki-tsuke).",
-        "Estabilidade do Centro de Gravidade: Manutenção do quadril nivelado durante deslocamentos rápidos (Ayumi-ashi, Tsugi-ashi, Hiraki-ashi)."
+        "Explosão na Abertura: Reconhecimento e ataque instantâneo no milissegundo em que o Motodachi abre o alvo.",
+        "Fumikomi Potente: Aterrissagem com a planta do pé direito sincrônica ao impacto no alvo (Ki-Ken-Tai-Ichi).",
+        "Passagem Rápida (Nuke): Cruzamento ágil pelo lado do oponente sem perder o equilíbrio e giro veloz em Zanshin."
       ],
       "biomechanical_thresholds": {
         "cadence_cpm": [
-          30,
-          90
+          20,
+          50
         ],
-        "heel_elevation_min_cm": 2.5,
-        "spine_tilt_max_deg": 8.0
+        "fumikomi_sync_ms": 50.0
       },
       "authority_tier": 1,
       "authority_name": "FIK Official Rulebook",
@@ -84,15 +35,19 @@
           "ideal": 0.0,
           "unit": "ms"
         },
+        "zanshin_duration_min_sec": 0.8,
         "hasuji_max_deviation_deg": 12.0,
         "cadence_cpm": {
-          "min": 30.0,
-          "max": 90.0
+          "min": 20.0,
+          "max": 50.0
         },
-        "heel_elevation_min_cm": 2.5,
-        "spine_tilt_max_deg": 8.0
+        "fumikomi_sync_ms": 50.0
       },
       "structured_concept": "do_strike_biomechanics"
+    },
+    {
+      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+      "type": "Tratado Técnico Kata"
     },
     {
       "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
@@ -103,20 +58,16 @@
       "type": "Manual Oficial FIK"
     },
     {
-      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
-      "type": "Tratado Técnico Kata"
-    },
-    {
-      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
-      "type": "Corpus de Vídeo Dojo"
+      "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+      "type": "Mocap Científico"
     },
     {
       "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
       "type": "Corpus de Vídeo HD"
     },
     {
-      "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
-      "type": "Mocap Científico"
+      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+      "type": "Corpus de Vídeo Dojo"
     },
     {
       "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
@@ -127,20 +78,22 @@
       "type": "Currículo Pedagógico"
     },
     {
-      "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
-      "type": "Dataset de Calibração"
-    },
-    {
       "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
       "type": "Modelo Neural"
+    },
+    {
+      "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+      "type": "Dataset de Calibração"
     },
     {
       "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
       "type": "Base de Conhecimento"
     }
   ],
-  "duration_seconds": 3600.0,
-  "last_updated": "2026-10-05T10:08:27.417291",
+  "duration_seconds": 18000.0,
+  "wall_clock_seconds": 18000.6,
+  "last_updated": "2026-10-09T16:39:53.077891",
   "consolidated": true,
-  "last_checkpoint_timestamp": "2026-10-05T10:08:27.417291"
+  "web_mode": true,
+  "last_checkpoint_timestamp": "2026-10-10T06:51:05.741548"
 }
