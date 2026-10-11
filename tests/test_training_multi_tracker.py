@@ -112,6 +112,22 @@ class TestKenshiReIDAndMultiTracker(unittest.TestCase):
         self.assertGreaterEqual(tracker.tracks["KENSHI_01"].reentry_count, 1)
         self.assertGreaterEqual(tracker.total_reidentifications, 1)
 
+    def test_draw_overlay(self):
+        """Valida que draw_overlay renderiza os Kenshis e o banner de sessão sem exceções."""
+        tracker = TrainingMultiKenshiTracker(max_lost_frames=8)
+        frame_dummy = np.zeros((480, 640, 3), dtype=np.uint8)
+
+        k1_lm = _create_mock_landmarks(0.3, height=0.45)
+        k2_lm = _create_mock_landmarks(0.7, height=0.60)
+        res = tracker.process_frame([k1_lm, k2_lm], frame=frame_dummy)
+
+        drawn = tracker.draw_overlay(frame_dummy, res, custom_names={"KENSHI_01": "Miyamoto"})
+        self.assertIsNotNone(drawn)
+        self.assertEqual(drawn.shape, frame_dummy.shape)
+        # Verifica se o frame desenhado foi modificado (não mais todo preto)
+        self.assertTrue(np.any(drawn > 0))
+
 
 if __name__ == "__main__":
     unittest.main()
+

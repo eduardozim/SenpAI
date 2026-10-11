@@ -129,6 +129,7 @@ class SenpAIPipeline:
         self.pose_detector = PoseDetector(device=self.effective_device, model_name=self.vision_model)
         self.shinai_tracker = ShinaiTracker()
         self.combatant_tracker = CombatantTracker()
+        self.training_multi_tracker = TrainingMultiKenshiTracker()
         self.sonkyo_detector = SonkyoDetector()
         self.event_spotter = EventSpotter()
         self.biomechanics = BiomechanicsAnalyzer()
@@ -664,6 +665,7 @@ class SenpAIPipeline:
         """
         start_time = time.time()
         tracker = TrainingMultiKenshiTracker(max_lost_frames=45, reid_similarity_threshold=0.60)
+        self.training_multi_tracker = tracker
 
         batch_size = self.batch_size if (self.effective_device == "gpu" and self.pose_detector.use_gpu) else 1
         frame_idx = 0

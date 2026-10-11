@@ -372,6 +372,12 @@ class SenpAITrainingWebRtcProcessor(VideoProcessorBase):  # type: ignore
         self.live_train_mgr = live_train_mgr
         self.lock = threading.Lock()
 
+        from src.vision.training_multi_tracker import TrainingMultiKenshiTracker
+        self.training_tracker = getattr(self.pipeline, "training_multi_tracker", None) or TrainingMultiKenshiTracker(
+            max_lost_frames=45,
+            reid_similarity_threshold=0.60
+        )
+
         self.frame_count = 0
         self.start_time = time.time()
         self.current_fps = 30.0
@@ -388,19 +394,10 @@ class SenpAITrainingWebRtcProcessor(VideoProcessorBase):  # type: ignore
 
         try:
             candidates, _ = self.pipeline.pose_detector.process_frame_candidates(img)
-            aka_lm, shiro_lm, disc = self.pipeline.combatant_tracker.associate_and_filter(
-                candidates,
-                frame=img,
-                return_persisted=True
-            )
-            drawn_frame = self.pipeline.pose_detector.draw_combatants_overlay(
-                img,
-                aka_landmarks=aka_lm,
-                shiro_landmarks=shiro_lm,
-                discarded_items=disc
-            )
+            current_results = self.training_tracker.process_frame(candidates, frame=img)
+            drawn_frame = self.training_tracker.draw_overlay(img, current_results)
 
-            active_lm = aka_lm or shiro_lm
+            active_lm = next((lm for lm in current_results.values() if lm is not None), None)
             self.pose_history.append(active_lm)
             if len(self.pose_history) > 150:
                 self.pose_history = self.pose_history[-120:]

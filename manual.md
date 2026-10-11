@@ -805,10 +805,10 @@ Total de **243 testes automatizados** distribuídos em 25 módulos, executados e
 
 ### `[v 0.3.7.0]` — 2026-10-11 *(Versão Atual)*
 
-- **Rastreador Dedicado para o Modo de Treinamento e Aprendizado ([training_multi_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/training_multi_tracker.py), [kenshi_reid.py](file:///d:/Projetos/SenpAI/Dev/src/vision/kenshi_reid.py), [training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) & [test_training_multi_tracker.py](file:///d:/Projetos/SenpAI/Dev/tests/test_training_multi_tracker.py))**:
+- **Rastreador Dedicado para o Modo de Treinamento e Aprendizado ([training_multi_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/training_multi_tracker.py), [kenshi_reid.py](file:///d:/Projetos/SenpAI/Dev/src/vision/kenshi_reid.py), [training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [webrtc_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/webrtc_manager.py), [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) & [test_training_multi_tracker.py](file:///d:/Projetos/SenpAI/Dev/tests/test_training_multi_tracker.py))**:
   - **Isolamento Arquitetural entre Luta e Treino**:
     - O rastreador de lutas ([combatant_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/combatant_tracker.py)) permanece estritamente dedicado e intacto para Shiai (2 combatentes Aka e Shiro, fitas Tasuki, Shiai-jo, Sonkyō e regras de Yūko-Datotsu).
-    - O modo de Treinamento e Aprendizado ganha motor de visão próprio e desacoplado (`TrainingMultiKenshiTracker`), sem limite de 2 pessoas, sem dependência de fitas Aka/Shiro e sem necessidade de Sonkyō.
+    - O modo de Treinamento e Aprendizado ganha motor de visão próprio e desacoplado (`TrainingMultiKenshiTracker`), sem limite de 2 pessoas, sem dependência de fitas Aka/Shiro e sem necessidade de Sonkyō. Aplicado em todas as frentes de treino: Vídeos Gravados, Streaming Web e Tempo Real / WebRTC.
   - **Rastreamento Simultâneo de N Kenshis no Dojo**:
     - Rastreamento paralelo de múltiplos praticantes com associação espacial por Kuhn-Munkres (Hungarian algorithm).
     - Gerenciamento de ciclo de vida com 3 estados: `ACTIVE` (em cena), `LOST` (oclusão breve transitória $\le 1.5$s) e `DORMANT` (saída do enquadramento da câmera).
@@ -824,7 +824,7 @@ Total de **243 testes automatizados** distribuídos em 25 módulos, executados e
   - **Interface com Badges de Presença e Retorno**:
     - Exibição de cards individuais com miniatura do praticante, tempo de presença em cena e contador de retornos reconhecidos via Re-ID no painel de resultados do treino.
   - **Suíte de Testes Automatizados**:
-    - Expansão para **246 testes automatizados** com 100% de aprovação.
+    - Expansão para **247 testes automatizados** com 100% de aprovação.
 
 ---
 

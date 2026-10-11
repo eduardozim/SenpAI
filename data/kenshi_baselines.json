@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-10-11T18:23:09Z",
+  "updated_at": "2026-10-11T18:41:49Z",
   "profiles": {
     "KENSHI_SOLO": {
       "kenshi_id": "KENSHI_SOLO",
       "display_name": "Kendoca Principal",
       "created_at": "2026-10-02T20:05:46Z",
-      "last_updated_at": "2026-10-11T18:23:09Z",
-      "sessions_count": 88,
+      "last_updated_at": "2026-10-11T18:41:49Z",
+      "sessions_count": 97,
       "strikes_count": 0,
       "metrics": {
         "posture_resting_angle_deg": {
@@ -23,13 +23,13 @@
           "m2": 0.0
         },
         "cadence_cpm": {
-          "count": 12,
+          "count": 13,
           "mean": 10.0,
           "std_dev": 0.001,
           "m2": 0.0
         },
         "spine_tilt_strike_deg": {
-          "count": 20,
+          "count": 24,
           "mean": 92.0,
           "std_dev": 0.001,
           "m2": 0.0
@@ -72,8 +72,8 @@
       "kenshi_id": "KENSHI_SHIRO",
       "display_name": "Eduardo Zimermann",
       "created_at": "2026-10-02T20:06:13Z",
-      "last_updated_at": "2026-10-11T18:23:09Z",
-      "sessions_count": 34,
+      "last_updated_at": "2026-10-11T18:41:43Z",
+      "sessions_count": 35,
       "strikes_count": 529,
       "metrics": {
         "posture_resting_angle_deg": {
@@ -89,16 +89,16 @@
           "m2": 975265.6929
         },
         "cadence_cpm": {
-          "count": 34,
-          "mean": 9.9678,
-          "std_dev": 1.6466,
-          "m2": 89.4712
+          "count": 35,
+          "mean": 9.9687,
+          "std_dev": 1.6222,
+          "m2": 89.4722
         },
         "spine_tilt_strike_deg": {
-          "count": 34,
-          "mean": 95.297,
-          "std_dev": 2.4821,
-          "m2": 203.3106
+          "count": 35,
+          "mean": 95.2028,
+          "std_dev": 2.508,
+          "m2": 213.8702
         },
         "zanshin_duration_s": {
           "count": 0,
@@ -138,8 +138,8 @@
       "kenshi_id": "KENSHI_AKA",
       "display_name": "Parceiro Keiko",
       "created_at": "2026-10-02T20:06:13Z",
-      "last_updated_at": "2026-10-11T18:23:09Z",
-      "sessions_count": 34,
+      "last_updated_at": "2026-10-11T18:41:43Z",
+      "sessions_count": 35,
       "strikes_count": 494,
       "metrics": {
         "posture_resting_angle_deg": {
@@ -155,16 +155,16 @@
           "m2": 1733047.052
         },
         "cadence_cpm": {
-          "count": 34,
-          "mean": 9.75,
-          "std_dev": 1.9879,
-          "m2": 130.4055
+          "count": 35,
+          "mean": 9.7571,
+          "std_dev": 1.9589,
+          "m2": 130.4662
         },
         "spine_tilt_strike_deg": {
-          "count": 34,
-          "mean": 95.5911,
-          "std_dev": 2.812,
-          "m2": 260.9472
+          "count": 35,
+          "mean": 95.4885,
+          "std_dev": 2.8361,
+          "m2": 273.4747
         },
         "zanshin_duration_s": {
           "count": 0,

@@ -38,6 +38,7 @@ from src.utils.excel_strikes_manager import (
     execute_training_from_imported_strikes
 )
 from src.engine.reporter import DiagnosticReporter
+from src.vision.training_multi_tracker import TrainingMultiKenshiTracker
 from src.analytics.sonkyo_detector import SonkyoDetector
 from src.analytics.training_analyzer import (
     TrainingAnalyzer,
@@ -4672,6 +4673,10 @@ elif nav_page in ["match", "training", "analysis"]:
                         except Exception:
                             pass
                 else:
+                    pipeline.training_multi_tracker = TrainingMultiKenshiTracker(
+                        max_lost_frames=45,
+                        reid_similarity_threshold=0.60
+                    )
                     live_pose_histories = [[] for _ in range(num_cameras)]
                     latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
                     frame_count = 0
@@ -4708,18 +4713,9 @@ elif nav_page in ["match", "training", "analysis"]:
 
                             if num_cameras == 1:
                                 candidates, _ = pipeline.pose_detector.process_frame_candidates(frame)
-                                aka_lm, shiro_lm, disc = pipeline.combatant_tracker.associate_and_filter(
-                                    candidates,
-                                    frame=frame,
-                                    return_persisted=True
-                                )
-                                drawn_frame = pipeline.pose_detector.draw_combatants_overlay(
-                                    frame,
-                                    aka_landmarks=aka_lm,
-                                    shiro_landmarks=shiro_lm,
-                                    discarded_items=disc
-                                )
-                                active_lm = aka_lm or shiro_lm
+                                current_results = pipeline.training_multi_tracker.process_frame(candidates, frame=frame)
+                                drawn_frame = pipeline.training_multi_tracker.draw_overlay(frame, current_results)
+                                active_lm = next((lm for lm in current_results.values() if lm is not None), None)
                                 live_pose_histories[0].append(active_lm)
                                 latest_drawn_frames[0] = drawn_frame
                             else:
@@ -5091,6 +5087,10 @@ elif nav_page in ["match", "training", "analysis"]:
 
                         train_stream_obj.set_speed(active_train_speed)
 
+                        pipeline.training_multi_tracker = TrainingMultiKenshiTracker(
+                            max_lost_frames=45,
+                            reid_similarity_threshold=0.60
+                        )
                         live_pose_histories = [[]]
                         latest_drawn_frames: list[Optional[np.ndarray]] = [st.session_state.get("train_last_drawn_frame", None)]
                         frame_count = 0
@@ -5145,18 +5145,9 @@ elif nav_page in ["match", "training", "analysis"]:
                                     continue
 
                                 candidates, _ = pipeline.pose_detector.process_frame_candidates(frame)
-                                aka_lm, shiro_lm, disc = pipeline.combatant_tracker.associate_and_filter(
-                                    candidates,
-                                    frame=frame,
-                                    return_persisted=True
-                                )
-                                drawn_frame = pipeline.pose_detector.draw_combatants_overlay(
-                                    frame,
-                                    aka_landmarks=aka_lm,
-                                    shiro_landmarks=shiro_lm,
-                                    discarded_items=disc
-                                )
-                                active_lm = aka_lm or shiro_lm
+                                current_results = pipeline.training_multi_tracker.process_frame(candidates, frame=frame)
+                                drawn_frame = pipeline.training_multi_tracker.draw_overlay(frame, current_results)
+                                active_lm = next((lm for lm in current_results.values() if lm is not None), None)
                                 live_pose_histories[0].append(active_lm)
                                 latest_drawn_frames[0] = drawn_frame
                                 st.session_state["train_last_drawn_frame"] = drawn_frame

@@ -9,6 +9,7 @@ Características principais:
 """
 
 import time
+import cv2
 import numpy as np
 from typing import Dict, Any, List, Optional, Tuple
 from scipy.optimize import linear_sum_assignment
@@ -299,3 +300,51 @@ class TrainingMultiKenshiTracker:
             "reidentification_events": self.reidentification_events,
             "kenshis": kenshis_data
         }
+
+    def draw_overlay(
+        self,
+        frame: np.ndarray,
+        current_results: Dict[str, Optional[Dict[str, Any]]],
+        custom_names: Optional[Dict[str, str]] = None
+    ) -> np.ndarray:
+        """
+        Desenha os esqueletos com as cores atribuídas a cada Kenshi rastreado no treino,
+        indicando seu ID, nome (se configurado), reentradas por Re-ID e banner informativo de sessão.
+        """
+        out = frame.copy()
+        h, w = out.shape[:2]
+
+        palette = [
+            (246, 130, 59),  # Ciano/Azul claro (BGR)
+            (59, 214, 115),  # Verde esmeralda
+            (37, 99, 235),   # Laranja/Vermelho quente
+            (217, 70, 239),  # Magenta/Roxo
+            (245, 158, 11),  # Azul royal
+            (14, 165, 233),  # Âmbar
+            (168, 85, 247),  # Púrpura
+            (74, 222, 128),  # Verde lima
+        ]
+
+        from src.vision.pose_detector import CombatantVisualizer
+
+        for idx_track, (k_id, lm) in enumerate(current_results.items()):
+            if lm is not None:
+                track = self.tracks.get(k_id)
+                col = palette[idx_track % len(palette)]
+                display_name = track.display_name if track else k_id
+                c_name = (custom_names or {}).get(k_id, display_name)
+                label_txt = f"{c_name}"
+                if track and track.reentry_count > 0:
+                    label_txt += f" [Re-ID x{track.reentry_count}]"
+
+                CombatantVisualizer.draw_skeleton(out, lm, color=col, label=label_txt)
+
+        # Banner de Treinamento
+        active_now = sum(1 for lm in current_results.values() if lm is not None)
+        cv2.rectangle(out, (10, 10), (w - 10, 48), (15, 23, 42), -1)
+        cv2.rectangle(out, (10, 10), (w - 10, 48), (99, 102, 241), 1)
+        txt_banner = f"MODO TREINAMENTO SENPAI | Kenshis em Cena: {active_now} | Total na Sessao: {len(self.tracks)} | Re-IDs: {self.total_reidentifications}"
+        cv2.putText(out, txt_banner, (20, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+
+        return out
+
