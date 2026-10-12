@@ -1,0 +1,311 @@
+"""
+Módulo de Gerenciamento de Clipes de Demonstração de Golpes (Strike Clip Manager).
+Responsável por:
+1. Localizar o arquivo físico de vídeo real da luta gravada.
+2. Extrair o corte real do golpe controverso em torno do impacto da luta original.
+3. Excluir o arquivo de vídeo do clipe com segurança após a homologação e retreinamento.
+"""
+
+import os
+import re
+import cv2
+import tempfile
+import numpy as np
+from typing import Dict, Any, Optional
+
+from src.utils.hardware import ensure_browser_compatible_video
+from src.utils.logger_manager import log_event
+
+
+DEFAULT_CLIPS_DIR = "data/active_learning_clips"
+
+
+def find_source_video(video_source: str) -> Optional[str]:
+    """
+    Localiza o arquivo físico de vídeo real do combate no disco.
+    Varre o caminho direto, o diretório de uploads/downloads do SenpAI,
+    o diretório raiz e pastas de dados.
+    Retorna o caminho do vídeo correspondente ou None caso o arquivo de origem não exista.
+    """
+    if not video_source or not str(video_source).strip():
+        return None
+
+    video_source_clean = str(video_source).strip()
+
+    # 1. Caminho direto se for válido e existir
+    if os.path.isfile(video_source_clean) and os.path.getsize(video_source_clean) > 0:
+        return os.path.abspath(video_source_clean)
+
+    base_name = os.path.basename(video_source_clean).strip()
+    clean_stem = re.sub(r"^(upload_\d+_|yt_[^_]+_)", "", os.path.splitext(base_name)[0]).strip().lower()
+
+    # 2. Diretórios potenciais onde o vídeo original da luta pode residir
+    search_dirs = [
+        os.path.join(tempfile.gettempdir(), "senpai_uploads"),
+        "data/uploads",
+        "data/videos",
+        "data",
+        "."
+    ]
+
+    for s_dir in search_dirs:
+        if not os.path.isdir(s_dir):
+            continue
+
+        # 2a. Correspondência direta por nome base
+        cand = os.path.join(s_dir, base_name)
+        if os.path.isfile(cand) and os.path.getsize(cand) > 0:
+            return os.path.abspath(cand)
+
+        # 2b. Correspondência por nome limpo descartando prefixos de upload
+        try:
+            for f in os.listdir(s_dir):
+                if not f.lower().endswith((".mp4", ".mov", ".avi", ".mkv", ".webm")):
+                    continue
+                if f.endswith("_demo.mp4") or f.endswith("_clip.mp4") or f.endswith("_corte.mp4"):
+                    continue
+
+                f_path = os.path.join(s_dir, f)
+                if not (os.path.isfile(f_path) and os.path.getsize(f_path) > 0):
+                    continue
+
+                f_clean_stem = re.sub(r"^(upload_\d+_|yt_[^_]+_)", "", os.path.splitext(f)[0]).strip().lower()
+
+                if clean_stem and (clean_stem == f_clean_stem or clean_stem in f_clean_stem or f_clean_stem in clean_stem):
+                    return os.path.abspath(f_path)
+        except Exception:
+            continue
+
+    # Não faz fallback arbitrário para outro vídeo: integridade estrita entre descrição e vídeo
+    return None
+
+
+def parse_strike_timestamp(item: Dict[str, Any]) -> float:
+    """
+    Extrai com precisão o momento do golpe na luta (em segundos).
+    Descarta strings de data ISO de sistema e prioriza timecodes reais de combate.
+    """
+    if not item:
+        return 0.0
+
+    # 1. Campo explícito em segundos na raiz do item
+    if "timestamp_seconds" in item and item["timestamp_seconds"] is not None:
+        try:
+            val = float(item["timestamp_seconds"])
+            if val >= 0:
+                return val
+        except Exception:
+            pass
+
+    # 2. Dados do golpe (strike_data)
+    strike_data = item.get("strike_data") or {}
+    if "timestamp_seconds" in strike_data and strike_data["timestamp_seconds"] is not None:
+        try:
+            val = float(strike_data["timestamp_seconds"])
+            if val >= 0:
+                return val
+        except Exception:
+            pass
+
+    # 3. Timecode em impact_frame / fps
+    if "impact_frame" in strike_data:
+        try:
+            imp_f = float(strike_data["impact_frame"])
+            fps = float(strike_data.get("fps") or 30.0)
+            if imp_f > 0 and fps > 0:
+                return imp_f / fps
+        except Exception:
+            pass
+
+    # 4. Campo time numérico
+    if "time" in strike_data:
+        try:
+            return float(strike_data["time"])
+        except Exception:
+            pass
+
+    # 5. Parsing de string timestamp em strike_data ou item
+    for ts_val in [strike_data.get("timestamp"), item.get("timestamp")]:
+        if not ts_val:
+            continue
+        ts_str = str(ts_val).strip()
+
+        # Ignorar datas ISO de registro do sistema (ex: 2026-10-01T22:05:45...)
+        if "T" in ts_str or (ts_str.count("-") >= 2 and len(ts_str) >= 10):
+            continue
+
+        ts_str_clean = ts_str.replace("s", "").replace("S", "").strip()
+        if ":" in ts_str_clean:
+            try:
+                parts = ts_str_clean.split(":")
+                if len(parts) == 2:
+                    return float(parts[0]) * 60.0 + float(parts[1])
+                elif len(parts) == 3:
+                    return float(parts[0]) * 3600.0 + float(parts[1]) * 60.0 + float(parts[2])
+            except Exception:
+                pass
+        else:
+            try:
+                val = float(ts_str_clean)
+                if val >= 0:
+                    return val
+            except Exception:
+                pass
+
+    return 0.0
+
+
+def format_strike_timestamp(seconds: float) -> str:
+    """Formata o tempo do golpe em MM:SS.mmm (XX.Xs)."""
+    if seconds is None or seconds < 0:
+        return "00:00.000 (0.0s)"
+    m = int(seconds // 60)
+    s = seconds % 60
+    return f"{m:02d}:{s:06.3f} ({seconds:.1f}s)"
+
+
+def extract_strike_subclip(
+    video_path: str,
+    output_path: str,
+    target_time_sec: float = 0.0,
+    window_before_sec: float = 2.0,
+    window_after_sec: float = 2.5,
+    strike_type: str = "GOLPE"
+) -> Optional[str]:
+    """
+    Extrai o corte real do vídeo da luta em torno do timestamp do golpe.
+    """
+    if not os.path.isfile(video_path):
+        return None
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return None
+
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 640)
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 480)
+
+    # Se target_time for 0.0 mas tiver duração, posicionar no primeiro terço ou metade
+    if target_time_sec <= 0.0 and total_frames > 0:
+        duration_s = total_frames / fps
+        target_time_sec = min(3.0, duration_s / 2.0)
+
+    start_frame = max(0, int((target_time_sec - window_before_sec) * fps))
+    end_frame = min(total_frames, int((target_time_sec + window_after_sec) * fps))
+    if end_frame <= start_frame:
+        end_frame = min(total_frames, start_frame + int(4.5 * fps))
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    fourcc = cv2.VideoWriter.fourcc(*'mp4v')
+    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+    current_f = start_frame
+
+    while current_f < end_frame:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Inserir banner discreto com identificação do golpe e timecode da luta original
+        overlay_txt = f"SenpAI - {strike_type.upper()} ({current_f/fps:.2f}s)"
+        cv2.putText(
+            frame,
+            overlay_txt,
+            (16, 32),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.65,
+            (0, 255, 255),
+            2,
+            cv2.LINE_AA
+        )
+        out.write(frame)
+        current_f += 1
+
+    cap.release()
+    out.release()
+
+    try:
+        ensure_browser_compatible_video(output_path)
+    except Exception:
+        pass
+
+    if os.path.isfile(output_path) and os.path.getsize(output_path) > 0:
+        return output_path
+    return None
+
+
+def get_or_create_strike_clip(
+    item: Dict[str, Any],
+    output_dir: str = DEFAULT_CLIPS_DIR,
+    force_recreate: bool = False
+) -> Optional[str]:
+    """
+    Localiza ou extrai o corte real do vídeo da luta original em torno do golpe controverso.
+    Retorna None se o vídeo original da luta não estiver acessível no disco.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    item_id = str(item.get("id", "strike_uncertain"))
+
+    # 1. Localizar o vídeo real da luta citado na descrição
+    video_source = str(item.get("video_source", "")).strip()
+    source_file = find_source_video(video_source)
+
+    if not source_file or not os.path.isfile(source_file):
+        log_event(
+            "INFO",
+            f"Vídeo real de origem não encontrado no disco para o item {item_id} (video_source='{video_source}')",
+            "strike_clip_manager"
+        )
+        return None
+
+    expected_file = os.path.join(output_dir, f"{item_id}_corte.mp4")
+
+    # 2. Se já possui clip_path e o arquivo existe e force_recreate não foi solicitado
+    if not force_recreate:
+        existing_clip = item.get("clip_path")
+        if existing_clip and os.path.isfile(existing_clip) and os.path.getsize(existing_clip) > 0:
+            if not existing_clip.endswith("_demo.mp4"):
+                return existing_clip
+
+        if os.path.isfile(expected_file) and os.path.getsize(expected_file) > 0:
+            item["clip_path"] = expected_file
+            return expected_file
+
+    # 3. Calcular tempo exato do golpe para recorte a partir da descrição
+    target_time = parse_strike_timestamp(item)
+    strike_t = str(item.get("strike_type", "GOLPE")).upper()
+
+    # 4. Extrair o corte real da luta
+    extracted = extract_strike_subclip(
+        source_file,
+        expected_file,
+        target_time_sec=target_time,
+        strike_type=strike_t
+    )
+    if extracted:
+        item["clip_path"] = extracted
+        log_event("INFO", f"Corte real do golpe extraído da luta com sucesso: {extracted} (Fonte: {source_file}, t={target_time:.2f}s)", "strike_clip_manager")
+        return extracted
+
+    return None
+
+
+def delete_strike_clip(clip_path: Optional[str]) -> bool:
+    """
+    Apaga com segurança o arquivo de vídeo do corte do golpe após o retreinamento.
+    """
+    if not clip_path:
+        return False
+
+    try:
+        if os.path.isfile(clip_path):
+            os.remove(clip_path)
+            log_event("INFO", f"Corte do golpe excluído com segurança após retreinamento: {clip_path}", "strike_clip_manager")
+            return True
+    except Exception as e:
+        log_event("WARNING", f"Falha ao apagar arquivo de corte {clip_path}: {e}", "strike_clip_manager")
+
+    return False

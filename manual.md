@@ -597,11 +597,17 @@ O módulo de **Decisão dos Shinpans** foi concebido para atender às exigência
 
 O módulo de Aprendizado Ativo (*Active Learning*) automatiza o ciclo de evolução do SenpAI, priorizando instâncias que trazem maior ganho informativo e blindando o modelo contra o esquecimento catastrófico:
 
-- **Amostragem por Incerteza (`UncertaintySampler`)**:
+- **Amostragem por Incerteza & Fila de Curadoria Ativa (`UncertaintySampler` & `strike_clip_manager.py`)**:
   - Em vez de solicitar rotulagem humana para golpes óbvios (confiança muito alta $> 85\%$ ou muito baixa $< 30\%$), o algoritmo calcula o índice de incerteza da predição:
     $$\text{Incerteza}(x) = 1.0 - 2 \cdot |P(\text{Ippon}) - 0.5|$$
   - Golpes cuja probabilidade/score de aprovação situa-se na faixa de contorno e ambiguidade regulamentar (**45% a 65%**) recebem incerteza elevada ($\ge 0.70$) e são automaticamente enfileirados em `data/active_learning_queue.json`.
-  - A fila possui limite deslizante (`max_queue_size = 500`), priorizando os lances mais críticos para revisão humana orientada.
+  - **Corte Real do Golpe da Luta para Benchmark Arbitral**:
+    - Cada lance na Fila de Curadoria Ativa exibe o corte real em vídeo do golpe controverso (`.mp4`), extraído diretamente do combate original gravado (com os kenshis reais, timecode e áudio).
+    - O Sensei/árbitro assiste à execução exata do golpe para realizar o benchmark visual de Ki-Ken-Tai-Ichi antes de julgar (**✅ Ippon** ou **❌ Inválido**).
+  - **Retreinamento Imediato & Limpeza do Clipe de Vídeo**:
+    - Ao submeter o retorno arbitral, o SenpAI executa automaticamente o **retreinamento e recalibração matemática** dos pesos de Ki-Ken-Tai-Ichi e Platt Scaling.
+    - O arquivo de vídeo do clipe de demonstração em disco é **apagado com segurança** imediatamente após o retreinamento, liberando espaço em disco e garantindo a higiene do sistema.
+  - A fila possui limite deslizante (`max_queue_size = 100`), priorizando os lances mais críticos para revisão humana orientada.
 - **Dataset Canônico de Benchmark Padrão-Ouro (`GoldenBenchmark` & `golden_dataset.json`)**:
   - Armazenado de forma imutável em `data/benchmark_golden/golden_dataset.json`, reúne lances incontestáveis de campeonatos mundiais (WKC), All Japan Kendo Championships e exames de alto Dan (Men, Kote, Do, Tsuki e Falsos Positivos canônicos como golpes fora do Shinai-bu ou sem Zanshin).
   - **Salvaguarda Mandatória contra Esquecimento Catastrófico (`validate_no_regression`)**:
@@ -793,9 +799,10 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_video_downloader.py` (12 testes)**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
 - **`test_video_player_controls.py` (5 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
 - **`test_training_live_manager.py` (5 testes)**: Valida a máquina de estados de golpes em tempo real (`LiveStrikeState`), rastreamento biomecânico contínuo da coluna (*Shisei*) e simetria de ombros, contagem de repetições, cadência em Golpes por Minuto (CPM), renderização do HUD em tempo real dos 3 Pilares e geração de relatórios de sessão em Markdown e JSON.
+- **`test_active_learning_curation_clip.py` (3 testes)**: Valida a extração e exibição do corte real da luta para Benchmark arbitral visual na Fila de Curadoria Ativa, o suporte às 3 opções de retorno arbitral (Ippon Válido, Golpe Inválido e Não tem Golpe), o disparo automático do retreinamento adaptativo e a exclusão obrigatória do arquivo de vídeo do golpe em disco, com remoção definitiva do item da fila de pendências ativas e arquivamento no histórico de auditoria.
 - **`test_kenshi_style_model_eixo6.py` (9 testes)**: Valida a atualização online via algoritmo de Welford (MetricDistribution), cálculo de desvios em Z-score e geração de insights humanizados (KinestheticBaselineModel), persistência atômica e gestão multi-praticante em JSON (KinestheticProfileManager), derivação direcional de perfis com Warm Start mais rígido e mais permissivo preservando pesos e linhagem (ProfileWarmStartManager), integração com FeedbackManager e inclusão da Seção 3 no relatório de treino do Kendoca.
 
-Total de **243 testes automatizados** distribuídos em 25 módulos, executados e aprovados com 100% de sucesso.
+Total de **246 testes automatizados** distribuídos em 26 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -818,13 +825,26 @@ Total de **243 testes automatizados** distribuídos em 25 módulos, executados e
       1. **Zekken Frontal**: Nome e dojo fixados no Tare (ativado em visão frontal);
       2. **Tenugui Posterior**: Identificação sob o Men na nuca (ativado em visão dorsal);
       3. **Identificação Lateral do Tare**: Dojo e kenshi nas abas laterais (ativado em perfil);
-      4. **Biometria Postural**: Proporções anatômicas (tronco/membros, largura de ombros) e altura normalizada corrigida por perspectiva.
+      4. **Biometria Postural**: Proporções anatômicas (tronco/membros, largura de ombros) e altura normalizada corrigida por perspectiva com decaimento exponencial suave.
+  - **Persistência de Posicionamento e Filtro Anti-Fantasmas**:
+    - **Associação em Cascata**: Tracks ativos por proximidade espacial contínua -> Tracks perdidos (janela ampliada de 90 frames / ~3.0s) -> Tracks dormentes com Re-ID multimodal adaptativo.
+    - **Estágio Tentative**: Candidatos transitórios precisam de pelo menos 3 confirmações para se tornarem Kenshis oficiais, impedindo a multiplicação de IDs por ruídos e desfoques de movimento no vídeo.
   - **Cálculo Justo de Métricas e Cadência (CPM) por Tempo de Presença**:
     - A cadência de golpes por minuto (CPM) e as métricas de estamina/constância no [training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py) passam a ser calculadas estritamente sobre a janela de **tempo real em que o Kenshi esteve presente no enquadramento**, sem penalizar atletas que se ausentaram temporariamente.
   - **Interface com Badges de Presença e Retorno**:
     - Exibição de cards individuais com miniatura do praticante, tempo de presença em cena e contador de retornos reconhecidos via Re-ID no painel de resultados do treino.
+- **Fila de Curadoria Ativa com Corte Real do Golpe e Ciclo Completo de Resolução ([strike_clip_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/strike_clip_manager.py), [active_learning.py](file:///d:/Projetos/SenpAI/Dev/src/engine/active_learning.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py), [auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Fidelidade Estrita entre Descrição e Corte de Vídeo**:
+    - O card de curadoria exibe com clareza o **Vídeo de Origem** (`video_source`), o **Momento na Luta** (`MM:SS.mmm` / `XX.Xs`) e o **Golpe** correspondente.
+    - O clipe apresentado à esquerda é estritamente recortado da luta original indicada no exato instante do golpe, com banner textual no vídeo (`SenpAI - GOLPE (XX.XXs)`).
+    - Eliminação completa de fallbacks arbitrários: caso o arquivo de vídeo original não resida no disco, a interface exibe aviso informativo claro sem jamais reproduzir lutas descorrelacionadas.
+  - **Ciclo Completo pós-Retorno Arbitral com 3 Opções de Avaliação**: O árbitro dispõe de 3 caminhos de retorno:
+    1. `✅ Ippon (Válido)`: Há movimento de ataque e é válido para pontuação (Ippon legítimo).
+    2. `❌ Golpe Inválido`: Houve movimento/tentativa de ataque, mas o golpe não atendeu aos critérios de pontuação.
+    3. `🚫 Não tem Golpe`: Nenhuma tentativa de movimento para pontuação (detecção espúria / movimento neutro).
+    - Em qualquer das 3 opções, o retreinamento adaptativo é disparado imediatamente, o arquivo de vídeo do golpe é apagado com segurança do disco (`data/active_learning_clips/`), e o item e vídeo são **removidos definitivamente da Fila de Curadoria Ativa** (`data/active_learning_queue.json`) e arquivados no histórico permanente de auditoria (`data/active_learning_curated_history.json`).
   - **Suíte de Testes Automatizados**:
-    - Expansão para **247 testes automatizados** com 100% de aprovação.
+    - Expansão para **251 testes automatizados** distribuídos em 27 módulos com 100% de aprovação.
 
 ---
 

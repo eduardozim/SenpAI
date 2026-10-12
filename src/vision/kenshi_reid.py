@@ -199,9 +199,9 @@ class KenshiAppearanceSignature:
 
         # 4. Pista: Biometria e Porte Corporal (25% se disponível)
         if self.biometric_vector is not None and candidate.biometric_vector is not None:
-            # Similaridade inversa da distância euclidiana normalizada entre vetores biométricos
-            diff = np.linalg.norm(self.biometric_vector - candidate.biometric_vector)
-            s_bio = float(np.clip(1.0 - (diff * 2.0), 0.0, 1.0))
+            # Similaridade exponencial suave da distância euclidiana entre vetores biométricos
+            diff = float(np.linalg.norm(self.biometric_vector - candidate.biometric_vector))
+            s_bio = float(np.exp(-1.5 * diff))
             w_bio = 0.25
             weighted_score += s_bio * w_bio
             total_weight += w_bio

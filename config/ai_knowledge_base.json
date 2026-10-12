@@ -1,6 +1,6 @@
 {
   "version": "2.0.0",
-  "last_updated": "2026-10-11T14:45:56.170632",
+  "last_updated": "2026-10-11T21:36:10.641665",
   "total_web_sources_indexed": 39,
   "sources": {
     "fik_regulations": {
@@ -3223,8 +3223,8 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 34.0,
-        "current_accuracy": 87.6,
-        "last_calibrated": "11/10/2026 17:33",
+        "current_accuracy": 90.9,
+        "last_calibrated": "11/10/2026 22:35",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
           "Yuko-Datotsu Oficial: Validação rigorosa dos 4 critérios regulamentares de Ippon da FIK (Impacto, Fumikomi, Postura, Zanshin).",
@@ -3446,9 +3446,14 @@
             "date": "11/10/2026 17:33",
             "gain": "+2.4%",
             "note": "Treinamento Profundo (general_all). Acurácia elevada para 87.1%. 14 princípios consolidados."
+          },
+          {
+            "date": "11/10/2026 22:35",
+            "gain": "+2.4%",
+            "note": "Treinamento Profundo (modality_shiai_geiko). Acurácia elevada para 90.0%. 14 princípios consolidados."
           }
         ],
-        "sessions_count": 18
+        "sessions_count": 19
       },
       "nihon_kendo_kata": {
         "movement_weight": 0.35,
@@ -4468,6 +4473,6 @@
       }
     }
   },
-  "training_sessions_completed": 42,
-  "last_retrained_at": "2026-10-11T17:33:50.002099"
+  "training_sessions_completed": 43,
+  "last_retrained_at": "2026-10-11T22:35:42.363793"
 }

@@ -261,7 +261,7 @@ Recursos da Interface Web:
 
 - Assistente LLM Especialista em Kendo: Integração nativa com APIs Gemini/OpenAI e motor de regras offline determinístico da FIK para anotação cinemática estruturada e explicação didática de lances controversos.
 
-- Painel de Curadoria Rápida no Streamlit: Na aba de Calibração, visualização das métricas do Golden Benchmark e ações de aprovação/rejeição rápida com 1 clique na fila de incerteza.
+- Painel de Curadoria Rápida & Benchmark no Streamlit: Na aba de Calibração / Governança, visualização do vídeo do golpe controverso na Fila de Incerteza para Benchmark visual, execução de retreinamento adaptativo imediato ao submeter a decisão e exclusão segura do arquivo de vídeo de demonstração em disco após a homologação.
 
 
 

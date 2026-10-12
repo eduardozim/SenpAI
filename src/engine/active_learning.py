@@ -67,7 +67,8 @@ class UncertaintySampler:
         confidence: float,
         video_source: str = "",
         profile_name: str = "normal",
-        enrich_with_llm: bool = True
+        enrich_with_llm: bool = True,
+        clip_path: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Se o lance for incerto, enriquece com diagnóstico do LLM e enfileira para curadoria ativa.
@@ -91,6 +92,7 @@ class UncertaintySampler:
             "id": f"unc_{int(time.time() * 1000)}_{len(self.get_queue())}",
             "timestamp": datetime.datetime.now().isoformat(),
             "video_source": video_source,
+            "clip_path": clip_path,
             "strike_type": strike_data.get("strike_type", "Men"),
             "confidence": round(float(confidence), 4),
             "uncertainty_score": uncertainty_score,
@@ -99,6 +101,14 @@ class UncertaintySampler:
             "llm_triage": llm_triage,
             "status": "pending_curation"
         }
+
+        # Se não foi fornecido clip_path, tentar gerar ou associar sob demanda
+        if not entry.get("clip_path"):
+            try:
+                from src.utils.strike_clip_manager import get_or_create_strike_clip
+                entry["clip_path"] = get_or_create_strike_clip(entry)
+            except Exception:
+                pass
 
         queue = self.get_queue()
         # Evita duplicatas se o mesmo id ou dados similares já estiverem pendentes
@@ -120,8 +130,18 @@ class UncertaintySampler:
         return entry
 
     def get_queue(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Retorna os itens da fila de curadoria ativa."""
+        """Retorna os itens da fila de curadoria ativa (ou histórico se status=='curated')."""
         self._ensure_storage()
+        if status == "curated":
+            history_file = os.path.join(os.path.dirname(self.queue_file) or ".", "active_learning_curated_history.json")
+            if os.path.isfile(history_file):
+                try:
+                    with open(history_file, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                except Exception:
+                    return []
+            return []
+
         try:
             with open(self.queue_file, "r", encoding="utf-8") as f:
                 items = json.load(f)
@@ -131,24 +151,113 @@ class UncertaintySampler:
         except Exception:
             return []
 
-    def resolve_item(self, item_id: str, label_approved: bool, reviewer_dan: int, notes: str = "") -> bool:
-        """Marca um item da fila como curado e resolvido por um árbitro."""
+    def get_history(self) -> List[Dict[str, Any]]:
+        """Retorna os registros históricos arquivados de lances já curados."""
+        history_file = os.path.join(os.path.dirname(self.queue_file) or ".", "active_learning_curated_history.json")
+        if os.path.isfile(history_file):
+            try:
+                with open(history_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                return []
+        return []
+
+    def ensure_item_clip(self, item: Dict[str, Any]) -> Optional[str]:
+        """Garante que o item possua um clipe de demonstração gerado/recortado em disco."""
+        try:
+            from src.utils.strike_clip_manager import get_or_create_strike_clip
+            clip_path = get_or_create_strike_clip(item)
+            if clip_path and item.get("clip_path") != clip_path:
+                item["clip_path"] = clip_path
+                # Atualizar na persistência
+                queue = self.get_queue()
+                for it in queue:
+                    if it.get("id") == item.get("id"):
+                        it["clip_path"] = clip_path
+                        break
+                with open(self.queue_file, "w", encoding="utf-8") as f:
+                    json.dump(queue, f, ensure_ascii=False, indent=2)
+            return clip_path
+        except Exception as e:
+            log_event("WARNING", f"Falha ao assegurar clipe do item {item.get('id')}: {e}", "active_learning")
+            return None
+
+    def resolve_item(
+        self,
+        item_id: str,
+        label_approved: bool,
+        reviewer_dan: int,
+        notes: str = "",
+        cleanup_clip: bool = True,
+        decision: Optional[str] = None,
+        *args,
+        **kwargs
+    ) -> bool:
+        """
+        Marca um item da fila como curado e resolvido por um árbitro:
+        1. Apaga o arquivo de vídeo do golpe em disco.
+        2. Salva o registro curado no histórico de auditoria com categorização explícita
+           (IPPON: válido, INVALID_STRIKE: tentativa inválida, NO_STRIKE: nenhuma tentativa).
+        3. Remove o item definitivamente da lista/fila de pendências ativas.
+        """
         queue = self.get_queue()
-        resolved = False
+        target_item = None
+        remaining_queue = []
         for it in queue:
             if it.get("id") == item_id:
-                it["status"] = "curated"
-                it["curated_label"] = "IPPON" if label_approved else "NO_POINT"
-                it["curator_dan"] = reviewer_dan
-                it["curator_notes"] = notes
-                it["curated_at"] = datetime.datetime.now().isoformat()
-                resolved = True
-                break
+                target_item = it
+            else:
+                remaining_queue.append(it)
 
-        if resolved:
-            with open(self.queue_file, "w", encoding="utf-8") as f:
-                json.dump(queue, f, ensure_ascii=False, indent=2)
-        return resolved
+        if not target_item:
+            return False
+
+        # 1. Apagar o vídeo do golpe em disco
+        clip_to_delete = target_item.get("clip_path")
+        if cleanup_clip:
+            try:
+                from src.utils.strike_clip_manager import delete_strike_clip
+                if clip_to_delete:
+                    delete_strike_clip(clip_to_delete)
+                cand_file = os.path.join("data", "active_learning_clips", f"{item_id}_corte.mp4")
+                if os.path.isfile(cand_file):
+                    delete_strike_clip(cand_file)
+            except Exception as e:
+                log_event("WARNING", f"Erro ao apagar clipe de demonstração pós-resolução: {e}", "active_learning")
+
+        # 2. Registrar no histórico permanente de curadorias
+        resolved_category = decision or ("IPPON" if label_approved else "INVALID_STRIKE")
+        target_item["status"] = "curated"
+        target_item["decision"] = resolved_category
+        target_item["curated_label"] = resolved_category
+        target_item["curator_dan"] = reviewer_dan
+        target_item["curator_notes"] = notes
+        target_item["curated_at"] = datetime.datetime.now().isoformat()
+        target_item["clip_deleted"] = True
+        target_item["clip_path"] = None
+
+        history_file = os.path.join(os.path.dirname(self.queue_file) or ".", "active_learning_curated_history.json")
+        try:
+            history_list = []
+            if os.path.isfile(history_file):
+                with open(history_file, "r", encoding="utf-8") as f:
+                    history_list = json.load(f)
+            history_list.append(target_item)
+            with open(history_file, "w", encoding="utf-8") as f:
+                json.dump(history_list, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            log_event("WARNING", f"Falha ao arquivar histórico permanente de curadoria: {e}", "active_learning")
+
+        # 3. Remover definitivamente o item da fila ativa
+        with open(self.queue_file, "w", encoding="utf-8") as f:
+            json.dump(remaining_queue, f, ensure_ascii=False, indent=2)
+
+        log_event(
+            "INFO",
+            f"Item {item_id} resolvido ({target_item['curated_label']}): vídeo excluído e item removido da lista ativa.",
+            "active_learning"
+        )
+        return True
 
 
 # ==============================================================================
@@ -419,7 +528,7 @@ class MultiJudgeConsensus:
         # Instâncias com alta divergência recebem peso reduzido para não desestabilizar a calibração
         training_weight = round(max(0.20, 1.0 - 0.5 * divergence), 3)
 
-        result = {
+        result: Dict[str, Any] = {
             "consensus_verdict": "IPPON" if is_ippon else "NO_POINT",
             "is_ippon": is_ippon,
             "weighted_ratio": round(ippon_weighted_votes / total_weighted_votes, 4) if total_weighted_votes > 0 else 0.0,

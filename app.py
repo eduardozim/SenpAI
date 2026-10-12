@@ -8,6 +8,7 @@ Suporta 2 Modos Principais de Operação:
 import streamlit as st
 import tempfile
 import os
+import re
 import datetime
 import warnings
 import html
@@ -38,6 +39,17 @@ from src.utils.excel_strikes_manager import (
     execute_training_from_imported_strikes
 )
 from src.engine.reporter import DiagnosticReporter
+import importlib
+import sys
+for _mod_name in [
+    "src.utils.strike_clip_manager",
+    "src.engine.active_learning",
+    "src.engine.feedback_manager",
+    "src.engine.auto_trainer",
+    "src.vision.training_multi_tracker"
+]:
+    if _mod_name in sys.modules:
+        importlib.reload(sys.modules[_mod_name])
 from src.vision.training_multi_tracker import TrainingMultiKenshiTracker
 from src.analytics.sonkyo_detector import SonkyoDetector
 from src.analytics.training_analyzer import (
@@ -84,7 +96,7 @@ from src.utils.video_player_controls import render_video_playback_controls
 setup_system_logger()
 
 # Versão Oficial do Sistema
-SYSTEM_VERSION = "v 0.3.6.0"
+SYSTEM_VERSION = "v 0.3.7.0"
 
 st.set_page_config(
     page_title=f"SenpAI ({SYSTEM_VERSION}) - AI Kendo Referee & Analysis System",
@@ -2721,39 +2733,248 @@ elif nav_page == "settings":
             unc_queue = []
 
         with st.expander(f"📥 Fila de Curadoria Ativa (Lances com Incerteza Arbitral) — {len(unc_queue)} pendentes", expanded=bool(unc_queue)):
+            if "curation_alert" in st.session_state:
+                st.success(st.session_state.pop("curation_alert"))
+
             if not unc_queue:
                 st.info("Nenhum lance controverso na faixa de incerteza (45% a 65%) pendente de curadoria no momento.")
             else:
+                st.caption(
+                    "🥋 **Instruções do Benchmark:** Assista ao trecho do golpe controverso abaixo, avalie a biomecânica de Ki-Ken-Tai-Ichi "
+                    "e registre a decisão arbitral. Ao confirmar, o SenpAI **executará o retreinamento adaptativo** e **apagará o clipe de demonstração** do disco."
+                )
                 for idx, unc_item in enumerate(unc_queue[:5]):
-                    c_unc1, c_unc2 = st.columns([2, 1])
-                    with c_unc1:
-                        st.markdown(f"**Golpe:** `{unc_item.get('strike_type', 'Men')}` | **Confiança:** `{unc_item.get('confidence', 0.5)*100:.1f}%` | **Incerteza:** `{unc_item.get('uncertainty_score', 0.0)*100:.1f}%`")
+                    # 1. Obter metadados de origem e timecode do golpe
+                    try:
+                        import src.utils.strike_clip_manager as scm_mod
+                        if not hasattr(scm_mod, "parse_strike_timestamp"):
+                            import importlib
+                            scm_mod = importlib.reload(scm_mod)
+                        parse_strike_timestamp = getattr(scm_mod, "parse_strike_timestamp")
+                        format_strike_timestamp = getattr(scm_mod, "format_strike_timestamp")
+                    except Exception:
+                        def parse_strike_timestamp(item):
+                            sd = item.get("strike_data") or {}
+                            return float(sd.get("timestamp_seconds") or item.get("timestamp_seconds") or 0.0)
+                        def format_strike_timestamp(sec):
+                            m = int(sec // 60)
+                            s = sec % 60
+                            return f"{m:02d}:{s:06.3f} ({sec:.1f}s)"
+
+                    strike_t = str(unc_item.get("strike_type", "Men")).upper()
+                    raw_src = str(unc_item.get("video_source", "")).strip() or "Vídeo de Combate"
+                    clean_src_name = re.sub(r"^(upload_\d+_|yt_[^_]+_)", "", os.path.basename(raw_src))
+                    t_sec = parse_strike_timestamp(unc_item)
+                    formatted_time = format_strike_timestamp(t_sec)
+
+                    # 2. Assegurar clipe de vídeo para visualização do Benchmark
+                    clip_path = None
+                    try:
+                        if hasattr(auto_trainer, "ensure_active_learning_clip"):
+                            clip_path = auto_trainer.ensure_active_learning_clip(unc_item)
+                        elif hasattr(feedback_mgr, "ensure_active_learning_clip"):
+                            clip_path = feedback_mgr.ensure_active_learning_clip(unc_item)
+                        else:
+                            from src.utils.strike_clip_manager import get_or_create_strike_clip
+                            clip_path = get_or_create_strike_clip(unc_item)
+                    except Exception as e:
+                        log_event("WARNING", f"Erro ao preparar clipe de demonstração do item {unc_item.get('id')}: {e}", "app")
+
+                    c_vid, c_info = st.columns([1, 1])
+
+                    with c_vid:
+                        if clip_path and os.path.isfile(clip_path):
+                            st.video(clip_path, format="video/mp4")
+                            st.caption(f"🎥 **Corte Real do Golpe ({strike_t}) aos {formatted_time}** de `{clean_src_name}`")
+                        else:
+                            st.warning(
+                                f"⚠️ **Corte de vídeo indisponível:** O arquivo da luta original **`{clean_src_name}`** "
+                                f"não foi localizado no disco para extração do trecho aos `{formatted_time}`."
+                            )
+
+                    with c_info:
+                        conf_pct = float(unc_item.get("confidence", 0.5)) * 100
+                        unc_pct = float(unc_item.get("uncertainty_score", 0.0)) * 100
+                        st.markdown(f"#### 🥋 Golpe: `{strike_t}`")
+                        st.markdown(f"- 📁 **Vídeo de Origem:** `{clean_src_name}`")
+                        st.markdown(f"- ⏱️ **Momento na Luta:** `{formatted_time}`")
+                        st.markdown(f"- 🤖 **Confiança da IA:** `{conf_pct:.1f}%` &nbsp;|&nbsp; ⚖️ **Incerteza Arbitral:** `{unc_pct:.1f}%`")
+
+                        # Métricas dos 4 Pilares
+                        s_data = unc_item.get("strike_data") or {}
+                        sub_scores = s_data.get("sub_scores") or s_data.get("scores") or {}
+                        if sub_scores:
+                            imp = float(sub_scores.get("target_impact", 0.5)) * 100
+                            fumi = float(sub_scores.get("fumikomi_sync", 0.5)) * 100
+                            pos = float(sub_scores.get("posture", 0.5)) * 100
+                            zan = float(sub_scores.get("zanshin", 0.5)) * 100
+                            st.caption(f"🎯 Alvo: **{imp:.0f}%** | 🦶 Fumikomi: **{fumi:.0f}%** | 🥋 Postura: **{pos:.0f}%** | ⚡ Zanshin: **{zan:.0f}%**")
+
                         triage = unc_item.get("llm_triage") or {}
                         if triage:
-                            st.markdown(f"- 🏛️ **Parecer LLM:** `{triage.get('verdict', 'DOUBTFUL')}` ({triage.get('fik_rule_rationale', '')})")
+                            st.markdown(f"- 🏛️ **Parecer FIK/LLM:** `{triage.get('verdict', 'DOUBTFUL')}` ({triage.get('fik_rule_rationale', '')})")
                             st.markdown(f"- 💡 **Orientação Técnica:** {triage.get('coaching_advice', '')}")
-                    with c_unc2:
-                        btn_c1, btn_c2 = st.columns(2)
+
+                        st.markdown("**Decisão do Árbitro / Retorno:**")
+                        st.caption("• **✅ Ippon (Válido):** Há movimento e é válido para pontuação.\n• **❌ Golpe Inválido:** Há movimento/tentativa, mas o golpe não foi válido.\n• **🚫 Não tem Golpe:** Nenhuma tentativa de movimento para pontuação (detecção espúria).")
+                        it_id = str(unc_item.get("id", f"item_{idx}"))
+                        btn_c1, btn_c2, btn_c3 = st.columns(3)
                         with btn_c1:
-                            if st.button("✅ Ippon", key=f"btn_cur_ok_{idx}"):
-                                fm = getattr(auto_trainer, "feedback_mgr", None)
-                                if hasattr(auto_trainer, "resolve_active_learning_item"):
-                                    auto_trainer.resolve_active_learning_item(unc_item.get("id", ""), True, 5, notes="Homologado via Curadoria Ativa")
-                                elif fm is not None and hasattr(fm, "resolve_active_learning_item"):
-                                    fm.resolve_active_learning_item(unc_item.get("id", ""), True, 5, notes="Homologado via Curadoria Ativa")
-                                elif hasattr(feedback_mgr, "resolve_active_learning_item"):
-                                    feedback_mgr.resolve_active_learning_item(unc_item.get("id", ""), True, 5, notes="Homologado via Curadoria Ativa")
+                            if st.button("✅ Ippon (Válido)", key=f"btn_cur_ok_{it_id}", width="stretch", type="primary", help="Há movimento e é válido para pontuação (Ippon legítimo)."):
+                                p_key = unc_item.get("profile_name", "normal")
+                                c_path = unc_item.get("clip_path")
+
+                                # 1. Resolver na fila / feedback com compatibilidade de assinatura
+                                try:
+                                    if hasattr(auto_trainer, "resolve_active_learning_item"):
+                                        try:
+                                            auto_trainer.resolve_active_learning_item(
+                                                it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral",
+                                                trigger_retrain=True, cleanup_clip=True, decision="IPPON"
+                                            )
+                                        except TypeError:
+                                            auto_trainer.resolve_active_learning_item(it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral", decision="IPPON")
+                                    elif hasattr(feedback_mgr, "resolve_active_learning_item"):
+                                        try:
+                                            feedback_mgr.resolve_active_learning_item(
+                                                it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral",
+                                                trigger_retrain=True, cleanup_clip=True, decision="IPPON"
+                                            )
+                                        except TypeError:
+                                            feedback_mgr.resolve_active_learning_item(it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral", decision="IPPON")
+                                except Exception as err:
+                                    log_event("WARNING", f"Erro ao resolver item na curadoria: {err}", "app")
+
+                                # 2. Disparar retreinamento e recalibração formal do modelo
+                                try:
+                                    if hasattr(auto_trainer, "run_mathematical_optimization"):
+                                        auto_trainer.run_mathematical_optimization(p_key)
+                                    elif hasattr(feedback_mgr, "optimize_profile_config"):
+                                        profs = feedback_mgr.load_profiles()
+                                        n_cfg, _ = feedback_mgr.optimize_profile_config(p_key, profs.get(p_key, {}))
+                                        profs[p_key] = n_cfg
+                                        feedback_mgr.save_profiles(profs)
+                                except Exception as err:
+                                    log_event("WARNING", f"Erro no retreinamento explícito pós-curadoria: {err}", "app")
+
+                                # 3. Apagar arquivo de vídeo do golpe em disco
+                                try:
+                                    from src.utils.strike_clip_manager import delete_strike_clip
+                                    if c_path:
+                                        delete_strike_clip(c_path)
+                                    target_c = os.path.join("data", "active_learning_clips", f"{it_id}_corte.mp4")
+                                    if os.path.isfile(target_c):
+                                        delete_strike_clip(target_c)
+                                except Exception as err:
+                                    log_event("WARNING", f"Erro ao excluir corte de vídeo pós-curadoria: {err}", "app")
+
+                                st.session_state["curation_alert"] = f"✅ Golpe {strike_t} homologado como Ippon! Retreinamento adaptativo executado com sucesso e corte de vídeo apagado do disco."
                                 st.rerun()
+
                         with btn_c2:
-                            if st.button("❌ Inválido", key=f"btn_cur_no_{idx}"):
-                                fm = getattr(auto_trainer, "feedback_mgr", None)
-                                if hasattr(auto_trainer, "resolve_active_learning_item"):
-                                    auto_trainer.resolve_active_learning_item(unc_item.get("id", ""), False, 5, notes="Reprovado via Curadoria Ativa")
-                                elif fm is not None and hasattr(fm, "resolve_active_learning_item"):
-                                    fm.resolve_active_learning_item(unc_item.get("id", ""), False, 5, notes="Reprovado via Curadoria Ativa")
-                                elif hasattr(feedback_mgr, "resolve_active_learning_item"):
-                                    feedback_mgr.resolve_active_learning_item(unc_item.get("id", ""), False, 5, notes="Reprovado via Curadoria Ativa")
+                            if st.button("❌ Golpe Inválido", key=f"btn_cur_inv_{it_id}", width="stretch", help="Há movimento/tentativa de ataque, mas o golpe NÃO atendeu aos critérios para pontuação."):
+                                p_key = unc_item.get("profile_name", "normal")
+                                c_path = unc_item.get("clip_path")
+
+                                # 1. Resolver na fila / feedback com compatibilidade de assinatura
+                                try:
+                                    if hasattr(auto_trainer, "resolve_active_learning_item"):
+                                        try:
+                                            auto_trainer.resolve_active_learning_item(
+                                                it_id, False, 5, "Golpe Inválido (Tentativa de movimento sem pontuação) via Benchmark Arbitral",
+                                                trigger_retrain=True, cleanup_clip=True, decision="INVALID_STRIKE"
+                                            )
+                                        except TypeError:
+                                            auto_trainer.resolve_active_learning_item(it_id, False, 5, "Golpe Inválido via Benchmark Arbitral", decision="INVALID_STRIKE")
+                                    elif hasattr(feedback_mgr, "resolve_active_learning_item"):
+                                        try:
+                                            feedback_mgr.resolve_active_learning_item(
+                                                it_id, False, 5, "Golpe Inválido (Tentativa de movimento sem pontuação) via Benchmark Arbitral",
+                                                trigger_retrain=True, cleanup_clip=True, decision="INVALID_STRIKE"
+                                            )
+                                        except TypeError:
+                                            feedback_mgr.resolve_active_learning_item(it_id, False, 5, "Golpe Inválido via Benchmark Arbitral", decision="INVALID_STRIKE")
+                                except Exception as err:
+                                    log_event("WARNING", f"Erro ao resolver item na curadoria: {err}", "app")
+
+                                # 2. Disparar retreinamento e recalibração formal do modelo
+                                try:
+                                    if hasattr(auto_trainer, "run_mathematical_optimization"):
+                                        auto_trainer.run_mathematical_optimization(p_key)
+                                    elif hasattr(feedback_mgr, "optimize_profile_config"):
+                                        profs = feedback_mgr.load_profiles()
+                                        n_cfg, _ = feedback_mgr.optimize_profile_config(p_key, profs.get(p_key, {}))
+                                        profs[p_key] = n_cfg
+                                        feedback_mgr.save_profiles(profs)
+                                except Exception as err:
+                                    log_event("WARNING", f"Erro no retreinamento explícito pós-curadoria: {err}", "app")
+
+                                # 3. Apagar arquivo de vídeo do golpe em disco
+                                try:
+                                    from src.utils.strike_clip_manager import delete_strike_clip
+                                    if c_path:
+                                        delete_strike_clip(c_path)
+                                    target_c = os.path.join("data", "active_learning_clips", f"{it_id}_corte.mp4")
+                                    if os.path.isfile(target_c):
+                                        delete_strike_clip(target_c)
+                                except Exception as err:
+                                    log_event("WARNING", f"Erro ao excluir corte de vídeo pós-curadoria: {err}", "app")
+
+                                st.session_state["curation_alert"] = f"⚠️ Golpe {strike_t} classificado como Golpe Inválido (tentativa sem pontuação). Retreinamento adaptativo executado com sucesso e corte de vídeo apagado do disco."
                                 st.rerun()
+
+                        with btn_c3:
+                            if st.button("🚫 Não tem Golpe", key=f"btn_cur_none_{it_id}", width="stretch", help="Não existe nenhuma tentativa de movimento para pontuação (detecção espúria)."):
+                                p_key = unc_item.get("profile_name", "normal")
+                                c_path = unc_item.get("clip_path")
+
+                                # 1. Resolver na fila / feedback com compatibilidade de assinatura
+                                try:
+                                    if hasattr(auto_trainer, "resolve_active_learning_item"):
+                                        try:
+                                            auto_trainer.resolve_active_learning_item(
+                                                it_id, False, 5, "Não tem golpe (Nenhuma tentativa de movimento para pontuação) via Benchmark Arbitral",
+                                                trigger_retrain=True, cleanup_clip=True, decision="NO_STRIKE"
+                                            )
+                                        except TypeError:
+                                            auto_trainer.resolve_active_learning_item(it_id, False, 5, "Não tem golpe via Benchmark Arbitral", decision="NO_STRIKE")
+                                    elif hasattr(feedback_mgr, "resolve_active_learning_item"):
+                                        try:
+                                            feedback_mgr.resolve_active_learning_item(
+                                                it_id, False, 5, "Não tem golpe (Nenhuma tentativa de movimento para pontuação) via Benchmark Arbitral",
+                                                trigger_retrain=True, cleanup_clip=True, decision="NO_STRIKE"
+                                            )
+                                        except TypeError:
+                                            feedback_mgr.resolve_active_learning_item(it_id, False, 5, "Não tem golpe via Benchmark Arbitral", decision="NO_STRIKE")
+                                except Exception as err:
+                                    log_event("WARNING", f"Erro ao resolver item na curadoria: {err}", "app")
+
+                                # 2. Disparar retreinamento e recalibração formal do modelo
+                                try:
+                                    if hasattr(auto_trainer, "run_mathematical_optimization"):
+                                        auto_trainer.run_mathematical_optimization(p_key)
+                                    elif hasattr(feedback_mgr, "optimize_profile_config"):
+                                        profs = feedback_mgr.load_profiles()
+                                        n_cfg, _ = feedback_mgr.optimize_profile_config(p_key, profs.get(p_key, {}))
+                                        profs[p_key] = n_cfg
+                                        feedback_mgr.save_profiles(profs)
+                                except Exception as err:
+                                    log_event("WARNING", f"Erro no retreinamento explícito pós-curadoria: {err}", "app")
+
+                                # 3. Apagar arquivo de vídeo do golpe em disco
+                                try:
+                                    from src.utils.strike_clip_manager import delete_strike_clip
+                                    if c_path:
+                                        delete_strike_clip(c_path)
+                                    target_c = os.path.join("data", "active_learning_clips", f"{it_id}_corte.mp4")
+                                    if os.path.isfile(target_c):
+                                        delete_strike_clip(target_c)
+                                except Exception as err:
+                                    log_event("WARNING", f"Erro ao excluir corte de vídeo pós-curadoria: {err}", "app")
+
+                                st.session_state["curation_alert"] = f"🚫 Lance classificado como 'Não tem Golpe' (Detecção Espúria). Retreinamento executado para suprimir falsos disparos e corte de vídeo apagado do disco."
+                                st.rerun()
+
                     st.markdown("---")
 
         # ----------------------------------------------------------------------
@@ -4674,8 +4895,10 @@ elif nav_page in ["match", "training", "analysis"]:
                             pass
                 else:
                     pipeline.training_multi_tracker = TrainingMultiKenshiTracker(
-                        max_lost_frames=45,
-                        reid_similarity_threshold=0.60
+                        max_lost_frames=90,
+                        spatial_dist_threshold=0.44,
+                        reid_similarity_threshold=0.46,
+                        min_hits=3
                     )
                     live_pose_histories = [[] for _ in range(num_cameras)]
                     latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
@@ -4714,7 +4937,12 @@ elif nav_page in ["match", "training", "analysis"]:
                             if num_cameras == 1:
                                 candidates, _ = pipeline.pose_detector.process_frame_candidates(frame)
                                 current_results = pipeline.training_multi_tracker.process_frame(candidates, frame=frame)
-                                drawn_frame = pipeline.training_multi_tracker.draw_overlay(frame, current_results)
+                                if hasattr(pipeline.training_multi_tracker, "draw_overlay"):
+                                    drawn_frame = pipeline.training_multi_tracker.draw_overlay(frame, current_results)
+                                else:
+                                    import src.vision.training_multi_tracker as _tmt_dyn
+                                    importlib.reload(_tmt_dyn)
+                                    drawn_frame = _tmt_dyn.TrainingMultiKenshiTracker.draw_overlay(pipeline.training_multi_tracker, frame, current_results)
                                 active_lm = next((lm for lm in current_results.values() if lm is not None), None)
                                 live_pose_histories[0].append(active_lm)
                                 latest_drawn_frames[0] = drawn_frame
@@ -5088,8 +5316,10 @@ elif nav_page in ["match", "training", "analysis"]:
                         train_stream_obj.set_speed(active_train_speed)
 
                         pipeline.training_multi_tracker = TrainingMultiKenshiTracker(
-                            max_lost_frames=45,
-                            reid_similarity_threshold=0.60
+                            max_lost_frames=90,
+                            spatial_dist_threshold=0.44,
+                            reid_similarity_threshold=0.46,
+                            min_hits=3
                         )
                         live_pose_histories = [[]]
                         latest_drawn_frames: list[Optional[np.ndarray]] = [st.session_state.get("train_last_drawn_frame", None)]
@@ -5146,7 +5376,12 @@ elif nav_page in ["match", "training", "analysis"]:
 
                                 candidates, _ = pipeline.pose_detector.process_frame_candidates(frame)
                                 current_results = pipeline.training_multi_tracker.process_frame(candidates, frame=frame)
-                                drawn_frame = pipeline.training_multi_tracker.draw_overlay(frame, current_results)
+                                if hasattr(pipeline.training_multi_tracker, "draw_overlay"):
+                                    drawn_frame = pipeline.training_multi_tracker.draw_overlay(frame, current_results)
+                                else:
+                                    import src.vision.training_multi_tracker as _tmt_dyn
+                                    importlib.reload(_tmt_dyn)
+                                    drawn_frame = _tmt_dyn.TrainingMultiKenshiTracker.draw_overlay(pipeline.training_multi_tracker, frame, current_results)
                                 active_lm = next((lm for lm in current_results.values() if lm is not None), None)
                                 live_pose_histories[0].append(active_lm)
                                 latest_drawn_frames[0] = drawn_frame

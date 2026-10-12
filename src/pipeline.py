@@ -463,6 +463,38 @@ class SenpAIPipeline:
                 "diagnostic_report": report_text
             })
 
+            # Curadoria Ativa: Se o lance recai na faixa de incerteza arbitral (45%-65%), extrair corte real da luta
+            conf_val = float(evaluation.get("total_score", 0.0)) / 100.0 if float(evaluation.get("total_score", 0.0)) > 1.0 else float(evaluation.get("total_score", 0.0))
+            if 0.45 <= conf_val <= 0.65 and video_path and os.path.isfile(video_path):
+                try:
+                    from src.utils.strike_clip_manager import extract_strike_subclip, DEFAULT_CLIPS_DIR
+                    from src.engine.active_learning import UncertaintySampler
+
+                    target_time = float(ev_dict.get("impact_frame", 0)) / float(fps) if fps > 0 else 0.0
+                    clip_id = f"unc_strike_{int(time.time() * 1000)}_{len(analyzed_events)}"
+                    clip_out = os.path.join(DEFAULT_CLIPS_DIR, f"{clip_id}_corte.mp4")
+                    real_clip = extract_strike_subclip(video_path, clip_out, target_time_sec=target_time)
+
+                    sampler = UncertaintySampler()
+                    strike_pkg = {
+                        "strike_type": ev_dict.get("strike_type", "Men"),
+                        "scores": evaluation.get("scores", {}),
+                        "sub_scores": evaluation.get("scores", {}),
+                        "total_score": evaluation.get("total_score", conf_val * 100.0),
+                        "timestamp_seconds": target_time,
+                        "timestamp": ev_dict.get("timestamp", f"{target_time:.1f}s"),
+                        "impact_frame": ev_dict.get("impact_frame", 0)
+                    }
+                    sampler.evaluate_and_enqueue(
+                        strike_data=strike_pkg,
+                        confidence=conf_val,
+                        video_source=video_path,
+                        profile_name=getattr(self.calibrator, "profile_name", "normal"),
+                        clip_path=real_clip
+                    )
+                except Exception as e:
+                    log_event("WARNING", f"Falha ao extrair corte real de golpe incerto no pipeline: {e}", "pipeline")
+
         # 6. Gravação do Vídeo Anotado com HUD de Sonkyō, Rastreamento dos Kenshis e Marcação de Golpes
         if output_video_path and total_frames > 0:
             # Mapear eventos de golpe por frame para anotação visual síncrona
@@ -664,7 +696,12 @@ class SenpAIPipeline:
         4. Avaliação individualizada dos 3 Pilares e cadência justa com base no tempo de presença em quadro.
         """
         start_time = time.time()
-        tracker = TrainingMultiKenshiTracker(max_lost_frames=45, reid_similarity_threshold=0.60)
+        tracker = TrainingMultiKenshiTracker(
+            max_lost_frames=90,
+            spatial_dist_threshold=0.44,
+            reid_similarity_threshold=0.46,
+            min_hits=3
+        )
         self.training_multi_tracker = tracker
 
         batch_size = self.batch_size if (self.effective_device == "gpu" and self.pose_detector.use_gpu) else 1

@@ -1,13 +1,13 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-10-11T18:41:49Z",
+  "updated_at": "2026-10-12T00:37:59Z",
   "profiles": {
     "KENSHI_SOLO": {
       "kenshi_id": "KENSHI_SOLO",
       "display_name": "Kendoca Principal",
       "created_at": "2026-10-02T20:05:46Z",
-      "last_updated_at": "2026-10-11T18:41:49Z",
-      "sessions_count": 97,
+      "last_updated_at": "2026-10-12T00:19:37Z",
+      "sessions_count": 124,
       "strikes_count": 0,
       "metrics": {
         "posture_resting_angle_deg": {
@@ -23,13 +23,13 @@
           "m2": 0.0
         },
         "cadence_cpm": {
-          "count": 13,
+          "count": 16,
           "mean": 10.0,
           "std_dev": 0.001,
           "m2": 0.0
         },
         "spine_tilt_strike_deg": {
-          "count": 24,
+          "count": 36,
           "mean": 92.0,
           "std_dev": 0.001,
           "m2": 0.0
@@ -70,11 +70,11 @@
     },
     "KENSHI_SHIRO": {
       "kenshi_id": "KENSHI_SHIRO",
-      "display_name": "Eduardo Zimermann",
+      "display_name": "Kendoca Shiro (Esquerda)",
       "created_at": "2026-10-02T20:06:13Z",
-      "last_updated_at": "2026-10-11T18:41:43Z",
-      "sessions_count": 35,
-      "strikes_count": 529,
+      "last_updated_at": "2026-10-12T00:37:59Z",
+      "sessions_count": 39,
+      "strikes_count": 555,
       "metrics": {
         "posture_resting_angle_deg": {
           "count": 0,
@@ -83,22 +83,22 @@
           "m2": 0.0
         },
         "fumikomi_window_ms": {
-          "count": 529,
-          "mean": 3.9657,
-          "std_dev": 42.9778,
-          "m2": 975265.6929
+          "count": 555,
+          "mean": 3.8999,
+          "std_dev": 42.8982,
+          "m2": 1019499.5563
         },
         "cadence_cpm": {
-          "count": 35,
-          "mean": 9.9687,
-          "std_dev": 1.6222,
-          "m2": 89.4722
+          "count": 39,
+          "mean": 9.9899,
+          "std_dev": 1.5389,
+          "m2": 89.9925
         },
         "spine_tilt_strike_deg": {
-          "count": 35,
-          "mean": 95.2028,
-          "std_dev": 2.508,
-          "m2": 213.8702
+          "count": 39,
+          "mean": 95.005,
+          "std_dev": 2.5481,
+          "m2": 246.7182
         },
         "zanshin_duration_s": {
           "count": 0,
@@ -136,11 +136,11 @@
     },
     "KENSHI_AKA": {
       "kenshi_id": "KENSHI_AKA",
-      "display_name": "Parceiro Keiko",
+      "display_name": "Kendoca Aka (Direita)",
       "created_at": "2026-10-02T20:06:13Z",
-      "last_updated_at": "2026-10-11T18:41:43Z",
-      "sessions_count": 35,
-      "strikes_count": 494,
+      "last_updated_at": "2026-10-12T00:37:59Z",
+      "sessions_count": 39,
+      "strikes_count": 516,
       "metrics": {
         "posture_resting_angle_deg": {
           "count": 0,
@@ -149,22 +149,22 @@
           "m2": 0.0
         },
         "fumikomi_window_ms": {
-          "count": 494,
-          "mean": 6.2015,
-          "std_dev": 59.29,
-          "m2": 1733047.052
+          "count": 516,
+          "mean": 6.3243,
+          "std_dev": 59.2679,
+          "m2": 1809029.5401
         },
         "cadence_cpm": {
-          "count": 35,
-          "mean": 9.7571,
-          "std_dev": 1.9589,
-          "m2": 130.4662
+          "count": 39,
+          "mean": 9.7589,
+          "std_dev": 1.8572,
+          "m2": 131.0748
         },
         "spine_tilt_strike_deg": {
-          "count": 35,
-          "mean": 95.4885,
-          "std_dev": 2.8361,
-          "m2": 273.4747
+          "count": 39,
+          "mean": 95.282,
+          "std_dev": 2.8752,
+          "m2": 314.1355
         },
         "zanshin_duration_s": {
           "count": 0,

@@ -6,6 +6,7 @@ Gerencia a gravação de marcações (TP, FP, FN, edições e revisões por Dan)
 import json
 import os
 import re
+import random
 import datetime
 from typing import Dict, Any, List, Tuple, Optional
 from urllib.parse import urlparse
@@ -183,10 +184,8 @@ class FeedbackManager:
     @property
     def bayesian_optimizer(self) -> BayesianCalibrationOptimizer:
         if getattr(self, "_bayesian_optimizer", None) is None:
-            try:
-                self._bayesian_optimizer = BayesianCalibrationOptimizer()
-            except Exception:
-                pass
+            self._bayesian_optimizer = BayesianCalibrationOptimizer()
+        assert self._bayesian_optimizer is not None
         return self._bayesian_optimizer
 
     @bayesian_optimizer.setter
@@ -196,11 +195,9 @@ class FeedbackManager:
     @property
     def golden_benchmark(self) -> GoldenBenchmark:
         if getattr(self, "_golden_benchmark", None) is None:
-            try:
-                from src.engine.active_learning import GoldenBenchmark
-                self._golden_benchmark = GoldenBenchmark()
-            except Exception:
-                pass
+            from src.engine.active_learning import GoldenBenchmark
+            self._golden_benchmark = GoldenBenchmark()
+        assert self._golden_benchmark is not None
         return self._golden_benchmark
 
     @golden_benchmark.setter
@@ -210,11 +207,9 @@ class FeedbackManager:
     @property
     def llm_assistant(self) -> KendoLLMAssistant:
         if getattr(self, "_llm_assistant", None) is None:
-            try:
-                from src.engine.llm_assistant import KendoLLMAssistant
-                self._llm_assistant = KendoLLMAssistant()
-            except Exception:
-                pass
+            from src.engine.llm_assistant import KendoLLMAssistant
+            self._llm_assistant = KendoLLMAssistant()
+        assert self._llm_assistant is not None
         return self._llm_assistant
 
     @llm_assistant.setter
@@ -224,11 +219,9 @@ class FeedbackManager:
     @property
     def uncertainty_sampler(self) -> UncertaintySampler:
         if getattr(self, "_uncertainty_sampler", None) is None:
-            try:
-                from src.engine.active_learning import UncertaintySampler
-                self._uncertainty_sampler = UncertaintySampler(llm_assistant=self.llm_assistant)
-            except Exception:
-                pass
+            from src.engine.active_learning import UncertaintySampler
+            self._uncertainty_sampler = UncertaintySampler(llm_assistant=self.llm_assistant)
+        assert self._uncertainty_sampler is not None
         return self._uncertainty_sampler
 
     @uncertainty_sampler.setter
@@ -238,11 +231,9 @@ class FeedbackManager:
     @property
     def reviewer_trust_manager(self) -> ReviewerTrustManager:
         if getattr(self, "_reviewer_trust_manager", None) is None:
-            try:
-                from src.engine.active_learning import ReviewerTrustManager
-                self._reviewer_trust_manager = ReviewerTrustManager()
-            except Exception:
-                pass
+            from src.engine.active_learning import ReviewerTrustManager
+            self._reviewer_trust_manager = ReviewerTrustManager()
+        assert self._reviewer_trust_manager is not None
         return self._reviewer_trust_manager
 
     @reviewer_trust_manager.setter
@@ -457,7 +448,8 @@ class FeedbackManager:
         is_included: bool = False,
         decision_category: str = "",
         is_shinpan_decision: Optional[bool] = None,
-        video_url: Optional[str] = None
+        video_url: Optional[str] = None,
+        enqueue_uncertain: bool = True
     ) -> Dict[str, Any]:
         """
         Adiciona ou atualiza uma anotação de feedback no dataset com registro de Dan ou Decisão dos Shinpans.
@@ -516,25 +508,34 @@ class FeedbackManager:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
         # Eixo 4.1: Amostragem por Incerteza para Aprendizado Ativo (Active Learning)
-        try:
-            conf = float(total_score) / 100.0 if total_score > 1.0 else float(total_score)
-            if self.uncertainty_sampler.is_uncertain(conf):
-                strike_data_pkg = {
-                    "strike_type": strike_type,
-                    "scores": sub_scores or {},
-                    "sub_scores": sub_scores or {},
-                    "total_score": total_score,
-                    "label": label,
-                    "notes": notes
-                }
-                self.uncertainty_sampler.evaluate_and_enqueue(
-                    strike_data=strike_data_pkg,
-                    confidence=conf,
-                    video_source=video_url or video_name,
-                    profile_name=profile_key
-                )
-        except Exception as e:
-            log_event("WARNING", f"Falha ao processar amostragem por incerteza: {e}", "feedback_manager")
+        # Amostras já curadas ou originadas da própria curadoria ativa NUNCA são reenfileiradas
+        is_from_curation = (
+            not enqueue_uncertain or
+            event_id.startswith("unc_") or
+            "curadoria ativa" in notes.lower() or
+            "benchmark arbitral" in notes.lower() or
+            video_name == "curadoria_ativa"
+        )
+        if not is_from_curation:
+            try:
+                conf = float(total_score) / 100.0 if total_score > 1.0 else float(total_score)
+                if self.uncertainty_sampler.is_uncertain(conf):
+                    strike_data_pkg = {
+                        "strike_type": strike_type,
+                        "scores": sub_scores or {},
+                        "sub_scores": sub_scores or {},
+                        "total_score": total_score,
+                        "label": label,
+                        "notes": notes
+                    }
+                    self.uncertainty_sampler.evaluate_and_enqueue(
+                        strike_data=strike_data_pkg,
+                        confidence=conf,
+                        video_source=video_url or video_name,
+                        profile_name=profile_key
+                    )
+            except Exception as e:
+                log_event("WARNING", f"Falha ao processar amostragem por incerteza: {e}", "feedback_manager")
 
         return entry
 
@@ -1617,9 +1618,123 @@ class FeedbackManager:
         """Retorna itens com alta incerteza aguardando curadoria ativa."""
         return self.uncertainty_sampler.get_queue(status=status)
 
-    def resolve_active_learning_item(self, item_id: str, approved: bool, reviewer_dan: int, notes: str = "") -> bool:
-        """Marca um item da fila de curadoria ativa como resolvido por um árbitro."""
-        return self.uncertainty_sampler.resolve_item(item_id, approved, reviewer_dan, notes=notes)
+    def get_active_learning_history(self) -> List[Dict[str, Any]]:
+        """Retorna os itens arquivados após resolução da curadoria ativa."""
+        if hasattr(self.uncertainty_sampler, "get_history"):
+            return self.uncertainty_sampler.get_history()
+        return []
+
+    def ensure_active_learning_clip(self, item: Dict[str, Any]) -> Optional[str]:
+        """Garante que o clipe de demonstração do golpe esteja gerado e disponível para o Benchmark."""
+        return self.uncertainty_sampler.ensure_item_clip(item)
+
+    def resolve_active_learning_item(
+        self,
+        item_id: str,
+        approved: bool = True,
+        reviewer_dan: int = 5,
+        notes: str = "",
+        trigger_retrain: bool = True,
+        cleanup_clip: bool = True,
+        decision: Optional[str] = None,
+        *args,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Marca um item da fila de curadoria ativa como resolvido por um árbitro:
+        - IPPON: Movimento válido de Ippon (aprovado).
+        - INVALID_STRIKE: Houve movimento/tentativa, mas o golpe não foi válido.
+        - NO_STRIKE: Nenhuma tentativa de movimento para pontuação (detecção espúria).
+        """
+        if not decision:
+            decision = kwargs.get("decision", "IPPON" if approved else "INVALID_STRIKE")
+
+        # 1. Recuperar o item antes da resolução
+        queue = self.get_active_learning_queue()
+        target_item = None
+        for it in queue:
+            if it.get("id") == item_id:
+                target_item = it
+                break
+
+        profile_key = target_item.get("profile_name", "normal") if target_item else "normal"
+        strike_data = target_item.get("strike_data", {}) if target_item else {}
+
+        # Determinar rótulos e anotações conforme a decisão
+        if decision == "IPPON":
+            eff_approved = True
+            fb_label = "TP"
+            decision_cat = "IPPON"
+            default_notes = "Homologado como Ippon via Curadoria Ativa"
+        elif decision == "NO_STRIKE":
+            eff_approved = False
+            fb_label = "FP"
+            decision_cat = "NO_STRIKE"
+            default_notes = "Não tem golpe (Detecção Espúria / Sem Tentativa) via Curadoria Ativa"
+        else:
+            decision = "INVALID_STRIKE"
+            eff_approved = False
+            fb_label = "FP"
+            decision_cat = "INVALID_STRIKE"
+            default_notes = "Golpe Inválido (Tentativa sem Ippon) via Curadoria Ativa"
+
+        # 2. Registrar no dataset de feedback
+        if target_item:
+            self.save_feedback(
+                video_name=str(target_item.get("video_source", "curadoria_ativa")),
+                profile_key=profile_key,
+                event_id=item_id,
+                label=fb_label,
+                decision_category=decision_cat,
+                strike_type=target_item.get("strike_type", "MEN"),
+                timestamp=str(target_item.get("timestamp", "")),
+                notes=notes or default_notes,
+                reviewer_dan=reviewer_dan,
+                is_included=eff_approved,
+                sub_scores=strike_data.get("sub_scores", strike_data.get("scores", {})),
+                total_score=float(target_item.get("confidence", 0.50)) * 100.0,
+                enqueue_uncertain=False
+            )
+
+        # 3. Resolver na fila e apagar clipe de demonstração
+        resolved = self.uncertainty_sampler.resolve_item(
+            item_id=item_id,
+            label_approved=eff_approved,
+            reviewer_dan=reviewer_dan,
+            notes=notes or default_notes,
+            cleanup_clip=cleanup_clip,
+            decision=decision
+        )
+
+        # 4. Executar retreinamento / recalibração matemática do modelo
+        retrained = False
+        opt_stats = {}
+        if trigger_retrain and resolved:
+            try:
+                profiles = self.load_profiles()
+                cur_cfg = profiles.get(profile_key, DEFAULT_CALIBRATION_PROFILES.get(profile_key, {}))
+                new_cfg, opt_stats = self.optimize_profile_config(profile_key, cur_cfg)
+                profiles[profile_key] = new_cfg
+                self.save_profiles(profiles)
+                retrained = True
+                log_event(
+                    "INFO",
+                    f"Retreinamento pós-curadoria concluído com sucesso para perfil '{profile_key}' (Item: {item_id})",
+                    "feedback_manager"
+                )
+            except Exception as e:
+                log_event("WARNING", f"Falha no retreinamento pós-curadoria: {e}", "feedback_manager")
+
+        return {
+            "success": resolved,
+            "item_id": item_id,
+            "decision": decision,
+            "curated_label": decision,
+            "approved": eff_approved,
+            "retrained": retrained,
+            "clip_deleted": cleanup_clip,
+            "optimization_stats": opt_stats
+        }
 
     def consolidate_multi_judge_reviews(self, reviews: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Consolida votos de múltiplos árbitros aplicando regra de 2 de 3, ponderação por Dan e grau de divergência."""

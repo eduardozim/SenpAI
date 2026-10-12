@@ -374,8 +374,10 @@ class SenpAITrainingWebRtcProcessor(VideoProcessorBase):  # type: ignore
 
         from src.vision.training_multi_tracker import TrainingMultiKenshiTracker
         self.training_tracker = getattr(self.pipeline, "training_multi_tracker", None) or TrainingMultiKenshiTracker(
-            max_lost_frames=45,
-            reid_similarity_threshold=0.60
+            max_lost_frames=90,
+            spatial_dist_threshold=0.44,
+            reid_similarity_threshold=0.46,
+            min_hits=3
         )
 
         self.frame_count = 0

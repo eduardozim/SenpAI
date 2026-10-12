@@ -127,6 +127,62 @@ class TestKenshiReIDAndMultiTracker(unittest.TestCase):
         # Verifica se o frame desenhado foi modificado (não mais todo preto)
         self.assertTrue(np.any(drawn > 0))
 
+    def test_five_kenshis_stability_and_position_persistence(self):
+        """
+        Cenário Real do Usuário (5 Kenshis em treino no dojo):
+        - 5 Kenshis estão dispostos no dojo (X = 0.15, 0.32, 0.50, 0.68, 0.85).
+        - Executam suburis e deslocamentos durante vários frames.
+        - Ocorrem oclusões temporárias (ex: Kenshi 2 e Kenshi 4 somem por 10 frames e reaparecem).
+        - Ocorrem ruídos esporádicos transitórios de 1 frame.
+        - O tracker DEVE manter estritamente os 5 Kenshis (KENSHI_01 a KENSHI_05),
+          SEM inflar a contagem para 14 kenshis!
+        """
+        tracker = TrainingMultiKenshiTracker(max_lost_frames=30, spatial_dist_threshold=0.44, min_hits=3)
+        frame_dummy = np.zeros((480, 640, 3), dtype=np.uint8)
+
+        base_xs = [0.15, 0.32, 0.50, 0.68, 0.85]
+
+        # 1. Primeiros 20 frames: todos os 5 presentes com pequenas oscilações de movimento
+        for f in range(20):
+            cands = []
+            for idx, bx in enumerate(base_xs):
+                # Oscilação senoidal natural de movimento/suburi
+                x_pos = bx + 0.02 * np.sin(f * 0.3 + idx)
+                cands.append(_create_mock_landmarks(x_pos, height=0.50 + 0.02 * idx))
+            tracker.process_frame(cands, frame=frame_dummy)
+
+        self.assertEqual(len(tracker.tracks), 5, "Devem haver exatamente 5 Kenshis confirmados inicialmente")
+
+        # 2. Frames 20 a 35: Kenshi 2 (X=0.32) e Kenshi 4 (X=0.68) são ocluídos temporariamente
+        # Além disso, injeta um ruído espúrio de 1 frame em X=0.95
+        for f in range(20, 35):
+            cands = [
+                _create_mock_landmarks(base_xs[0], height=0.50), # Kenshi 1
+                _create_mock_landmarks(base_xs[2], height=0.54), # Kenshi 3
+                _create_mock_landmarks(base_xs[4], height=0.58), # Kenshi 5
+            ]
+            if f == 25:
+                # Ruído de 1 único frame (detecção fantasma passageira)
+                cands.append(_create_mock_landmarks(0.95, height=0.20))
+
+            tracker.process_frame(cands, frame=frame_dummy)
+
+        # 3. Frames 35 a 55: Kenshi 2 e 4 retornam em suas posições habituais
+        for f in range(35, 55):
+            cands = [
+                _create_mock_landmarks(base_xs[0] + 0.01, height=0.50),
+                _create_mock_landmarks(base_xs[1] + 0.01, height=0.52), # Kenshi 2 de volta
+                _create_mock_landmarks(base_xs[2] - 0.01, height=0.54),
+                _create_mock_landmarks(base_xs[3] + 0.01, height=0.56), # Kenshi 4 de volta
+                _create_mock_landmarks(base_xs[4], height=0.58),
+            ]
+            tracker.process_frame(cands, frame=frame_dummy)
+
+        # Ao final, o sistema DEVE ter mantido exatamente 5 Kenshis, sem criar tracks espúrios
+        summary = tracker.get_session_summary()
+        self.assertEqual(summary["total_kenshis_detected"], 5, f"Esperado 5 Kenshis, mas foram criados {summary['total_kenshis_detected']}")
+        self.assertEqual(len(tracker.tracks), 5)
+
 
 if __name__ == "__main__":
     unittest.main()
