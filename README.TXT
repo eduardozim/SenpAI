@@ -4,7 +4,7 @@
 
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
 
-                              Versão: v 0.3.7.0
+                              Versão: v 0.3.7.1
 
 ===============================================================================
 
@@ -719,7 +719,31 @@ mudanças, consulte o arquivo manual.md.
 
 -------------------------------------------------------------------------------
 
-8. DIREITOS DE USO, CÓPIA E PROPRIEDADE INTELECTUAL
+8. NOVIDADES DA VERSÃO (v 0.3.7.1)
+
+-------------------------------------------------------------------------------
+
+- Treinamento Automático por IA (Web & Vídeo):
+  • Execução contínua e estável em thread de background desacoplada.
+  • Apresentação do progresso em tempo real com barra gráfica (st.progress),
+    percentual, tempo decorrido, tempo restante e contagem de amostras mineradas.
+  • Exibição de logs dinâmicos e enriquecimento da Base de Conhecimento com normas FIK/AJKF.
+  • Parada graciosa manual e salvamento consolidado imediato com download de relatório.
+
+- Interface Responsiva e Visualização de Vídeo Ampliada:
+  • Redimensionamento automático do player e preview de vídeo ao colapsar
+    a barra de navegação lateral (Sidebar), ampliando substancialmente a escala útil.
+  • Proporção otimizada para visualização anatômica (6.2 : 5.8) em todos os modos:
+    Shiai/Lutas, Treinamento Pedagógico, Vídeos Gravados, Streaming e Tempo Real.
+  • Barra lateral expandida por padrão no carregamento e recargas de página.
+
+- Estabilidade e Correções Visuais:
+  • Ajuste e alinhamento tipográfico na Página Inicial.
+
+
+-------------------------------------------------------------------------------
+
+9. DIREITOS DE USO, CÓPIA E PROPRIEDADE INTELECTUAL
 
 -------------------------------------------------------------------------------
 

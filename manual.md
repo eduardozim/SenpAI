@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.7.0`
+> **Versão Oficial do Sistema**: `v 0.3.7.1`
 
 ---
 
@@ -810,7 +810,24 @@ Total de **246 testes automatizados** distribuídos em 26 módulos, executados e
 
 ---
 
-### `[v 0.3.7.0]` — 2026-10-11 *(Versão Atual)*
+### `[v 0.3.7.1]` — 2026-10-13 *(Versão Atual)*
+
+- **Correção Crítica e Feedback em Tempo Real do Treinamento Automático por IA (Web & Vídeo) ([auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Execução Confiável em Background**: Resolução da perda de estado e desconexão do singleton causada por recarregamentos dinâmicos (`importlib.reload`) a cada rerun da interface Streamlit, garantindo que o treinamento permaneça ativo ininterruptamente em background;
+  - **Sincronização Atômica de Thread e Stop Gracioso**: O método `is_running()` agora verifica diretamente o ciclo de vida e liveness da thread de treinamento (`_training_thread.is_alive()`), eliminando falsos positivos e preservando rigorosamente o flag de parada graciosa (`_stop_requested`) sem sobrescritas acidentais;
+  - **Apresentação Imediata de Progresso & HUD da IA**: Monitoramento em tempo real do avanço com barra de progresso visual (`st.progress`), percentual concluído, tempo decorrido, tempo restante calculado, contagem de amostras biomecânicas mineradas e logs detalhados de execução da IA;
+  - **Interrupção e Salvamento 100% Consolidado**: O botão de parada manual (`⏹️ Parar Treinamento e Salvar Agora`) consolida imediatamente todo o conhecimento e amostras adquiridas na Base de Conhecimento e no Histórico de Governança Dan, gerando relatório detalhado para download nos formatos Markdown (.md) e JSON.
+- **Layout Responsivo e Expansão Visual de Vídeo em Painel Redimensionado ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Expansão Dinâmica em Sidebar Minimizada**: Implementação de marcadores e regras CSS dinâmicas (`video-preview-marker` e `video-side-panel-marker`) que expandem a visualização dos players e previews de vídeo para até o dobro da área usual quando a barra lateral de navegação é colapsada, aproveitando integralmente o espaço útil da tela;
+  - **Consistência em Todos os Modos de Vídeo**: Aplicado universalmente ao Modo de Luta / Shiai (Vídeo Gravado, Streaming Web e Câmera em Tempo Real), Modo de Treinamento Pedagógico (Vídeo Gravado, Streaming e Tempo Real) e Análise Comparativa;
+  - **Proporção Otimizada**: Rebalanceamento do layout colunar para proporção ampliada `[6.2, 5.8]`, priorizando a nitidez na análise dos movimentos, Shinai e skeletons anatômicos 3D;
+  - **Persistência da Barra Lateral**: Manutenção da barra lateral maximizada por padrão na carga inicial e recarga de página (F5/Reload).
+- **Correções de Interface e Estabilidade ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - Correção de textos e quebras visuais na Página Inicial (Home), restaurando a legibilidade e harmonia tipográfica.
+
+---
+
+### `[v 0.3.7.0]` — 2026-10-11
 
 - **Rastreador Dedicado para o Modo de Treinamento e Aprendizado ([training_multi_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/training_multi_tracker.py), [kenshi_reid.py](file:///d:/Projetos/SenpAI/Dev/src/vision/kenshi_reid.py), [training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [webrtc_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/webrtc_manager.py), [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) & [test_training_multi_tracker.py](file:///d:/Projetos/SenpAI/Dev/tests/test_training_multi_tracker.py))**:
   - **Isolamento Arquitetural entre Luta e Treino**:
@@ -1702,7 +1719,7 @@ Total de **246 testes automatizados** distribuídos em 26 módulos, executados e
 > [!IMPORTANT]
 > **AVISO LEGAL E TERMOS DE PROTEÇÃO INTELECTUAL**
 > 
-> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.3.7.0`.**  
+> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.3.7.1`.**  
 > **TODOS OS DIREITOS DE USO E CÓPIA RESERVADOS.**
 > 
 > 1. **Titularidade**: Todo o código-fonte, arquitetura de visão computacional, algoritmos biomecânicos de *Ki-Ken-Tai-Ichi*, modelos de detecção postural, pesos de rede neural, perfis de calibração heurística, identidade visual, interfaces e documentações pertencem exclusivamente aos desenvolvedores e detentores do projeto SenpAI.
