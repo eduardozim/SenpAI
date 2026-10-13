@@ -2213,5 +2213,405 @@
         "permissivo"
       ]
     }
+  },
+  {
+    "id": "auto_train_20261013_140614_47",
+    "session_id": "auto_train_20261013_140614",
+    "status": "success",
+    "duration_seconds": 600.0,
+    "timestamp": "2026-10-13T14:16:15.111787",
+    "video_name": "AI_Auto_Trainer_recorded_shiai",
+    "profile_key": "recorded_shiai",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 13277,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261013_140614",
+      "effective_scope": "recorded_shiai",
+      "scope_name": "🎯 Necessidade Mais Latente (📹 Avaliação de Lutas / Shiai (Modo de Detecção Gravada))",
+      "duration_seconds": 600.0,
+      "initial_accuracy": 92.8,
+      "final_accuracy": 95.3,
+      "accuracy_gain": 2.5,
+      "sources_count": 17,
+      "sources_titles": [
+        "Web: Naginatajutsu (recorded_shiai)",
+        "Web: Karate (recorded_shiai)",
+        "Web: Mitsuyo Maeda (recorded_shiai)",
+        "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+        "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+        "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+        "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+        "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+        "Reinforcement Optimization on Dan Review Feedback Dataset",
+        "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0"
+      ],
+      "samples_processed": 13277,
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) chancelado pelo Golden Benchmark."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261013_140623_48",
+    "session_id": "auto_train_20261013_140623",
+    "status": "success",
+    "duration_seconds": 600.0,
+    "timestamp": "2026-10-13T14:16:24.482035",
+    "video_name": "AI_Auto_Trainer_recorded_shiai",
+    "profile_key": "recorded_shiai",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 10533,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261013_140623",
+      "effective_scope": "recorded_shiai",
+      "scope_name": "🎯 Necessidade Mais Latente (📹 Avaliação de Lutas / Shiai (Modo de Detecção Gravada))",
+      "duration_seconds": 600.0,
+      "initial_accuracy": 92.9,
+      "final_accuracy": 95.3,
+      "accuracy_gain": 2.4,
+      "sources_count": 17,
+      "sources_titles": [
+        "Web: Naginatajutsu (recorded_shiai)",
+        "Web: Karate (recorded_shiai)",
+        "Web: Mitsuyo Maeda (recorded_shiai)",
+        "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+        "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+        "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+        "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+        "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+        "Reinforcement Optimization on Dan Review Feedback Dataset",
+        "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0"
+      ],
+      "samples_processed": 10533,
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) chancelado pelo Golden Benchmark."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261013_140648_46",
+    "session_id": "auto_train_20261013_140648",
+    "status": "success",
+    "duration_seconds": 300.0,
+    "timestamp": "2026-10-13T14:11:49.850151",
+    "video_name": "AI_Auto_Trainer_recorded_shiai",
+    "profile_key": "recorded_shiai",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 6559,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261013_140648",
+      "effective_scope": "recorded_shiai",
+      "scope_name": "🎯 Necessidade Mais Latente (📹 Avaliação de Lutas / Shiai (Modo de Detecção Gravada))",
+      "duration_seconds": 300.0,
+      "initial_accuracy": 93.1,
+      "final_accuracy": 95.5,
+      "accuracy_gain": 2.4,
+      "sources_count": 17,
+      "sources_titles": [
+        "Web: Naginatajutsu (recorded_shiai)",
+        "Web: Karate (recorded_shiai)",
+        "Web: Mitsuyo Maeda (recorded_shiai)",
+        "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+        "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+        "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+        "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+        "Reinforcement Optimization on Dan Review Feedback Dataset",
+        "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+        "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0"
+      ],
+      "samples_processed": 6559,
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) chancelado pelo Golden Benchmark."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261013_151948_49",
+    "session_id": "auto_train_20261013_151948",
+    "status": "success",
+    "duration_seconds": 300.0,
+    "timestamp": "2026-10-13T15:24:49.261883",
+    "video_name": "AI_Auto_Trainer_recorded_shiai",
+    "profile_key": "recorded_shiai",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 7095,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261013_151948",
+      "effective_scope": "recorded_shiai",
+      "scope_name": "🎯 Necessidade Mais Latente (📹 Avaliação de Lutas / Shiai (Modo de Detecção Gravada))",
+      "duration_seconds": 300.0,
+      "initial_accuracy": 95.5,
+      "final_accuracy": 97.8,
+      "accuracy_gain": 2.3,
+      "sources_count": 17,
+      "sources_titles": [
+        "Web: Karate (recorded_shiai)",
+        "Web: Naginatajutsu (recorded_shiai)",
+        "Web: Mitsuyo Maeda (recorded_shiai)",
+        "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+        "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+        "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+        "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+        "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+        "Reinforcement Optimization on Dan Review Feedback Dataset",
+        "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0"
+      ],
+      "samples_processed": 7095,
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) chancelado pelo Golden Benchmark."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261013_151953_50",
+    "session_id": "auto_train_20261013_151953",
+    "status": "success",
+    "duration_seconds": 300.0,
+    "timestamp": "2026-10-13T15:24:54.467343",
+    "video_name": "AI_Auto_Trainer_recorded_shiai",
+    "profile_key": "recorded_shiai",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 5383,
+    "optimization_summary": {
+      "status": "success",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261013_151953",
+      "effective_scope": "recorded_shiai",
+      "scope_name": "🎯 Necessidade Mais Latente (📹 Avaliação de Lutas / Shiai (Modo de Detecção Gravada))",
+      "duration_seconds": 300.0,
+      "initial_accuracy": 95.5,
+      "final_accuracy": 97.9,
+      "accuracy_gain": 2.4,
+      "sources_count": 17,
+      "sources_titles": [
+        "Web: Karate (recorded_shiai)",
+        "Web: Naginatajutsu (recorded_shiai)",
+        "Web: Mitsuyo Maeda (recorded_shiai)",
+        "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+        "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+        "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+        "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+        "Reinforcement Optimization on Dan Review Feedback Dataset",
+        "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+        "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0"
+      ],
+      "samples_processed": 5383,
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) chancelado pelo Golden Benchmark."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261013_153934_51",
+    "session_id": "auto_train_20261013_153934",
+    "status": "stopped_early",
+    "duration_seconds": 1.0,
+    "timestamp": "2026-10-13T15:39:35.067383",
+    "video_name": "AI_Auto_Trainer_recorded_shiai",
+    "profile_key": "recorded_shiai",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 10,
+    "optimization_summary": {
+      "status": "stopped_early",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261013_153934",
+      "effective_scope": "recorded_shiai",
+      "scope_name": "🎯 Necessidade Mais Latente (📹 Avaliação de Lutas / Shiai (Modo de Detecção Gravada))",
+      "duration_seconds": 1.0,
+      "initial_accuracy": 97.9,
+      "final_accuracy": 97.9,
+      "accuracy_gain": 0.0,
+      "sources_count": 6,
+      "sources_titles": [
+        "Web: Naginatajutsu (recorded_shiai)",
+        "Web: Karate (recorded_shiai)",
+        "Web: Mitsuyo Maeda (recorded_shiai)",
+        "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+        "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+        "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)"
+      ],
+      "samples_processed": 0,
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) chancelado pelo Golden Benchmark."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261013_165934_52",
+    "session_id": "auto_train_20261013_165934",
+    "status": "stopped_early",
+    "duration_seconds": 83.6,
+    "timestamp": "2026-10-13T17:00:59.048210",
+    "video_name": "AI_Auto_Trainer_recorded_shiai",
+    "profile_key": "recorded_shiai",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 1483,
+    "optimization_summary": {
+      "status": "stopped_early",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261013_165934",
+      "effective_scope": "recorded_shiai",
+      "scope_name": "🎯 Necessidade Mais Latente (📹 Avaliação de Lutas / Shiai (Modo de Detecção Gravada))",
+      "duration_seconds": 83.6,
+      "initial_accuracy": 97.9,
+      "final_accuracy": 99.4,
+      "accuracy_gain": 1.5,
+      "sources_count": 12,
+      "sources_titles": [
+        "Web: Karate (recorded_shiai)",
+        "Web: Naginatajutsu (recorded_shiai)",
+        "Web: Mitsuyo Maeda (recorded_shiai)",
+        "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+        "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+        "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+        "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+        "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)"
+      ],
+      "samples_processed": 1483,
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) chancelado pelo Golden Benchmark."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
+  },
+  {
+    "id": "auto_train_20261013_171856_53",
+    "session_id": "auto_train_20261013_171856",
+    "status": "stopped_early",
+    "duration_seconds": 20.3,
+    "timestamp": "2026-10-13T17:19:17.996060",
+    "video_name": "AI_Auto_Trainer_recorded_shiai",
+    "profile_key": "recorded_shiai",
+    "reviewer_dan": 0,
+    "reviewer_dan_name": "Treinamento Automático por IA (Web & Vídeo)",
+    "is_auto_training": true,
+    "items_count": 434,
+    "optimization_summary": {
+      "status": "stopped_early",
+      "mode": "auto_training_ai",
+      "session_id": "auto_train_20261013_171856",
+      "effective_scope": "recorded_shiai",
+      "scope_name": "🎯 Necessidade Mais Latente (📹 Avaliação de Lutas / Shiai (Modo de Detecção Gravada))",
+      "duration_seconds": 20.3,
+      "initial_accuracy": 98.2,
+      "final_accuracy": 98.7,
+      "accuracy_gain": 0.5,
+      "sources_count": 9,
+      "sources_titles": [
+        "Web: Karate (recorded_shiai)",
+        "Web: Naginatajutsu (recorded_shiai)",
+        "Web: Mitsuyo Maeda (recorded_shiai)",
+        "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+        "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+        "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+        "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+        "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+        "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook"
+      ],
+      "samples_processed": 434,
+      "changes": [
+        "Retreinamento dos limiares de Yuko-Datotsu (Impacto, Fumikomi, Postura e Zanshin) chancelado pelo Golden Benchmark."
+      ],
+      "retrained_profiles": [
+        "normal",
+        "rigido",
+        "permissivo"
+      ]
+    }
   }
 ]
