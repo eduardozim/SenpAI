@@ -3309,7 +3309,7 @@ elif nav_page in ["match", "training", "analysis"]:
             }[x],
             key="match_submode_radio"
         )
-        app_mode: str = str(match_sub_raw or match_options[0])
+        app_mode: str = match_sub_raw or match_options[0]
     else:
         training_options = ["streaming", "recorded"] if is_web_server else ["realtime", "streaming", "recorded"]
         training_saved_val = st.session_state.get("training_submode_radio", training_options[0])
@@ -3328,7 +3328,7 @@ elif nav_page in ["match", "training", "analysis"]:
             }[x],
             key="training_submode_radio"
         )
-        training_choice = str(training_sub_raw or training_options[0])
+        training_choice = training_sub_raw or training_options[0]
         app_mode: str = "training_realtime" if training_choice == "realtime" else ("training_streaming" if training_choice == "streaming" else "training")
 
     # Limpar análise anterior automaticamente sempre que houver mudança de modo ou formato
