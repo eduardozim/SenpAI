@@ -1,7 +1,7 @@
 {
   "version": "2.0.0",
-  "last_updated": "2026-10-12T23:23:30.098802",
-  "total_web_sources_indexed": 39,
+  "last_updated": "2026-10-13T17:19:17.980423",
+  "total_web_sources_indexed": 45,
   "sources": {
     "fik_regulations": {
       "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
@@ -912,10 +912,248 @@
         "hasuji_consistency": 0.9
       },
       "structured_concept": "do_strike_biomechanics"
+    },
+    "web:_naginatajutsu_(recorded_shiai)": {
+      "title": "Web: Naginatajutsu (recorded_shiai)",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Naginatajutsu",
+      "focus": "recorded_shiai",
+      "summary": "(grandmaster) Yoshimitsu Katsuse. The practice within CBKob also covers shiai (fighting) using bogu equipped with sune (protection of the tibia). Combat",
+      "principles": [
+        "Conceito Técnico (Naginatajutsu): (grandmaster) Yoshimitsu Katsuse. The practice within CBKob also covers shiai (fighting) using bogu equipped with sune (..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "general_strike_biomechanics"
+    },
+    "web:_karate_(recorded_shiai)": {
+      "title": "Web: Karate (recorded_shiai)",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Karate",
+      "focus": "recorded_shiai",
+      "summary": "…&quot;. Examples include aikido, judo, kyūdō and kendo. Thus karatedō is more than just empty hand techniques. It is &quot;the way of the empty hand&quot;. Since the",
+      "principles": [
+        "Conceito Técnico (Karate): …&quot;. Examples include aikido, judo, kyūdō and kendo. Thus karatedō is more than just empty hand techniques. It is &q..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "web:_mitsuyo_maeda_(recorded_shiai)": {
+      "title": "Web: Mitsuyo Maeda (recorded_shiai)",
+      "type": "Artigo Web / Enciclopédia Técnica",
+      "url": "https://en.wikipedia.org/wiki/Mitsuyo_Maeda",
+      "focus": "recorded_shiai",
+      "summary": "defeating three adversaries in succession, but in a following tsukinami-shiai defeated eight adversaries in a row and was awarded the rank of 4th dan",
+      "principles": [
+        "Conceito Técnico (Mitsuyo Maeda): defeating three adversaries in succession, but in a following tsukinami-shiai defeated eight adversaries in a row and wa..."
+      ],
+      "authority_tier": 5,
+      "authority_name": "Blogs, fóruns e redes",
+      "authority_desc": "Descartado como prior",
+      "authority_weight": 0.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "collinear_thrust_tolerance": 0.07,
+        "blade_contact_zone": "kensaki"
+      },
+      "structured_concept": "tsuki_thrust_biomechanics"
+    },
+    "fik_-_the_regulations_of_kendo_shiai_and": {
+      "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
+      "type": "official_manual",
+      "url": "https://www.kendo-fik.org/regulations",
+      "focus": "Princípios Gerais de Kendo",
+      "summary": "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin. | Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+      "principles": [
+        "Yuko-Datotsu: Datotsu-bui with Shinai Jinbu, high spirits (Kiai), correct posture (Shisei), and Zanshin.",
+        "Sonkyo: Formal crouching posture at start and end of combat (knees bent, spine upright, heels raised).",
+        "Maai: Issoku-itto-no-maai (one step one strike distance), Toma, and Chikama.",
+        "Ki-Ken-Tai-Ichi: Complete unity of mind/spirit (Ki), sword trajectory (Ken), and body/footwork (Tai)."
+      ],
+      "biomechanical_thresholds": {
+        "men_strike_height_ratio": [
+          0.85,
+          1.05
+        ],
+        "kote_strike_wrist_angle": [
+          145.0,
+          180.0
+        ],
+        "do_strike_body_angle": [
+          35.0,
+          55.0
+        ],
+        "tsuki_thrust_collinear_tolerance": 0.08,
+        "fumikomi_sync_max_delay_ms": 70.0,
+        "zanshin_duration_min_sec": 0.8
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "spine_tilt_max_deg": 8.5,
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "zanshin_duration_min_sec": 0.8,
+        "hasuji_max_deviation_deg": 12.0,
+        "men_strike_height_ratio": {
+          "min": 0.85,
+          "max": 1.05
+        },
+        "kote_strike_wrist_angle": {
+          "min": 145.0,
+          "max": 180.0
+        },
+        "do_strike_body_angle": {
+          "min": 35.0,
+          "max": 55.0
+        },
+        "tsuki_thrust_collinear_tolerance": 0.08,
+        "fumikomi_sync_max_delay_ms": 70.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "ajkf_/_znkr_-_kendo_refereeing_&_judging": {
+      "title": "AJKF / ZNKR - Kendo Refereeing & Judging Practical Handbook",
+      "type": "official_manual",
+      "url": "https://www.kendo.or.jp/knowledge/rules/",
+      "focus": "Princípios Gerais de Kendo",
+      "summary": "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact. | Hasuji: Blade angle alignment preventing flat slapping hits.",
+      "principles": [
+        "Tenouchi: Coordinated squeezing grip with pinky and ring fingers at the moment of impact.",
+        "Hasuji: Blade angle alignment preventing flat slapping hits.",
+        "Datotsu-bu: Striking with the Monouchi part of the Jinbu.",
+        "Chushin-sen: Dominance and defense of the central line."
+      ],
+      "biomechanical_thresholds": {
+        "spine_upright_max_tilt_deg": 10.0,
+        "left_heel_elevation_min_cm": 2.5,
+        "shoulder_symmetry_tolerance": 0.05,
+        "elbow_extension_furikaburi_deg": [
+          115.0,
+          140.0
+        ]
+      },
+      "authority_tier": 2,
+      "authority_name": "AJKF Referee Handbook",
+      "authority_desc": "Alta",
+      "authority_weight": 0.85,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "spine_upright_max_tilt_deg": 10.0,
+        "left_heel_elevation_min_cm": 2.5,
+        "shoulder_symmetry_tolerance": 0.05,
+        "elbow_extension_furikaburi_deg": {
+          "min": 115.0,
+          "max": 140.0
+        }
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    "kinematic_&_kinetic_analysis_of_elite_ke": {
+      "title": "Kinematic & Kinetic Analysis of Elite Kendo Strikes (Biomechanics in Martial Arts)",
+      "type": "scientific_study",
+      "url": "https://sports-biomechanics.org/kendo/kinematics-fumikomi",
+      "focus": "Princípios Gerais de Kendo",
+      "summary": "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms. | Forward impulse transfer: Left foot spring drive (Hiki-tsuke) generates horizontal acceleration.",
+      "principles": [
+        "Fumikomi-ashi Ground Reaction Force: Peak vertical force precedes blade deceleration by 20-50ms.",
+        "Forward impulse transfer: Left foot spring drive (Hiki-tsuke) generates horizontal acceleration.",
+        "Suburi fatigue degradation: Progressive posture collapse manifests in excessive forward pelvic tilt."
+      ],
+      "biomechanical_thresholds": {
+        "fumikomi_knee_flexion_deg": [
+          95.0,
+          120.0
+        ],
+        "suburi_cadence_optimal_cpm": [
+          35.0,
+          60.0
+        ],
+        "kirikaeshi_cadence_optimal_cpm": [
+          55.0,
+          85.0
+        ],
+        "stamina_retention_ratio_target": 0.88
+      },
+      "authority_tier": 4,
+      "authority_name": "Artigos acadêmicos / Biomecânica",
+      "authority_desc": "Baixa",
+      "authority_weight": 0.45,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -50.0,
+          "max": 50.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "hasuji_max_deviation_deg": 12.0,
+        "elbow_extension_impact_deg": {
+          "min": 150.0,
+          "max": 175.0,
+          "ideal": 165.0,
+          "unit": "deg"
+        },
+        "blade_contact_zone": "monouchi",
+        "fumikomi_knee_flexion_deg": {
+          "min": 95.0,
+          "max": 120.0
+        },
+        "suburi_cadence_optimal_cpm": {
+          "min": 35.0,
+          "max": 60.0
+        },
+        "kirikaeshi_cadence_optimal_cpm": {
+          "min": 55.0,
+          "max": 85.0
+        },
+        "stamina_retention_ratio_target": 0.88
+      },
+      "structured_concept": "do_strike_biomechanics"
     }
   },
   "learned_parameters": {
-    "auto_learning_sequence_step": 0,
+    "auto_learning_sequence_step": 2,
     "general_kendo_principles": [
       "Ki-Ken-Tai-Ichi (気剣体一致): Unidade completa e simultânea de espírito (Ki), espada (Ken) e corpo/pés (Tai).",
       "Maai (間合い): Domínio da distância espacial e temporal (Toma, Issoku-itto-no-maai e Chikama).",
@@ -943,7 +1181,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 41.0,
-        "current_accuracy": 90.8,
+        "current_accuracy": 91.3,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -1177,7 +1415,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 46.5,
-        "current_accuracy": 96.2,
+        "current_accuracy": 96.7,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -1411,7 +1649,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 44.0,
-        "current_accuracy": 90.4,
+        "current_accuracy": 90.9,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -1630,7 +1868,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 39.5,
-        "current_accuracy": 89.3,
+        "current_accuracy": 89.8,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -1854,7 +2092,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 38.0,
-        "current_accuracy": 94.4,
+        "current_accuracy": 94.9,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -2088,7 +2326,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 33.5,
-        "current_accuracy": 90.4,
+        "current_accuracy": 90.9,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -2327,7 +2565,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 37.5,
-        "current_accuracy": 91.2,
+        "current_accuracy": 91.7,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -2556,7 +2794,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 36.5,
-        "current_accuracy": 89.6,
+        "current_accuracy": 90.1,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -2790,7 +3028,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 35.5,
-        "current_accuracy": 92.1,
+        "current_accuracy": 92.6,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -3034,7 +3272,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 32.0,
-        "current_accuracy": 92.0,
+        "current_accuracy": 92.5,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -3273,7 +3511,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 34.0,
-        "current_accuracy": 93.8,
+        "current_accuracy": 94.3,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -3517,7 +3755,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 45.0,
-        "current_accuracy": 91.4,
+        "current_accuracy": 91.9,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -3736,7 +3974,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 42.5,
-        "current_accuracy": 92.3,
+        "current_accuracy": 92.8,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -3975,7 +4213,7 @@
         "cadence_tolerance_pct": 0.12,
         "posture_strictness": 0.85,
         "initial_accuracy": 36.0,
-        "current_accuracy": 92.3,
+        "current_accuracy": 92.8,
         "last_calibrated": "12/10/2026 17:18",
         "mastery_level": "Excelente / Shiai",
         "principles_learned": [
@@ -4548,6 +4786,6 @@
       }
     }
   },
-  "training_sessions_completed": 45,
-  "last_retrained_at": "2026-10-12T17:18:02.987022"
+  "training_sessions_completed": 53,
+  "last_retrained_at": "2026-10-13T17:19:17.980423"
 }

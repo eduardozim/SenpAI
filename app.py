@@ -6,6 +6,7 @@ Suporta 2 Modos Principais de Operação:
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import tempfile
 import os
 import re
@@ -46,7 +47,6 @@ for _mod_name in [
     "src.utils.strike_clip_manager",
     "src.engine.active_learning",
     "src.engine.feedback_manager",
-    "src.engine.auto_trainer",
     "src.vision.training_multi_tracker"
 ]:
     if _mod_name in sys.modules:
@@ -98,7 +98,7 @@ from src.utils.video_player_controls import render_video_playback_controls
 setup_system_logger()
 
 # Versão Oficial do Sistema
-SYSTEM_VERSION = "v 0.3.7.0"
+SYSTEM_VERSION = "v 0.3.7.1"
 
 st.set_page_config(
     page_title=f"SenpAI ({SYSTEM_VERSION}) - AI Kendo Referee & Analysis System",
@@ -106,6 +106,68 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+def ensure_sidebar_expanded_on_load():
+    """
+    Garante que a barra lateral esteja sempre expandida por padrão em qualquer recarga de página (F5 / reload),
+    limpando o cache de minimização e reabrindo-a automaticamente no cliente.
+    """
+    js_code = """
+    <script>
+    (function() {
+        let attempts = 0;
+        const maxAttempts = 50;
+
+        function tryExpandSidebar() {
+            attempts++;
+            try {
+                const p = window.parent;
+                if (!p || !p.document) return;
+                
+                // 1. Limpa chaves de persistência do Streamlit no localStorage
+                try {
+                    if (p.localStorage) {
+                        for (let i = p.localStorage.length - 1; i >= 0; i--) {
+                            const k = p.localStorage.key(i);
+                            if (k && k.toLowerCase().includes("sidebar")) {
+                                p.localStorage.removeItem(k);
+                            }
+                        }
+                    }
+                } catch (e) {}
+
+                // 2. Verifica se a barra lateral está minimizada e aciona a expansão
+                const sidebar = p.document.querySelector('section[data-testid="stSidebar"]');
+                const isCollapsed = !sidebar || sidebar.getAttribute('aria-expanded') === 'false';
+
+                if (isCollapsed) {
+                    const expandBtn = p.document.querySelector('[data-testid="stSidebarCollapsedControl"] button') ||
+                                      p.document.querySelector('[data-testid="stSidebarCollapsedControl"]') ||
+                                      p.document.querySelector('button[aria-label="Expand sidebar"]');
+                    if (expandBtn) {
+                        expandBtn.click();
+                        return;
+                    }
+                } else if (sidebar && sidebar.getAttribute('aria-expanded') === 'true') {
+                    return;
+                }
+            } catch (err) {}
+
+            if (attempts < maxAttempts) {
+                setTimeout(tryExpandSidebar, 100);
+            }
+        }
+
+        tryExpandSidebar();
+    })();
+    </script>
+    """
+    try:
+        components.html(js_code, height=0, width=0)
+    except Exception:
+        pass
+
+ensure_sidebar_expanded_on_load()
 
 feedback_mgr = FeedbackManager()
 
@@ -601,7 +663,7 @@ st.markdown("""
         width: 100% !important;
     }
 
-    /* 3. Expansão e Fundo Contínuo da Barra Lateral (Cobrindo 100% dos Sliders e Conteúdo) */
+    /* 3. Expansão e Fundo Contínuo da Barra Lateral */
     [data-testid="stSidebar"],
     [data-testid="stSidebar"] > div,
     [data-testid="stSidebarContent"],
@@ -613,12 +675,121 @@ st.markdown("""
     }
 
     [data-testid="stSidebar"] {
-        min-width: 360px !important;
-        width: 360px !important;
         height: 100vh !important;
         min-height: 100vh !important;
         scrollbar-width: thin !important;
         scrollbar-color: #475569 #0F172A !important;
+    }
+
+    /* Aplica largura de 360px apenas quando a barra lateral está expandida (permite recolher suavemente) */
+    [data-testid="stSidebar"][aria-expanded="true"] {
+        min-width: 360px !important;
+        width: 360px !important;
+    }
+
+    /* Botão de Fechar/Recolher a Barra Lateral (<<): Sempre visível e acessível */
+    [data-testid="stSidebarCollapseButton"] {
+        opacity: 1 !important;
+        visibility: visible !important;
+        color: #94A3B8 !important;
+        background: rgba(30, 41, 59, 0.7) !important;
+        border: 1px solid rgba(59, 130, 246, 0.3) !important;
+        border-radius: 6px !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    [data-testid="stSidebarCollapseButton"]:hover {
+        opacity: 1 !important;
+        color: #38BDF8 !important;
+        background: #1E293B !important;
+        border-color: #38BDF8 !important;
+    }
+    [data-testid="stSidebarCollapseButton"] button {
+        color: #94A3B8 !important;
+    }
+
+    /* Botão de Reabrir a Barra Lateral (>>): Sempre visível e acessível no topo esquerdo quando minimizada */
+    [data-testid="stSidebarCollapsedControl"] {
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: flex !important;
+        z-index: 99999 !important;
+        color: #60A5FA !important;
+        background: #1E293B !important;
+        border: 1.5px solid #3B82F6 !important;
+        border-radius: 6px !important;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+        transition: all 0.2s ease-in-out !important;
+    }
+    [data-testid="stSidebarCollapsedControl"]:hover {
+        background: #2563EB !important;
+        color: #FFFFFF !important;
+        transform: scale(1.05);
+    }
+    [data-testid="stSidebarCollapsedControl"] button {
+        color: #60A5FA !important;
+    }
+    [data-testid="stSidebarCollapsedControl"] svg {
+        fill: #60A5FA !important;
+    }
+
+    /* Escala Maximizada e Responsiva dos Players de Vídeo */
+    div[data-testid="stColumn"] {
+        transition: flex 0.3s ease-in-out, width 0.3s ease-in-out, max-width 0.3s ease-in-out !important;
+    }
+
+    div[data-testid="stVideo"] {
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 10px !important;
+        overflow: hidden !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+        transition: all 0.3s ease-in-out !important;
+    }
+    div[data-testid="stVideo"] video {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 60vh !important;
+        object-fit: contain !important;
+        border-radius: 10px !important;
+        background-color: #000000 !important;
+        transition: max-height 0.3s ease-in-out, min-height 0.3s ease-in-out !important;
+    }
+
+    /* Streams de Câmera e Reprodução de Feed em Tempo Real Responsivos */
+    div[data-testid="stImage"] img {
+        width: 100% !important;
+        max-height: 60vh !important;
+        object-fit: contain !important;
+        border-radius: 8px !important;
+        transition: max-height 0.3s ease-in-out, min-height 0.3s ease-in-out !important;
+    }
+
+    /* Com a barra de navegação minimizada: aumenta o tamanho da área do vídeo (gravado, streaming ou ao vivo)
+       para aproximadamente 2x a área de quando a barra lateral está maximizada */
+    [data-testid="stAppViewContainer"]:has([data-testid="stSidebar"][aria-expanded="false"]) div[data-testid="stColumn"]:has(.video-preview-marker) {
+        flex: 2.3 1 0% !important;
+        width: 68% !important;
+        min-width: 65% !important;
+        max-width: 72% !important;
+    }
+    [data-testid="stAppViewContainer"]:has([data-testid="stSidebar"][aria-expanded="false"]) div[data-testid="stColumn"]:has(.video-side-panel-marker) {
+        flex: 1 1 0% !important;
+        width: 32% !important;
+        min-width: 28% !important;
+        max-width: 35% !important;
+    }
+    [data-testid="stAppViewContainer"]:has([data-testid="stSidebar"][aria-expanded="false"]) div[data-testid="stColumn"]:has(.video-preview-marker) div[data-testid="stVideo"] video {
+        max-height: 85vh !important;
+        min-height: 520px !important;
+        width: 100% !important;
+    }
+    [data-testid="stAppViewContainer"]:has([data-testid="stSidebar"][aria-expanded="false"]) div[data-testid="stColumn"]:has(.video-preview-marker) div[data-testid="stImage"] img {
+        max-height: 85vh !important;
+        width: 100% !important;
+    }
+    [data-testid="stAppViewContainer"]:has([data-testid="stSidebar"][aria-expanded="false"]) div[data-testid="stColumn"]:has(.video-preview-marker) iframe {
+        min-height: 520px !important;
+        width: 100% !important;
     }
 
     [data-testid="stSidebarUserContent"], [data-testid="stSidebar"] .block-container {
@@ -843,7 +1014,7 @@ def render_hero_banner():
 
     gpu_label = "GPU Habilitada" if effective_dev == "gpu" else "GPU Desabilitada (CPU)"
 
-    st.markdown(
+    st.html(
         f"""
         <div style="background: linear-gradient(135deg, #090D16 0%, #1E1B4B 50%, #0F172A 100%); border: 2px solid #6366F1; border-radius: 14px; padding: 24px 28px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(99, 102, 241, 0.25);">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
@@ -884,8 +1055,7 @@ def render_hero_banner():
                 </div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
 def render_global_footer():
@@ -894,7 +1064,7 @@ def render_global_footer():
     propriedade intelectual e reserva de direitos de uso e cópia.
     """
     st.markdown("<div style='margin-top: 40px;'></div>", unsafe_allow_html=True)
-    st.markdown(
+    st.html(
         f"""
         <div style="border-top: 1px solid #1E293B; padding-top: 20px; padding-bottom: 28px; margin-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #64748B;">
             <div>
@@ -915,8 +1085,7 @@ def render_global_footer():
                 </div>
             </div>
         </div>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
 def render_welcome_home_page():
@@ -958,7 +1127,7 @@ def render_welcome_home_page():
 
     step_c1, step_c2, step_c3, step_c4 = st.columns(4)
     with step_c1:
-        st.markdown(
+        st.html(
             """
             <div style="background: #0F172A; border: 1.5px solid #334155; border-radius: 10px; padding: 16px; height: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
@@ -970,8 +1139,7 @@ def render_welcome_home_page():
                     No menu lateral à esquerda, selecione <b>⚔️ Modo de Análise de Lutas</b> ou <b>🎓 Modo de Treinamento & Aprendizado</b>.
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
     with step_c2:
         step2_desc = (
@@ -979,7 +1147,7 @@ def render_welcome_home_page():
             if is_web_server
             else "Escolha entre <b>🔴 Tempo Real</b> (Webcam / RTSP), <b>🌐 Streaming</b> (YouTube / Ao Vivo) ou <b>📹 Vídeo Gravado</b> (upload local, link ou vídeo demo)."
         )
-        st.markdown(
+        st.html(
             f"""
             <div style="background: #0F172A; border: 1.5px solid #334155; border-radius: 10px; padding: 16px; height: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
@@ -991,11 +1159,10 @@ def render_welcome_home_page():
                     {step2_desc}
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
     with step_c3:
-        st.markdown(
+        st.html(
             """
             <div style="background: #0F172A; border: 1.5px solid #334155; border-radius: 10px; padding: 16px; height: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
@@ -1007,11 +1174,10 @@ def render_welcome_home_page():
                     Insira links de streaming ou carregue seus arquivos de vídeo locais para processamento com detecção por IA e diagnósticos completos.
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
     with step_c4:
-        st.markdown(
+        st.html(
             """
             <div style="background: #0F172A; border: 1.5px solid #334155; border-radius: 10px; padding: 16px; height: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
@@ -1023,8 +1189,7 @@ def render_welcome_home_page():
                     Visualize placar Sanbon-Shobu, linha do tempo de Ippons, HUD dos 3 Pilares e exporte relatórios consolidados em Excel, Markdown e JSON.
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
 
     st.markdown("---")
@@ -1037,16 +1202,16 @@ def render_welcome_home_page():
     with mode_c1:
         if is_web_server:
             match_items_html = """
-                        <li><b>🌐 Detecção via Streaming:</b> Transmissões ao vivo e links web (YouTube Live/VOD, Twitch, HLS .m3u8, RTMP, RTSP) com análise direta sem download prévio.</li>
-                        <li><b>📹 Detecção Gravada:</b> Vídeos pré-gravados via upload local de arquivo (.mp4, .avi, .mov), linha do tempo com governança por Dan e exportação Excel.</li>
+                <li><b>🌐 Detecção via Streaming:</b> Transmissões ao vivo e links web (YouTube Live/VOD, Twitch, HLS .m3u8, RTMP, RTSP) com análise direta sem download prévio.</li>
+                <li><b>📹 Detecção Gravada:</b> Vídeos pré-gravados via upload local de arquivo (.mp4, .avi, .mov), linha do tempo com governança por Dan e exportação Excel.</li>
             """
         else:
             match_items_html = """
-                        <li><b>🔴 Detecção em Tempo Real:</b> 1 a 4 câmeras simultâneas (Webcams / RTSP / Câmeras IP) com fusão geométrica e consenso multicâmera.</li>
-                        <li><b>🌐 Detecção via Streaming:</b> Transmissões ao vivo e links web (YouTube Live/VOD, Twitch, HLS .m3u8, RTMP, RTSP) com análise direta sem download prévio.</li>
-                        <li><b>📹 Detecção Gravada:</b> Vídeos pré-gravados, upload local sem limite, YouTube e linha do tempo com governança por Dan e exportação Excel.</li>
+                <li><b>🔴 Detecção em Tempo Real:</b> 1 a 4 câmeras simultâneas (Webcams / RTSP / Câmeras IP) com fusão geométrica e consenso multicâmera.</li>
+                <li><b>🌐 Detecção via Streaming:</b> Transmissões ao vivo e links web (YouTube Live/VOD, Twitch, HLS .m3u8, RTMP, RTSP) com análise direta sem download prévio.</li>
+                <li><b>📹 Detecção Gravada:</b> Vídeos pré-gravados, upload local sem limite, YouTube e linha do tempo com governança por Dan e exportação Excel.</li>
             """
-        st.markdown(
+        st.html(
             f"""
             <div style="background: linear-gradient(180deg, #1E1B4B 0%, #0F172A 100%); border: 2px solid #6366F1; border-radius: 14px; padding: 22px; height: 100%; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.20);">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
@@ -1066,22 +1231,21 @@ def render_welcome_home_page():
                     </ul>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
     with mode_c2:
         if is_web_server:
             training_items_html = """
-                        <li><b>🌐 Análise via Streaming:</b> Sessões ao vivo e treinos remotos (YouTube, Twitch, HLS, RTMP) com projeção do HUD dos 3 Pilares e telemetria em tempo real.</li>
-                        <li><b>📹 Análise de Vídeos Gravados:</b> Rastreamento detalhado por Kendoka via upload local de arquivo, diagnósticos com prescrições de treinos e relatórios individuais (.MD e .JSON).</li>
+                <li><b>🌐 Análise via Streaming:</b> Sessões ao vivo e treinos remotos (YouTube, Twitch, HLS, RTMP) com projeção do HUD dos 3 Pilares e telemetria em tempo real.</li>
+                <li><b>📹 Análise de Vídeos Gravados:</b> Rastreamento detalhado por Kendoka via upload local de arquivo, diagnósticos com prescrições de treinos e relatórios individuais (.MD e .JSON).</li>
             """
         else:
             training_items_html = """
-                        <li><b>🔴 Análise em Tempo Real (Webcam / RTSP):</b> Análise ao vivo na mesma dinâmica do tempo real, com HUD dos 3 Pilares, contagem de repetições, cadência (CPM) e biofeedback postural instantâneo.</li>
-                        <li><b>🌐 Análise via Streaming:</b> Sessões ao vivo e treinos remotos (YouTube, Twitch, HLS, RTMP) com projeção do HUD dos 3 Pilares e telemetria em tempo real.</li>
-                        <li><b>📹 Análise de Vídeos Gravados:</b> Rastreamento detalhado por Kendoka, diagnósticos com prescrições de treinos e relatórios individuais (.MD e .JSON).</li>
+                <li><b>🔴 Análise em Tempo Real (Webcam / RTSP):</b> Análise ao vivo na mesma dinâmica do tempo real, com HUD dos 3 Pilares, contagem de repetições, cadência (CPM) e biofeedback postural instantâneo.</li>
+                <li><b>🌐 Análise via Streaming:</b> Sessões ao vivo e treinos remotos (YouTube, Twitch, HLS, RTMP) com projeção do HUD dos 3 Pilares e telemetria em tempo real.</li>
+                <li><b>📹 Análise de Vídeos Gravados:</b> Rastreamento detalhado por Kendoka, diagnósticos com prescrições de treinos e relatórios individuais (.MD e .JSON).</li>
             """
-        st.markdown(
+        st.html(
             f"""
             <div style="background: linear-gradient(180deg, #064E3B 0%, #0F172A 100%); border: 2px solid #10B981; border-radius: 14px; padding: 22px; height: 100%; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.20);">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
@@ -1101,8 +1265,7 @@ def render_welcome_home_page():
                     </ul>
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
 
     st.markdown("---")
@@ -1111,11 +1274,11 @@ def render_welcome_home_page():
     st.markdown("### Inteligência Artificial Transparente & Governança por Dan")
     info_col1, info_col2 = st.columns([1.5, 1.0])
     with info_col1:
-        st.markdown(
+        st.html(
             """
             <div style="background: #0B1120; border: 1px solid #334155; border-radius: 10px; padding: 16px 20px;">
                 <div style="color: #F8FAFC; font-weight: 700; font-size: 15px; margin-bottom: 6px;">
-                    - Calibração Realista (< 50% na Fase Inicial)
+                    🎯 Calibração Realista (&lt; 50% na Fase Inicial)
                 </div>
                 <div style="color: #CBD5E1; font-size: 13px; line-height: 1.5; margin-bottom: 10px;">
                     O SenpAI adota uma postura ética de honestidade empírica: modelos de visão computacional em estado bruto sem calibração prévia possuem acurácia preliminar em torno de <b>32% a 46%</b> devido à velocidade dos ataques e propensão a falsos positivos em combates dinâmicos.
@@ -1124,11 +1287,10 @@ def render_welcome_home_page():
                     À medida que o <b>Treinador Automático por IA</b> processa manuais da FIK e que <b>árbitros graduados (1º ao 8º Dan)</b> cadastram revisões no dataset, a acurácia é refinada progressivamente, eliminando falsos positivos e ajustando limiares de impacto, <i>Fumikomi</i> e <i>Zanshin</i>.
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
     with info_col2:
-        st.markdown(
+        st.html(
             """
             <div style="background: #0B1120; border: 1px solid #334155; border-radius: 10px; padding: 16px 20px;">
                 <div style="color: #F8FAFC; font-weight: 700; font-size: 15px; margin-bottom: 6px;">
@@ -1142,8 +1304,7 @@ def render_welcome_home_page():
                     <li><b>Histórico auditável</b> de treinamentos</li>
                 </ul>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
 
     st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
@@ -1994,7 +2155,7 @@ elif nav_page == "settings":
                 )
 
                 if btn_start_train:
-                    auto_trainer.start_training_thread(
+                    started = auto_trainer.start_training_thread(
                         scope_key=sel_scope_key,
                         duration_minutes=effective_duration_min,
                         intensity=depth_sel,
@@ -2002,7 +2163,11 @@ elif nav_page == "settings":
                         include_text_guidelines=inc_txt_chk,
                         latent_strategy=latent_strategy
                     )
-                    st.toast(f"🚀 Treinamento de {int(effective_duration_min)} min iniciado! Executando pesquisa contínua...", icon="🥋")
+                    if started:
+                        st.toast(f"🚀 Treinamento de {int(effective_duration_min)} min iniciado! Executando pesquisa contínua...", icon="🥋")
+                    else:
+                        st.info("ℹ️ O treinamento já está em execução em segundo plano.")
+                    time.sleep(0.3)
                     st.rerun()
 
             # Exibição dos resultados do último treinamento se disponível
@@ -2812,6 +2977,7 @@ elif nav_page == "settings":
                     c_vid, c_info = st.columns([1, 1])
 
                     with c_vid:
+                        st.markdown('<div class="video-preview-marker"></div>', unsafe_allow_html=True)
                         if clip_path and os.path.isfile(clip_path):
                             st.video(clip_path, format="video/mp4")
                             st.caption(f"🎥 **Corte Real do Golpe ({strike_t}) aos {formatted_time}** de `{clean_src_name}`")
@@ -2822,6 +2988,7 @@ elif nav_page == "settings":
                             )
 
                     with c_info:
+                        st.markdown('<div class="video-side-panel-marker"></div>', unsafe_allow_html=True)
                         conf_pct = float(unc_item.get("confidence", 0.5)) * 100
                         unc_pct = float(unc_item.get("uncertainty_score", 0.0)) * 100
                         st.markdown(f"#### 🥋 Golpe: `{strike_t}`")
@@ -3716,6 +3883,7 @@ elif nav_page in ["match", "training", "analysis"]:
             st.caption("Pressione **'START'** no player abaixo para autorizar e iniciar a captura da sua webcam pelo navegador. A IA do SenpAI processará os movimentos e projetará o HUD biomecânico em tempo real.")
             col_live_cams, col_live_feed = st.columns([7, 5])
             with col_live_feed:
+                st.markdown('<div class="video-side-panel-marker"></div>', unsafe_allow_html=True)
                 st.markdown("##### 📊 Feed de Golpes & Painel de Métricas")
                 fps_metric = st.empty()
                 strike_alert_box = st.empty()
@@ -3728,6 +3896,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     live_events_placeholder.caption("🥋 *Inicie a câmera e execute os golpes para avaliação em tempo real...*")
 
             with col_live_cams:
+                st.markdown('<div class="video-preview-marker"></div>', unsafe_allow_html=True)
                 dev_pref = st.session_state.get("device_preference", get_processing_device())
                 vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
                 active_profile_str = profile_choice if profile_choice != "custom" else "normal"
@@ -3818,6 +3987,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 col_live_cams, col_live_feed = st.columns([7, 5])
 
                 with col_live_feed:
+                    st.markdown('<div class="video-side-panel-marker"></div>', unsafe_allow_html=True)
                     st.markdown("##### 📊 Feed de Golpes & Painel de Métricas")
                     fps_metric = st.empty()
                     strike_alert_box = st.empty()
@@ -3829,6 +3999,7 @@ elif nav_page in ["match", "training", "analysis"]:
                         live_events_placeholder.caption("🥋 *Aguardando detecção de golpes em tempo real...*")
 
                 with col_live_cams:
+                    st.markdown('<div class="video-preview-marker"></div>', unsafe_allow_html=True)
                     st.markdown(f"##### 🎥 Feeds de Vídeo ({num_cameras} Câmera{'s' if num_cameras > 1 else ''})")
                     frame_placeholders = []
                     # 1 Câmera: Única
@@ -4233,6 +4404,7 @@ elif nav_page in ["match", "training", "analysis"]:
 
                 col_live_stream, col_live_feed = st.columns([7, 5])
                 with col_live_feed:
+                    st.markdown('<div class="video-side-panel-marker"></div>', unsafe_allow_html=True)
                     st.markdown("##### 📊 Feed de Golpes & Painel de Métricas")
                     fps_metric = st.empty()
                     strike_alert_box = st.empty()
@@ -4245,6 +4417,7 @@ elif nav_page in ["match", "training", "analysis"]:
                         live_events_placeholder.caption("🥋 *Conectando ao stream e aguardando detecção de golpes...*")
 
                 with col_live_stream:
+                    st.markdown('<div class="video-preview-marker"></div>', unsafe_allow_html=True)
                     st.markdown("##### 🎥 Reprodução do Streaming & HUD Biomecânico")
                     
                     # Barra de Controle de Velocidade e Navegação do Vídeo
@@ -4775,6 +4948,7 @@ elif nav_page in ["match", "training", "analysis"]:
             st.caption("Pressione **'START'** no player abaixo para autorizar e iniciar a captura da sua webcam pelo navegador. A IA do SenpAI avaliará seus movimentos com biofeedback instantâneo.")
             col_live_cams, col_live_feed = st.columns([7, 5])
             with col_live_feed:
+                st.markdown('<div class="video-side-panel-marker"></div>', unsafe_allow_html=True)
                 st.markdown("##### 🎓 Painel de Treinamento Ao Vivo")
                 train_fps_metric = st.empty()
                 train_hud_ph = st.empty()
@@ -4785,6 +4959,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     train_events_ph.caption("🥋 *Inicie a câmera e execute os movimentos para contagem de repetições...*")
 
             with col_live_cams:
+                st.markdown('<div class="video-preview-marker"></div>', unsafe_allow_html=True)
                 dev_pref = st.session_state.get("device_preference", get_processing_device())
                 vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
 
@@ -4871,6 +5046,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 col_live_cams, col_live_feed = st.columns([7, 5])
 
                 with col_live_feed:
+                    st.markdown('<div class="video-side-panel-marker"></div>', unsafe_allow_html=True)
                     st.markdown("##### 🎓 Painel de Treinamento Ao Vivo")
                     train_fps_metric = st.empty()
                     live_train_hud_ph = st.empty()
@@ -4881,6 +5057,7 @@ elif nav_page in ["match", "training", "analysis"]:
                         train_events_placeholder.caption("🥋 *Inicie os movimentos e golpes para detecção das repetições...*")
 
                 with col_live_cams:
+                    st.markdown('<div class="video-preview-marker"></div>', unsafe_allow_html=True)
                     st.markdown(f"##### 🎥 Feeds de Vídeo ({num_cameras} Câmera{'s' if num_cameras > 1 else ''})")
                     frame_placeholders = []
                     if num_cameras == 1:
@@ -5242,6 +5419,7 @@ elif nav_page in ["match", "training", "analysis"]:
 
                 col_train_stream, col_train_feed = st.columns([7, 5])
                 with col_train_feed:
+                    st.markdown('<div class="video-side-panel-marker"></div>', unsafe_allow_html=True)
                     st.markdown("##### 📊 Painel de Métricas & 3 Pilares (Ao Vivo)")
                     train_fps_metric = st.empty()
                     live_train_hud_ph = st.empty()
@@ -5253,6 +5431,7 @@ elif nav_page in ["match", "training", "analysis"]:
                         train_events_placeholder.caption("🥋 *Conectando ao stream e aguardando repetições...*")
 
                 with col_train_stream:
+                    st.markdown('<div class="video-preview-marker"></div>', unsafe_allow_html=True)
                     st.markdown("##### 🎥 Reprodução do Streaming de Treino & HUD")
                     
                     # Barra de Controle de Velocidade e Navegação do Vídeo de Treino
@@ -6379,9 +6558,11 @@ elif nav_page in ["match", "training", "analysis"]:
                                 st.rerun()
 
             # DUAS COLUNAS PERFEITAMENTE ALINHADAS LADO A LADO: VÍDEO (ESQUERDA) & RESULTADOS (DIREITA)
-            col_video, col_results = st.columns([5, 7])
+            # Proporção [6.2, 5.8] ampliada para conferir destaque e grande escala de visualização ao Preview de vídeo
+            col_video, col_results = st.columns([6.2, 5.8])
             
             with col_video:
+                st.markdown('<div class="video-preview-marker"></div>', unsafe_allow_html=True)
                 st.subheader("🎥 Vídeo do Treinamento" if app_mode == "training" else "🎥 Vídeo da Luta")
                 if st.session_state.get("video_source_type") == "youtube" and "youtube_url" in st.session_state:
                     yt_u = st.session_state["youtube_url"]
@@ -6577,6 +6758,7 @@ elif nav_page in ["match", "training", "analysis"]:
                         st.markdown('</div>', unsafe_allow_html=True)
 
             with col_results:
+                st.markdown('<div class="video-side-panel-marker"></div>', unsafe_allow_html=True)
                 if app_mode == "training":
                     st.subheader("🎓 Avaliação de Treinamento")
                     if is_running:

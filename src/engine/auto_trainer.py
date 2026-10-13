@@ -421,12 +421,26 @@ class AutoTrainingEngine:
         self._stop_requested = True
 
     def is_running(self) -> bool:
-        """Retorna True se houver um treinamento automático em execução."""
-        return getattr(self, "_is_running", False)
+        """Retorna True se houver um treinamento automático em execução ativa."""
+        t = getattr(self, "_training_thread", None)
+        if t is not None:
+            if t.is_alive():
+                self._is_running = True
+                return True
+            else:
+                self._is_running = False
+                return False
+        return bool(getattr(self, "_is_running", False))
 
     def get_last_result(self) -> Optional[Dict[str, Any]]:
         """Retorna o resultado consolidado do último ciclo de treinamento executado."""
-        return getattr(self, "_last_train_result", None)
+        res = getattr(self, "_last_train_result", None)
+        if res:
+            return res
+        ckpt = self.load_checkpoint()
+        if ckpt and ckpt.get("status") in ["completed_consolidated", "interrupted_salvaged", "stopped_early_consolidated"]:
+            return ckpt
+        return None
 
     def start_training_thread(
         self,
@@ -442,10 +456,13 @@ class AutoTrainingEngine:
         garantindo execução contínua pelo tempo integral programado e resiliência
         contra quedas ou desconexões temporárias de navegadores web.
         """
-        if getattr(self, "_is_running", False):
+        if self.is_running():
             return False
         import threading
+        self._is_running = True
         self._stop_requested = False
+        self._last_train_result = None
+
         self._training_thread = threading.Thread(
             target=self.run_auto_training,
             kwargs={
@@ -1396,15 +1413,6 @@ class AutoTrainingEngine:
             "is_trained": sessions_count > 0 or total_auto_sessions > 0
         }
 
-    def request_stop(self):
-        """Solicita a parada graciosa do treinamento em andamento."""
-        self._stop_requested = True
-        log_event("WARN", "Solicitação de parada manual enviada ao Motor de Treinamento Automático.", "auto_trainer")
-
-    def is_running(self) -> bool:
-        """Verifica se o treinamento está em execução."""
-        return self._is_running
-
     def run_auto_training(
         self,
         scope_key: str = "latent_need",
@@ -1428,7 +1436,8 @@ class AutoTrainingEngine:
         self.consolidate_pending_checkpoint()
 
         self._is_running = True
-        self._stop_requested = False
+        if not getattr(self, "_stop_requested", False):
+            self._stop_requested = False
         start_time = time.time()
 
         # Detecção de ambiente Web / Nuvem
