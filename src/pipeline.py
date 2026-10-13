@@ -14,6 +14,7 @@ from typing import Dict, Any, List, Callable, Optional, Tuple
 from src.vision.pose_detector import PoseDetector
 from src.vision.shinai_tracker import ShinaiTracker
 from src.vision.combatant_tracker import CombatantTracker
+from src.vision.training_multi_tracker import TrainingMultiKenshiTracker
 from src.analytics.event_spotter import EventSpotter, StrikeEvent
 from src.analytics.sonkyo_detector import SonkyoDetector
 from src.analytics.biomechanics import BiomechanicsAnalyzer
@@ -128,6 +129,7 @@ class SenpAIPipeline:
         self.pose_detector = PoseDetector(device=self.effective_device, model_name=self.vision_model)
         self.shinai_tracker = ShinaiTracker()
         self.combatant_tracker = CombatantTracker()
+        self.training_multi_tracker = TrainingMultiKenshiTracker()
         self.sonkyo_detector = SonkyoDetector()
         self.event_spotter = EventSpotter()
         self.biomechanics = BiomechanicsAnalyzer()
@@ -153,7 +155,8 @@ class SenpAIPipeline:
         invert_combatants: bool = False,
         training_modality_override: Optional[str] = None,
         custom_kendoka_names: Optional[Dict[str, str]] = None,
-        shiaijo_polygon: Optional[List[Tuple[float, float]]] = None
+        shiaijo_polygon: Optional[List[Tuple[float, float]]] = None,
+        analysis_mode: str = "match"
     ) -> Optional[Dict[str, Any]]:
         """
         Executa a análise completa de um arquivo de vídeo de luta/treino de Kendo:
@@ -167,6 +170,17 @@ class SenpAIPipeline:
         """
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
+
+        # BIFURCAÇÃO ESTRITA: Modo Treinamento & Aprendizado usa rastreador dedicado
+        if analysis_mode == "training":
+            return self._process_training_video(
+                video_path=video_path,
+                output_video_path=output_video_path,
+                progress_callback=progress_callback,
+                is_cancelled=is_cancelled,
+                training_modality_override=training_modality_override,
+                custom_kendoka_names=custom_kendoka_names
+            )
 
         start_time = time.time()
 
@@ -449,6 +463,38 @@ class SenpAIPipeline:
                 "diagnostic_report": report_text
             })
 
+            # Curadoria Ativa: Se o lance recai na faixa de incerteza arbitral (45%-65%), extrair corte real da luta
+            conf_val = float(evaluation.get("total_score", 0.0)) / 100.0 if float(evaluation.get("total_score", 0.0)) > 1.0 else float(evaluation.get("total_score", 0.0))
+            if 0.45 <= conf_val <= 0.65 and video_path and os.path.isfile(video_path):
+                try:
+                    from src.utils.strike_clip_manager import extract_strike_subclip, DEFAULT_CLIPS_DIR
+                    from src.engine.active_learning import UncertaintySampler
+
+                    target_time = float(ev_dict.get("impact_frame", 0)) / float(fps) if fps > 0 else 0.0
+                    clip_id = f"unc_strike_{int(time.time() * 1000)}_{len(analyzed_events)}"
+                    clip_out = os.path.join(DEFAULT_CLIPS_DIR, f"{clip_id}_corte.mp4")
+                    real_clip = extract_strike_subclip(video_path, clip_out, target_time_sec=target_time)
+
+                    sampler = UncertaintySampler()
+                    strike_pkg = {
+                        "strike_type": ev_dict.get("strike_type", "Men"),
+                        "scores": evaluation.get("scores", {}),
+                        "sub_scores": evaluation.get("scores", {}),
+                        "total_score": evaluation.get("total_score", conf_val * 100.0),
+                        "timestamp_seconds": target_time,
+                        "timestamp": ev_dict.get("timestamp", f"{target_time:.1f}s"),
+                        "impact_frame": ev_dict.get("impact_frame", 0)
+                    }
+                    sampler.evaluate_and_enqueue(
+                        strike_data=strike_pkg,
+                        confidence=conf_val,
+                        video_source=video_path,
+                        profile_name=getattr(self.calibrator, "profile_name", "normal"),
+                        clip_path=real_clip
+                    )
+                except Exception as e:
+                    log_event("WARNING", f"Falha ao extrair corte real de golpe incerto no pipeline: {e}", "pipeline")
+
         # 6. Gravação do Vídeo Anotado com HUD de Sonkyō, Rastreamento dos Kenshis e Marcação de Golpes
         if output_video_path and total_frames > 0:
             # Mapear eventos de golpe por frame para anotação visual síncrona
@@ -632,6 +678,220 @@ class SenpAIPipeline:
             }
         }
 
+    def _process_training_video(
+        self,
+        video_path: str,
+        output_video_path: Optional[str] = None,
+        progress_callback: Optional[Callable[[float], None]] = None,
+        is_cancelled: Optional[Callable[[], bool]] = None,
+        training_modality_override: Optional[str] = None,
+        custom_kendoka_names: Optional[Dict[str, str]] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Executa a análise dedicada do Modo de Treinamento e Aprendizado:
+        1. Rastreamento simultâneo de N praticantes com TrainingMultiKenshiTracker.
+        2. Re-identificação contínua (Re-ID) de praticantes que saem e retornam ao enquadramento
+           via Zekken (frente do Tare), Tenugui (dorsal sob o Men), Tare lateral e Biometria.
+        3. Detecção e atribuição de golpes sem barreiras de Sonkyō.
+        4. Avaliação individualizada dos 3 Pilares e cadência justa com base no tempo de presença em quadro.
+        """
+        start_time = time.time()
+        tracker = TrainingMultiKenshiTracker(
+            max_lost_frames=90,
+            spatial_dist_threshold=0.44,
+            reid_similarity_threshold=0.46,
+            min_hits=3
+        )
+        self.training_multi_tracker = tracker
+
+        batch_size = self.batch_size if (self.effective_device == "gpu" and self.pose_detector.use_gpu) else 1
+        frame_idx = 0
+
+        with AsyncVideoBatchReader(video_path, batch_size=batch_size, max_queue=4) as reader:
+            fps = reader.fps
+            total_frames = reader.total_frames
+            width = reader.width
+            height = reader.height
+
+            try:
+                while True:
+                    if is_cancelled and is_cancelled():
+                        log_event("WARNING", f"Análise de treino cancelada pelo usuário no frame {frame_idx}/{total_frames}.", "pipeline")
+                        reader.stop()
+                        return None
+
+                    batch_frames = reader.read_batch()
+                    if not batch_frames:
+                        break
+
+                    batch_candidates = self.pose_detector.process_frame_candidates_batch(batch_frames)
+
+                    for frame_in_batch, candidates in zip(batch_frames, batch_candidates):
+                        tracker.process_frame(candidates, frame=frame_in_batch)
+                        frame_idx += 1
+
+                    if progress_callback:
+                        progress_callback(min(0.65, (frame_idx / total_frames) * 0.65))
+            finally:
+                if self.effective_device == "gpu":
+                    try:
+                        import torch
+                        if torch.cuda.is_available():
+                            torch.cuda.empty_cache()
+                    except Exception:
+                        pass
+
+        tracker.finish_session(total_frames)
+
+        if is_cancelled and is_cancelled():
+            return None
+
+        # Detecção de golpes individualizada para cada Kenshi rastreado
+        strikes_by_kenshi: Dict[str, List[Any]] = {}
+        all_training_events: List[Dict[str, Any]] = []
+
+        kenshi_histories = {k_id: t.history for k_id, t in tracker.tracks.items()}
+
+        for k_id, t in tracker.tracks.items():
+            valid_poses = [p for p in t.history if p]
+            if len(valid_poses) < 10:
+                continue
+
+            k_name = (custom_kendoka_names or {}).get(k_id, t.display_name)
+            k_strikes = self.event_spotter.detect_strikes(
+                t.history,
+                fps=fps,
+                attacker_id=k_id,
+                attacker_name=k_name,
+                filter_out_of_bounds=False
+            )
+            strikes_by_kenshi[k_id] = k_strikes
+
+            for st in k_strikes:
+                ev_dict = st.to_dict()
+                ev_dict["contact_detected"] = True
+                all_training_events.append({
+                    "event_info": ev_dict,
+                    "evaluation": {"is_valid": True, "total_score": 85.0},
+                    "diagnostic_report": f"🥋 Golpe {st.type} executado por {k_name} ({st.timestamp_impact})."
+                })
+
+        all_training_events.sort(key=lambda e: e["event_info"].get("impact_frame", 0))
+
+        # Renderização do vídeo anotado com N Kenshis se solicitado
+        if output_video_path and total_frames > 0:
+            cap_render = cv2.VideoCapture(video_path)
+            fourcc = cv2.VideoWriter.fourcc(*'mp4v')
+            writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
+
+            # Paleta de cores para N praticantes
+            palette = [
+                (59, 130, 246),  # Azul
+                (239, 68, 68),   # Vermelho
+                (34, 197, 94),   # Verde
+                (234, 179, 8),   # Amarelo
+                (168, 85, 247),  # Roxo
+                (236, 72, 153),  # Rosa
+                (20, 184, 166)   # Ciano
+            ]
+
+            try:
+                f_idx = 0
+                while cap_render.isOpened():
+                    if is_cancelled and is_cancelled():
+                        return None
+                    ret, raw_f = cap_render.read()
+                    if not ret or raw_f is None:
+                        break
+
+                    ann_f = raw_f.copy()
+
+                    # Desenhar esqueletos dos Kenshis ativos no frame
+                    for idx_track, (k_id, track) in enumerate(tracker.tracks.items()):
+                        if f_idx < len(track.history):
+                            lm = track.history[f_idx]
+                            if lm is not None:
+                                col = palette[idx_track % len(palette)]
+                                c_name = (custom_kendoka_names or {}).get(k_id, track.display_name)
+                                label_txt = f"{c_name}"
+                                if track.reentry_count > 0:
+                                    label_txt += f" [Re-ID x{track.reentry_count}]"
+
+                                from src.vision.pose_detector import CombatantVisualizer
+                                CombatantVisualizer.draw_skeleton(ann_f, lm, color=col, label=label_txt)
+
+                    # Banner superior de treinamento
+                    cv2.rectangle(ann_f, (10, 10), (width - 10, 50), (15, 23, 42), -1)
+                    cv2.rectangle(ann_f, (10, 10), (width - 10, 50), (99, 102, 241), 1)
+                    active_now = sum(1 for t in tracker.tracks.values() if f_idx < len(t.history) and t.history[f_idx] is not None)
+                    txt_banner = f"MODO TREINAMENTO SENPAI | Kenshis em Cena: {active_now} | Total na Sessao: {len(tracker.tracks)} | Re-identificacoes: {tracker.total_reidentifications}"
+                    cv2.putText(ann_f, txt_banner, (20, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
+
+                    writer.write(ann_f)
+                    f_idx += 1
+
+                    if progress_callback and f_idx % 12 == 0:
+                        progress_callback(0.65 + (f_idx / total_frames) * 0.35)
+            finally:
+                cap_render.release()
+                writer.release()
+
+            try:
+                ensure_browser_compatible_video(output_video_path)
+            except Exception as e_transcode:
+                log_event("WARNING", f"Transcodificação para H.264 não pôde ser completada: {e_transcode}", "pipeline")
+
+        summary_tracker = tracker.get_session_summary()
+
+        training_session_result = self.training_analyzer.analyze_multi_session(
+            kenshi_histories=kenshi_histories,
+            detected_strikes_by_kenshi=strikes_by_kenshi,
+            modality_override=training_modality_override,
+            fps=fps,
+            custom_kendoka_names=custom_kendoka_names,
+            kenshis_metadata=summary_tracker.get("kenshis", [])
+        )
+
+        total_elapsed_sec = round(time.time() - start_time, 2)
+        processing_fps = round(total_frames / max(0.001, total_elapsed_sec), 1)
+
+        summary_log = (
+            f"RESUMO DE TREINAMENTO MULTI-KENSHI CONCLUÍDO:\n"
+            f"  • Kenshis Detectados: {len(tracker.tracks)}\n"
+            f"  • Re-identificações de Retorno ao Quadro: {tracker.total_reidentifications}\n"
+            f"  • Modalidade: {training_session_result.modality_name}\n"
+            f"  • Duração: {round(total_frames / fps, 2)}s ({total_elapsed_sec:.2f}s a {processing_fps} FPS)"
+        )
+        log_event("INFO", summary_log, "pipeline")
+
+        if progress_callback:
+            progress_callback(1.0)
+
+        return {
+            "video_path": video_path,
+            "total_frames": total_frames,
+            "duration_seconds": round(total_frames / fps, 2),
+            "processing_time_seconds": total_elapsed_sec,
+            "processing_fps": processing_fps,
+            "effective_combat_duration_seconds": round(total_frames / fps, 2),
+            "events_detected_count": len(all_training_events),
+            "profile_applied": "Treinamento & Aprendizado Multi-Kenshi",
+            "device_used": self.effective_device,
+            "device_status": self.device_status_message,
+            "sonkyo_analysis": {"has_initial_sonkyo": False, "has_final_sonkyo": False},
+            "plane_filtering": {"mode": "training_multi_kenshi"},
+            "scoreboard": {
+                "aka_score": 0,
+                "shiro_score": 0,
+                "winner": "TRAINING",
+                "winner_name": "Sessão de Treino",
+                "result_description": f"Treinamento com {len(tracker.tracks)} Kenshi(s)"
+            },
+            "events": all_training_events,
+            "training_analysis": training_session_result.to_dict(),
+            "multi_kenshi_tracker_summary": summary_tracker
+        }
+
 
 class AnalysisWorker:
     """
@@ -648,7 +908,8 @@ class AnalysisWorker:
         invert_combatants: bool = False,
         training_modality_override: Optional[str] = None,
         custom_kendoka_names: Optional[Dict[str, str]] = None,
-        shiaijo_polygon: Optional[List[Tuple[float, float]]] = None
+        shiaijo_polygon: Optional[List[Tuple[float, float]]] = None,
+        analysis_mode: str = "match"
     ):
         self.pipeline = pipeline
         self.video_path = video_path
@@ -659,6 +920,7 @@ class AnalysisWorker:
         self.training_modality_override = training_modality_override
         self.custom_kendoka_names = custom_kendoka_names
         self.shiaijo_polygon = shiaijo_polygon
+        self.analysis_mode = analysis_mode
         
         self.progress: float = 0.0
         self.status_message: str = "Inicializando pipeline de visão e pose tracking..."
@@ -718,7 +980,8 @@ class AnalysisWorker:
                 invert_combatants=self.invert_combatants,
                 training_modality_override=self.training_modality_override,
                 custom_kendoka_names=self.custom_kendoka_names,
-                shiaijo_polygon=self.shiaijo_polygon
+                shiaijo_polygon=self.shiaijo_polygon,
+                analysis_mode=self.analysis_mode
             )
 
             self.end_time = time.time()

@@ -259,8 +259,13 @@ class KendokaTrainingProfile:
         repetition_timeline: Optional[List[Dict[str, Any]]] = None,
         kinesthetic_deviations: Optional[Dict[str, Any]] = None,
         kinesthetic_insights: Optional[List[str]] = None,
+        presence_frames: int = 0,
+        presence_seconds: float = 0.0,
+        presence_intervals: Optional[List[Tuple[int, int]]] = None,
+        reentry_count: int = 0,
+        thumbnail: Optional[Any] = None
     ):
-        self.kendoka_id = kendoka_id  # "KENSHI_SHIRO", "KENSHI_AKA" ou "KENSHI_SOLO"
+        self.kendoka_id = kendoka_id  # "KENSHI_01", "KENSHI_02", "KENSHI_SHIRO", etc.
         self.default_name = default_name
         self.custom_name = custom_name or default_name
         self.role = role
@@ -271,6 +276,11 @@ class KendokaTrainingProfile:
         self.repetition_timeline = repetition_timeline or []
         self.kinesthetic_deviations = kinesthetic_deviations or {}
         self.kinesthetic_insights = kinesthetic_insights or []
+        self.presence_frames = presence_frames
+        self.presence_seconds = round(float(presence_seconds), 1)
+        self.presence_intervals = presence_intervals or []
+        self.reentry_count = reentry_count
+        self.thumbnail = thumbnail
 
     def set_custom_name(self, name: str):
         if name and name.strip():
@@ -391,7 +401,11 @@ class KendokaTrainingProfile:
             "recommended_exercises": self.recommended_exercises,
             "repetition_timeline": self.repetition_timeline,
             "kinesthetic_deviations": self.kinesthetic_deviations,
-            "kinesthetic_insights": self.kinesthetic_insights
+            "kinesthetic_insights": self.kinesthetic_insights,
+            "presence_frames": self.presence_frames,
+            "presence_seconds": self.presence_seconds,
+            "presence_intervals": self.presence_intervals,
+            "reentry_count": self.reentry_count
         }
 
 
@@ -536,10 +550,12 @@ class TrainingAnalyzer:
         pose_history: Sequence[Optional[Dict[str, Any]]],
         strikes: List[Any],
         modality_key: str,
-        fps: float = 30.0
+        fps: float = 30.0,
+        presence_duration_seconds: Optional[float] = None
     ) -> TrainingPillarMetrics:
         """
         Calcula os scores numéricos de 0 a 100 para Movimentação, Precisão e Constância.
+        presence_duration_seconds: quando informado, calcula o CPM pelo tempo real de presença.
         """
         valid_poses = [p for p in pose_history if p]
         if not valid_poses:
@@ -634,7 +650,10 @@ class TrainingAnalyzer:
         # PILAR 3: CONSTÂNCIA (Cadência, Regularidade do Ritmo, Fadiga)
         # ----------------------------------------------------------------------
         total_reps = len(strikes)
-        duration_min = max(0.1, (len(pose_history) / max(1.0, fps)) / 60.0)
+        if presence_duration_seconds is not None and presence_duration_seconds > 0:
+            duration_min = max(0.1, presence_duration_seconds / 60.0)
+        else:
+            duration_min = max(0.1, (len(pose_history) / max(1.0, fps)) / 60.0)
         cadence_cpm = total_reps / duration_min
 
         if len(strikes) >= 3:
@@ -1085,3 +1104,140 @@ class TrainingAnalyzer:
                     displacements.append(math.sqrt(dx*dx + dy*dy))
 
         return float(np.mean(displacements) * 100.0) if displacements else 0.0
+
+    # --------------------------------------------------------------------------
+    # 5. ANÁLISE DE SESSÃO MULTI-KENSHI (MODO DE TREINAMENTO DEDICADO)
+    # --------------------------------------------------------------------------
+    def analyze_multi_session(
+        self,
+        kenshi_histories: Dict[str, List[Optional[Dict[str, Any]]]],
+        detected_strikes_by_kenshi: Optional[Dict[str, List[Any]]] = None,
+        modality_override: Optional[str] = None,
+        fps: float = 30.0,
+        custom_kendoka_names: Optional[Dict[str, str]] = None,
+        kenshis_metadata: Optional[List[Dict[str, Any]]] = None
+    ) -> TrainingSessionResult:
+        """
+        Executa a análise para múltiplos Kenshis (N >= 1) no modo dedicado de treinamento.
+        Cada praticante é avaliado com base no seu tempo real de presença no enquadramento.
+        """
+        strikes_map = detected_strikes_by_kenshi or {}
+        custom_names = custom_kendoka_names or {}
+        meta_by_id = {m.get("kenshi_id"): m for m in (kenshis_metadata or [])}
+
+        total_session_frames = max([len(h) for h in kenshi_histories.values()]) if kenshi_histories else 1
+        duration_sec = max(1.0, total_session_frames / max(1.0, fps))
+
+        # Determinar modalidade: usa o Kenshi com mais frames válidos como referência
+        sorted_kenshis = sorted(
+            kenshi_histories.keys(),
+            key=lambda k: len([p for p in kenshi_histories[k] if p]),
+            reverse=True
+        )
+        primary_k_id = sorted_kenshis[0] if sorted_kenshis else "KENSHI_01"
+        primary_hist = kenshi_histories.get(primary_k_id, [])
+        secondary_hist = kenshi_histories.get(sorted_kenshis[1], []) if len(sorted_kenshis) > 1 else None
+
+        all_strikes_flat = []
+        for s_list in strikes_map.values():
+            all_strikes_flat.extend(s_list)
+
+        if modality_override and modality_override in TRAINING_MODALITIES_METADATA:
+            modality_key = modality_override
+            confidence = 1.0
+            det_method = "MANUAL_SELECT"
+            is_override = True
+            justification = f"Modalidade selecionada manualmente: {TRAINING_MODALITIES_METADATA[modality_key]['name']}."
+        else:
+            modality_key, confidence, justification = self.detect_training_modality(
+                primary_history=primary_hist,
+                secondary_history=secondary_hist,
+                detected_strikes=all_strikes_flat,
+                fps=fps,
+                has_sonkyo=False
+            )
+            det_method = "AUTO_DETECTED"
+            is_override = False
+
+        modality_meta = TRAINING_MODALITIES_METADATA.get(modality_key, TRAINING_MODALITIES_METADATA["suburi"])
+        modality_name = modality_meta["name"]
+        modality_cat = modality_meta.get("category", "Geral")
+
+        kendokas_list: List[KendokaTrainingProfile] = []
+
+        for idx, k_id in enumerate(sorted_kenshis):
+            hist = kenshi_histories[k_id]
+            valid_poses = [p for p in hist if p]
+            meta = meta_by_id.get(k_id, {})
+
+            presence_frames = meta.get("presence_frames", len(valid_poses))
+            presence_sec = max(0.1, presence_frames / max(1.0, fps))
+            reentry_count = meta.get("reentry_count", 0)
+            presence_intervals = meta.get("presence_intervals", [])
+            thumbnail = meta.get("thumbnail")
+
+            def_name = f"Kenshi {k_id.replace('KENSHI_', '')}"
+            c_name = custom_names.get(k_id, def_name)
+            k_strikes = strikes_map.get(k_id, [])
+
+            # Cálculo de pilares com duração justa baseada na presença
+            pillars = self.calculate_pillar_metrics(
+                pose_history=hist,
+                strikes=k_strikes,
+                modality_key=modality_key,
+                fps=fps,
+                presence_duration_seconds=presence_sec
+            )
+
+            strengths, improvements, exercises = self.generate_pedagogical_feedback(
+                pillars,
+                modality_key,
+                c_name
+            )
+
+            rep_timeline = [
+                {
+                    "repetition": i + 1,
+                    "timestamp": getattr(s, "timestamp_impact", getattr(s, "timestamp", f"{i*2}s")),
+                    "technique": getattr(s, "type", "MEN")
+                }
+                for i, s in enumerate(k_strikes)
+            ]
+
+            kendokas_list.append(KendokaTrainingProfile(
+                kendoka_id=k_id,
+                default_name=def_name,
+                custom_name=c_name,
+                role=f"Praticante #{idx + 1}",
+                pillars=pillars,
+                strengths=strengths,
+                improvements=improvements,
+                recommended_exercises=exercises,
+                repetition_timeline=rep_timeline,
+                presence_frames=presence_frames,
+                presence_seconds=presence_sec,
+                presence_intervals=presence_intervals,
+                reentry_count=reentry_count,
+                thumbnail=thumbnail
+            ))
+
+        summary = (
+            f"Sessão de treinamento de Kendo classificada como '{modality_name}' "
+            f"(Duração: {duration_sec:.1f}s, Praticantes Rastreáveis: {len(kendokas_list)}). "
+            f"Rastreamento Multi-Kenshi com Re-ID via Zekken, Tenugui, Tare lateral e Biometria."
+        )
+
+        return TrainingSessionResult(
+            modality_key=modality_key,
+            modality_name=modality_name,
+            detection_confidence=confidence,
+            detection_method=det_method,
+            is_manual_override=is_override,
+            duration_seconds=duration_sec,
+            total_frames_analyzed=total_session_frames,
+            kendokas=kendokas_list,
+            session_summary_text=summary,
+            justification=justification,
+            modality_category=modality_cat
+        )
+

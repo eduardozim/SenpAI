@@ -380,16 +380,14 @@ class AutoTrainingEngine:
         self._ensure_knowledge_base()
 
     @property
-    def feedback_mgr(self) -> Optional[FeedbackManager]:
+    def feedback_mgr(self) -> FeedbackManager:
         if getattr(self, "_feedback_mgr", None) is None:
-            try:
-                self._feedback_mgr = FeedbackManager(
-                    dataset_path=self.feedback_path,
-                    history_path=self.history_path,
-                    profiles_path=self.profiles_path
-                )
-            except Exception:
-                pass
+            self._feedback_mgr = FeedbackManager(
+                dataset_path=self.feedback_path,
+                history_path=self.history_path,
+                profiles_path=self.profiles_path
+            )
+        assert self._feedback_mgr is not None
         return self._feedback_mgr
 
     @feedback_mgr.setter
@@ -2540,16 +2538,47 @@ class AutoTrainingEngine:
             return self.feedback_mgr.get_active_learning_queue(status=status)
         return []
 
+    def get_active_learning_history(self) -> List[Dict[str, Any]]:
+        """Retorna os lances arquivados após curadoria arbitral."""
+        if hasattr(self.feedback_mgr, "get_active_learning_history"):
+            return self.feedback_mgr.get_active_learning_history()
+        return []
+
+    def ensure_active_learning_clip(self, item: Dict[str, Any]) -> Optional[str]:
+        """Garante a existência do clipe de demonstração do golpe para o Benchmark visual."""
+        if hasattr(self.feedback_mgr, "ensure_active_learning_clip"):
+            return self.feedback_mgr.ensure_active_learning_clip(item)
+        try:
+            from src.utils.strike_clip_manager import get_or_create_strike_clip
+            return get_or_create_strike_clip(item)
+        except Exception:
+            return None
+
     def resolve_active_learning_item(
         self,
         item_id: str,
-        label_approved: bool,
+        label_approved: bool = True,
         reviewer_dan: int = 5,
-        notes: str = ""
-    ) -> bool:
-        """Resolve um item da fila de curadoria ativa."""
+        notes: str = "",
+        trigger_retrain: bool = True,
+        cleanup_clip: bool = True,
+        decision: Optional[str] = None,
+        *args,
+        **kwargs
+    ) -> Any:
+        """Resolve um item da fila de curadoria ativa, executando o retreinamento e apagando o vídeo de demonstração."""
         if hasattr(self.feedback_mgr, "resolve_active_learning_item"):
-            return self.feedback_mgr.resolve_active_learning_item(item_id, label_approved, reviewer_dan, notes)
+            return self.feedback_mgr.resolve_active_learning_item(
+                item_id=item_id,
+                approved=label_approved,
+                reviewer_dan=reviewer_dan,
+                notes=notes,
+                trigger_retrain=trigger_retrain,
+                cleanup_clip=cleanup_clip,
+                decision=decision,
+                *args,
+                **kwargs
+            )
         return False
 
     def get_mathematical_calibration_status(self, profile_key: str = "normal") -> Dict[str, Any]:

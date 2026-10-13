@@ -126,7 +126,14 @@ class PoseDetector:
                 else:
                     logger.warning("[PoseDetector] GPU solicitada, mas PyTorch CUDA não está disponível. Fallback para CPU.")
             except Exception as e:
-                logger.warning(f"[PoseDetector] Erro ao inicializar aceleração GPU NVIDIA: {e}. Fallback para CPU MediaPipe.")
+                err_str = str(e)
+                if "4551" in err_str or "Controle de Aplicativo" in err_str or "Smart App Control" in err_str:
+                    logger.warning(
+                        "[PoseDetector] 🛡️ O Controle de Aplicativo (Smart App Control) do Windows bloqueou a DLL não-assinada do PyTorch (torch_python.dll). "
+                        "Fallback automático para CPU MediaPipe ativado com sucesso."
+                    )
+                else:
+                    logger.warning(f"[PoseDetector] Erro ao inicializar aceleração GPU NVIDIA: {e}. Fallback para CPU MediaPipe.")
 
         if not self.use_gpu:
             if self.mp_pose is not None:

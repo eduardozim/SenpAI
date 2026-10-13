@@ -7,7 +7,9 @@ import sys
 import glob
 import subprocess
 import logging
-from typing import Dict, Any, Tuple, List, Optional
+import re
+import time
+from typing import Dict, Any, Tuple, List, Optional, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +118,19 @@ def check_cuda_framework_support() -> Dict[str, Any]:
     except Exception:
         pass
 
+    # Se ainda não detectou torch_cuda (pode ser cache do módulo importado no processo atual), testar out-of-process
+    if not torch_cuda:
+        try:
+            chk_cmd = [sys.executable, "-c", "import torch; print(f'{torch.cuda.is_available()}|{torch.cuda.get_device_name(0) if torch.cuda.is_available() else \"\"}')"]
+            out = subprocess.check_output(chk_cmd, text=True, stderr=subprocess.DEVNULL, timeout=10).strip()
+            parts = out.split("|")
+            if parts[0] == "True":
+                torch_cuda = True
+                torch_device_name = parts[1] if len(parts) > 1 else "NVIDIA GPU"
+                ultralytics_ready = True
+        except Exception:
+            pass
+
     try:
         import onnxruntime as ort
         onnx_cuda = "CUDAExecutionProvider" in ort.get_available_providers()
@@ -130,73 +145,217 @@ def check_cuda_framework_support() -> Dict[str, Any]:
         "mediapipe_cpu_only_win": True
     }
 
-def install_cuda_packages() -> Tuple[bool, str]:
+def _run_pip_with_progress(
+    cmd: List[str],
+    progress_callback: Optional[Callable[[float, str, Optional[str]], None]],
+    base_progress: float,
+    progress_weight: float,
+    phase_title: str
+) -> Tuple[int, str]:
+    """
+    Executa comando pip via subprocess.Popen capturando saída em tempo real (incluindo \\r de download)
+    para atualizar a barra de progresso e repassar logs detalhados.
+    """
+    logger.info(f"[Hardware] Executando comando pip: {' '.join(cmd)}")
+    full_output: List[str] = []
+    
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+            universal_newlines=True,
+            encoding="utf-8",
+            errors="replace"
+        )
+    except Exception as e:
+        err_msg = f"Falha ao iniciar processo pip: {e}"
+        logger.error(err_msg)
+        return -1, err_msg
+
+    if proc.stdout is None:
+        return -1, "Não foi possível capturar a saída padrão do processo pip."
+
+    pct_pattern = re.compile(r'(\d{1,3}(?:\.\d+)?)%')
+    buffer = ""
+    last_update_time = 0.0
+
+    while True:
+        char = proc.stdout.read(1)
+        if not char and proc.poll() is not None:
+            break
+        if char:
+            if char in ('\r', '\n'):
+                line = buffer.strip()
+                buffer = ""
+                if line:
+                    full_output.append(line)
+                    now = time.time()
+                    is_key_event = any(k in line.lower() for k in [
+                        "downloading", "collecting", "installing", "successfully", "requirement", "error", "metadata"
+                    ])
+                    if (now - last_update_time > 0.15) or is_key_event:
+                        last_update_time = now
+                        calc_pct = base_progress
+                        match_pct = pct_pattern.search(line)
+                        if match_pct:
+                            try:
+                                sub_val = float(match_pct.group(1)) / 100.0
+                                calc_pct = base_progress + (progress_weight * sub_val * 0.90)
+                            except ValueError:
+                                pass
+                        elif "installing collected packages" in line.lower():
+                            calc_pct = base_progress + (progress_weight * 0.92)
+                        elif "successfully installed" in line.lower():
+                            calc_pct = base_progress + progress_weight
+
+                        calc_pct = max(0.0, min(0.99, calc_pct))
+                        if progress_callback:
+                            try:
+                                progress_callback(calc_pct, phase_title, line)
+                            except Exception:
+                                pass
+            else:
+                buffer += char
+
+    if buffer.strip():
+        full_output.append(buffer.strip())
+
+    try:
+        ret_code = proc.wait(timeout=30)
+    except Exception:
+        proc.kill()
+        ret_code = -1
+
+    return ret_code, "\n".join(full_output)
+
+def install_cuda_packages(
+    progress_callback: Optional[Callable[[float, str, Optional[str]], None]] = None
+) -> Tuple[bool, str]:
     """
     Executa a instalação dos pacotes PyTorch com suporte CUDA e Ultralytics no ambiente Python atual.
     Testa dinamicamente múltiplos índices de release do PyTorch (cu126, cu124, cu121) para garantir
     compatibilidade com a versão instalada do Python (Python 3.10 a 3.14+).
+    Fornece feedback de progresso em tempo real via callback.
     """
-    import sys
     logger.info("[Hardware] Iniciando instalação de dependências CUDA (PyTorch CUDA e Ultralytics)...")
-    
+    if progress_callback:
+        progress_callback(0.05, "Verificando repositórios CUDA disponíveis...", "Preparando pip...")
+
     cuda_indices = [
-        "https://download.pytorch.org/whl/cu126",
-        "https://download.pytorch.org/whl/cu124",
-        "https://download.pytorch.org/whl/cu121",
-        None  # Fallback: PyPI padrão
+        ("CUDA 12.6", "https://download.pytorch.org/whl/cu126"),
+        ("CUDA 12.4", "https://download.pytorch.org/whl/cu124"),
+        ("CUDA 12.1", "https://download.pytorch.org/whl/cu121"),
+        ("PyPI Padrão", None)
     ]
-    
+
     torch_installed = False
     last_torch_err = ""
-    
-    for index_url in cuda_indices:
-        try:
-            if index_url:
-                cmd = [sys.executable, "-m", "pip", "install", "torch", "torchvision", "--index-url", index_url]
-                logger.info(f"[Hardware] Tentando instalar PyTorch CUDA via {index_url}...")
-            else:
-                cmd = [sys.executable, "-m", "pip", "install", "torch", "torchvision"]
-                logger.info("[Hardware] Tentando instalar PyTorch via PyPI padrão...")
-                
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
-            if res.returncode == 0:
-                torch_installed = True
-                logger.info(f"[Hardware] PyTorch instalado com sucesso ({index_url or 'PyPI'}).")
-                break
-            else:
-                last_torch_err = res.stderr.strip() or res.stdout.strip()
-                logger.debug(f"[Hardware] Tentativa com {index_url} falhou: {last_torch_err}")
-        except Exception as ex:
-            last_torch_err = str(ex)
-            logger.debug(f"[Hardware] Exceção na tentativa {index_url}: {ex}")
+
+    # Peso alocado para PyTorch (0.10 a 0.75 = 0.65 de peso)
+    for idx_name, index_url in cuda_indices:
+        phase_msg = f"Instalando PyTorch com aceleração {idx_name}..."
+        if progress_callback:
+            progress_callback(0.10, phase_msg, f"Conectando ao repositório {index_url or 'PyPI padrão'}...")
+
+        # Utiliza --upgrade --force-reinstall --no-deps para assegurar que a versão CPU existente seja substituída pela compilação CUDA
+        cmd = [
+            sys.executable, "-m", "pip", "install",
+            "--upgrade", "--force-reinstall", "--no-deps",
+            "torch", "torchvision"
+        ]
+        if index_url:
+            cmd.extend(["--index-url", index_url])
+
+        ret, out_text = _run_pip_with_progress(
+            cmd=cmd,
+            progress_callback=progress_callback,
+            base_progress=0.10,
+            progress_weight=0.65,
+            phase_title=phase_msg
+        )
+
+        if ret == 0:
+            torch_installed = True
+            logger.info(f"[Hardware] PyTorch instalado com sucesso ({idx_name}).")
+            if progress_callback:
+                progress_callback(0.75, f"PyTorch instalado com sucesso ({idx_name})!", "Instalação do PyTorch concluída.")
+            break
+        else:
+            last_torch_err = out_text.strip()
+            logger.debug(f"[Hardware] Tentativa com {idx_name} falhou. Tentando próximo repositório...")
 
     if not torch_installed:
-        err_msg = f"Falha ao instalar PyTorch com suporte CUDA: {last_torch_err}"
+        err_msg = f"Falha ao instalar PyTorch com suporte CUDA: {last_torch_err[-500:]}"
         logger.error(err_msg)
+        if progress_callback:
+            progress_callback(0.75, "Falha na instalação do PyTorch CUDA.", err_msg)
         return False, err_msg
 
-    # Instala o Ultralytics para suporte a modelos YOLOv8-Pose
+    # Se estiver no Windows, desbloquear DLLs que possam ter sido bloqueadas por políticas de segurança
+    if sys.platform.startswith("win"):
+        try:
+            torch_lib = os.path.join(os.path.dirname(sys.executable), "..", "Lib", "site-packages", "torch", "lib")
+            if os.path.exists(torch_lib):
+                if progress_callback:
+                    progress_callback(0.76, "Configurando permissões das DLLs no Windows...", "Executando Unblock-File...")
+                subprocess.run(
+                    ["powershell", "-NoProfile", "-Command", f"Get-ChildItem -Path '{torch_lib}' -Filter *.dll -Recurse -ErrorAction SilentlyContinue | Unblock-File"],
+                    capture_output=True,
+                    timeout=30
+                )
+        except Exception as e:
+            logger.debug(f"Aviso ao desbloquear DLLs: {e}")
+
+    # Instala/Verifica Ultralytics para suporte a modelos YOLOv8-Pose (0.78 a 0.90)
     try:
-        logger.info("[Hardware] Instalando Ultralytics...")
+        phase_yolo = "Instalando e configurando Ultralytics (YOLOv8-Pose)..."
+        if progress_callback:
+            progress_callback(0.78, phase_yolo, "Verificando pacote ultralytics...")
         cmd_yolo = [sys.executable, "-m", "pip", "install", "ultralytics"]
-        res_yolo = subprocess.run(cmd_yolo, capture_output=True, text=True, timeout=600)
-        if res_yolo.returncode != 0:
-            err_yolo = res_yolo.stderr.strip() or res_yolo.stdout.strip()
+        ret_yolo, out_yolo = _run_pip_with_progress(
+            cmd=cmd_yolo,
+            progress_callback=progress_callback,
+            base_progress=0.78,
+            progress_weight=0.14,
+            phase_title=phase_yolo
+        )
+        if ret_yolo != 0:
+            err_yolo = out_yolo.strip()[-500:]
             return False, f"PyTorch instalado, mas falhou ao instalar Ultralytics: {err_yolo}"
-            
+
+        # Validação final de CUDA no PyTorch (0.92 a 1.00)
+        if progress_callback:
+            progress_callback(0.93, "Validando suporte CUDA na GPU NVIDIA...", "Testando torch.cuda.is_available()...")
+
+        test_cmd = [sys.executable, "-c", "import torch; print('CUDA_OK' if torch.cuda.is_available() else 'CUDA_NO')"]
+        test_res = subprocess.run(test_cmd, capture_output=True, text=True, timeout=30)
+        is_cuda_ok = "CUDA_OK" in (test_res.stdout or "")
+
+        if progress_callback:
+            if is_cuda_ok:
+                progress_callback(1.0, "Aceleração NVIDIA CUDA validada e pronta!", "Concluído com sucesso.")
+            else:
+                progress_callback(1.0, "Instalação concluída. (Verifique compatibilidade de driver caso CUDA não apareça imediatamente)", "Concluído.")
+
         logger.info("[Hardware] Instalação CUDA e Ultralytics concluída com sucesso.")
         return True, "Instalação das dependências PyTorch CUDA e Ultralytics concluída com sucesso!"
     except Exception as ex:
-        err_msg = f"Erro ao instalar Ultralytics: {str(ex)}"
+        err_msg = f"Erro ao configurar componentes finais: {str(ex)}"
         logger.error(err_msg)
         return False, err_msg
 
-
-def validate_and_setup_gpu_requirements(auto_install: bool = True) -> Dict[str, Any]:
+def validate_and_setup_gpu_requirements(
+    auto_install: bool = True,
+    force_install: bool = False,
+    progress_callback: Optional[Callable[[float, str, Optional[str]], None]] = None
+) -> Dict[str, Any]:
     """
     Valida os requisitos de GPU ao iniciar o sistema.
     Caso o computador possua GPU NVIDIA e os pacotes de aceleração CUDA não estejam instalados,
-    executa os comandos de instalação na primeira execução.
+    executa os comandos de instalação na primeira execução com suporte a barra de progresso.
     """
     gpu_info = detect_nvidia_gpu()
     fw_info = check_cuda_framework_support()
@@ -204,7 +363,7 @@ def validate_and_setup_gpu_requirements(auto_install: bool = True) -> Dict[str, 
     status = {
         "has_gpu": gpu_info["has_nvidia_gpu"],
         "gpu_name": gpu_info["gpu_name"],
-        "cuda_ready": fw_info["torch_cuda"] or fw_info["onnx_cuda"],
+        "cuda_ready": fw_info["torch_cuda"],
         "auto_installed": False,
         "message": ""
     }
@@ -213,23 +372,23 @@ def validate_and_setup_gpu_requirements(auto_install: bool = True) -> Dict[str, 
         status["message"] = "Nenhuma GPU NVIDIA encontrada no sistema. O sistema utilizará CPU."
         return status
 
-    if status["cuda_ready"]:
-        status["message"] = f"Ambiente GPU verificado: {gpu_info['gpu_name']} pronto com suporte a aceleração por hardware."
+    if status["cuda_ready"] and not force_install:
+        status["message"] = f"Ambiente GPU verificado: {gpu_info['gpu_name']} pronto com suporte a aceleração por hardware (PyTorch CUDA)."
         return status
 
-    # Se possui GPU NVIDIA mas o suporte CUDA não está instalado
-    if auto_install:
-        logger.info(f"[Hardware] GPU NVIDIA '{gpu_info['gpu_name']}' detectada sem suporte CUDA ativo. Executando instalação inicial de dependências...")
-        success, msg = install_cuda_packages()
+    # Se possui GPU NVIDIA mas o suporte CUDA não está instalado (ou a instalação foi forçada pelo usuário)
+    if auto_install or force_install:
+        logger.info(f"[Hardware] GPU NVIDIA '{gpu_info['gpu_name']}' detectada. Executando instalação de dependências CUDA com progresso...")
+        success, msg = install_cuda_packages(progress_callback=progress_callback)
         status["auto_installed"] = success
         if success:
             re_fw = check_cuda_framework_support()
-            status["cuda_ready"] = re_fw["torch_cuda"] or re_fw["onnx_cuda"]
+            status["cuda_ready"] = re_fw["torch_cuda"]
             status["message"] = f"Dependências CUDA instaladas com sucesso para a GPU {gpu_info['gpu_name']}!"
         else:
             status["message"] = f"GPU detectada ({gpu_info['gpu_name']}), mas a instalação das dependências falhou: {msg}"
     else:
-        status["message"] = f"GPU NVIDIA detectada ({gpu_info['gpu_name']}), mas as dependências CUDA ainda não estão instaladas."
+        status["message"] = f"GPU NVIDIA detectada ({gpu_info['gpu_name']}), mas as dependências PyTorch CUDA ainda não estão instaladas."
 
     return status
 

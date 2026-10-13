@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.6.0`
+> **Versão Oficial do Sistema**: `v 0.3.7.0`
 
 ---
 
@@ -32,7 +32,22 @@ O SenpAI traduz esses princípios marciais em algoritmos numéricos de alta prec
 
 ---
 
-### 2.2. Guia de Instalação no Windows (Passo a Passo Oficial)
+### 2.2. Guia de Instalação no Windows via Script (Recomendado)
+
+O SenpAI disponibiliza um script automatizado para Windows (`install_windows.bat`) que resolve dependências nativas, cria o ambiente virtual isolado e instala os pacotes em um clique.
+
+#### 1. Instalar o Python 3.11 Oficial via Winget
+Execute no terminal:
+```powershell
+winget install Python.Python.3.11
+```
+
+#### 2. Executar o Instalador
+No Explorador de Arquivos do Windows, dê um **duplo clique** no arquivo `install_windows.bat` presente na pasta raiz. O script executará toda a configuração automaticamente.
+
+---
+
+### 2.2.1. Guia de Instalação no Windows (Passo a Passo Manual)
 
 Para assegurar compatibilidade absoluta com as políticas de integridade do sistema operacional Windows (**Controle de Aplicativo Inteligente / Smart App Control / WDAC**), recomenda-se a instalação oficial do Python 3.11 assinado digitalmente:
 
@@ -74,16 +89,39 @@ pip install ultralytics
 
 ---
 
-### 2.3. Instruções de Execução
+### 2.3. Guia de Instalação no Linux (Ubuntu/Debian) via Script
+
+O SenpAI fornece um script de instalação automatizado para sistemas Linux (`install_linux.sh`) que resolve dependências nativas (como as bibliotecas OpenGL para o OpenCV), cria o ambiente virtual isolado e instala os pacotes do projeto em uma única execução.
+
+#### 1. Executar o Script de Instalação
+No terminal, dentro do diretório raiz do projeto, execute:
+```bash
+chmod +x install_linux.sh
+./install_linux.sh
+```
+
+#### 2. Ativar o Ambiente e Iniciar o Aplicativo
+Após a instalação ser concluída com sucesso pelo script, ative o ambiente virtual e inicie o sistema:
+```bash
+source .venv/bin/activate
+python -m streamlit run app.py
+```
+
+---
+
+### 2.4. Instruções de Execução
 
 #### A. Interface Web Interativa (Streamlit — Recomendado)
 Com o ambiente virtual (`.venv`) ativado, execute o Streamlit através do módulo Python:
-```powershell
+```bash
 # Execução recomendada (invoca o Streamlit via interpretador oficial assinado):
 python -m streamlit run app.py
 
-# Ou especificando o caminho completo do interpretador:
+# Ou especificando o caminho completo do interpretador no Windows:
 .\.venv\Scripts\python.exe -m streamlit run app.py
+
+# Ou especificando o caminho completo do interpretador no Linux/macOS:
+./.venv/bin/python -m streamlit run app.py
 ```
 
 > [!NOTE]
@@ -103,9 +141,15 @@ python main.py --video "caminho/do/video.mp4" --device gpu --model yolov11
 ```
 
 #### C. Execução da Suíte de Testes Automatizados
-```powershell
+```bash
 # Execução completa com relatório descritivo salvo em logs/senpai_test_report.log:
 python run_tests.py
+
+# Ou especificando o caminho no Windows:
+.\.venv\Scripts\python.exe run_tests.py
+
+# Ou especificando o caminho no Linux/macOS:
+./.venv/bin/python run_tests.py
 
 # Ou via runner padrão unittest:
 python -m unittest discover tests
@@ -553,11 +597,17 @@ O módulo de **Decisão dos Shinpans** foi concebido para atender às exigência
 
 O módulo de Aprendizado Ativo (*Active Learning*) automatiza o ciclo de evolução do SenpAI, priorizando instâncias que trazem maior ganho informativo e blindando o modelo contra o esquecimento catastrófico:
 
-- **Amostragem por Incerteza (`UncertaintySampler`)**:
+- **Amostragem por Incerteza & Fila de Curadoria Ativa (`UncertaintySampler` & `strike_clip_manager.py`)**:
   - Em vez de solicitar rotulagem humana para golpes óbvios (confiança muito alta $> 85\%$ ou muito baixa $< 30\%$), o algoritmo calcula o índice de incerteza da predição:
     $$\text{Incerteza}(x) = 1.0 - 2 \cdot |P(\text{Ippon}) - 0.5|$$
   - Golpes cuja probabilidade/score de aprovação situa-se na faixa de contorno e ambiguidade regulamentar (**45% a 65%**) recebem incerteza elevada ($\ge 0.70$) e são automaticamente enfileirados em `data/active_learning_queue.json`.
-  - A fila possui limite deslizante (`max_queue_size = 500`), priorizando os lances mais críticos para revisão humana orientada.
+  - **Corte Real do Golpe da Luta para Benchmark Arbitral**:
+    - Cada lance na Fila de Curadoria Ativa exibe o corte real em vídeo do golpe controverso (`.mp4`), extraído diretamente do combate original gravado (com os kenshis reais, timecode e áudio).
+    - O Sensei/árbitro assiste à execução exata do golpe para realizar o benchmark visual de Ki-Ken-Tai-Ichi antes de julgar (**✅ Ippon** ou **❌ Inválido**).
+  - **Retreinamento Imediato & Limpeza do Clipe de Vídeo**:
+    - Ao submeter o retorno arbitral, o SenpAI executa automaticamente o **retreinamento e recalibração matemática** dos pesos de Ki-Ken-Tai-Ichi e Platt Scaling.
+    - O arquivo de vídeo do clipe de demonstração em disco é **apagado com segurança** imediatamente após o retreinamento, liberando espaço em disco e garantindo a higiene do sistema.
+  - A fila possui limite deslizante (`max_queue_size = 100`), priorizando os lances mais críticos para revisão humana orientada.
 - **Dataset Canônico de Benchmark Padrão-Ouro (`GoldenBenchmark` & `golden_dataset.json`)**:
   - Armazenado de forma imutável em `data/benchmark_golden/golden_dataset.json`, reúne lances incontestáveis de campeonatos mundiais (WKC), All Japan Kendo Championships e exames de alto Dan (Men, Kote, Do, Tsuki e Falsos Positivos canônicos como golpes fora do Shinai-bu ou sem Zanshin).
   - **Salvaguarda Mandatória contra Esquecimento Catastrófico (`validate_no_regression`)**:
@@ -749,9 +799,10 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **`test_video_downloader.py` (12 testes)**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
 - **`test_video_player_controls.py` (5 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
 - **`test_training_live_manager.py` (5 testes)**: Valida a máquina de estados de golpes em tempo real (`LiveStrikeState`), rastreamento biomecânico contínuo da coluna (*Shisei*) e simetria de ombros, contagem de repetições, cadência em Golpes por Minuto (CPM), renderização do HUD em tempo real dos 3 Pilares e geração de relatórios de sessão em Markdown e JSON.
+- **`test_active_learning_curation_clip.py` (3 testes)**: Valida a extração e exibição do corte real da luta para Benchmark arbitral visual na Fila de Curadoria Ativa, o suporte às 3 opções de retorno arbitral (Ippon Válido, Golpe Inválido e Não tem Golpe), o disparo automático do retreinamento adaptativo e a exclusão obrigatória do arquivo de vídeo do golpe em disco, com remoção definitiva do item da fila de pendências ativas e arquivamento no histórico de auditoria.
 - **`test_kenshi_style_model_eixo6.py` (9 testes)**: Valida a atualização online via algoritmo de Welford (MetricDistribution), cálculo de desvios em Z-score e geração de insights humanizados (KinestheticBaselineModel), persistência atômica e gestão multi-praticante em JSON (KinestheticProfileManager), derivação direcional de perfis com Warm Start mais rígido e mais permissivo preservando pesos e linhagem (ProfileWarmStartManager), integração com FeedbackManager e inclusão da Seção 3 no relatório de treino do Kendoca.
 
-Total de **243 testes automatizados** distribuídos em 25 módulos, executados e aprovados com 100% de sucesso.
+Total de **246 testes automatizados** distribuídos em 26 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -759,7 +810,45 @@ Total de **243 testes automatizados** distribuídos em 25 módulos, executados e
 
 ---
 
-### `[v 0.3.6.0]` — 2026-10-05 *(Versão Atual)*
+### `[v 0.3.7.0]` — 2026-10-11 *(Versão Atual)*
+
+- **Rastreador Dedicado para o Modo de Treinamento e Aprendizado ([training_multi_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/training_multi_tracker.py), [kenshi_reid.py](file:///d:/Projetos/SenpAI/Dev/src/vision/kenshi_reid.py), [training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [webrtc_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/webrtc_manager.py), [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) & [test_training_multi_tracker.py](file:///d:/Projetos/SenpAI/Dev/tests/test_training_multi_tracker.py))**:
+  - **Isolamento Arquitetural entre Luta e Treino**:
+    - O rastreador de lutas ([combatant_tracker.py](file:///d:/Projetos/SenpAI/Dev/src/vision/combatant_tracker.py)) permanece estritamente dedicado e intacto para Shiai (2 combatentes Aka e Shiro, fitas Tasuki, Shiai-jo, Sonkyō e regras de Yūko-Datotsu).
+    - O modo de Treinamento e Aprendizado ganha motor de visão próprio e desacoplado (`TrainingMultiKenshiTracker`), sem limite de 2 pessoas, sem dependência de fitas Aka/Shiro e sem necessidade de Sonkyō. Aplicado em todas as frentes de treino: Vídeos Gravados, Streaming Web e Tempo Real / WebRTC.
+  - **Rastreamento Simultâneo de N Kenshis no Dojo**:
+    - Rastreamento paralelo de múltiplos praticantes com associação espacial por Kuhn-Munkres (Hungarian algorithm).
+    - Gerenciamento de ciclo de vida com 3 estados: `ACTIVE` (em cena), `LOST` (oclusão breve transitória $\le 1.5$s) e `DORMANT` (saída do enquadramento da câmera).
+  - **Sistema de Re-identificação Multimodal (KenshiReID)**:
+    - Reconhecimento automático quando um praticante sai do campo de visão da câmera e retorna minutos depois durante o treino, reassociando-o ao seu ID original (`KENSHI_0X`) sem criar IDs fantasmas ou duplicados.
+    - Pistas combinadas e adaptadas à orientação do atleta:
+      1. **Zekken Frontal**: Nome e dojo fixados no Tare (ativado em visão frontal);
+      2. **Tenugui Posterior**: Identificação sob o Men na nuca (ativado em visão dorsal);
+      3. **Identificação Lateral do Tare**: Dojo e kenshi nas abas laterais (ativado em perfil);
+      4. **Biometria Postural**: Proporções anatômicas (tronco/membros, largura de ombros) e altura normalizada corrigida por perspectiva com decaimento exponencial suave.
+  - **Persistência de Posicionamento e Filtro Anti-Fantasmas**:
+    - **Associação em Cascata**: Tracks ativos por proximidade espacial contínua -> Tracks perdidos (janela ampliada de 90 frames / ~3.0s) -> Tracks dormentes com Re-ID multimodal adaptativo.
+    - **Estágio Tentative**: Candidatos transitórios precisam de pelo menos 3 confirmações para se tornarem Kenshis oficiais, impedindo a multiplicação de IDs por ruídos e desfoques de movimento no vídeo.
+  - **Cálculo Justo de Métricas e Cadência (CPM) por Tempo de Presença**:
+    - A cadência de golpes por minuto (CPM) e as métricas de estamina/constância no [training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py) passam a ser calculadas estritamente sobre a janela de **tempo real em que o Kenshi esteve presente no enquadramento**, sem penalizar atletas que se ausentaram temporariamente.
+  - **Interface com Badges de Presença e Retorno**:
+    - Exibição de cards individuais com miniatura do praticante, tempo de presença em cena e contador de retornos reconhecidos via Re-ID no painel de resultados do treino.
+- **Fila de Curadoria Ativa com Corte Real do Golpe e Ciclo Completo de Resolução ([strike_clip_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/strike_clip_manager.py), [active_learning.py](file:///d:/Projetos/SenpAI/Dev/src/engine/active_learning.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py), [auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Fidelidade Estrita entre Descrição e Corte de Vídeo**:
+    - O card de curadoria exibe com clareza o **Vídeo de Origem** (`video_source`), o **Momento na Luta** (`MM:SS.mmm` / `XX.Xs`) e o **Golpe** correspondente.
+    - O clipe apresentado à esquerda é estritamente recortado da luta original indicada no exato instante do golpe, com banner textual no vídeo (`SenpAI - GOLPE (XX.XXs)`).
+    - Eliminação completa de fallbacks arbitrários: caso o arquivo de vídeo original não resida no disco, a interface exibe aviso informativo claro sem jamais reproduzir lutas descorrelacionadas.
+  - **Ciclo Completo pós-Retorno Arbitral com 3 Opções de Avaliação**: O árbitro dispõe de 3 caminhos de retorno:
+    1. `✅ Ippon (Válido)`: Há movimento de ataque e é válido para pontuação (Ippon legítimo).
+    2. `❌ Golpe Inválido`: Houve movimento/tentativa de ataque, mas o golpe não atendeu aos critérios de pontuação.
+    3. `🚫 Não tem Golpe`: Nenhuma tentativa de movimento para pontuação (detecção espúria / movimento neutro).
+    - Em qualquer das 3 opções, o retreinamento adaptativo é disparado imediatamente, o arquivo de vídeo do golpe é apagado com segurança do disco (`data/active_learning_clips/`), e o item e vídeo são **removidos definitivamente da Fila de Curadoria Ativa** (`data/active_learning_queue.json`) e arquivados no histórico permanente de auditoria (`data/active_learning_curated_history.json`).
+  - **Suíte de Testes Automatizados**:
+    - Expansão para **251 testes automatizados** distribuídos em 27 módulos com 100% de aprovação.
+
+---
+
+### `[v 0.3.6.0]` — 2026-10-05
 
 - **Novo Formato de Entrada: Detecção via Streaming no Modo de Lutas e no Modo de Treinamento ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py), [stream_capture.py](file:///d:/Projetos/SenpAI/Dev/src/utils/stream_capture.py), [test_stream_capture.py](file:///d:/Projetos/SenpAI/Dev/tests/test_stream_capture.py), [manual.md](file:///d:/Projetos/SenpAI/Dev/manual.md) & [README.TXT](file:///d:/Projetos/SenpAI/Dev/README.TXT))**:
   - **Inclusão do 3º Formato de Entrada nos 2 Modos Operacionais**:
@@ -1613,7 +1702,7 @@ Total de **243 testes automatizados** distribuídos em 25 módulos, executados e
 > [!IMPORTANT]
 > **AVISO LEGAL E TERMOS DE PROTEÇÃO INTELECTUAL**
 > 
-> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v2.3.1`.**  
+> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.3.7.0`.**  
 > **TODOS OS DIREITOS DE USO E CÓPIA RESERVADOS.**
 > 
 > 1. **Titularidade**: Todo o código-fonte, arquitetura de visão computacional, algoritmos biomecânicos de *Ki-Ken-Tai-Ichi*, modelos de detecção postural, pesos de rede neural, perfis de calibração heurística, identidade visual, interfaces e documentações pertencem exclusivamente aos desenvolvedores e detentores do projeto SenpAI.

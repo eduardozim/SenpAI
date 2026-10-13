@@ -127,21 +127,35 @@ def get_execution_environment_info() -> Dict[str, Any]:
     """
     # 1. Override explícito via variável de ambiente (útil para testes de simulação)
     override = os.environ.get("SENPAI_DEPLOY_MODE", "").lower().strip()
-    if override in ["cloud", "web"]:
+    if override in ["cloud", "web", "server", "webserver", "prod", "production"]:
         return {
             "is_cloud": True,
+            "is_web_server": True,
             "deployment_mode": "cloud",
             "provider_label": "Servidor Web / Nuvem (Configurado)",
             "description": "Executando em Servidor Web/Nuvem. Câmeras locais do cliente devem ser capturadas via WebRTC pelo navegador.",
             "recommended_source": "webrtc"
         }
-    elif override in ["local", "desktop"]:
+    elif override in ["local", "desktop", "dev", "development"]:
         return {
             "is_cloud": False,
+            "is_web_server": False,
             "deployment_mode": "local",
             "provider_label": "Local (Desktop / Dojo)",
             "description": "Executando em máquina local. Acesso direto a Webcams USB via OpenCV e aceleração nativa disponíveis.",
             "recommended_source": "webcam"
+        }
+
+    # 1.1 Flags explícitas de Servidor Web
+    if os.environ.get("SENPAI_IS_WEB_SERVER", "").lower() in ["1", "true", "yes", "on"] or \
+       os.environ.get("IS_WEB_SERVER", "").lower() in ["1", "true", "yes", "on"]:
+        return {
+            "is_cloud": True,
+            "is_web_server": True,
+            "deployment_mode": "cloud",
+            "provider_label": "Servidor Web (SENPAI_IS_WEB_SERVER)",
+            "description": "Executando em Servidor Web. Recursos locais e opções exclusivas para desktop ocultadas.",
+            "recommended_source": "webrtc"
         }
 
     # 2. Detecção específica do Streamlit Community Cloud
@@ -154,16 +168,27 @@ def get_execution_environment_info() -> Dict[str, Any]:
     if is_streamlit_cloud:
         return {
             "is_cloud": True,
+            "is_web_server": True,
             "deployment_mode": "cloud",
             "provider_label": "Streamlit Community Cloud",
             "description": "Servidor Streamlit Cloud detectado. Câmeras do computador do usuário devem ser capturadas pelo navegador (WebRTC).",
             "recommended_source": "webrtc"
         }
 
-    # 3. Detecção de outros provedores de nuvem e contêineres
+    # 3. Detecção de outros provedores de nuvem, plataformas web e contêineres
     provider = None
     if os.environ.get("SPACE_ID"):
         provider = "Hugging Face Spaces"
+    elif os.environ.get("RENDER"):
+        provider = "Render Cloud"
+    elif os.environ.get("RAILWAY_STATIC_URL") or os.environ.get("RAILWAY_ENVIRONMENT"):
+        provider = "Railway Cloud"
+    elif os.environ.get("FLY_ALLOC_ID") or os.environ.get("FLY_APP_NAME"):
+        provider = "Fly.io"
+    elif os.environ.get("K_SERVICE"):
+        provider = "Google Cloud Run"
+    elif os.environ.get("VERCEL"):
+        provider = "Vercel"
     elif os.environ.get("DYNO"):
         provider = "Heroku Cloud"
     elif os.environ.get("KUBERNETES_SERVICE_HOST"):
@@ -182,6 +207,7 @@ def get_execution_environment_info() -> Dict[str, Any]:
     if provider is not None:
         return {
             "is_cloud": True,
+            "is_web_server": True,
             "deployment_mode": "cloud",
             "provider_label": provider,
             "description": f"Executando em {provider}. Câmeras locais do cliente devem ser capturadas via WebRTC pelo navegador.",
@@ -191,9 +217,20 @@ def get_execution_environment_info() -> Dict[str, Any]:
     # 4. Caso padrão: Ambiente Local (Windows, macOS ou Linux Desktop com display/dispositivos)
     return {
         "is_cloud": False,
+        "is_web_server": False,
         "deployment_mode": "local",
         "provider_label": "Local (Desktop / Dojo)",
         "description": "Executando em máquina local. Acesso direto a Webcams USB via OpenCV e aceleração nativa disponíveis.",
         "recommended_source": "webcam"
     }
+
+
+def is_web_server_environment() -> bool:
+    """
+    Retorna True se a aplicação estiver em execução em um Servidor Web / Nuvem
+    (Streamlit Community Cloud, Hugging Face, Docker, AWS, GCP, Render, etc.)
+    ou False se estiver rodando em ambiente Local (Desktop / Dojo).
+    """
+    info = get_execution_environment_info()
+    return bool(info.get("is_cloud", False) or info.get("is_web_server", False))
 

@@ -41,6 +41,11 @@ class CalibrationEngine:
                 }
             }
 
+    @property
+    def profile_name(self) -> str:
+        """Retorna a chave do perfil ativo."""
+        return getattr(self, "current_profile_key", "normal")
+
     def get_all_profiles(self) -> Dict[str, Any]:
         """Retorna todos os perfis de calibração carregados."""
         self.profiles = self._load_profiles()
@@ -75,7 +80,7 @@ class CalibrationEngine:
         if not strike_type:
             return global_weights
 
-        st_clean = str(strike_type).upper().strip()
+        st_clean = strike_type.upper().strip()
         by_strike = self.active_config.get("weights_by_strike_type", {})
         if st_clean in by_strike:
             return by_strike[st_clean]
@@ -110,7 +115,7 @@ class CalibrationEngine:
         self.active_config["min_total_score"] = round(min_total_score, 2)
 
         if strike_type:
-            st_clean = str(strike_type).upper().strip()
+            st_clean = strike_type.upper().strip()
             if "weights_by_strike_type" not in self.active_config:
                 self.active_config["weights_by_strike_type"] = json.loads(json.dumps(DEFAULT_WEIGHTS_BY_STRIKE_TYPE))
             self.active_config["weights_by_strike_type"][st_clean] = normalized_w
@@ -150,7 +155,7 @@ class CalibrationEngine:
         determina a validade do ponto (Yuko-datotsu) e calcula a probabilidade calibrada (Platt Scaling).
         Suporta o 5° Pilar Hasuji e eliminação de Ku-totsu (Eixo 3.1 e 3.2).
         """
-        norm_strike = str(strike_type).upper().strip() if strike_type else "MEN"
+        norm_strike = strike_type.upper().strip() if strike_type else "MEN"
         weights = self.get_weights_for_strike(norm_strike)
         min_total = self.active_config.get("min_total_score", 0.65)
         sub_thresholds = self.active_config.get("sub_thresholds", {})
