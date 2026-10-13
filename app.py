@@ -80,7 +80,8 @@ from src.utils.video_downloader import (
     format_video_duration, VideoDownloadError, QUALITY_LABELS
 )
 from src.utils.environment import (
-    get_virtual_environment_info, is_in_virtual_environment, get_execution_environment_info
+    get_virtual_environment_info, is_in_virtual_environment, get_execution_environment_info,
+    is_web_server_environment
 )
 from src.utils.webrtc_manager import (
     HAS_WEBRTC, webrtc_streamer, WebRtcMode, get_rtc_configuration,
@@ -925,6 +926,8 @@ def render_welcome_home_page():
     - Demonstrativo passo a passo de como iniciar o uso.
     - Atalhos diretos de ação e acesso a documentações oficiais.
     """
+    is_web_server = is_web_server_environment()
+
     # 1. HERO BANNER DE BOAS-VINDAS
     render_hero_banner()
 
@@ -970,8 +973,13 @@ def render_welcome_home_page():
             unsafe_allow_html=True
         )
     with step_c2:
+        step2_desc = (
+            "Escolha entre <b>🌐 Streaming</b> (YouTube / Ao Vivo) ou <b>📹 Vídeo Gravado</b> (upload local de arquivo)."
+            if is_web_server
+            else "Escolha entre <b>🔴 Tempo Real</b> (Webcam / RTSP), <b>🌐 Streaming</b> (YouTube / Ao Vivo) ou <b>📹 Vídeo Gravado</b> (upload local, link ou vídeo demo)."
+        )
         st.markdown(
-            """
+            f"""
             <div style="background: #0F172A; border: 1.5px solid #334155; border-radius: 10px; padding: 16px; height: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                     <span style="background: #6366F1; color: #FFFFFF; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">2</span>
@@ -979,7 +987,7 @@ def render_welcome_home_page():
                 </div>
                 <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Formato de Entrada</div>
                 <div style="color: #94A3B8; font-size: 12px; line-height: 1.4;">
-                    Escolha entre <b>🔴 Tempo Real</b> (Webcam / RTSP), <b>🌐 Streaming</b> (YouTube / Ao Vivo) ou <b>📹 Vídeo Gravado</b> (upload local, link ou vídeo demo).
+                    {step2_desc}
                 </div>
             </div>
             """,
@@ -993,9 +1001,9 @@ def render_welcome_home_page():
                     <span style="background: #10B981; color: #FFFFFF; border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px;">3</span>
                     <span style="font-size: 20px;">📹</span>
                 </div>
-                <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Vídeo, Stream ou Câmeras</div>
+                <div style="color: #F8FAFC; font-weight: 700; font-size: 14px; margin-bottom: 6px;">Vídeo ou Transmissão</div>
                 <div style="color: #94A3B8; font-size: 12px; line-height: 1.4;">
-                    Conecte de 1 a 4 câmeras simultâneas com teste de ping, insira links de streaming ou carregue vídeos. Use <b>"Gerar Vídeo Demonstrativo"</b> para teste instantâneo!
+                    Insira links de streaming ou carregue seus arquivos de vídeo locais para processamento com detecção por IA e diagnósticos completos.
                 </div>
             </div>
             """,
@@ -1026,8 +1034,19 @@ def render_welcome_home_page():
 
     mode_c1, mode_c2 = st.columns(2)
     with mode_c1:
-        st.markdown(
+        if is_web_server:
+            match_items_html = """
+                        <li><b>🌐 Detecção via Streaming:</b> Transmissões ao vivo e links web (YouTube Live/VOD, Twitch, HLS .m3u8, RTMP, RTSP) com análise direta sem download prévio.</li>
+                        <li><b>📹 Detecção Gravada:</b> Vídeos pré-gravados via upload local de arquivo (.mp4, .avi, .mov), linha do tempo com governança por Dan e exportação Excel.</li>
             """
+        else:
+            match_items_html = """
+                        <li><b>🔴 Detecção em Tempo Real:</b> 1 a 4 câmeras simultâneas (Webcams / RTSP / Câmeras IP) com fusão geométrica e consenso multicâmera.</li>
+                        <li><b>🌐 Detecção via Streaming:</b> Transmissões ao vivo e links web (YouTube Live/VOD, Twitch, HLS .m3u8, RTMP, RTSP) com análise direta sem download prévio.</li>
+                        <li><b>📹 Detecção Gravada:</b> Vídeos pré-gravados, upload local sem limite, YouTube e linha do tempo com governança por Dan e exportação Excel.</li>
+            """
+        st.markdown(
+            f"""
             <div style="background: linear-gradient(180deg, #1E1B4B 0%, #0F172A 100%); border: 2px solid #6366F1; border-radius: 14px; padding: 22px; height: 100%; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.20);">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                     <span style="font-size: 30px;">⚔️</span>
@@ -1042,9 +1061,7 @@ def render_welcome_home_page():
                 <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px;">
                     <div style="color: #F8FAFC; font-weight: 700; font-size: 12px; margin-bottom: 4px;">📡 Formatos Suportados:</div>
                     <ul style="color: #94A3B8; font-size: 12px; margin: 0; padding-left: 18px; line-height: 1.5;">
-                        <li><b>🔴 Detecção em Tempo Real:</b> 1 a 4 câmeras simultâneas (Webcams / RTSP / Câmeras IP) com fusão geométrica e consenso multicâmera.</li>
-                        <li><b>🌐 Detecção via Streaming:</b> Transmissões ao vivo e links web (YouTube Live/VOD, Twitch, HLS .m3u8, RTMP, RTSP) com análise direta sem download prévio.</li>
-                        <li><b>📹 Detecção Gravada:</b> Vídeos pré-gravados, upload local sem limite, YouTube e linha do tempo com governança por Dan e exportação Excel.</li>
+                        {match_items_html}
                     </ul>
                 </div>
             </div>
@@ -1052,8 +1069,19 @@ def render_welcome_home_page():
             unsafe_allow_html=True
         )
     with mode_c2:
-        st.markdown(
+        if is_web_server:
+            training_items_html = """
+                        <li><b>🌐 Análise via Streaming:</b> Sessões ao vivo e treinos remotos (YouTube, Twitch, HLS, RTMP) com projeção do HUD dos 3 Pilares e telemetria em tempo real.</li>
+                        <li><b>📹 Análise de Vídeos Gravados:</b> Rastreamento detalhado por Kendoka via upload local de arquivo, diagnósticos com prescrições de treinos e relatórios individuais (.MD e .JSON).</li>
             """
+        else:
+            training_items_html = """
+                        <li><b>🔴 Análise em Tempo Real (Webcam / RTSP):</b> Análise ao vivo na mesma dinâmica do tempo real, com HUD dos 3 Pilares, contagem de repetições, cadência (CPM) e biofeedback postural instantâneo.</li>
+                        <li><b>🌐 Análise via Streaming:</b> Sessões ao vivo e treinos remotos (YouTube, Twitch, HLS, RTMP) com projeção do HUD dos 3 Pilares e telemetria em tempo real.</li>
+                        <li><b>📹 Análise de Vídeos Gravados:</b> Rastreamento detalhado por Kendoka, diagnósticos com prescrições de treinos e relatórios individuais (.MD e .JSON).</li>
+            """
+        st.markdown(
+            f"""
             <div style="background: linear-gradient(180deg, #064E3B 0%, #0F172A 100%); border: 2px solid #10B981; border-radius: 14px; padding: 22px; height: 100%; box-shadow: 0 4px 20px rgba(16, 185, 129, 0.20);">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                     <span style="font-size: 30px;">🎓</span>
@@ -1068,9 +1096,7 @@ def render_welcome_home_page():
                 <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px;">
                     <div style="color: #F8FAFC; font-weight: 700; font-size: 12px; margin-bottom: 4px;">📡 Formatos Suportados:</div>
                     <ul style="color: #94A3B8; font-size: 12px; margin: 0; padding-left: 18px; line-height: 1.5;">
-                        <li><b>🔴 Análise em Tempo Real (Webcam / RTSP):</b> Análise ao vivo na mesma dinâmica do tempo real, com HUD dos 3 Pilares, contagem de repetições, cadência (CPM) e biofeedback postural instantâneo.</li>
-                        <li><b>🌐 Análise via Streaming:</b> Sessões ao vivo e treinos remotos (YouTube, Twitch, HLS, RTMP) com projeção do HUD dos 3 Pilares e telemetria em tempo real.</li>
-                        <li><b>📹 Análise de Vídeos Gravados:</b> Rastreamento detalhado por Kendoka, diagnósticos com prescrições de treinos e relatórios individuais (.MD e .JSON).</li>
+                        {training_items_html}
                     </ul>
                 </div>
             </div>
@@ -3263,10 +3289,14 @@ elif nav_page in ["match", "training", "analysis"]:
     st.session_state["current_operation_mode"] = operation_mode
 
     # --- SELEÇÃO DO FORMATO DE ANÁLISE / ENTRADA ---
+    is_web_server = is_web_server_environment()
     st.sidebar.markdown("#### Formato de Análise")
     if operation_mode == "match":
-        match_options = ["realtime", "streaming", "recorded"]
-        match_saved_val = st.session_state.get("match_submode_radio", "realtime")
+        match_options = ["streaming", "recorded"] if is_web_server else ["realtime", "streaming", "recorded"]
+        match_saved_val = st.session_state.get("match_submode_radio", match_options[0])
+        if match_saved_val not in match_options:
+            match_saved_val = match_options[0]
+            st.session_state["match_submode_radio"] = match_saved_val
         match_default_idx = match_options.index(match_saved_val) if match_saved_val in match_options else 0
         match_sub_raw = st.sidebar.radio(
             "Formato de Entrada:",
@@ -3275,14 +3305,17 @@ elif nav_page in ["match", "training", "analysis"]:
             format_func=lambda x: {
                 "realtime": "🔴 Detecção em Tempo Real (Webcam / RTSP)",
                 "streaming": "🌐 Detecção via Streaming (YouTube / Ao Vivo)",
-                "recorded": "📹 Detecção Gravada (Arquivo / YouTube / Demo)"
+                "recorded": "📹 Detecção Gravada (Arquivo / Upload Local)" if is_web_server else "📹 Detecção Gravada (Arquivo / YouTube / Demo)"
             }[x],
             key="match_submode_radio"
         )
-        app_mode: str = str(match_sub_raw or "realtime")
+        app_mode: str = str(match_sub_raw or match_options[0])
     else:
-        training_options = ["realtime", "streaming", "recorded"]
-        training_saved_val = st.session_state.get("training_submode_radio", "realtime")
+        training_options = ["streaming", "recorded"] if is_web_server else ["realtime", "streaming", "recorded"]
+        training_saved_val = st.session_state.get("training_submode_radio", training_options[0])
+        if training_saved_val not in training_options:
+            training_saved_val = training_options[0]
+            st.session_state["training_submode_radio"] = training_saved_val
         training_default_idx = training_options.index(training_saved_val) if training_saved_val in training_options else 0
         training_sub_raw = st.sidebar.radio(
             "Formato de Entrada:",
@@ -3291,11 +3324,12 @@ elif nav_page in ["match", "training", "analysis"]:
             format_func=lambda x: {
                 "realtime": "🔴 Análise em Tempo Real (Webcam / RTSP)",
                 "streaming": "🌐 Análise via Streaming (YouTube / Ao Vivo)",
-                "recorded": "📹 Análise de Vídeo Gravado (Arquivo / YouTube / Demo)"
+                "recorded": "📹 Análise de Vídeo Gravado (Arquivo / Upload Local)" if is_web_server else "📹 Análise de Vídeo Gravado (Arquivo / YouTube / Demo)"
             }[x],
             key="training_submode_radio"
         )
-        app_mode: str = "training_realtime" if str(training_sub_raw) == "realtime" else ("training_streaming" if str(training_sub_raw) == "streaming" else "training")
+        training_choice = str(training_sub_raw or training_options[0])
+        app_mode: str = "training_realtime" if training_choice == "realtime" else ("training_streaming" if training_choice == "streaming" else "training")
 
     # Limpar análise anterior automaticamente sempre que houver mudança de modo ou formato
     current_mode_id = f"{operation_mode}_{app_mode}"
@@ -5519,9 +5553,28 @@ elif nav_page in ["match", "training", "analysis"]:
             
             with col_in1:
                 st.subheader("🎓 Carregar Vídeo de Treino" if app_mode == "training" else "📹 Carregar Vídeo")
+                is_web_server = is_web_server_environment()
+                recorded_source_options = (
+                    ["📁 Fazer Upload de Arquivo"]
+                    if is_web_server
+                    else ["📁 Fazer Upload de Arquivo", "🌐 Link do YouTube / Streaming Web"]
+                )
+
+                saved_source_choice = st.session_state.get("recorded_source_choice")
+                if saved_source_choice not in recorded_source_options:
+                    saved_source_choice = recorded_source_options[0]
+                    st.session_state["recorded_source_choice"] = saved_source_choice
+
+                source_default_idx = (
+                    recorded_source_options.index(saved_source_choice)
+                    if saved_source_choice in recorded_source_options
+                    else 0
+                )
+
                 source_choice = st.radio(
                     "Selecione a Origem do Vídeo:",
-                    ["📁 Fazer Upload de Arquivo", "🌐 Link do YouTube / Streaming Web"],
+                    options=recorded_source_options,
+                    index=source_default_idx,
                     horizontal=True,
                     key="recorded_source_choice"
                 )
@@ -5624,7 +5677,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                 clear_previous_analysis()
                             video_file_path = None
 
-                else:
+                elif not is_web_server:
                     # Origem: Link do YouTube / Streaming Web
                     st.markdown("Insira o link de vídeo de treino de Kendo do YouTube ou stream da web:" if app_mode == "training" else "Insira o link de vídeo de Kendo do YouTube ou stream da web:")
                     yt_url_input = st.text_input(
