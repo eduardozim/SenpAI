@@ -231,5 +231,6 @@ def is_web_server_environment() -> bool:
     (Streamlit Community Cloud, Hugging Face, Docker, AWS, GCP, Render, etc.)
     ou False se estiver rodando em ambiente Local (Desktop / Dojo).
     """
-    return bool(get_execution_environment_info().get("is_web_server", False))
+    info = get_execution_environment_info()
+    return bool(info.get("is_cloud", False) or info.get("is_web_server", False))
 

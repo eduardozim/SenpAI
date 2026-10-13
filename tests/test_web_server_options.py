@@ -86,6 +86,32 @@ class TestWebServerOptionsHiding(unittest.TestCase):
         self.assertIn("📁 Fazer Upload de Arquivo", recorded_sources)
         self.assertIn("🌐 Link do YouTube / Streaming Web", recorded_sources)
 
+    @patch.dict(os.environ, {"IS_STREAMLIT_CLOUD": "1"}, clear=True)
+    def test_streamlit_cloud_hides_realtime_and_youtube(self):
+        """Valida que quando em Streamlit Community Cloud (IS_STREAMLIT_CLOUD=1):
+        - is_web_server_environment() retorna True
+        - get_execution_environment_info()['is_cloud'] é True
+        - get_execution_environment_info()['provider_label'] é 'Streamlit Community Cloud'
+        - match_options oculta 'realtime'
+        - recorded_source_options oculta 'Link do YouTube'
+        """
+        info = get_execution_environment_info()
+        self.assertTrue(info["is_cloud"])
+        self.assertEqual(info["provider_label"], "Streamlit Community Cloud")
+
+        is_web = is_web_server_environment()
+        self.assertTrue(is_web)
+
+        match_options = ["streaming", "recorded"] if is_web else ["realtime", "streaming", "recorded"]
+        self.assertNotIn("realtime", match_options)
+
+        recorded_sources = (
+            ["📁 Fazer Upload de Arquivo"]
+            if is_web
+            else ["📁 Fazer Upload de Arquivo", "🌐 Link do YouTube / Streaming Web"]
+        )
+        self.assertNotIn("🌐 Link do YouTube / Streaming Web", recorded_sources)
+
     @patch.dict(os.environ, {"SENPAI_DEPLOY_MODE": "web"}, clear=True)
     def test_fallback_selection_when_switched_to_web_server(self):
         """Valida que valores salvos de opções ocultadas realizam fallback seguro para as primeiras opções ativas."""

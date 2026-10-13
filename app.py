@@ -42,6 +42,7 @@ from src.engine.reporter import DiagnosticReporter
 import importlib
 import sys
 for _mod_name in [
+    "src.utils.environment",
     "src.utils.strike_clip_manager",
     "src.engine.active_learning",
     "src.engine.feedback_manager",
@@ -926,7 +927,7 @@ def render_welcome_home_page():
     - Demonstrativo passo a passo de como iniciar o uso.
     - Atalhos diretos de ação e acesso a documentações oficiais.
     """
-    is_web_server = is_web_server_environment()
+    is_web_server = bool(is_web_server_environment() or get_execution_environment_info().get("is_cloud", False) or st.session_state.get("is_web_server", False))
 
     # 1. HERO BANNER DE BOAS-VINDAS
     render_hero_banner()
@@ -1189,6 +1190,8 @@ else:
 
 # Indicador de Modo de Execução (Local vs Servidor Web / Nuvem)
 runtime_env_info = get_execution_environment_info()
+is_web_server = bool(runtime_env_info.get("is_cloud", False) or runtime_env_info.get("is_web_server", False) or is_web_server_environment())
+st.session_state["is_web_server"] = is_web_server
 if runtime_env_info["is_cloud"]:
     st.sidebar.markdown(
         f"""
@@ -3289,14 +3292,18 @@ elif nav_page in ["match", "training", "analysis"]:
     st.session_state["current_operation_mode"] = operation_mode
 
     # --- SELEÇÃO DO FORMATO DE ANÁLISE / ENTRADA ---
-    is_web_server = is_web_server_environment()
+    is_web_server = bool(
+        runtime_env_info.get("is_cloud", False)
+        or runtime_env_info.get("is_web_server", False)
+        or is_web_server_environment()
+        or st.session_state.get("is_web_server", False)
+    )
     st.sidebar.markdown("#### Formato de Análise")
     if operation_mode == "match":
         match_options = ["streaming", "recorded"] if is_web_server else ["realtime", "streaming", "recorded"]
+        if "match_submode_radio" in st.session_state and st.session_state["match_submode_radio"] not in match_options:
+            st.session_state.pop("match_submode_radio", None)
         match_saved_val = st.session_state.get("match_submode_radio", match_options[0])
-        if match_saved_val not in match_options:
-            match_saved_val = match_options[0]
-            st.session_state["match_submode_radio"] = match_saved_val
         match_default_idx = match_options.index(match_saved_val) if match_saved_val in match_options else 0
         match_sub_raw = st.sidebar.radio(
             "Formato de Entrada:",
@@ -3312,10 +3319,9 @@ elif nav_page in ["match", "training", "analysis"]:
         app_mode: str = match_sub_raw or match_options[0]
     else:
         training_options = ["streaming", "recorded"] if is_web_server else ["realtime", "streaming", "recorded"]
+        if "training_submode_radio" in st.session_state and st.session_state["training_submode_radio"] not in training_options:
+            st.session_state.pop("training_submode_radio", None)
         training_saved_val = st.session_state.get("training_submode_radio", training_options[0])
-        if training_saved_val not in training_options:
-            training_saved_val = training_options[0]
-            st.session_state["training_submode_radio"] = training_saved_val
         training_default_idx = training_options.index(training_saved_val) if training_saved_val in training_options else 0
         training_sub_raw = st.sidebar.radio(
             "Formato de Entrada:",
@@ -5553,18 +5559,22 @@ elif nav_page in ["match", "training", "analysis"]:
             
             with col_in1:
                 st.subheader("🎓 Carregar Vídeo de Treino" if app_mode == "training" else "📹 Carregar Vídeo")
-                is_web_server = is_web_server_environment()
+                is_web_server = bool(
+                    runtime_env_info.get("is_cloud", False)
+                    or runtime_env_info.get("is_web_server", False)
+                    or is_web_server_environment()
+                    or st.session_state.get("is_web_server", False)
+                )
                 recorded_source_options = (
                     ["📁 Fazer Upload de Arquivo"]
                     if is_web_server
                     else ["📁 Fazer Upload de Arquivo", "🌐 Link do YouTube / Streaming Web"]
                 )
 
-                saved_source_choice = st.session_state.get("recorded_source_choice")
-                if saved_source_choice not in recorded_source_options:
-                    saved_source_choice = recorded_source_options[0]
-                    st.session_state["recorded_source_choice"] = saved_source_choice
+                if "recorded_source_choice" in st.session_state and st.session_state["recorded_source_choice"] not in recorded_source_options:
+                    st.session_state.pop("recorded_source_choice", None)
 
+                saved_source_choice = st.session_state.get("recorded_source_choice", recorded_source_options[0])
                 source_default_idx = (
                     recorded_source_options.index(saved_source_choice)
                     if saved_source_choice in recorded_source_options

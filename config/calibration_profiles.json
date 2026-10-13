@@ -93,7 +93,7 @@
       "b": -8.0,
       "is_fitted": false
     },
-    "last_calibrated_at": "2026-10-13T12:39:04.241488+00:00"
+    "last_calibrated_at": "2026-10-13T13:13:20.163244+00:00"
   },
   "rigido": {
     "name": "Campeonato / Audit de Dan (Rígido)",
@@ -189,6 +189,6 @@
       "b": -8.0,
       "is_fitted": false
     },
-    "last_calibrated_at": "2026-10-13T12:39:04.306864+00:00"
+    "last_calibrated_at": "2026-10-13T13:13:20.233971+00:00"
   }
 }
