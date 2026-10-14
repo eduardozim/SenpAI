@@ -18,6 +18,26 @@ import html
 os.environ["STREAMLIT_SERVER_MAX_UPLOAD_SIZE"] = "51200"
 os.environ["STREAMLIT_SERVER_MAX_MESSAGE_SIZE"] = "51200"
 
+# Configurações para silenciar ruídos de decodificação C de baixo nível do FFmpeg/OpenCV (msvcrt e ucrt no Windows)
+try:
+    import ctypes
+    for _k, _v in [
+        ("OPENCV_FFMPEG_LOGLEVEL", "-8"),
+        ("OPENCV_LOG_LEVEL", "OFF"),
+        ("OPENCV_VIDEOIO_DEBUG", "0"),
+    ]:
+        os.environ[_k] = _v
+        try:
+            ctypes.cdll.msvcrt._putenv(f"{_k}={_v}".encode("ascii"))
+        except Exception:
+            pass
+        try:
+            ctypes.CDLL("ucrtbase.dll")._putenv(f"{_k}={_v}".encode("ascii"))
+        except Exception:
+            pass
+except Exception:
+    pass
+
 # Suprime aviso benigno interno de depreciação do protobuf com mediapipe e crc32c
 warnings.filterwarnings("ignore", category=UserWarning, module="google.protobuf")
 warnings.filterwarnings("ignore", category=RuntimeWarning, module="google_crc32c")
@@ -115,6 +135,14 @@ def ensure_sidebar_expanded_on_load():
     js_code = """
     <script>
     (function() {
+        try {
+            if (window.frameElement) {
+                window.frameElement.style.display = 'none';
+                window.frameElement.style.height = '0px';
+                window.frameElement.style.width = '0px';
+            }
+        } catch (e) {}
+
         let attempts = 0;
         const maxAttempts = 50;
 
@@ -163,7 +191,10 @@ def ensure_sidebar_expanded_on_load():
     </script>
     """
     try:
-        components.html(js_code, height=0, width=0)
+        if hasattr(st, "iframe"):
+            st.iframe(js_code, height=1, width=1)
+        else:
+            components.html(js_code, height=0, width=0)
     except Exception:
         pass
 
@@ -1403,7 +1434,6 @@ def on_sidebar_nav_change():
 nav_page = st.sidebar.radio(
     "Navegação Principal",
     options=page_nav_options,
-    index=page_nav_options.index(current_nav_val),
     key="sidebar_nav_radio",
     on_change=on_sidebar_nav_change,
     format_func=lambda x: {
@@ -3825,9 +3855,9 @@ elif nav_page in ["match", "training", "analysis"]:
                         with col_rtsp_txt:
                             rtsp_val = st.text_input(
                                 f"Endereço Stream RTSP/RTCP (Câmera {k + 1}):",
-                                value=f"rtsp://192.168.1.{100 + k}:554/live.sdp",
+                                value=f"rtsp://192.168.1.{100 + k}:8554/live",
                                 key=f"rt_rtsp_url_row_{k}",
-                                placeholder="rtsp://192.168.1.100:554/live.sdp ou http://192.168.1.50:8080/video",
+                                placeholder="rtsp://192.168.1.100:8554/live ou http://192.168.1.50:8080/video",
                                 label_visibility="collapsed"
                             )
                         with col_rtsp_test:
@@ -3849,7 +3879,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                         )
                                 else:
                                     st.error(f"❌ {diag['message']}")
-                                    st.info("💡 **Dicas de Conexão RTSP/IP:**\n- **Smartphone (IP Webcam / DroidCam)**: `http://192.168.X.X:8080/video`\n- **Câmera IP RTSP**: `rtsp://192.168.X.X:554/live.sdp`\n- **RTSP com Autenticação**: `rtsp://admin:senha@192.168.X.X:554/stream1`\n- Certifique-se de que a câmera e o computador estão na mesma rede Wi-Fi/Ethernet.")
+                                    st.info("💡 **Dicas de Conexão RTSP/IP:**\n- **Smartphone (IP Webcam / DroidCam)**: `http://192.168.X.X:8080/video`\n- **Câmera IP RTSP**: `rtsp://192.168.X.X:8554/live`\n- **RTSP com Autenticação**: `rtsp://admin:senha@192.168.X.X:554/stream1`\n- Certifique-se de que a câmera e o computador estão na mesma rede Wi-Fi/Ethernet.")
 
                     cam_configs.append({
                         "id": k + 1,
@@ -4343,11 +4373,15 @@ elif nav_page in ["match", "training", "analysis"]:
                             quality=selected_stream_qual,
                             timeout=15
                         )
+                        effective_url = stream_meta.get("corrected_url") or stream_url_input.strip()
                         st.session_state["match_resolved_stream_url"] = resolved_url
                         st.session_state["match_stream_meta"] = stream_meta
-                        st.session_state["match_streaming_url"] = stream_url_input.strip()
+                        st.session_state["match_streaming_url"] = effective_url
 
-                        diag = probe_stream_connection(resolved_url, timeout_seconds=4.0)
+                        if stream_meta.get("corrected_url"):
+                            st.info(f"💡 Link do YouTube corrigido automaticamente (caractere ambíguo detectado no ID): `{stream_meta['corrected_url']}`")
+
+                        diag = probe_stream_connection(resolved_url, timeout_seconds=8.0)
                         if diag["success"]:
                             st.success(f"✅ Conectado ao stream com sucesso! {stream_meta.get('title', '')} — {diag['resolution'][0]}x{diag['resolution'][1]} ({diag['fps']:.1f} FPS) — Latência: {diag['latency_ms']:.0f}ms")
                             if diag["frame_rgb"] is not None:
@@ -4409,12 +4443,73 @@ elif nav_page in ["match", "training", "analysis"]:
                     fps_metric = st.empty()
                     strike_alert_box = st.empty()
                     live_score_ph = st.empty()
-                    live_score_ph.html(render_live_score_html(0, 0, 0, 0, "Kendo Streaming"))
-                    st.markdown("**Histórico de Golpes Detectados no Stream:**")
+
+                    # Cabeçalho do Histórico com Botão para Resetar Feed
+                    col_feed_hdr, col_feed_btn = st.columns([2.0, 1.2])
+                    with col_feed_hdr:
+                        st.markdown("**Histórico de Golpes Detectados no Stream:**")
+                    with col_feed_btn:
+                        btn_reset_stream_feed = st.button(
+                            "🗑️ Resetar Feed",
+                            key="btn_reset_match_stream_feed",
+                            help="Limpar o histórico de golpes e zerar o placar da transmissão atual",
+                            width="stretch"
+                        )
+
+                    current_stream_clean_url = stream_url_input.strip()
+                    last_processed_url = st.session_state.get("match_streaming_last_processed_url")
+
+                    # Se um novo vídeo for iniciado (URL diferente da última processada), limpa a lista e placar
+                    if last_processed_url is not None and last_processed_url != current_stream_clean_url:
+                        st.session_state["match_streaming_strike_history"] = []
+                        st.session_state["match_streaming_score_shiro"] = 0
+                        st.session_state["match_streaming_score_aka"] = 0
+                        st.session_state["match_streaming_total_shiro_strikes"] = 0
+                        st.session_state["match_streaming_total_aka_strikes"] = 0
+                        st.session_state["match_streaming_modality_name"] = "Detectando movimentação..."
+                        st.session_state["match_streaming_pose_history"] = []
+                        st.session_state.pop("match_streaming_last_alert", None)
+
+                    st.session_state["match_streaming_last_processed_url"] = current_stream_clean_url
+
+                    # Se o botão de reset for clicado
+                    if btn_reset_stream_feed:
+                        st.session_state["match_streaming_strike_history"] = []
+                        st.session_state["match_streaming_score_shiro"] = 0
+                        st.session_state["match_streaming_score_aka"] = 0
+                        st.session_state["match_streaming_total_shiro_strikes"] = 0
+                        st.session_state["match_streaming_total_aka_strikes"] = 0
+                        st.session_state["match_streaming_modality_name"] = "Detectando movimentação..."
+                        st.session_state["match_streaming_pose_history"] = []
+                        st.session_state.pop("match_streaming_last_alert", None)
+                        st.toast("🧹 Feed de golpes e placar resetados com sucesso!", icon="🧹")
+
+                    # Carregar valores preservados
+                    live_strike_history: list[str] = st.session_state.get("match_streaming_strike_history", [])
+                    score_shiro: int = st.session_state.get("match_streaming_score_shiro", 0)
+                    score_aka: int = st.session_state.get("match_streaming_score_aka", 0)
+                    total_shiro_strikes: int = st.session_state.get("match_streaming_total_shiro_strikes", 0)
+                    total_aka_strikes: int = st.session_state.get("match_streaming_total_aka_strikes", 0)
+                    live_modality_name: str = st.session_state.get("match_streaming_modality_name", "Kendo Streaming")
+
+                    live_score_ph.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
+
+                    # Reexibir último alerta de golpe se existir
+                    last_alert = st.session_state.get("match_streaming_last_alert")
+                    if last_alert:
+                        alert_type, alert_msg = last_alert
+                        if alert_type == "success":
+                            strike_alert_box.success(alert_msg)
+                        else:
+                            strike_alert_box.warning(alert_msg)
+
                     live_events_container = st.container(height=420)
                     with live_events_container:
                         live_events_placeholder = st.empty()
-                        live_events_placeholder.caption("🥋 *Conectando ao stream e aguardando detecção de golpes...*")
+                        if live_strike_history:
+                            live_events_placeholder.html("".join(live_strike_history))
+                        else:
+                            live_events_placeholder.caption("🥋 *Conectando ao stream e aguardando detecção de golpes...*")
 
                 with col_live_stream:
                     st.markdown('<div class="video-preview-marker"></div>', unsafe_allow_html=True)
@@ -4460,9 +4555,12 @@ elif nav_page in ["match", "training", "analysis"]:
                                 quality=selected_stream_qual,
                                 timeout=15
                             )
+                            effective_url = meta.get("corrected_url") or stream_url_input.strip()
+                            if meta.get("corrected_url"):
+                                st.info(f"💡 Link do YouTube corrigido automaticamente: `{meta['corrected_url']}`")
                             st.session_state["match_resolved_stream_url"] = resolved_stream_src
                             st.session_state["match_stream_meta"] = meta
-                            st.session_state["match_streaming_url"] = stream_url_input.strip()
+                            st.session_state["match_streaming_url"] = effective_url
                         except Exception as e:
                             st.error(f"❌ Falha ao resolver URL do streaming: {e}")
                             resolved_stream_src = None
@@ -4520,17 +4618,12 @@ elif nav_page in ["match", "training", "analysis"]:
 
                         stream_obj.set_speed(active_match_speed)
 
-                        live_pose_histories = [[]]
+                        saved_pose_hist = st.session_state.get("match_streaming_pose_history", [])
+                        live_pose_histories = [list(saved_pose_hist)]
                         latest_drawn_frames: list[Optional[np.ndarray]] = [st.session_state.get("match_last_drawn_frame", None)]
-                        live_strike_history: list[str] = []
-                        score_shiro = 0
-                        score_aka = 0
-                        total_shiro_strikes = 0
-                        total_aka_strikes = 0
                         frame_count = 0
                         start_time = time.time()
                         current_fps = 30.0
-                        live_modality_name = "Detectando movimentação..."
                         streaming_cam_cfg = [{"id": 1, "type": "streaming", "source": resolved_stream_src, "label": "Stream"}]
 
                         live_score_ph.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
@@ -4596,6 +4689,9 @@ elif nav_page in ["match", "training", "analysis"]:
                                 )
                                 active_lm = aka_lm or shiro_lm
                                 live_pose_histories[0].append(active_lm)
+                                if len(live_pose_histories[0]) > 180:
+                                    live_pose_histories[0] = live_pose_histories[0][-180:]
+                                st.session_state["match_streaming_pose_history"] = live_pose_histories[0]
                                 latest_drawn_frames[0] = drawn_frame
                                 st.session_state["match_last_drawn_frame"] = drawn_frame
 
@@ -4623,6 +4719,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                             fps=current_fps or 30.0
                                         )
                                         live_modality_name = f"{TRAINING_MODALITIES_METADATA.get(m_k, {}).get('name', m_k)} ({int(m_c * 100)}%)"
+                                        st.session_state["match_streaming_modality_name"] = live_modality_name
                                         live_score_ph.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
                                     except Exception:
                                         pass
@@ -4656,17 +4753,22 @@ elif nav_page in ["match", "training", "analysis"]:
                                             if is_ippon:
                                                 score_aka += 1
 
+                                        st.session_state["match_streaming_score_shiro"] = score_shiro
+                                        st.session_state["match_streaming_score_aka"] = score_aka
+                                        st.session_state["match_streaming_total_shiro_strikes"] = total_shiro_strikes
+                                        st.session_state["match_streaming_total_aka_strikes"] = total_aka_strikes
+
                                         live_score_ph.html(render_live_score_html(score_shiro, score_aka, total_shiro_strikes, total_aka_strikes, live_modality_name))
 
                                         if is_ippon:
-                                            strike_alert_box.success(
-                                                f"🎉 **IPPON OFICIAL VÁLIDO ({tot_sc:.0f}%)**: {tech_mark} às `{ts_str}` — ({atk_name})"
-                                            )
+                                            alert_msg = f"🎉 **IPPON OFICIAL VÁLIDO ({tot_sc:.0f}%)**: {tech_mark} às `{ts_str}` — ({atk_name})"
+                                            strike_alert_box.success(alert_msg)
+                                            st.session_state["match_streaming_last_alert"] = ("success", alert_msg)
                                         else:
                                             failed_str = ", ".join(yuko.get("failed_subcriteria", [])) or "Abaixo da pontuação mínima"
-                                            strike_alert_box.warning(
-                                                f"⚠️ **GOLPE EXECUTADO / SEM IPPON ({tot_sc:.0f}%)**: {tech_mark} às `{ts_str}` — Motivo: {failed_str} ({atk_name})"
-                                            )
+                                            alert_msg = f"⚠️ **GOLPE EXECUTADO / SEM IPPON ({tot_sc:.0f}%)**: {tech_mark} às `{ts_str}` — Motivo: {failed_str} ({atk_name})"
+                                            strike_alert_box.warning(alert_msg)
+                                            st.session_state["match_streaming_last_alert"] = ("warning", alert_msg)
 
                                         card_border = "#22c55e" if is_ippon else "#eab308"
                                         status_badge = (
@@ -4716,6 +4818,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                         )
 
                                         live_strike_history.insert(0, card_html)
+                                        st.session_state["match_streaming_strike_history"] = live_strike_history
                                         live_events_placeholder.html("".join(live_strike_history))
 
                                 frame_count += 1
@@ -4862,9 +4965,9 @@ elif nav_page in ["match", "training", "analysis"]:
                         with col_rtsp_txt:
                             rtsp_val = st.text_input(
                                 f"Endereço Stream RTSP/RTCP (Câmera {k + 1}):",
-                                value=f"rtsp://192.168.1.{100 + k}:554/live.sdp",
+                                value=f"rtsp://192.168.1.{100 + k}:8554/live",
                                 key=f"train_rt_rtsp_url_{k}",
-                                placeholder="rtsp://192.168.1.100:554/live.sdp ou http://192.168.1.50:8080/video",
+                                placeholder="rtsp://192.168.1.100:8554/live ou http://192.168.1.50:8080/video",
                                 label_visibility="collapsed"
                             )
                         with col_rtsp_test:
@@ -4886,7 +4989,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                         )
                                 else:
                                     st.error(f"❌ {diag['message']}")
-                                    st.info("💡 **Dicas de Conexão RTSP/IP:**\n- **Smartphone (IP Webcam / DroidCam)**: `http://192.168.X.X:8080/video`\n- **Câmera IP RTSP**: `rtsp://192.168.X.X:554/live.sdp`\n- **RTSP com Autenticação**: `rtsp://admin:senha@192.168.X.X:554/stream1`\n- Certifique-se de que a câmera e o computador estão na mesma rede Wi-Fi/Ethernet.")
+                                    st.info("💡 **Dicas de Conexão RTSP/IP:**\n- **Smartphone (IP Webcam / DroidCam)**: `http://192.168.X.X:8080/video`\n- **Câmera IP RTSP**: `rtsp://192.168.X.X:8554/live`\n- **RTSP com Autenticação**: `rtsp://admin:senha@192.168.X.X:554/stream1`\n- Certifique-se de que a câmera e o computador estão na mesma rede Wi-Fi/Ethernet.")
 
                     cam_configs.append({
                         "id": k + 1,
@@ -5358,11 +5461,15 @@ elif nav_page in ["match", "training", "analysis"]:
                             quality=selected_train_stream_qual,
                             timeout=15
                         )
+                        effective_train_url = train_stream_meta.get("corrected_url") or train_stream_url_input.strip()
                         st.session_state["train_resolved_stream_url"] = resolved_train_url
                         st.session_state["train_stream_meta"] = train_stream_meta
-                        st.session_state["train_streaming_url"] = train_stream_url_input.strip()
+                        st.session_state["train_streaming_url"] = effective_train_url
 
-                        diag = probe_stream_connection(resolved_train_url, timeout_seconds=4.0)
+                        if train_stream_meta.get("corrected_url"):
+                            st.info(f"💡 Link do YouTube corrigido automaticamente (caractere ambíguo detectado no ID): `{train_stream_meta['corrected_url']}`")
+
+                        diag = probe_stream_connection(resolved_train_url, timeout_seconds=8.0)
                         if diag["success"]:
                             st.success(f"✅ Conectado ao stream com sucesso! {train_stream_meta.get('title', '')} — {diag['resolution'][0]}x{diag['resolution'][1]} ({diag['fps']:.1f} FPS) — Latência: {diag['latency_ms']:.0f}ms")
                             if diag["frame_rgb"] is not None:
@@ -5474,9 +5581,12 @@ elif nav_page in ["match", "training", "analysis"]:
                                 quality=selected_train_stream_qual,
                                 timeout=15
                             )
+                            effective_train_url = meta.get("corrected_url") or train_stream_url_input.strip()
+                            if meta.get("corrected_url"):
+                                st.info(f"💡 Link do YouTube corrigido automaticamente: `{meta['corrected_url']}`")
                             st.session_state["train_resolved_stream_url"] = resolved_train_src
                             st.session_state["train_stream_meta"] = meta
-                            st.session_state["train_streaming_url"] = train_stream_url_input.strip()
+                            st.session_state["train_streaming_url"] = effective_train_url
                         except Exception as e:
                             st.error(f"❌ Falha ao resolver URL do streaming de treino: {e}")
                             resolved_train_src = None

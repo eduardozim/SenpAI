@@ -21,16 +21,53 @@ FFMPEG_RTSP_OPTIONS = (
     "flags;low_delay|"
     "max_delay;500000|"
     "analyzeduration;1000000|"
-    "probesize;1000000"
+    "probesize;1000000|"
+    "reconnect;1|"
+    "reconnect_streamed;1|"
+    "reconnect_delay_max;5"
 )
+
+
+def set_c_runtime_env(key: str, value: str) -> None:
+    """
+    Configura a variável de ambiente tanto no Python (os.environ) quanto nas
+    tabelas de ambiente das C runtimes (msvcrt.dll e ucrtbase.dll) no Windows.
+    Essencial para que DLLs compiladas em C/C++ (como opencv_videoio_ffmpeg)
+    obtenham os valores corretos via getenv().
+    """
+    os.environ[key] = value
+    try:
+        import ctypes
+        if hasattr(ctypes, "cdll") and hasattr(ctypes.cdll, "msvcrt"):
+            ctypes.cdll.msvcrt._putenv(f"{key}={value}".encode("ascii"))
+    except Exception:
+        pass
+    try:
+        import ctypes
+        ucrt = ctypes.CDLL("ucrtbase.dll")
+        if hasattr(ucrt, "_putenv"):
+            ucrt._putenv(f"{key}={value}".encode("ascii"))
+    except Exception:
+        pass
 
 
 def apply_ffmpeg_network_optimizations() -> None:
     """
-    Aplica as variáveis de ambiente e opções do FFmpeg para garantir que
-    conexões RTSP/IP usem TCP e operem com a menor latência possível sem drop de pacotes UDP.
+    Aplica as variáveis de ambiente e opções do FFmpeg tanto no Python quanto no C runtime (msvcrt/ucrt)
+    para garantir reconexão automática resiliente, transporte TCP sem drop de UDP,
+    e supressão de mensagens de baixo nível de decodificação no console.
     """
     os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = FFMPEG_RTSP_OPTIONS
+    # Garante que o C-runtime global não retenha 'nobuffer' por padrão, evitando corromper demuxers de arquivos locais MP4/MOV
+    set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", "")
+    os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = FFMPEG_RTSP_OPTIONS
+    set_c_runtime_env("OPENCV_FFMPEG_LOGLEVEL", "-8")
+    set_c_runtime_env("OPENCV_LOG_LEVEL", "OFF")
+    set_c_runtime_env("OPENCV_VIDEOIO_DEBUG", "0")
+
+
+# Aplica imediatamente na carga do módulo
+apply_ffmpeg_network_optimizations()
 
 
 def normalize_stream_source(source_input: Union[str, int]) -> Union[str, int]:
@@ -126,14 +163,22 @@ class ThreadedVideoStream:
     def _open_capture(self) -> bool:
         """Inicializa e configura a conexão do VideoCapture."""
         try:
-            if self.is_network:
-                apply_ffmpeg_network_optimizations()
-                # Para URLs de rede no OpenCV, CAP_FFMPEG oferece suporte direto e otimizado
+            if self.is_rtsp:
+                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", FFMPEG_RTSP_OPTIONS)
                 self.cap = cv2.VideoCapture(self.src, cv2.CAP_FFMPEG)
+                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", "")
+            elif self.is_network:
+                # Streams HTTP/HTTPS/TLS (YouTube, HLS, DASH, etc.): reconexão resiliente sem 'nobuffer'
+                http_stream_opts = "reconnect;1|reconnect_streamed;1|reconnect_delay_max;5|flags;low_delay"
+                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", http_stream_opts)
+                self.cap = cv2.VideoCapture(self.src, cv2.CAP_FFMPEG)
+                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", "")
             elif isinstance(self.src, int):
+                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", "")
                 backend = cv2.CAP_DSHOW if hasattr(cv2, "CAP_DSHOW") else cv2.CAP_ANY
                 self.cap = cv2.VideoCapture(self.src, backend)
             else:
+                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", "")
                 self.cap = cv2.VideoCapture(self.src)
 
             if not self.cap or not self.cap.isOpened():
@@ -238,6 +283,7 @@ class ThreadedVideoStream:
                 if self._seek_requested_sec is not None and self.cap and self.cap.isOpened():
                     target_sec = self._seek_requested_sec
                     self._seek_requested_sec = None
+                    self.dropped_frames = 0
                     try:
                         target_ms = max(0.0, target_sec * 1000.0)
                         seek_ok = self.cap.set(cv2.CAP_PROP_POS_MSEC, target_ms)
@@ -305,11 +351,12 @@ class ThreadedVideoStream:
                         continue
 
                 self.dropped_frames += 1
-                # Se falhar leituras consecutivas, acionar reconexão rápida
-                if self.dropped_frames % 5 == 0:
+                # Se falhar leituras consecutivas, acionar reconexão resiliente
+                max_allowed_dropped = 45 if self.is_network else 15
+                if self.dropped_frames % 15 == 0:
                     log_event("WARNING", f"[{self.name}] Falha na leitura de frame ({self.dropped_frames} frames perdidos).", "stream_capture")
-                    if self.dropped_frames >= 12:
-                        opened = False
+                if self.dropped_frames >= max_allowed_dropped:
+                    opened = False
 
             # Cadência de tempo respeitando a velocidade de reprodução (0.5x, 1.0x, 1.5x, 2.0x)
             with self._lock:
@@ -500,7 +547,7 @@ def format_stream_time(seconds: float) -> str:
 
 def probe_stream_connection(
     source: Union[str, int],
-    timeout_seconds: float = 3.5
+    timeout_seconds: float = 6.0
 ) -> Dict[str, Any]:
     """
     Testa de forma não-bloqueante a conectividade com uma câmera local ou stream de rede (RTSP/HTTP).
@@ -539,6 +586,8 @@ def probe_stream_connection(
                     "latency_ms": elapsed_ms,
                     "source": str(norm_src)
                 }
+            if stream.status in ["DISCONNECTED", "ERROR"] and (stream._thread is None or not stream._thread.is_alive()):
+                break
             time.sleep(0.05)
 
         # Se atingiu o timeout sem frame
@@ -706,8 +755,41 @@ def resolve_streaming_url(
             last_error = str(e)
             continue
 
+    # Se falhou e for URL do YouTube, tenta recuperar erros de digitação comuns em caracteres ambíguos ('l' vs 'I', '0' vs 'O')
+    if "youtube.com" in clean_lower or "youtu.be" in clean_lower:
+        import re
+        match_id = re.search(r'(?:v=|\/live\/|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})', clean_url)
+        if match_id:
+            orig_id = match_id.group(1)
+            candidate_ids = []
+            if 'l' in orig_id:
+                candidate_ids.append(orig_id.replace('l', 'I'))
+            if 'I' in orig_id:
+                candidate_ids.append(orig_id.replace('I', 'l'))
+            if '0' in orig_id:
+                candidate_ids.append(orig_id.replace('0', 'O'))
+            if 'O' in orig_id:
+                candidate_ids.append(orig_id.replace('O', '0'))
+
+            for cand_id in candidate_ids:
+                if cand_id == orig_id:
+                    continue
+                cand_url = clean_url.replace(orig_id, cand_id)
+                try:
+                    direct, meta = resolve_streaming_url(cand_url, quality=quality, timeout=timeout, cookie_file=cookie_file)
+                    meta["corrected_url"] = cand_url
+                    meta["corrected_from_url"] = clean_url
+                    log_event("INFO", f"Stream recuperado com sucesso via autocorreção de ID ({orig_id} -> {cand_id}): {meta['title']}", "stream_capture")
+                    return direct, meta
+                except Exception:
+                    pass
+
     log_event("ERROR", f"Falha ao resolver streaming para {clean_url}: {last_error}", "stream_capture")
-    raise VideoDownloadError(f"Não foi possível obter o fluxo de vídeo deste streaming: {last_error or 'Link inacessível ou formato incompatível.'}")
+    if "This video is unavailable" in last_error or "Video unavailable" in last_error:
+        user_msg = "Este vídeo não está disponível no YouTube (verifique se há erro de digitação no link ou se o vídeo foi tornado privado/removido)."
+    else:
+        user_msg = f"Não foi possível obter o fluxo de vídeo deste streaming: {last_error or 'Link inacessível ou formato incompatível.'}"
+    raise VideoDownloadError(user_msg)
 
 
 def format_stream_time(seconds: float) -> str:
