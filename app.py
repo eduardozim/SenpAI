@@ -110,7 +110,7 @@ from src.utils.webrtc_manager import (
 )
 from src.utils.stream_capture import (
     ThreadedVideoStream, probe_stream_connection, normalize_stream_source, apply_ffmpeg_network_optimizations,
-    resolve_streaming_url, is_web_streaming_url, format_stream_time
+    resolve_streaming_url, is_web_streaming_url, format_stream_time, StreamSyncTracker
 )
 from src.utils.video_player_controls import render_video_playback_controls
 
@@ -4092,6 +4092,15 @@ elif nav_page in ["match", "training", "analysis"]:
                     live_pose_histories = [[] for _ in range(num_cameras)]
                     latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
                     live_strike_history: list[str] = []
+
+                    # Calibrador Automático de Atraso Temporal: Ancoragem na Webcam Local (Referência Zero 0ms)
+                    ref_cam_idx = 0
+                    for idx_c, st_c in enumerate(streams):
+                        if not getattr(st_c, "is_network", False):
+                            ref_cam_idx = idx_c
+                            break
+                    sync_tracker = StreamSyncTracker(reference_index=ref_cam_idx, fps=30.0)
+
                     score_shiro = 0
                     score_aka = 0
                     total_shiro_strikes = 0
@@ -4148,21 +4157,42 @@ elif nav_page in ["match", "training", "analysis"]:
                                     discarded_items=disc
                                 )
                                 active_lm = aka_lm or shiro_lm
-                                live_pose_histories[0].append(active_lm)
-                                latest_drawn_frames[0] = drawn_frame
+                                current_landmarks = active_lm
                             else:
                                 landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
-                                live_pose_histories[k].append(landmarks)
-                                latest_drawn_frames[k] = drawn_frame
+                                current_landmarks = landmarks
 
-                            # Exibir frame anotado com badge de status do stream
-                            frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
+                            # Registra o frame processado no calibrador de sincronização
+                            sync_tracker.register_processed_frame(
+                                cam_idx=k,
+                                frame=frame,
+                                drawn_frame=drawn_frame,
+                                landmarks=current_landmarks
+                            )
+
+                            # Recupera os dados sincronizados (compensando o atraso na webcam de referência)
+                            synced_frame, synced_drawn, synced_lm = sync_tracker.get_synced_data(
+                                cam_idx=k,
+                                current_frame=frame,
+                                current_drawn=drawn_frame,
+                                current_landmarks=current_landmarks
+                            )
+
+                            display_drawn = synced_drawn if synced_drawn is not None else drawn_frame
+                            display_lm = synced_lm if synced_lm is not None else current_landmarks
+
+                            live_pose_histories[k].append(display_lm)
+                            latest_drawn_frames[k] = display_drawn
+
+                            # Exibir frame anotado com badge de status do stream e atraso temporal
+                            frame_rgb = cv2.cvtColor(display_drawn, cv2.COLOR_BGR2RGB)
                             cam_stats = stream.get_stats()
                             stream_fps_val = cam_stats.get("fps", 30.0)
                             status_icon = "🟢" if stream.is_connected() else ("🟡" if stream.status == "RECONNECTING" else "🔴")
+                            sync_badge = sync_tracker.get_sync_badge(k)
                             frame_placeholders[k].image(
                                 frame_rgb,
-                                caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {stream_fps_val:.1f} FPS)",
+                                caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {stream_fps_val:.1f} FPS | {sync_badge})",
                                 channels="RGB",
                                 width="stretch"
                             )
@@ -5222,6 +5252,15 @@ elif nav_page in ["match", "training", "analysis"]:
                     )
                     live_pose_histories = [[] for _ in range(num_cameras)]
                     latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
+
+                    # Calibrador Automático de Atraso Temporal: Ancoragem na Webcam Local (Referência Zero 0ms)
+                    ref_train_cam_idx = 0
+                    for idx_c, st_c in enumerate(streams):
+                        if not getattr(st_c, "is_network", False):
+                            ref_train_cam_idx = idx_c
+                            break
+                    sync_train_tracker = StreamSyncTracker(reference_index=ref_train_cam_idx, fps=30.0)
+
                     frame_count = 0
                     start_time = time.time()
                     current_fps = 30.0
@@ -5264,20 +5303,41 @@ elif nav_page in ["match", "training", "analysis"]:
                                     importlib.reload(_tmt_dyn)
                                     drawn_frame = _tmt_dyn.TrainingMultiKenshiTracker.draw_overlay(pipeline.training_multi_tracker, frame, current_results)
                                 active_lm = next((lm for lm in current_results.values() if lm is not None), None)
-                                live_pose_histories[0].append(active_lm)
-                                latest_drawn_frames[0] = drawn_frame
+                                current_landmarks = active_lm
                             else:
                                 landmarks, drawn_frame = pipeline.pose_detector.process_frame(frame)
-                                live_pose_histories[k].append(landmarks)
-                                latest_drawn_frames[k] = drawn_frame
+                                current_landmarks = landmarks
 
-                            frame_rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
+                            # Registra o frame processado no calibrador de sincronização
+                            sync_train_tracker.register_processed_frame(
+                                cam_idx=k,
+                                frame=frame,
+                                drawn_frame=drawn_frame,
+                                landmarks=current_landmarks
+                            )
+
+                            # Recupera os dados sincronizados (compensando o atraso na webcam de referência)
+                            synced_frame, synced_drawn, synced_lm = sync_train_tracker.get_synced_data(
+                                cam_idx=k,
+                                current_frame=frame,
+                                current_drawn=drawn_frame,
+                                current_landmarks=current_landmarks
+                            )
+
+                            display_drawn = synced_drawn if synced_drawn is not None else drawn_frame
+                            display_lm = synced_lm if synced_lm is not None else current_landmarks
+
+                            live_pose_histories[k].append(display_lm)
+                            latest_drawn_frames[k] = display_drawn
+
+                            frame_rgb = cv2.cvtColor(display_drawn, cv2.COLOR_BGR2RGB)
                             cam_stats = stream.get_stats()
                             stream_fps_val = cam_stats.get("fps", 30.0)
                             status_icon = "🟢" if stream.is_connected() else "🔴"
+                            sync_badge = sync_train_tracker.get_sync_badge(k)
                             frame_placeholders[k].image(
                                 frame_rgb,
-                                caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {stream_fps_val:.1f} FPS)",
+                                caption=f"📷 Câmera {k + 1}: {cam_configs[k]['label']} ({status_icon} {stream_fps_val:.1f} FPS | {sync_badge})",
                                 channels="RGB",
                                 width="stretch"
                             )
