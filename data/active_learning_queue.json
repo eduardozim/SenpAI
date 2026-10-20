@@ -1004,6 +1004,43 @@
     "status": "pending_curation"
   },
   {
+    "id": "unc_1792503666831_100",
+    "timestamp": "2026-10-20T10:41:06.834975",
+    "video_source": "match_eixo4.mp4",
+    "clip_path": null,
+    "strike_type": "MEN",
+    "confidence": 0.52,
+    "uncertainty_score": 0.96,
+    "strike_data": {
+      "strike_type": "MEN",
+      "scores": {
+        "target_impact": 0.52,
+        "fumikomi_sync": 0.5,
+        "posture": 0.5,
+        "zanshin": 0.5
+      },
+      "sub_scores": {
+        "target_impact": 0.52,
+        "fumikomi_sync": 0.5,
+        "posture": 0.5,
+        "zanshin": 0.5
+      },
+      "total_score": 52.0,
+      "label": "TP",
+      "notes": ""
+    },
+    "profile_name": "normal",
+    "llm_triage": {
+      "verdict": "DOUBTFUL",
+      "recommended_p_ippon": 0.504,
+      "primary_deficiency": "HASUJI",
+      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
+      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
+      "engine": "FIK-Expert-Deterministic-Offline"
+    },
+    "status": "pending_curation"
+  },
+  {
     "id": "unc_1792003989442_100",
     "timestamp": "2026-10-14T15:53:09.445347",
     "video_source": "yt_AydOGlt-zxg_media_FINAL_-_Teshima_(PB)_x_J._Carvalho_(AKP).mp4",
@@ -2867,34 +2904,6 @@
       "timestamp_seconds": 15.333263206037046,
       "timestamp": "00:15.333",
       "impact_frame": 460
-    },
-    "profile_name": "normal",
-    "llm_triage": {
-      "verdict": "DOUBTFUL",
-      "recommended_p_ippon": 0.5,
-      "primary_deficiency": "HASUJI",
-      "fik_rule_rationale": "O ângulo do Shinai divergiu do fio de corte da lâmina (desvio de Hasuji). Segundo o Regulamento FIK (Artigo 12), o golpe deve atingir o Datotsu-bui com o Monouchi e fio correto.",
-      "coaching_advice": "Trabalhe Suburi focando no Tenouchi (aperto elástico com os dedos mínimo e anelar) para travar a lâmina em ângulo reto no momento do impacto.",
-      "engine": "FIK-Expert-Deterministic-Offline"
-    },
-    "status": "pending_curation"
-  },
-  {
-    "id": "unc_1792450144498_100",
-    "timestamp": "2026-10-19T19:49:04.498596",
-    "video_source": "upload_1792450065_Elzami Miwa Onaka (Santa Catarina) x Cristiane Lie Toida (Seibukan).mp4",
-    "clip_path": "data/active_learning_clips/unc_strike_1792450143415_9_corte.mp4",
-    "strike_type": "Men",
-    "confidence": 0.538,
-    "uncertainty_score": 0.924,
-    "strike_data": {
-      "strike_type": "Men",
-      "scores": {},
-      "sub_scores": {},
-      "total_score": 53.8,
-      "timestamp_seconds": 23.73322478847473,
-      "timestamp": "00:23.733",
-      "impact_frame": 712
     },
     "profile_name": "normal",
     "llm_triage": {

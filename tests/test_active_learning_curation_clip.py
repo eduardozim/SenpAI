@@ -341,20 +341,21 @@ class TestActiveLearningCurationClip(unittest.TestCase):
         )
 
         # resolve_source_video_path deve apontar para a pasta do host atual, nunca para a máquina remota
+        from src.utils.strike_clip_manager import get_senpai_uploads_dir
         foreign_windows_path = r"C:\Users\foreign_developer\AppData\Local\Temp\senpai_uploads\yt_AydOGlt-zxg_media_FINAL_-_Teshima_(PB)_x_J._Carvalho_(AKP).mp4"
         resolved = resolve_source_video_path(foreign_windows_path)
         self.assertNotIn("foreign_developer", resolved)
         self.assertTrue(resolved.endswith("yt_AydOGlt-zxg_media_FINAL_-_Teshima_(PB)_x_J._Carvalho_(AKP).mp4"))
         self.assertIn("senpai_uploads", resolved)
-        self.assertTrue(resolved.startswith(tempfile.gettempdir()))
+        self.assertEqual(os.path.normpath(os.path.dirname(resolved)), os.path.normpath(get_senpai_uploads_dir(ensure_exists=False)))
 
     def test_find_source_video_with_foreign_windows_path(self):
         """Valida que find_source_video localiza o vídeo na pasta temporária do servidor mesmo se a fila tiver caminho de outro PC."""
-        from src.utils.strike_clip_manager import find_source_video
+        from src.utils.strike_clip_manager import find_source_video, get_senpai_uploads_dir
 
-        temp_uploads = os.path.join(tempfile.gettempdir(), "senpai_uploads")
-        os.makedirs(temp_uploads, exist_ok=True)
-        local_video = os.path.join(temp_uploads, "test_cross_machine_video.mp4")
+        uploads_dir = get_senpai_uploads_dir()
+        os.makedirs(uploads_dir, exist_ok=True)
+        local_video = os.path.join(uploads_dir, "test_cross_machine_video.mp4")
         shutil.copy(self.dummy_video_path, local_video)
 
         try:
@@ -384,6 +385,24 @@ class TestActiveLearningCurationClip(unittest.TestCase):
         assert clip is not None
         self.assertTrue(os.path.isfile(clip))
         self.assertEqual(os.path.abspath(clip), os.path.abspath(local_clip))
+
+    def test_get_senpai_uploads_dir_custom_env_and_fallback(self):
+        """Valida prioridade do ambiente SENPAI_UPLOADS_DIR e fallback resiliente."""
+        from src.utils.strike_clip_manager import get_senpai_uploads_dir
+        from unittest.mock import patch
+
+        # 1. Custom ENV
+        custom_test_dir = os.path.join(self.test_dir, "custom_uploads_target")
+        with patch.dict(os.environ, {"SENPAI_UPLOADS_DIR": custom_test_dir}):
+            dir_res = get_senpai_uploads_dir()
+            self.assertEqual(os.path.abspath(dir_res), os.path.abspath(custom_test_dir))
+            self.assertTrue(os.path.isdir(dir_res))
+
+        # 2. Padrão no projeto
+        with patch.dict(os.environ, {}, clear=True):
+            dir_res = get_senpai_uploads_dir()
+            self.assertIn("senpai_uploads", dir_res)
+            self.assertTrue(os.path.isdir(dir_res))
 
 
 if __name__ == "__main__":

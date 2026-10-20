@@ -118,7 +118,7 @@ from src.utils.video_player_controls import render_video_playback_controls
 setup_system_logger()
 
 # Versão Oficial do Sistema
-SYSTEM_VERSION = "v 0.3.7.1"
+SYSTEM_VERSION = "v 0.3.7.2"
 
 st.set_page_config(
     page_title=f"SenpAI ({SYSTEM_VERSION}) - AI Kendo Referee & Analysis System",
@@ -6068,16 +6068,20 @@ elif nav_page in ["match", "training", "analysis"]:
                                 except Exception:
                                     pass
 
-                            uploads_dir = os.path.join(tempfile.gettempdir(), "senpai_uploads")
+                            from src.utils.strike_clip_manager import get_senpai_uploads_dir
+                            uploads_dir = get_senpai_uploads_dir()
                             os.makedirs(uploads_dir, exist_ok=True)
                             
-                            # Limpar arquivos temporários antigos de sessões anteriores
+                            # Limpar arquivos temporários obsoletos (mais de 7 dias) preservando lutas ativas em curadoria
                             try:
                                 now = time.time()
                                 for old_f in os.listdir(uploads_dir):
                                     f_p = os.path.join(uploads_dir, old_f)
-                                    if os.path.isfile(f_p) and (now - os.path.getmtime(f_p) > 3600):
-                                        os.remove(f_p)
+                                    if os.path.isfile(f_p) and (now - os.path.getmtime(f_p) > 7 * 86400):
+                                        try:
+                                            os.remove(f_p)
+                                        except Exception:
+                                            pass
                             except Exception:
                                 pass
 

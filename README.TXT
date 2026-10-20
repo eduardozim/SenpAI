@@ -4,7 +4,7 @@
 
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
 
-                              Versão: v 0.3.7.1
+                              Versão: v 0.3.7.2
 
 ===============================================================================
 
@@ -719,9 +719,26 @@ mudanças, consulte o arquivo manual.md.
 
 -------------------------------------------------------------------------------
 
-8. NOVIDADES DA VERSÃO (v 0.3.7.1)
+8. NOVIDADES DA VERSÃO (v 0.3.7.2)
 
 -------------------------------------------------------------------------------
+
+- Suporte Multi-Servidor e Caminhos Cross-Platform:
+  • Resolução de caminhos agnóstica de sistema operacional (Windows / Linux / Docker).
+  • Normalização automática de caminhos com barras normais e invertidas, evitando
+    erros de pastas fixas locais ao executar em servidores Web e Cloud.
+  • Reprodução instantânea de cortes da Fila de Curadoria Ativa no player visual.
+  • Higienização de filas e registros com referências portáteis e relativas.
+
+- Botão de Descarte na Fila de Curadoria Ativa (Active Learning):
+  • Nova opção de descarte arbitral ("Descartar") para lances controversos ruidosos
+    ou inconclusivos.
+  • Descarte gracioso sem impactar negativamente o modelo adaptativo nem gerar viés.
+  • Exclusão automática e segura do arquivo temporário de corte do disco.
+
+- Governança de Treinamento em Arquivo ZIP:
+  • Exportação e importação consolidada de pacotes completos em .zip integrando
+    revisões por Dan, fila de curadoria ativa, base de conhecimento e clipes de vídeo.
 
 - Treinamento Automático por IA (Web & Vídeo):
   • Execução contínua e estável em thread de background desacoplada.
