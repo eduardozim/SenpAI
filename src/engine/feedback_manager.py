@@ -1909,6 +1909,7 @@ class FeedbackManager:
         - IPPON: Movimento válido de Ippon (aprovado).
         - INVALID_STRIKE: Houve movimento/tentativa, mas o golpe não foi válido.
         - NO_STRIKE: Nenhuma tentativa de movimento para pontuação (detecção espúria).
+        - DISCARDED: Lance com resultado indeterminado (descartado sem afetar o treinamento).
         """
         if not decision:
             decision = kwargs.get("decision", "IPPON" if approved else "INVALID_STRIKE")
@@ -1925,7 +1926,14 @@ class FeedbackManager:
         strike_data = target_item.get("strike_data", {}) if target_item else {}
 
         # Determinar rótulos e anotações conforme a decisão
-        if decision == "IPPON":
+        if decision in ("DISCARDED", "DISCARD"):
+            decision = "DISCARDED"
+            eff_approved = False
+            fb_label = None
+            decision_cat = "DISCARDED"
+            default_notes = "Descartado: Resultado Indeterminado via Curadoria Ativa"
+            trigger_retrain = False
+        elif decision == "IPPON":
             eff_approved = True
             fb_label = "TP"
             decision_cat = "IPPON"
@@ -1942,8 +1950,8 @@ class FeedbackManager:
             decision_cat = "INVALID_STRIKE"
             default_notes = "Golpe Inválido (Tentativa sem Ippon) via Curadoria Ativa"
 
-        # 2. Registrar no dataset de feedback
-        if target_item:
+        # 2. Registrar no dataset de feedback (apenas se NÃO for descartado)
+        if target_item and decision != "DISCARDED" and fb_label is not None:
             self.save_feedback(
                 video_name=str(target_item.get("video_source", "curadoria_ativa")),
                 profile_key=profile_key,
@@ -1970,10 +1978,10 @@ class FeedbackManager:
             decision=decision
         )
 
-        # 4. Executar retreinamento / recalibração matemática do modelo
+        # 4. Executar retreinamento / recalibração matemática do modelo (apenas se NÃO for descartado)
         retrained = False
         opt_stats = {}
-        if trigger_retrain and resolved:
+        if trigger_retrain and resolved and decision != "DISCARDED":
             try:
                 profiles = self.load_profiles()
                 cur_cfg = profiles.get(profile_key, DEFAULT_CALIBRATION_PROFILES.get(profile_key, {}))
@@ -1999,6 +2007,31 @@ class FeedbackManager:
             "clip_deleted": cleanup_clip,
             "optimization_stats": opt_stats
         }
+
+    def discard_active_learning_item(
+        self,
+        item_id: str,
+        reviewer_dan: int = 5,
+        notes: str = "Descartado: Resultado indeterminado",
+        cleanup_clip: bool = True,
+        *args,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """
+        Descarta um item da fila de curadoria ativa quando não for possível determinar o resultado do golpe.
+        O item é removido da fila e seu clipe é apagado sem afetar o treinamento (sem registrar feedback e sem retreinar).
+        """
+        return self.resolve_active_learning_item(
+            item_id=item_id,
+            approved=False,
+            reviewer_dan=reviewer_dan,
+            notes=notes,
+            trigger_retrain=False,
+            cleanup_clip=cleanup_clip,
+            decision="DISCARDED",
+            *args,
+            **kwargs
+        )
 
     def consolidate_multi_judge_reviews(self, reviews: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Consolida votos de múltiplos árbitros aplicando regra de 2 de 3, ponderação por Dan e grau de divergência."""

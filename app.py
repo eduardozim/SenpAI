@@ -3080,9 +3080,14 @@ elif nav_page == "settings":
                             st.markdown(f"- 💡 **Orientação Técnica:** {triage.get('coaching_advice', '')}")
 
                         st.markdown("**Decisão do Árbitro / Retorno:**")
-                        st.caption("• **✅ Ippon (Válido):** Há movimento e é válido para pontuação.\n• **❌ Golpe Inválido:** Há movimento/tentativa, mas o golpe não foi válido.\n• **🚫 Não tem Golpe:** Nenhuma tentativa de movimento para pontuação (detecção espúria).")
+                        st.caption(
+                            "• **✅ Ippon (Válido):** Há movimento e é válido para pontuação.\n"
+                            "• **❌ Golpe Inválido:** Há movimento/tentativa, mas o golpe não foi válido.\n"
+                            "• **🚫 Não tem Golpe:** Nenhuma tentativa de movimento para pontuação (detecção espúria).\n"
+                            "• **🗑️ Descartar:** Não foi possível determinar o resultado do golpe (descarta da fila sem afetar o treinamento)."
+                        )
                         it_id = str(unc_item.get("id", f"item_{idx}"))
-                        btn_c1, btn_c2, btn_c3 = st.columns(3)
+                        btn_c1, btn_c2, btn_c3, btn_c4 = st.columns(4)
                         with btn_c1:
                             if st.button("✅ Ippon (Válido)", key=f"btn_cur_ok_{it_id}", width="stretch", type="primary", help="Há movimento e é válido para pontuação (Ippon legítimo)."):
                                 p_key = unc_item.get("profile_name", "normal")
@@ -3237,6 +3242,43 @@ elif nav_page == "settings":
                                     log_event("WARNING", f"Erro ao excluir corte de vídeo pós-curadoria: {err}", "app")
 
                                 st.session_state["curation_alert"] = f"🚫 Lance classificado como 'Não tem Golpe' (Detecção Espúria). Retreinamento executado para suprimir falsos disparos e corte de vídeo apagado do disco."
+                                st.rerun()
+
+                        with btn_c4:
+                            if st.button("🗑️ Descartar", key=f"btn_cur_discard_{it_id}", width="stretch", help="Não foi possível determinar o resultado do golpe. O item será descartado sem afetar o treinamento."):
+                                c_path = unc_item.get("clip_path")
+
+                                # 1. Descartar da fila sem registrar feedback e sem disparar retreinamento
+                                try:
+                                    if hasattr(auto_trainer, "discard_active_learning_item"):
+                                        auto_trainer.discard_active_learning_item(it_id, notes="Descartado: Resultado indeterminado")
+                                    elif hasattr(auto_trainer, "resolve_active_learning_item"):
+                                        auto_trainer.resolve_active_learning_item(
+                                            it_id, False, 5, "Descartado: Resultado indeterminado",
+                                            trigger_retrain=False, cleanup_clip=True, decision="DISCARDED"
+                                        )
+                                    elif hasattr(feedback_mgr, "discard_active_learning_item"):
+                                        feedback_mgr.discard_active_learning_item(it_id, notes="Descartado: Resultado indeterminado")
+                                    elif hasattr(feedback_mgr, "resolve_active_learning_item"):
+                                        feedback_mgr.resolve_active_learning_item(
+                                            it_id, False, 5, "Descartado: Resultado indeterminado",
+                                            trigger_retrain=False, cleanup_clip=True, decision="DISCARDED"
+                                        )
+                                except Exception as err:
+                                    log_event("WARNING", f"Erro ao descartar item da curadoria: {err}", "app")
+
+                                # 2. Apagar arquivo de vídeo do golpe em disco
+                                try:
+                                    from src.utils.strike_clip_manager import delete_strike_clip
+                                    if c_path:
+                                        delete_strike_clip(c_path)
+                                    target_c = os.path.join("data", "active_learning_clips", f"{it_id}_corte.mp4")
+                                    if os.path.isfile(target_c):
+                                        delete_strike_clip(target_c)
+                                except Exception as err:
+                                    log_event("WARNING", f"Erro ao excluir corte de vídeo pós-descarte: {err}", "app")
+
+                                st.session_state["curation_alert"] = f"🗑️ Item descartado da Fila de Curadoria com sucesso (sem afetar o treinamento)."
                                 st.rerun()
 
                     st.markdown("---")

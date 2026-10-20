@@ -855,11 +855,13 @@ Total de **246 testes automatizados** distribuídos em 26 módulos, executados e
     - O card de curadoria exibe com clareza o **Vídeo de Origem** (`video_source`), o **Momento na Luta** (`MM:SS.mmm` / `XX.Xs`) e o **Golpe** correspondente.
     - O clipe apresentado à esquerda é estritamente recortado da luta original indicada no exato instante do golpe, com banner textual no vídeo (`SenpAI - GOLPE (XX.XXs)`).
     - Eliminação completa de fallbacks arbitrários: caso o arquivo de vídeo original não resida no disco, a interface exibe aviso informativo claro sem jamais reproduzir lutas descorrelacionadas.
-  - **Ciclo Completo pós-Retorno Arbitral com 3 Opções de Avaliação**: O árbitro dispõe de 3 caminhos de retorno:
+  - **Ciclo Completo pós-Retorno Arbitral com 4 Opções de Avaliação**: O árbitro dispõe de 4 caminhos de retorno:
     1. `✅ Ippon (Válido)`: Há movimento de ataque e é válido para pontuação (Ippon legítimo).
     2. `❌ Golpe Inválido`: Houve movimento/tentativa de ataque, mas o golpe não atendeu aos critérios de pontuação.
     3. `🚫 Não tem Golpe`: Nenhuma tentativa de movimento para pontuação (detecção espúria / movimento neutro).
-    - Em qualquer das 3 opções, o retreinamento adaptativo é disparado imediatamente, o arquivo de vídeo do golpe é apagado com segurança do disco (`data/active_learning_clips/`), e o item e vídeo são **removidos definitivamente da Fila de Curadoria Ativa** (`data/active_learning_queue.json`) e arquivados no histórico permanente de auditoria (`data/active_learning_curated_history.json`).
+    4. `🗑️ Descartar`: Não foi possível determinar o resultado do golpe (ex.: oclusão total, ângulo indisponível ou corte inconclusivo). O item é removido da fila ativa e seu clipe é apagado sem afetar o treinamento (sem registrar feedback e sem disparar retreinamento).
+    - Nas opções 1, 2 e 3, o retreinamento adaptativo é disparado imediatamente, o arquivo de vídeo do golpe é apagado com segurança do disco (`data/active_learning_clips/`), e o item e vídeo são **removidos definitivamente da Fila de Curadoria Ativa** (`data/active_learning_queue.json`) e arquivados no histórico permanente de auditoria (`data/active_learning_curated_history.json`).
+    - Na opção 4 (`Descartar`), o item é igualmente removido da fila ativa e o arquivo de vídeo é apagado do disco com segurança, sem qualquer impacto nos pesos, perfis ou modelos de treinamento.
   - **Suíte de Testes Automatizados**:
     - Expansão para **251 testes automatizados** distribuídos em 27 módulos com 100% de aprovação.
 

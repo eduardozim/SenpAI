@@ -222,6 +222,108 @@ class TestActiveLearningCurationClip(unittest.TestCase):
         self.assertTrue(os.path.isfile(resolved))
         self.assertEqual(os.path.abspath(resolved), os.path.abspath(dummy_clip_path))
 
+    def test_discard_active_learning_item_does_not_affect_training(self):
+        """
+        Valida que ao descartar um item da fila de curadoria (resultado indeterminado):
+        1. O item é removido da fila ativa;
+        2. O arquivo de vídeo do golpe é apagado do disco;
+        3. O retreinamento NÃO é disparado (retrained == False);
+        4. NENHUM feedback é registrado no dataset de treino (zero impacto no aprendizado);
+        5. O lance é registrado no histórico de auditoria com status/decisão 'DISCARDED'.
+        """
+        strike_data = {
+            "strike_type": "MEN",
+            "scores": {"target_impact": 0.50, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.50},
+            "total_score": 50.0,
+            "timestamp_seconds": 1.2
+        }
+        item = self.sampler.evaluate_and_enqueue(
+            strike_data=strike_data,
+            confidence=0.50,
+            video_source=self.dummy_video_path,
+            profile_name="normal"
+        )
+        self.assertIsNotNone(item)
+        assert item is not None
+        it_id = item["id"]
+
+        clip_path = self.feedback_mgr.ensure_active_learning_clip(item)
+        self.assertIsNotNone(clip_path)
+        assert clip_path is not None
+        self.assertTrue(os.path.isfile(clip_path))
+
+        # Feedback count antes do descarte
+        fb_before = len(self.feedback_mgr.load_feedback())
+
+        # Executar descarte
+        res = self.trainer.discard_active_learning_item(
+            item_id=it_id,
+            reviewer_dan=6,
+            notes="Descarte por ângulo inconclusivo / resultado indeterminado",
+            cleanup_clip=True
+        )
+
+        self.assertTrue(res.get("success"))
+        self.assertEqual(res.get("decision"), "DISCARDED")
+        self.assertEqual(res.get("curated_label"), "DISCARDED")
+        self.assertFalse(res.get("retrained"), "O descarte não deve disparar retreinamento")
+        self.assertFalse(os.path.isfile(clip_path), "O clipe do golpe deve ser excluído do disco")
+
+        # 1. Removido da fila ativa
+        queue = self.sampler.get_queue()
+        self.assertEqual(len([x for x in queue if x.get("id") == it_id]), 0)
+
+        # 2. Não afetou o dataset de feedback (sem impacto no treino)
+        fb_after = len(self.feedback_mgr.load_feedback())
+        self.assertEqual(fb_before, fb_after, "Nenhum feedback de treino deve ser salvo ao descartar")
+
+        # 3. Arquivado no histórico
+        hist = self.sampler.get_history()
+        h_item = next((x for x in hist if x.get("id") == it_id), None)
+        self.assertIsNotNone(h_item)
+        self.assertEqual(h_item.get("status"), "discarded")
+        self.assertEqual(h_item.get("decision"), "DISCARDED")
+
+    def test_resolve_active_learning_item_with_decision_discarded(self):
+        """Valida que resolve_active_learning_item com decision='DISCARDED' também não afeta treinamento."""
+        strike_data = {
+            "strike_type": "DO",
+            "scores": {"target_impact": 0.55, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.50},
+            "total_score": 55.0,
+            "timestamp_seconds": 2.5
+        }
+        item = self.sampler.evaluate_and_enqueue(
+            strike_data=strike_data,
+            confidence=0.55,
+            video_source=self.dummy_video_path,
+            profile_name="normal"
+        )
+        self.assertIsNotNone(item)
+        assert item is not None
+        it_id = item["id"]
+        clip_path = self.feedback_mgr.ensure_active_learning_clip(item)
+        self.assertIsNotNone(clip_path)
+        assert clip_path is not None
+        self.assertTrue(os.path.isfile(clip_path))
+
+        fb_before = len(self.feedback_mgr.load_feedback())
+
+        res = self.trainer.resolve_active_learning_item(
+            item_id=it_id,
+            label_approved=False,
+            reviewer_dan=5,
+            notes="Resultado indeterminado",
+            trigger_retrain=True,  # Deve ser ignorado para DISCARDED
+            cleanup_clip=True,
+            decision="DISCARDED"
+        )
+
+        self.assertTrue(res.get("success"))
+        self.assertFalse(res.get("retrained"), "Retreino deve ser False quando descartado")
+        self.assertFalse(os.path.isfile(clip_path))
+        self.assertEqual(len(self.feedback_mgr.load_feedback()), fb_before)
+        self.assertEqual(len([x for x in self.sampler.get_queue() if x.get("id") == it_id]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
