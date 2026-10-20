@@ -13,6 +13,7 @@ import datetime
 from typing import Dict, Any, List, Tuple, Optional
 from urllib.parse import urlparse
 from src.utils.logger_manager import log_event
+from src.utils.strike_clip_manager import get_cross_platform_basename
 from src.engine.active_learning import (
     UncertaintySampler,
     GoldenBenchmark,
@@ -81,7 +82,8 @@ def normalize_video_identifier(url_or_name: Optional[str]) -> str:
             return f"url:{val.lower()}"
 
     # Arquivo local / upload
-    basename = os.path.basename(val)
+    from src.utils.strike_clip_manager import get_cross_platform_basename
+    basename = get_cross_platform_basename(val)
     # Remove prefixo temporário 'upload_\d+_' se presente
     clean_basename = re.sub(r"^upload_\d+_", "", basename)
     return f"file:{clean_basename.lower()}"
@@ -1347,7 +1349,8 @@ class FeedbackManager:
     def import_training_package(
         self,
         package_data: Any,
-        auto_trainer_instance: Optional[Any] = None
+        auto_trainer_instance: Optional[Any] = None,
+        target_clips_dir: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Importa um pacote de treinamento (v2.0, v1.0 ou lista de revisões) baixados anteriormente.
@@ -1595,10 +1598,19 @@ class FeedbackManager:
                     if q_id and q_id not in existing_q_ids:
                         c_path = q_it.get("clip_path")
                         if c_path:
-                            base_c = os.path.basename(c_path)
-                            local_cand = os.path.join("data", "active_learning_clips", base_c)
-                            if os.path.isfile(local_cand):
-                                q_it["clip_path"] = local_cand
+                            base_c = get_cross_platform_basename(c_path)
+                            check_dirs = [target_clips_dir] if target_clips_dir else []
+                            check_dirs.append(os.path.join("data", "active_learning_clips"))
+                            for c_dir in check_dirs:
+                                local_cand = os.path.join(c_dir, base_c)
+                                if os.path.isfile(local_cand):
+                                    q_it["clip_path"] = local_cand.replace("\\", "/")
+                                    break
+                        v_src = q_it.get("video_source")
+                        if v_src and not os.path.isfile(v_src):
+                            v_base = get_cross_platform_basename(v_src)
+                            if "senpai_uploads" in str(v_src) or v_base.startswith("yt_") or v_base.startswith("upload_"):
+                                q_it["video_source"] = v_base
                         curr_queue.append(q_it)
                         existing_q_ids.add(q_id)
                         al_queue_imported += 1
@@ -1744,7 +1756,11 @@ class FeedbackManager:
             if not pkg_data:
                 raise ValueError("Nenhum arquivo JSON de treinamento válido encontrado dentro do pacote ZIP.")
 
-            res = self.import_training_package(pkg_data, auto_trainer_instance=auto_trainer_instance)
+            res = self.import_training_package(
+                pkg_data,
+                auto_trainer_instance=auto_trainer_instance,
+                target_clips_dir=target_clips_dir
+            )
             res["clips_extracted_count"] = clips_extracted
             log_event("INFO", f"Pacote ZIP importado com sucesso: {clips_extracted} clipes de vídeo extraídos para {target_clips_dir}.", "feedback_manager")
             return res

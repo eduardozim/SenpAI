@@ -2998,12 +2998,16 @@ elif nav_page == "settings":
                     # 1. Obter metadados de origem e timecode do golpe
                     try:
                         import src.utils.strike_clip_manager as scm_mod
-                        if not hasattr(scm_mod, "parse_strike_timestamp"):
+                        if not hasattr(scm_mod, "parse_strike_timestamp") or not hasattr(scm_mod, "get_cross_platform_basename"):
                             import importlib
                             scm_mod = importlib.reload(scm_mod)
                         parse_strike_timestamp = getattr(scm_mod, "parse_strike_timestamp")
                         format_strike_timestamp = getattr(scm_mod, "format_strike_timestamp")
+                        get_cross_platform_basename = getattr(scm_mod, "get_cross_platform_basename")
+                        resolve_source_video_path = getattr(scm_mod, "resolve_source_video_path")
                     except Exception:
+                        def get_cross_platform_basename(p):
+                            return os.path.basename(str(p).replace("\\", "/")) if p else ""
                         def parse_strike_timestamp(item):
                             sd = item.get("strike_data") or {}
                             return float(sd.get("timestamp_seconds") or item.get("timestamp_seconds") or 0.0)
@@ -3011,10 +3015,14 @@ elif nav_page == "settings":
                             m = int(sec // 60)
                             s = sec % 60
                             return f"{m:02d}:{s:06.3f} ({sec:.1f}s)"
+                        def resolve_source_video_path(p):
+                            return get_cross_platform_basename(p)
 
                     strike_t = str(unc_item.get("strike_type", "Men")).upper()
                     raw_src = str(unc_item.get("video_source", "")).strip() or "Vídeo de Combate"
-                    clean_src_name = re.sub(r"^(upload_\d+_|yt_[^_]+_)", "", os.path.basename(raw_src))
+                    raw_base = get_cross_platform_basename(raw_src)
+                    clean_src_name = re.sub(r"^(upload_\d+_|yt_[^_]+_)", "", raw_base) if raw_base else raw_src
+                    resolved_src_path = resolve_source_video_path(raw_src) if callable(resolve_source_video_path) else raw_src
                     t_sec = parse_strike_timestamp(unc_item)
                     formatted_time = format_strike_timestamp(t_sec)
 
@@ -3038,7 +3046,8 @@ elif nav_page == "settings":
                             if os.path.isfile(direct_clip):
                                 clip_path = direct_clip
                             else:
-                                cand_direct = os.path.join("data", "active_learning_clips", os.path.basename(direct_clip))
+                                c_base = get_cross_platform_basename(direct_clip)
+                                cand_direct = os.path.join("data", "active_learning_clips", c_base)
                                 if os.path.isfile(cand_direct):
                                     clip_path = cand_direct
 
@@ -3052,7 +3061,7 @@ elif nav_page == "settings":
                         else:
                             st.warning(
                                 f"⚠️ **Corte de vídeo indisponível:** O arquivo da luta original **`{clean_src_name}`** "
-                                f"não foi localizado no disco para extração do trecho aos `{formatted_time}`."
+                                f"(esperado em `{resolved_src_path}`) não foi localizado no disco do servidor para extração do trecho aos `{formatted_time}`."
                             )
 
                     with c_info:
@@ -3060,7 +3069,10 @@ elif nav_page == "settings":
                         conf_pct = float(unc_item.get("confidence", 0.5)) * 100
                         unc_pct = float(unc_item.get("uncertainty_score", 0.0)) * 100
                         st.markdown(f"#### 🥋 Golpe: `{strike_t}`")
-                        st.markdown(f"- 📁 **Vídeo de Origem:** `{clean_src_name}`")
+                        if resolved_src_path and resolved_src_path != clean_src_name:
+                            st.markdown(f"- 📁 **Vídeo de Origem:** `{clean_src_name}` &nbsp;(`{resolved_src_path}`)")
+                        else:
+                            st.markdown(f"- 📁 **Vídeo de Origem:** `{clean_src_name}`")
                         st.markdown(f"- ⏱️ **Momento na Luta:** `{formatted_time}`")
                         st.markdown(f"- 🤖 **Confiança da IA:** `{conf_pct:.1f}%` &nbsp;|&nbsp; ⚖️ **Incerteza Arbitral:** `{unc_pct:.1f}%`")
 

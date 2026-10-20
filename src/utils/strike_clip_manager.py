@@ -20,6 +20,47 @@ from src.utils.logger_manager import log_event
 DEFAULT_CLIPS_DIR = "data/active_learning_clips"
 
 
+def get_cross_platform_basename(path_str: str) -> str:
+    """
+    Extrai o nome do arquivo preservando compatibilidade entre Windows e Linux
+    (suporta caminhos contendo tanto barras normais '/' quanto invertidas '\\').
+    """
+    if not path_str or not isinstance(path_str, str):
+        return ""
+    clean = path_str.strip().replace("\\", "/")
+    return os.path.basename(clean).strip()
+
+
+def resolve_source_video_path(video_source: str) -> str:
+    """
+    Normaliza o caminho do vídeo de origem para o ambiente/servidor atual.
+    Se o vídeo físico já existir em disco, retorna o caminho correspondente no host atual.
+    Se não existir, ajusta caminhos de senpai_uploads ou pastas do projeto para a
+    localização esperada no servidor/máquina atual (evitando referências fixas a pastas de outro computador).
+    """
+    if not video_source or not str(video_source).strip():
+        return ""
+
+    found = find_source_video(video_source)
+    if found:
+        return found
+
+    # Se não foi encontrado no disco, adaptar a indicação para a estrutura do host atual
+    base_name = get_cross_platform_basename(video_source)
+    video_source_clean = str(video_source).replace("\\", "/")
+
+    if "senpai_uploads" in video_source_clean or base_name.startswith("yt_") or base_name.startswith("upload_"):
+        return os.path.join(tempfile.gettempdir(), "senpai_uploads", base_name)
+    elif "data/uploads" in video_source_clean:
+        return os.path.join("data", "uploads", base_name)
+    elif "data/videos" in video_source_clean:
+        return os.path.join("data", "videos", base_name)
+    elif "data/" in video_source_clean:
+        return os.path.join("data", base_name)
+    else:
+        return base_name
+
+
 def find_source_video(video_source: str) -> Optional[str]:
     """
     Localiza o arquivo físico de vídeo real do combate no disco.
@@ -27,19 +68,21 @@ def find_source_video(video_source: str) -> Optional[str]:
     o diretório raiz e pastas de dados.
     Retorna o caminho do vídeo correspondente ou None caso o arquivo de origem não exista.
     """
-    if not video_source or not video_source.strip():
+    if not video_source or not str(video_source).strip():
         return None
 
-    video_source_clean = video_source.strip()
+    video_source_clean = str(video_source).strip()
 
-    # 1. Caminho direto se for válido e existir
+    # 1. Caminho direto se for válido e existir no SO atual
     if os.path.isfile(video_source_clean) and os.path.getsize(video_source_clean) > 0:
         return os.path.abspath(video_source_clean)
 
-    base_name = os.path.basename(video_source_clean).strip()
+    base_name = get_cross_platform_basename(video_source_clean)
+    if not base_name:
+        return None
     clean_stem = re.sub(r"^(upload_\d+_|yt_[^_]+_)", "", os.path.splitext(base_name)[0]).strip().lower()
 
-    # 2. Diretórios potenciais onde o vídeo original da luta pode residir
+    # 2. Diretórios potenciais onde o vídeo original da luta pode residir no host atual
     search_dirs = [
         os.path.join(tempfile.gettempdir(), "senpai_uploads"),
         "data/uploads",
@@ -258,20 +301,23 @@ def get_or_create_strike_clip(
             # 1a. Caminho direto se for válido e existir
             if os.path.isfile(existing_clip) and os.path.getsize(existing_clip) > 0:
                 if not existing_clip.endswith("_demo.mp4"):
-                    return os.path.abspath(existing_clip)
+                    return existing_clip
 
             # 1b. Por nome base no diretório de clipes (suporte a consolidação servidor -> local / caminhos relativos)
-            clip_base = os.path.basename(existing_clip)
-            cand_output = os.path.join(output_dir, clip_base)
-            if os.path.isfile(cand_output) and os.path.getsize(cand_output) > 0:
-                if not cand_output.endswith("_demo.mp4"):
-                    item["clip_path"] = cand_output
-                    return os.path.abspath(cand_output)
+            clip_base = get_cross_platform_basename(existing_clip)
+            if clip_base:
+                cand_output = os.path.join(output_dir, clip_base)
+                if os.path.isfile(cand_output) and os.path.getsize(cand_output) > 0:
+                    if not cand_output.endswith("_demo.mp4"):
+                        norm_cand = cand_output.replace("\\", "/")
+                        item["clip_path"] = norm_cand
+                        return norm_cand
 
         # 1c. Pelo padrão esperado {item_id}_corte.mp4
         if os.path.isfile(expected_file) and os.path.getsize(expected_file) > 0:
-            item["clip_path"] = expected_file
-            return os.path.abspath(expected_file)
+            norm_exp = expected_file.replace("\\", "/")
+            item["clip_path"] = norm_exp
+            return norm_exp
 
     # 2. Se o corte ainda não existe (ou force_recreate=True), localizar o vídeo real da luta original
     video_source = str(item.get("video_source", "")).strip()
@@ -297,9 +343,10 @@ def get_or_create_strike_clip(
         strike_type=strike_t
     )
     if extracted:
-        item["clip_path"] = extracted
-        log_event("INFO", f"Corte real do golpe extraído da luta com sucesso: {extracted} (Fonte: {source_file}, t={target_time:.2f}s)", "strike_clip_manager")
-        return extracted
+        norm_ext = extracted.replace("\\", "/")
+        item["clip_path"] = norm_ext
+        log_event("INFO", f"Corte real do golpe extraído da luta com sucesso: {norm_ext} (Fonte: {source_file}, t={target_time:.2f}s)", "strike_clip_manager")
+        return norm_ext
 
     return None
 
@@ -314,7 +361,7 @@ def delete_strike_clip(clip_path: Optional[str]) -> bool:
 
     deleted = False
     candidates = [clip_path]
-    base_name = os.path.basename(clip_path)
+    base_name = get_cross_platform_basename(clip_path)
     if base_name:
         candidates.append(os.path.join(DEFAULT_CLIPS_DIR, base_name))
 
