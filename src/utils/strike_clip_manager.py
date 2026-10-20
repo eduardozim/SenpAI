@@ -27,10 +27,10 @@ def find_source_video(video_source: str) -> Optional[str]:
     o diretório raiz e pastas de dados.
     Retorna o caminho do vídeo correspondente ou None caso o arquivo de origem não exista.
     """
-    if not video_source or not str(video_source).strip():
+    if not video_source or not video_source.strip():
         return None
 
-    video_source_clean = str(video_source).strip()
+    video_source_clean = video_source.strip()
 
     # 1. Caminho direto se for válido e existir
     if os.path.isfile(video_source_clean) and os.path.getsize(video_source_clean) > 0:
