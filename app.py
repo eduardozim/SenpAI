@@ -1650,8 +1650,8 @@ elif nav_page == "settings":
 
             st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
             if st.button("💾 Salvar Configurações de Hardware & Modelo de Visão", type="primary", width="stretch", key="btn_save_hw_tab"):
-                selected_hw_str = str(selected_hw_option or "cpu")
-                selected_model_str = str(selected_model_option or "yolov8")
+                selected_hw_str = selected_hw_option or "cpu"
+                selected_model_str = selected_model_option or "yolov8"
 
                 set_processing_device(selected_hw_str)
                 set_vision_model(selected_model_str)
@@ -1666,7 +1666,7 @@ elif nav_page == "settings":
             st.markdown("#### 📋 Descritivo Técnico & Vantagens do Modelo")
             
             # Recupera dados do modelo atualmente selecionado no rádio em tempo real
-            chosen_model_key = str(selected_model_option or "yolov8")
+            chosen_model_key = selected_model_option or "yolov8"
             chosen_info = get_vision_model_info(chosen_model_key)
             latency_display = chosen_info['specs']['target_latency'].replace('<', '&lt;')
 
@@ -2024,7 +2024,7 @@ elif nav_page == "settings":
                     key="auto_train_scope_select",
                     help="Selecione a área que deseja treinar ou utilize a detecção automática da necessidade mais latente."
                 )
-                sel_scope_key: str = str(sel_scope_key_raw or "latent_need")
+                sel_scope_key: str = sel_scope_key_raw or "latent_need"
                 scope_desc = AUTO_TRAINING_SCOPES.get(sel_scope_key, {}).get("description", "")
                 st.caption(f"ℹ️ {scope_desc}")
 
@@ -2047,7 +2047,7 @@ elif nav_page == "settings":
                     key="auto_train_duration_select",
                     help="Tempo limite máximo para o ciclo de pesquisa, mineração cinemática e otimização por IA."
                 )
-                sel_dur_opt: str = str(sel_dur_opt_raw or "5")
+                sel_dur_opt: str = sel_dur_opt_raw or "5"
 
                 if sel_dur_opt == "custom":
                     custom_min_val = st.number_input(
@@ -2146,7 +2146,7 @@ elif nav_page == "settings":
                     format_func=lambda x: {"rapido": "⚡ Rápida", "padrao": "⚖️ Padrão", "profundo": "🔬 Profunda (Varredura Completa)"}.get(str(x), str(x)),
                     key="sel_auto_depth_opt"
                 )
-                depth_sel: str = str(depth_sel_raw or "padrao")
+                depth_sel: str = depth_sel_raw or "padrao"
 
             # Botão de Execução
             # Exibição e controle de Treinamento Ativo
@@ -2527,7 +2527,7 @@ elif nav_page == "settings":
                     format_func=lambda k: f"{TRAINING_MODALITIES_METADATA.get(k, {}).get('name', k)} — {TRAINING_MODALITIES_METADATA.get(k, {}).get('category', '')}",
                     key="sel_modality_inspect_box"
                 )
-                sel_inspect_key = str(sel_inspect_key_raw or "suburi")
+                sel_inspect_key = sel_inspect_key_raw or "suburi"
                 mod_learned = auto_trainer.get_modality_learned_knowledge(sel_inspect_key)
 
                 c_info1, c_info2 = st.columns([1.8, 1.2])
@@ -3647,14 +3647,9 @@ elif nav_page in ["match", "training", "analysis"]:
     st.sidebar.markdown("---")
     st.sidebar.markdown("### Calibração de Sensibilidade")
     profile_options = ["permissivo", "normal", "rigido", "custom"]
-    target_default_profile = "rigido" if operation_mode == "match" else "normal"
-    curr_selected_profile = st.session_state.get("sidebar_profile_selector", target_default_profile)
-    profile_idx_arg = profile_options.index(curr_selected_profile) if curr_selected_profile in profile_options else profile_options.index(target_default_profile)
-
     profile_choice_raw = st.sidebar.selectbox(
         "Perfil de Calibração Predefinido",
         options=profile_options,
-        index=profile_idx_arg,
         key="sidebar_profile_selector",
         format_func=lambda x: {
             "permissivo": "Iniciantes / Educacional (Permissivo)",
@@ -3832,7 +3827,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 key="rt_num_cameras_radio",
                 format_func=lambda x: f"{x} Câmera{'s' if x > 1 else ''}"
             )
-            num_cameras: int = int(num_cams_raw or 1)
+            num_cameras: int = num_cams_raw or 1
 
             st.markdown("**Configuração Individual por Câmera:**")
             cam_configs = []
@@ -4414,7 +4409,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     key="match_streaming_quality_select",
                     help="• Média (Padrão): Resolução balanceada (até 720p) a 30 FPS para processamento fluido em tempo real.\n• Alta: Resolução original máxima.\n• Baixa: Menor resolução com consumo reduzido de rede e CPU."
                 )
-                selected_stream_qual = str(selected_stream_qual_raw or "media")
+                selected_stream_qual = selected_stream_qual_raw or "media"
             with col_q2:
                 st.write("")
                 test_stream_btn = st.button("🔍 Testar Conexão", key="btn_test_match_stream", width="stretch")
@@ -4619,7 +4614,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                 btn_f10 = st.button("⏩ +10s", key="match_btn_f10", help="Avançar 10 segundos")
 
                     speed_map: dict[str, float] = {"0.5x": 0.5, "1.0x": 1.0, "1.5x": 1.5, "2.0x": 2.0}
-                    active_match_speed: float = speed_map.get(str(speed_choice or "1.0x"), 1.0)
+                    active_match_speed: float = speed_map.get(speed_choice or "1.0x", 1.0)
                     stream_frame_ph = st.empty()
 
                 resolved_stream_src = st.session_state.get("match_resolved_stream_url")
@@ -4972,7 +4967,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 key="train_rt_num_cameras_radio",
                 format_func=lambda x: f"{x} Câmera{'s' if x > 1 else ''}"
             )
-            num_cameras: int = int(num_cams_raw or 1)
+            num_cameras: int = num_cams_raw or 1
 
             st.markdown("**Configuração Individual por Câmera:**")
             cam_configs = []
@@ -5151,7 +5146,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 live_train_mgr = LiveTrainingSessionManager(
                     modality_override=selected_train_mod if selected_train_mod != "auto" else None,
                     kendoka_name=kendoka_name_val,
-                    target_dan=int(target_dan_val) if target_dan_val is not None else 3,
+                    target_dan=target_dan_val if target_dan_val is not None else 3,
                     training_analyzer=pipeline_inst.training_analyzer
                 )
 
@@ -5218,7 +5213,7 @@ elif nav_page in ["match", "training", "analysis"]:
                 live_train_mgr = LiveTrainingSessionManager(
                     modality_override=selected_train_mod if selected_train_mod != "auto" else None,
                     kendoka_name=kendoka_name_val,
-                    target_dan=int(target_dan_val) if target_dan_val is not None else 3,
+                    target_dan=target_dan_val if target_dan_val is not None else 3,
                     training_analyzer=pipeline.training_analyzer
                 )
 
@@ -5533,7 +5528,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     key="train_streaming_quality_select",
                     help="• Média (Padrão): Resolução balanceada (até 720p) a 30 FPS para avaliação biomecânica fluida.\n• Alta: Resolução original máxima.\n• Baixa: Menor resolução com consumo reduzido de rede e CPU."
                 )
-                selected_train_stream_qual = str(selected_train_stream_qual_raw or "media")
+                selected_train_stream_qual = selected_train_stream_qual_raw or "media"
             with col_tq2:
                 st.write("")
                 test_train_stream_btn = st.button("🔍 Testar Conexão", key="btn_test_train_stream", width="stretch")
@@ -5675,7 +5670,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                 train_btn_f10 = st.button("⏩ +10s", key="train_btn_f10", help="Avançar 10 segundos")
 
                     speed_map_train: dict[str, float] = {"0.5x": 0.5, "1.0x": 1.0, "1.5x": 1.5, "2.0x": 2.0}
-                    active_train_speed: float = speed_map_train.get(str(train_speed_choice or "1.0x"), 1.0)
+                    active_train_speed: float = speed_map_train.get(train_speed_choice or "1.0x", 1.0)
                     train_stream_frame_ph = st.empty()
 
                 resolved_train_src = st.session_state.get("train_resolved_stream_url")
@@ -6110,7 +6105,7 @@ elif nav_page in ["match", "training", "analysis"]:
                         key="recorded_youtube_quality_select",
                         help="• Média (Padrão): Resolução intermediária (até 720p) a 30 FPS.\n• Alta: Máxima resolução e FPS originais do vídeo.\n• Baixa: Menor resolução disponível com download mais rápido."
                     )
-                    selected_quality: str = str(selected_quality_raw or "media")
+                    selected_quality: str = selected_quality_raw or "media"
 
                     yt_loaded_path = st.session_state.get("video_file_path") if st.session_state.get("video_source_type") == "youtube" else None
                     yt_info = st.session_state.get("youtube_video_info", {})
@@ -6248,7 +6243,7 @@ elif nav_page in ["match", "training", "analysis"]:
                         index=0,
                         key="training_modality_select_pre"
                     )
-                    selected_mod_key: str = str(selected_mod_key_raw or "auto")
+                    selected_mod_key: str = selected_mod_key_raw or "auto"
                     st.session_state["training_modality_selected"] = None if selected_mod_key == "auto" else selected_mod_key
                     if selected_mod_key != "auto":
                         m_desc = TRAINING_MODALITIES_METADATA[selected_mod_key]
@@ -7366,7 +7361,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                 with c_in1:
                                     ins_ts = st.text_input("Timestamp", value=suggested_ts, key=f"ins_ts_{slot_id}", help="Momento exato do golpe a ser inserido")
                                     ins_type_sel = st.selectbox("Técnica", ["MEN", "KOTE", "DO", "TSUKI"], key=f"ins_type_{slot_id}")
-                                    ins_type: str = str(ins_type_sel or "MEN")
+                                    ins_type: str = ins_type_sel or "MEN"
                                 with c_in2:
                                     if is_inverted:
                                         att_opts = [
@@ -7959,7 +7954,7 @@ elif nav_page in ["match", "training", "analysis"]:
                                 with fn_col1:
                                     fn_timestamp = st.text_input("Timestamp (ex: 00:02.500)", value="00:00.000", key="fn_ts_input", help="Momento exato do golpe no vídeo")
                                     fn_strike_type_sel = st.selectbox("Técnica Executada", ["MEN", "KOTE", "DO", "TSUKI"], key="fn_type_input")
-                                    fn_strike_type: str = str(fn_strike_type_sel or "MEN")
+                                    fn_strike_type: str = fn_strike_type_sel or "MEN"
                             
                                 with fn_col2:
                                     # 1. Lutador Aka ou Shiro
