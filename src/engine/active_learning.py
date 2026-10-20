@@ -88,6 +88,28 @@ class UncertaintySampler:
             except Exception as e:
                 log_event("WARNING", f"Falha ao gerar triage LLM para lance incerto: {e}", "active_learning")
 
+        # Normalização de caminhos portáteis para servidor/máquina atual
+        from src.utils.strike_clip_manager import get_cross_platform_basename
+        if clip_path:
+            try:
+                rel = os.path.relpath(clip_path)
+                if not rel.startswith(".."):
+                    clip_path = rel.replace("\\", "/")
+                else:
+                    clip_path = str(clip_path).replace("\\", "/")
+            except Exception:
+                clip_path = str(clip_path).replace("\\", "/")
+
+        if video_source:
+            try:
+                rel_v = os.path.relpath(video_source)
+                if not rel_v.startswith(".."):
+                    video_source = rel_v.replace("\\", "/")
+                elif "senpai_uploads" in str(video_source) or get_cross_platform_basename(video_source).startswith(("yt_", "upload_")):
+                    video_source = get_cross_platform_basename(video_source)
+            except Exception:
+                pass
+
         entry = {
             "id": f"unc_{int(time.time() * 1000)}_{len(self.get_queue())}",
             "timestamp": datetime.datetime.now().isoformat(),
@@ -145,6 +167,19 @@ class UncertaintySampler:
         try:
             with open(self.queue_file, "r", encoding="utf-8") as f:
                 items = json.load(f)
+                from src.utils.strike_clip_manager import get_cross_platform_basename
+                for it in items:
+                    c_p = it.get("clip_path")
+                    if c_p and not os.path.isfile(c_p):
+                        c_base = get_cross_platform_basename(c_p)
+                        cand = os.path.join("data", "active_learning_clips", c_base)
+                        if os.path.isfile(cand):
+                            it["clip_path"] = cand.replace("\\", "/")
+                    v_s = it.get("video_source")
+                    if v_s and not os.path.isfile(v_s):
+                        v_base = get_cross_platform_basename(v_s)
+                        if "senpai_uploads" in str(v_s) or v_base.startswith("yt_") or v_base.startswith("upload_"):
+                            it["video_source"] = v_base
                 if status:
                     return [it for it in items if it.get("status") == status]
                 return items

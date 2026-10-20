@@ -324,6 +324,67 @@ class TestActiveLearningCurationClip(unittest.TestCase):
         self.assertEqual(len(self.feedback_mgr.load_feedback()), fb_before)
         self.assertEqual(len([x for x in self.sampler.get_queue() if x.get("id") == it_id]), 0)
 
+    def test_cross_platform_basename_and_server_path_resolution(self):
+        """Valida que caminhos absolutos de outro computador (ex: Windows C:\\Users\\eduaz...) são normalizados para o host atual."""
+        from src.utils.strike_clip_manager import get_cross_platform_basename, resolve_source_video_path
+
+        windows_path = r"C:\Users\eduaz\AppData\Local\Temp\senpai_uploads\yt_AydOGlt-zxg_media_FINAL_-_Teshima_(PB)_x_J._Carvalho_(AKP).mp4"
+        posix_path = "/var/app/data/uploads/upload_12345_luta_final.mp4"
+
+        self.assertEqual(
+            get_cross_platform_basename(windows_path),
+            "yt_AydOGlt-zxg_media_FINAL_-_Teshima_(PB)_x_J._Carvalho_(AKP).mp4"
+        )
+        self.assertEqual(
+            get_cross_platform_basename(posix_path),
+            "upload_12345_luta_final.mp4"
+        )
+
+        # resolve_source_video_path deve apontar para a pasta do host atual, nunca para a máquina remota
+        foreign_windows_path = r"C:\Users\foreign_developer\AppData\Local\Temp\senpai_uploads\yt_AydOGlt-zxg_media_FINAL_-_Teshima_(PB)_x_J._Carvalho_(AKP).mp4"
+        resolved = resolve_source_video_path(foreign_windows_path)
+        self.assertNotIn("foreign_developer", resolved)
+        self.assertTrue(resolved.endswith("yt_AydOGlt-zxg_media_FINAL_-_Teshima_(PB)_x_J._Carvalho_(AKP).mp4"))
+        self.assertIn("senpai_uploads", resolved)
+        self.assertTrue(resolved.startswith(tempfile.gettempdir()))
+
+    def test_find_source_video_with_foreign_windows_path(self):
+        """Valida que find_source_video localiza o vídeo na pasta temporária do servidor mesmo se a fila tiver caminho de outro PC."""
+        from src.utils.strike_clip_manager import find_source_video
+
+        temp_uploads = os.path.join(tempfile.gettempdir(), "senpai_uploads")
+        os.makedirs(temp_uploads, exist_ok=True)
+        local_video = os.path.join(temp_uploads, "test_cross_machine_video.mp4")
+        shutil.copy(self.dummy_video_path, local_video)
+
+        try:
+            foreign_path = r"C:\Users\another_user\AppData\Local\Temp\senpai_uploads\test_cross_machine_video.mp4"
+            found = find_source_video(foreign_path)
+            self.assertIsNotNone(found)
+            assert found is not None
+            self.assertTrue(os.path.isfile(found))
+            self.assertEqual(os.path.abspath(found), os.path.abspath(local_video))
+        finally:
+            if os.path.isfile(local_video):
+                os.remove(local_video)
+
+    def test_get_or_create_strike_clip_with_foreign_clip_path(self):
+        """Valida que clipe existente em disco é localizado mesmo se o item tiver caminho Windows de outra máquina."""
+        local_clip = os.path.join(self.clips_dir, "unc_strike_foreign_test_corte.mp4")
+        shutil.copy(self.dummy_video_path, local_clip)
+
+        item = {
+            "id": "unc_strike_foreign_test",
+            "clip_path": r"D:\Projetos\SenpAI\Dev\data\active_learning_clips\unc_strike_foreign_test_corte.mp4",
+            "video_source": "non_existent.mp4"
+        }
+
+        clip = get_or_create_strike_clip(item, output_dir=self.clips_dir)
+        self.assertIsNotNone(clip)
+        assert clip is not None
+        self.assertTrue(os.path.isfile(clip))
+        self.assertEqual(os.path.abspath(clip), os.path.abspath(local_clip))
+
 
 if __name__ == "__main__":
     unittest.main()
