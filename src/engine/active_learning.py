@@ -96,16 +96,16 @@ class UncertaintySampler:
                 if not rel.startswith(".."):
                     clip_path = rel.replace("\\", "/")
                 else:
-                    clip_path = str(clip_path).replace("\\", "/")
+                    clip_path = clip_path.replace("\\", "/")
             except Exception:
-                clip_path = str(clip_path).replace("\\", "/")
+                clip_path = clip_path.replace("\\", "/")
 
         if video_source:
             try:
                 rel_v = os.path.relpath(video_source)
                 if not rel_v.startswith(".."):
                     video_source = rel_v.replace("\\", "/")
-                elif "senpai_uploads" in str(video_source) or get_cross_platform_basename(video_source).startswith(("yt_", "upload_")):
+                elif "senpai_uploads" in video_source or get_cross_platform_basename(video_source).startswith(("yt_", "upload_")):
                     video_source = get_cross_platform_basename(video_source)
             except Exception:
                 pass
@@ -238,13 +238,27 @@ class UncertaintySampler:
         queue = self.get_queue()
         target_item = None
         remaining_queue = []
+        target_id_str = item_id.strip()
+
         for it in queue:
-            if it.get("id") == item_id:
+            cur_id_str = str(it.get("id", "")).strip()
+            if cur_id_str == target_id_str:
                 target_item = it
             else:
                 remaining_queue.append(it)
 
+        # Fallback defensivo por índice posicional caso o ID tenha sido gerado como item_{idx}
+        if not target_item and target_id_str.startswith("item_"):
+            try:
+                idx_val = int(target_id_str.split("_")[1])
+                if 0 <= idx_val < len(queue):
+                    target_item = queue[idx_val]
+                    remaining_queue = [it for i, it in enumerate(queue) if i != idx_val]
+            except Exception:
+                pass
+
         if not target_item:
+            log_event("WARNING", f"Tentativa de resolver item inexistente na fila de curadoria: {item_id}", "active_learning")
             return False
 
         # 1. Apagar o vídeo do golpe em disco
@@ -314,6 +328,89 @@ class UncertaintySampler:
             *args,
             **kwargs
         )
+
+    def clear_queue(self, delete_clips: bool = True) -> Dict[str, Any]:
+        """
+        Limpa todos os itens da fila de curadoria ativa (pendências),
+        opcionalmente excluindo os arquivos de vídeo correspondentes em disco.
+        """
+        self._ensure_storage()
+        items = self.get_queue()
+        deleted_clips_count = 0
+
+        if delete_clips:
+            try:
+                from src.utils.strike_clip_manager import delete_strike_clip
+                for it in items:
+                    c_p = it.get("clip_path")
+                    it_id = it.get("id")
+                    if c_p:
+                        try:
+                            delete_strike_clip(c_p)
+                            deleted_clips_count += 1
+                        except Exception:
+                            pass
+                    if it_id:
+                        cand = os.path.join("data", "active_learning_clips", f"{it_id}_corte.mp4")
+                        if os.path.isfile(cand):
+                            try:
+                                delete_strike_clip(cand)
+                                deleted_clips_count += 1
+                            except Exception:
+                                pass
+            except Exception as e:
+                log_event("WARNING", f"Falha parcial ao apagar clipes durante limpeza de fila: {e}", "active_learning")
+
+        with open(self.queue_file, "w", encoding="utf-8") as f:
+            json.dump([], f, ensure_ascii=False, indent=2)
+
+        log_event(
+            "INFO",
+            f"Fila de Curadoria Ativa limpa com sucesso: {len(items)} pendências removidas e {deleted_clips_count} clipes excluídos.",
+            "active_learning"
+        )
+        return {"cleared_items": len(items), "clips_deleted": deleted_clips_count}
+
+    def clear_all(self, include_history: bool = True, delete_clips: bool = True) -> Dict[str, Any]:
+        """
+        Limpa a fila de curadoria ativa, histórico de lances curados e clipes de vídeo em disco.
+        """
+        res = self.clear_queue(delete_clips=delete_clips)
+        cleared_hist = 0
+
+        if include_history:
+            history_file = os.path.join(os.path.dirname(self.queue_file) or ".", "active_learning_curated_history.json")
+            if os.path.isfile(history_file):
+                try:
+                    with open(history_file, "r", encoding="utf-8") as f:
+                        hist_items = json.load(f)
+                        cleared_hist = len(hist_items)
+                except Exception:
+                    cleared_hist = 0
+                try:
+                    with open(history_file, "w", encoding="utf-8") as f:
+                        json.dump([], f, ensure_ascii=False, indent=2)
+                except Exception as e:
+                    log_event("WARNING", f"Erro ao limpar histórico de curadoria: {e}", "active_learning")
+
+        # Varredura em data/active_learning_clips para evitar arquivos órfãos
+        if delete_clips:
+            clips_dir = os.path.join("data", "active_learning_clips")
+            if os.path.isdir(clips_dir):
+                try:
+                    for f_name in os.listdir(clips_dir):
+                        if f_name.endswith((".mp4", ".avi", ".mov")):
+                            full_p = os.path.join(clips_dir, f_name)
+                            try:
+                                os.remove(full_p)
+                                res["clips_deleted"] = res.get("clips_deleted", 0) + 1
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+
+        res["cleared_history"] = cleared_hist
+        return res
 
 
 # ==============================================================================

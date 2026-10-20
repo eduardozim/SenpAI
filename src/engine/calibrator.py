@@ -27,10 +27,11 @@ class CalibrationEngine:
     def _load_profiles(self) -> Dict[str, Any]:
         if os.path.exists(self.config_path):
             with open(self.config_path, "r", encoding="utf-8") as f:
-                return json.load(f)
+                self.profiles = json.load(f)
+                return self.profiles
         else:
             # Fallback inline default profile
-            return {
+            self.profiles = {
                 "normal": {
                     "name": "Treino Geral (Normal)",
                     "min_total_score": 0.65,
@@ -40,11 +41,16 @@ class CalibrationEngine:
                     "platt_scaling": {"a": 12.0, "b": -8.0, "is_fitted": False}
                 }
             }
+            return self.profiles
 
     @property
     def profile_name(self) -> str:
         """Retorna a chave do perfil ativo."""
         return getattr(self, "current_profile_key", "normal")
+
+    def load_profiles(self) -> Dict[str, Any]:
+        """Carrega e atualiza os perfis de calibração a partir do arquivo de configuração."""
+        return self._load_profiles()
 
     def get_all_profiles(self) -> Dict[str, Any]:
         """Retorna todos os perfis de calibração carregados."""

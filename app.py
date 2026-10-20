@@ -1920,12 +1920,17 @@ elif nav_page == "settings":
                 if confirm_reset:
                     feedback_mgr.reset_all_training_data()
                     auto_trainer.reset_knowledge_base()
+                    if hasattr(auto_trainer, "clear_active_learning_queue"):
+                        auto_trainer.clear_active_learning_queue(include_history=True, delete_clips=True)
+                    if hasattr(feedback_mgr, "clear_active_learning_queue"):
+                        feedback_mgr.clear_active_learning_queue(include_history=True, delete_clips=True)
                     if "last_auto_train_res" in st.session_state:
                         del st.session_state["last_auto_train_res"]
                     st.session_state["training_reset_confirmed_msg"] = (
                         "✅ **Todos os dados de treinamento foram apagados com sucesso!**\n\n"
-                        "O histórico de revisões por Dan, a base de Decisão dos Shinpans, as calibrações personalizadas "
-                        "e a Base de Conhecimento do Auto-Trainer foram completamente resetados. "
+                        "O histórico de revisões por Dan, a base de Decisão dos Shinpans, as calibrações personalizadas, "
+                        "a Fila de Curadoria Ativa (com seus clipes de vídeo) e a Base de Conhecimento do Auto-Trainer "
+                        "foram completamente resetados. "
                         "O sistema e seus modelos foram restaurados ao estágio inicial padrão de fábrica."
                     )
                     st.session_state["reset_chk_ver"] = reset_chk_ver + 1
@@ -2983,6 +2988,9 @@ elif nav_page == "settings":
         except Exception:
             unc_queue = []
 
+        if "curation_toast" in st.session_state:
+            st.toast(st.session_state.pop("curation_toast"), icon="🥋")
+
         with st.expander(f"📥 Fila de Curadoria Ativa (Lances com Incerteza Arbitral) — {len(unc_queue)} pendentes", expanded=bool(unc_queue)):
             if "curation_alert" in st.session_state:
                 st.success(st.session_state.pop("curation_alert"))
@@ -3149,7 +3157,8 @@ elif nav_page == "settings":
                                 except Exception as err:
                                     log_event("WARNING", f"Erro ao excluir corte de vídeo pós-curadoria: {err}", "app")
 
-                                st.session_state["curation_alert"] = f"✅ Golpe {strike_t} homologado como Ippon! Retreinamento adaptativo executado com sucesso e corte de vídeo apagado do disco."
+                                st.session_state["curation_alert"] = f"✅ Golpe {strike_t} homologado como Ippon! Modelo retreinado com sucesso e item removido da Fila de Curadoria."
+                                st.session_state["curation_toast"] = f"✅ Golpe {strike_t} homologado: Modelo retreinado!"
                                 st.rerun()
 
                         with btn_c2:
@@ -3201,7 +3210,8 @@ elif nav_page == "settings":
                                 except Exception as err:
                                     log_event("WARNING", f"Erro ao excluir corte de vídeo pós-curadoria: {err}", "app")
 
-                                st.session_state["curation_alert"] = f"⚠️ Golpe {strike_t} classificado como Golpe Inválido (tentativa sem pontuação). Retreinamento adaptativo executado com sucesso e corte de vídeo apagado do disco."
+                                st.session_state["curation_alert"] = f"❌ Golpe {strike_t} classificado como Golpe Inválido. Modelo retreinado com sucesso e item removido da Fila de Curadoria."
+                                st.session_state["curation_toast"] = f"❌ Golpe {strike_t} invalidado: Modelo retreinado!"
                                 st.rerun()
 
                         with btn_c3:
@@ -3253,7 +3263,8 @@ elif nav_page == "settings":
                                 except Exception as err:
                                     log_event("WARNING", f"Erro ao excluir corte de vídeo pós-curadoria: {err}", "app")
 
-                                st.session_state["curation_alert"] = f"🚫 Lance classificado como 'Não tem Golpe' (Detecção Espúria). Retreinamento executado para suprimir falsos disparos e corte de vídeo apagado do disco."
+                                st.session_state["curation_alert"] = f"🚫 Lance classificado como 'Não tem Golpe' (Detecção Espúria). Modelo retreinado para supressão de falsos disparos e item removido da Fila de Curadoria."
+                                st.session_state["curation_toast"] = f"🚫 Detecção espúria suprimida: Modelo retreinado!"
                                 st.rerun()
 
                         with btn_c4:
@@ -3291,6 +3302,7 @@ elif nav_page == "settings":
                                     log_event("WARNING", f"Erro ao excluir corte de vídeo pós-descarte: {err}", "app")
 
                                 st.session_state["curation_alert"] = f"🗑️ Item descartado da Fila de Curadoria com sucesso (sem afetar o treinamento)."
+                                st.session_state["curation_toast"] = f"🗑️ Item removido da Fila de Curadoria!"
                                 st.rerun()
 
                     st.markdown("---")
