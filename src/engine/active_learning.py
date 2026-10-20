@@ -227,7 +227,7 @@ class UncertaintySampler:
 
         # 2. Registrar no histórico permanente de curadorias
         resolved_category = decision or ("IPPON" if label_approved else "INVALID_STRIKE")
-        target_item["status"] = "curated"
+        target_item["status"] = "discarded" if resolved_category in ("DISCARDED", "DISCARD") else "curated"
         target_item["decision"] = resolved_category
         target_item["curated_label"] = resolved_category
         target_item["curator_dan"] = reviewer_dan
@@ -258,6 +258,27 @@ class UncertaintySampler:
             "active_learning"
         )
         return True
+
+    def discard_item(
+        self,
+        item_id: str,
+        reviewer_dan: int = 5,
+        notes: str = "Descartado: Resultado indeterminado",
+        cleanup_clip: bool = True,
+        *args,
+        **kwargs
+    ) -> bool:
+        """Descarta um item da fila de curadoria sem afetar o treinamento (quando o resultado do lance é indeterminado)."""
+        return self.resolve_item(
+            item_id=item_id,
+            label_approved=False,
+            reviewer_dan=reviewer_dan,
+            notes=notes,
+            cleanup_clip=cleanup_clip,
+            decision="DISCARDED",
+            *args,
+            **kwargs
+        )
 
 
 # ==============================================================================

@@ -2590,6 +2590,39 @@ class AutoTrainingEngine:
             )
         return False
 
+    def discard_active_learning_item(
+        self,
+        item_id: str,
+        reviewer_dan: int = 5,
+        notes: str = "Descartado: Resultado indeterminado",
+        cleanup_clip: bool = True,
+        *args,
+        **kwargs
+    ) -> Any:
+        """Descarta um item da fila de curadoria ativa quando o resultado do lance é indeterminado, sem afetar o retreinamento."""
+        if hasattr(self.feedback_mgr, "discard_active_learning_item"):
+            return self.feedback_mgr.discard_active_learning_item(
+                item_id=item_id,
+                reviewer_dan=reviewer_dan,
+                notes=notes,
+                cleanup_clip=cleanup_clip,
+                *args,
+                **kwargs
+            )
+        elif hasattr(self.feedback_mgr, "resolve_active_learning_item"):
+            return self.feedback_mgr.resolve_active_learning_item(
+                item_id=item_id,
+                approved=False,
+                reviewer_dan=reviewer_dan,
+                notes=notes,
+                trigger_retrain=False,
+                cleanup_clip=cleanup_clip,
+                decision="DISCARDED",
+                *args,
+                **kwargs
+            )
+        return False
+
     def get_mathematical_calibration_status(self, profile_key: str = "normal") -> Dict[str, Any]:
         """
         Retorna o status completo da calibração matemática (Eixo 1):
