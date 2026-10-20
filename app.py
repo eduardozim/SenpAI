@@ -1410,6 +1410,12 @@ if "nav_page_target" in st.session_state:
     target_page = st.session_state.pop("nav_page_target")
     st.session_state["sidebar_nav_radio"] = target_page
     st.session_state["nav_page_selection"] = target_page
+    if target_page == "match":
+        st.session_state["sidebar_profile_selector"] = "rigido"
+        st.session_state["previous_operation_mode"] = "match"
+    elif target_page == "training":
+        st.session_state["sidebar_profile_selector"] = "normal"
+        st.session_state["previous_operation_mode"] = "training"
 
 page_nav_options = ["home", "match", "training", "settings"]
 
@@ -1429,7 +1435,14 @@ elif current_nav_val not in page_nav_options:
     st.session_state["sidebar_nav_radio"] = "home"
 
 def on_sidebar_nav_change():
-    st.session_state["nav_page_selection"] = st.session_state.get("sidebar_nav_radio", "home")
+    selected_page = st.session_state.get("sidebar_nav_radio", "home")
+    st.session_state["nav_page_selection"] = selected_page
+    if selected_page == "match":
+        st.session_state["sidebar_profile_selector"] = "rigido"
+        st.session_state["previous_operation_mode"] = "match"
+    elif selected_page == "training":
+        st.session_state["sidebar_profile_selector"] = "normal"
+        st.session_state["previous_operation_mode"] = "training"
 
 nav_page = st.sidebar.radio(
     "Navegação Principal",
@@ -1922,46 +1935,60 @@ elif nav_page == "settings":
 
         with act_col2:
             st.markdown("**📥 Baixar Treinamento Atual**")
-            st.caption("Exporta pacote (.json) completo com revisões por Dan, Decisão dos Shinpans (incluindo links de streaming), calibrações e treinamento automático por IA (Base de Conhecimento e 14 modalidades).")
-            pkg_data = feedback_mgr.export_training_package(auto_trainer_instance=auto_trainer)
-            pkg_json_str = json.dumps(pkg_data, indent=2, ensure_ascii=False)
+            st.caption("Exporta pacote completo consolidando revisões por Dan, Decisão dos Shinpans, Base de Conhecimento de IA e **todos os clipes de vídeo das pendências**.")
+            pkg_zip_bytes = feedback_mgr.export_training_package_zip(auto_trainer_instance=auto_trainer)
             dl_train_clicked = st.download_button(
-                label="📥 Baixar Treinamento (.json)",
-                data=pkg_json_str,
-                file_name=f"senpai_training_package_{int(time.time())}.json",
-                mime="application/json",
+                label="📦 Baixar Pacote Completo (.zip)",
+                data=pkg_zip_bytes,
+                file_name=f"senpai_pacote_treinamento_completo_{int(time.time())}.zip",
+                mime="application/zip",
                 width="stretch",
-                key="btn_dl_train_tab"
+                key="btn_dl_train_zip_tab",
+                help="Gera arquivo .zip contendo todo o aprendizado, fila de pendências arbitrais e os vídeos reais (.mp4) de cada lance para transferir ao computador local."
             )
             if dl_train_clicked:
                 st.session_state["training_download_success_msg"] = (
-                    "✅ **Download do Pacote de Treinamento e Configurações realizado com sucesso!**\n\n"
-                    f"O arquivo `.json` ({len(pkg_json_str.encode('utf-8')) / 1024:.1f} KB) foi gerado e baixado contendo "
-                    "todas as revisões por Dan, Decisões dos Shinpans, links de streaming homologados, "
-                    "calibrações de Ki-Ken-Tai-Ichi e a Base de Conhecimento do Auto-Trainer."
+                    "✅ **Download do Pacote Completo (.zip) realizado com sucesso!**\n\n"
+                    f"O arquivo ZIP ({len(pkg_zip_bytes) / 1024:.1f} KB) foi gerado e baixado contendo "
+                    "todas as revisões por Dan, Decisões dos Shinpans, fila de pendências da Curadoria Ativa, "
+                    "todos os clipes de vídeo dos lances para auditoria e a Base de Conhecimento do Auto-Trainer."
                 )
-                st.toast("📥 Pacote de treinamento e configurações baixado com sucesso!", icon="✅")
-                st.success("✅ **Download realizado com sucesso!** Arquivo `.json` gerado e salvo.", icon="📥")
+                st.toast("📥 Pacote completo (.zip) baixado com sucesso!", icon="✅")
+                st.success("✅ **Download realizado com sucesso!** Arquivo `.zip` gerado e salvo.", icon="📥")
             elif st.session_state.get("training_download_success_msg"):
                 st.success("✅ Pacote baixado recentemente.", icon="📥")
 
+            with st.expander("📄 Exportar apenas metadados (.json)", expanded=False):
+                pkg_data = feedback_mgr.export_training_package(auto_trainer_instance=auto_trainer)
+                pkg_json_str = json.dumps(pkg_data, indent=2, ensure_ascii=False)
+                st.download_button(
+                    label="📥 Baixar Apenas JSON",
+                    data=pkg_json_str,
+                    file_name=f"senpai_training_package_{int(time.time())}.json",
+                    mime="application/json",
+                    width="stretch",
+                    key="btn_dl_train_json_tab"
+                )
+
         with act_col3:
             st.markdown("**📤 Carregar Treinamento Baixado**")
-            st.caption("Importa pacote de treinamento previamente baixado para restaurar revisões, links de streaming e aprendizado da IA.")
-            imported_file = st.file_uploader("Selecione pacote (.json)", type=["json"], key="import_pkg_file_tab")
+            st.caption("Importa pacote (.zip ou .json) para restaurar revisões, links de streaming, clipes de vídeo e aprendizado da IA.")
+            imported_file = st.file_uploader("Selecione pacote (.zip ou .json)", type=["zip", "json"], key="import_pkg_file_tab")
             if imported_file is not None:
-                st.info(f"📄 **Arquivo selecionado:** `{imported_file.name}` ({imported_file.size / 1024:.1f} KB)\n\nPronto para restauração. Clique no botão abaixo para restaurar configurações e retreinar o modelo.")
+                st.info(f"📄 **Arquivo selecionado:** `{imported_file.name}` ({imported_file.size / 1024:.1f} KB)\n\nPronto para restauração. Clique no botão abaixo para restaurar configurações, descompactar clipes e retreinar o modelo.")
                 if st.button("📤 Importar e Retreinar Modelo", type="primary", width="stretch", key="btn_import_train_tab"):
                     with st.spinner("⏳ Processando e aplicando pacote de treinamento..."):
                         try:
-                            imported_file.seek(0)
-                            pkg_content = json.loads(imported_file.read().decode("utf-8"))
-                            import_res = feedback_mgr.import_training_package(pkg_content, auto_trainer_instance=auto_trainer)
+                            import_res = feedback_mgr.import_training_package_archive(imported_file, auto_trainer_instance=auto_trainer)
+                            clips_count_msg = f"• **{import_res.get('clips_extracted_count', 0)}** clipes de vídeo (.mp4) descompactados e prontos para curadoria.\n" if import_res.get('clips_extracted_count') else ""
+                            al_count_msg = f"• **{import_res.get('active_learning_queue_imported', 0)}** pendências integradas à Fila de Curadoria Ativa.\n" if import_res.get('active_learning_queue_imported') else ""
                             success_msg = (
                                 f"🎉 **Pacote de Treinamento e Configurações importado com sucesso!**\n\n"
                                 f"• **{import_res['new_items_added']}** novas revisões por Dan/Shinpans integradas ao modelo.\n"
                                 f"• **{import_res.get('shinpan_videos_imported', 0)}** links de streaming / vídeos de Shinpans registrados.\n"
                                 f"• **{import_res.get('imported_trainings_count', 0)}** sessões integradas ao histórico de treinamento.\n"
+                                f"{al_count_msg}"
+                                f"{clips_count_msg}"
                                 f"• Base de Conhecimento de IA e 14 modalidades pedagógicas recalibradas com sucesso.\n"
                                 f"• **Dan Médio Atual:** {import_res['average_dan_now']}."
                             )
@@ -3004,6 +3031,17 @@ elif nav_page == "settings":
                     except Exception as e:
                         log_event("WARNING", f"Erro ao preparar clipe de demonstração do item {unc_item.get('id')}: {e}", "app")
 
+                    # Fallback de localização direta caso o caminho no item venha de outro ambiente / servidor
+                    if not (clip_path and os.path.isfile(clip_path)):
+                        direct_clip = unc_item.get("clip_path")
+                        if direct_clip:
+                            if os.path.isfile(direct_clip):
+                                clip_path = direct_clip
+                            else:
+                                cand_direct = os.path.join("data", "active_learning_clips", os.path.basename(direct_clip))
+                                if os.path.isfile(cand_direct):
+                                    clip_path = cand_direct
+
                     c_vid, c_info = st.columns([1, 1])
 
                     with c_vid:
@@ -3553,11 +3591,17 @@ elif nav_page in ["match", "training", "analysis"]:
         log_event("INFO", f"Modo de operação alterado de '{prev_lbl}' para '{new_lbl}'. Análise anterior limpa com sucesso.", "app")
         st.toast(f"🧹 Modo alterado para {new_lbl}. Análise anterior limpa!", icon="🔄")
 
-    # No Modo de Treinamento & Aprendizado, a calibração de sensibilidade é sempre por padrão 'normal' (Treino Geral / Keiko)
-    prev_mode_str: str = previous_mode or ""
-    if "training" in app_mode and ("training" not in prev_mode_str or "sidebar_profile_selector" not in st.session_state):
-        st.session_state["sidebar_profile_selector"] = "normal"
+    # Ajuste automático do perfil padrão de calibração de sensibilidade conforme o modo ativo:
+    # - Modo de Análise de Lutas (match) -> Campeonato / Audit de Dan (Rígido)
+    # - Modo de Treinamento & Aprendizado (training) -> Treino Geral / Keiko (Normal)
+    prev_op_mode = st.session_state.get("previous_operation_mode")
+    if prev_op_mode != operation_mode or "sidebar_profile_selector" not in st.session_state:
+        if operation_mode == "match":
+            st.session_state["sidebar_profile_selector"] = "rigido"
+        elif operation_mode == "training":
+            st.session_state["sidebar_profile_selector"] = "normal"
 
+    st.session_state["previous_operation_mode"] = operation_mode
     st.session_state["previous_app_mode"] = current_mode_id
 
     st.sidebar.markdown("---")
@@ -3603,7 +3647,9 @@ elif nav_page in ["match", "training", "analysis"]:
     st.sidebar.markdown("---")
     st.sidebar.markdown("### Calibração de Sensibilidade")
     profile_options = ["permissivo", "normal", "rigido", "custom"]
-    profile_idx_arg: Optional[int] = None if "sidebar_profile_selector" in st.session_state else (profile_options.index("normal") if app_mode == "training" else 1)
+    target_default_profile = "rigido" if operation_mode == "match" else "normal"
+    curr_selected_profile = st.session_state.get("sidebar_profile_selector", target_default_profile)
+    profile_idx_arg = profile_options.index(curr_selected_profile) if curr_selected_profile in profile_options else profile_options.index(target_default_profile)
 
     profile_choice_raw = st.sidebar.selectbox(
         "Perfil de Calibração Predefinido",

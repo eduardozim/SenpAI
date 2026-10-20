@@ -4,6 +4,9 @@ Testes Automatizados para Edição por Dan, Retreinamento e Governança de Trein
 
 import os
 import json
+import time
+import shutil
+import tempfile
 import unittest
 from src.engine.feedback_manager import (
     FeedbackManager,
@@ -840,6 +843,70 @@ class TestDanTrainingGovernance(unittest.TestCase):
             "Hasuji Estrito no Suburi (FIK Teste)",
             kb_restored["learned_parameters"]["training_modalities"]["suburi"]["principles_learned"]
         )
+
+    def test_export_and_import_zip_package_with_active_learning_clips_and_queue(self):
+        """
+        Valida que export_training_package_zip e import_training_package_archive empacotam
+        e restauram integralmente:
+        1. Fila de curadoria ativa (pendências);
+        2. Clipes físicos de vídeo (.mp4);
+        3. Histórico de treinos, revisões por Dan e base de conhecimento.
+        Permitindo a migração completa do servidor Web para o computador local em um único arquivo.
+        """
+        test_clips_dir = os.path.join(tempfile.gettempdir(), f"senpai_test_clips_{int(time.time()*1000)}")
+        target_restore_dir = os.path.join(tempfile.gettempdir(), f"senpai_test_restore_clips_{int(time.time()*1000)}")
+        os.makedirs(test_clips_dir, exist_ok=True)
+        os.makedirs(target_restore_dir, exist_ok=True)
+
+        try:
+            # 1. Criar um clipe fake de vídeo
+            clip_name = "unc_strike_test_clip_01_corte.mp4"
+            fake_clip_path = os.path.join(test_clips_dir, clip_name)
+            with open(fake_clip_path, "wb") as f:
+                f.write(b"fake_mp4_video_content_data_12345")
+
+            # 2. Inserir um item na fila de curadoria ativa do uncertainty_sampler
+            self.mgr.uncertainty_sampler.queue_file = os.path.join(test_clips_dir, "queue.json")
+            self.mgr.uncertainty_sampler._ensure_storage()
+            test_unc_item = {
+                "id": "unc_test_zip_item_999",
+                "timestamp": "2026-10-19T20:50:00",
+                "video_source": "luta_mundial_kendo.mp4",
+                "clip_path": fake_clip_path,
+                "strike_type": "MEN",
+                "confidence": 0.51,
+                "uncertainty_score": 0.98,
+                "status": "pending_curation"
+            }
+            with open(self.mgr.uncertainty_sampler.queue_file, "w", encoding="utf-8") as f:
+                json.dump([test_unc_item], f, indent=2)
+
+            # 3. Exportar pacote completo em ZIP
+            zip_bytes = self.mgr.export_training_package_zip(clips_dir=test_clips_dir)
+            self.assertIsInstance(zip_bytes, bytes)
+            self.assertGreater(len(zip_bytes), 100)
+            self.assertTrue(zip_bytes.startswith(b"PK\x03\x04"))
+
+            # 4. Limpar o estado local da fila e preparar diretório de restauração
+            with open(self.mgr.uncertainty_sampler.queue_file, "w", encoding="utf-8") as f:
+                json.dump([], f)
+            restored_clip_file = os.path.join(target_restore_dir, clip_name)
+            self.assertFalse(os.path.isfile(restored_clip_file))
+
+            # 5. Importar o arquivo ZIP completo
+            res = self.mgr.import_training_package_archive(zip_bytes, target_clips_dir=target_restore_dir)
+            self.assertEqual(res["status"], "success")
+            self.assertGreaterEqual(res.get("clips_extracted_count", 0), 1)
+            self.assertGreaterEqual(res.get("active_learning_queue_imported", 0), 1)
+
+            # 6. Validar que o clipe de vídeo foi fisicamente descompactado no disco
+            self.assertTrue(os.path.isfile(restored_clip_file))
+            with open(restored_clip_file, "rb") as f:
+                self.assertEqual(f.read(), b"fake_mp4_video_content_data_12345")
+
+        finally:
+            shutil.rmtree(test_clips_dir, ignore_errors=True)
+            shutil.rmtree(target_restore_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":

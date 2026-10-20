@@ -196,5 +196,32 @@ class TestActiveLearningCurationClip(unittest.TestCase):
                 self.assertEqual(h_item.get("curated_label"), exp_cur_label)
 
 
+    def test_get_or_create_strike_clip_when_source_video_absent_but_clip_exists(self):
+        """
+        Garante que em cenários de consolidação servidor -> local (onde o vídeo bruto
+        de origem não existe na máquina local, mas o clipe recortado foi sincronizado),
+        o clipe de demonstração seja recuperado com sucesso sem exigir o vídeo bruto.
+        """
+        from src.utils.strike_clip_manager import get_or_create_strike_clip
+
+        dummy_clip_path = os.path.join(self.clips_dir, "test_server_clip_corte.mp4")
+        with open(dummy_clip_path, "wb") as f:
+            f.write(b"fake_video_clip_content_for_test")
+
+        remote_item = {
+            "id": "unc_remote_test_1",
+            "video_source": "/var/remote/server/tmp/non_existent_original_fight.mp4",
+            "clip_path": dummy_clip_path,
+            "strike_type": "MEN",
+            "timestamp_seconds": 15.0
+        }
+
+        # Deve retornar o clipe existente mesmo sem o arquivo /var/remote/server/...
+        resolved = get_or_create_strike_clip(remote_item, output_dir=self.clips_dir)
+        self.assertIsNotNone(resolved)
+        self.assertTrue(os.path.isfile(resolved))
+        self.assertEqual(os.path.abspath(resolved), os.path.abspath(dummy_clip_path))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -244,12 +244,36 @@ def get_or_create_strike_clip(
 ) -> Optional[str]:
     """
     Localiza ou extrai o corte real do vídeo da luta original em torno do golpe controverso.
-    Retorna None se o vídeo original da luta não estiver acessível no disco.
+    Se o clipe recortado já existir em disco, reaproveita-o imediatamente sem exigir o vídeo original.
+    Retorna None se o clipe ainda não existir e o vídeo original da luta não estiver acessível no disco.
     """
     os.makedirs(output_dir, exist_ok=True)
     item_id = str(item.get("id", "strike_uncertain"))
+    expected_file = os.path.join(output_dir, f"{item_id}_corte.mp4")
 
-    # 1. Localizar o vídeo real da luta citado na descrição
+    # 1. Se não for recriação forçada, verificar se o clipe já existe em disco
+    if not force_recreate:
+        existing_clip = item.get("clip_path")
+        if existing_clip:
+            # 1a. Caminho direto se for válido e existir
+            if os.path.isfile(existing_clip) and os.path.getsize(existing_clip) > 0:
+                if not existing_clip.endswith("_demo.mp4"):
+                    return os.path.abspath(existing_clip)
+
+            # 1b. Por nome base no diretório de clipes (suporte a consolidação servidor -> local / caminhos relativos)
+            clip_base = os.path.basename(existing_clip)
+            cand_output = os.path.join(output_dir, clip_base)
+            if os.path.isfile(cand_output) and os.path.getsize(cand_output) > 0:
+                if not cand_output.endswith("_demo.mp4"):
+                    item["clip_path"] = cand_output
+                    return os.path.abspath(cand_output)
+
+        # 1c. Pelo padrão esperado {item_id}_corte.mp4
+        if os.path.isfile(expected_file) and os.path.getsize(expected_file) > 0:
+            item["clip_path"] = expected_file
+            return os.path.abspath(expected_file)
+
+    # 2. Se o corte ainda não existe (ou force_recreate=True), localizar o vídeo real da luta original
     video_source = str(item.get("video_source", "")).strip()
     source_file = find_source_video(video_source)
 
@@ -260,19 +284,6 @@ def get_or_create_strike_clip(
             "strike_clip_manager"
         )
         return None
-
-    expected_file = os.path.join(output_dir, f"{item_id}_corte.mp4")
-
-    # 2. Se já possui clip_path e o arquivo existe e force_recreate não foi solicitado
-    if not force_recreate:
-        existing_clip = item.get("clip_path")
-        if existing_clip and os.path.isfile(existing_clip) and os.path.getsize(existing_clip) > 0:
-            if not existing_clip.endswith("_demo.mp4"):
-                return existing_clip
-
-        if os.path.isfile(expected_file) and os.path.getsize(expected_file) > 0:
-            item["clip_path"] = expected_file
-            return expected_file
 
     # 3. Calcular tempo exato do golpe para recorte a partir da descrição
     target_time = parse_strike_timestamp(item)
@@ -296,16 +307,24 @@ def get_or_create_strike_clip(
 def delete_strike_clip(clip_path: Optional[str]) -> bool:
     """
     Apaga com segurança o arquivo de vídeo do corte do golpe após o retreinamento.
+    Suporta caminhos diretos e resolução no diretório padrão de clipes.
     """
     if not clip_path:
         return False
 
-    try:
-        if os.path.isfile(clip_path):
-            os.remove(clip_path)
-            log_event("INFO", f"Corte do golpe excluído com segurança após retreinamento: {clip_path}", "strike_clip_manager")
-            return True
-    except Exception as e:
-        log_event("WARNING", f"Falha ao apagar arquivo de corte {clip_path}: {e}", "strike_clip_manager")
+    deleted = False
+    candidates = [clip_path]
+    base_name = os.path.basename(clip_path)
+    if base_name:
+        candidates.append(os.path.join(DEFAULT_CLIPS_DIR, base_name))
 
-    return False
+    for path in candidates:
+        try:
+            if path and os.path.isfile(path):
+                os.remove(path)
+                log_event("INFO", f"Corte do golpe excluído com segurança após retreinamento: {path}", "strike_clip_manager")
+                deleted = True
+        except Exception as e:
+            log_event("WARNING", f"Falha ao apagar arquivo de corte {path}: {e}", "strike_clip_manager")
+
+    return deleted

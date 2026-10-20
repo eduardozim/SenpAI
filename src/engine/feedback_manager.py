@@ -6,6 +6,8 @@ Gerencia a gravação de marcações (TP, FP, FN, edições e revisões por Dan)
 import json
 import os
 import re
+import io
+import zipfile
 import random
 import datetime
 from typing import Dict, Any, List, Tuple, Optional
@@ -1222,6 +1224,44 @@ class FeedbackManager:
 
         now_iso = datetime.datetime.now().isoformat(timespec="seconds")
 
+        # Obter fila e histórico da Curadoria Ativa (Active Learning)
+        al_queue = []
+        try:
+            if hasattr(self, "get_active_learning_queue"):
+                al_queue = self.get_active_learning_queue()
+            elif os.path.isfile("data/active_learning_queue.json"):
+                with open("data/active_learning_queue.json", "r", encoding="utf-8") as f:
+                    al_queue = json.load(f)
+        except Exception:
+            pass
+
+        al_history = []
+        try:
+            if hasattr(self, "get_active_learning_history"):
+                al_history = self.get_active_learning_history()
+            elif os.path.isfile("data/active_learning_curated_history.json"):
+                with open("data/active_learning_curated_history.json", "r", encoding="utf-8") as f:
+                    al_history = json.load(f)
+        except Exception:
+            pass
+
+        # Baselines e Trust Registry
+        kenshi_baselines = None
+        if os.path.isfile("data/kenshi_baselines.json"):
+            try:
+                with open("data/kenshi_baselines.json", "r", encoding="utf-8") as f:
+                    kenshi_baselines = json.load(f)
+            except Exception:
+                pass
+
+        trust_registry = None
+        if os.path.isfile("data/reviewer_trust_registry.json"):
+            try:
+                with open("data/reviewer_trust_registry.json", "r", encoding="utf-8") as f:
+                    trust_registry = json.load(f)
+            except Exception:
+                pass
+
         # Contagem de sessões automáticas
         auto_trainings_count = sum(1 for h in history if h.get("is_auto_training") or str(h.get("video_name", "")).startswith("AI_Auto_Trainer_"))
         indexed_sources_count = len(ai_kb.get("sources", {})) if (ai_kb and isinstance(ai_kb.get("sources"), dict)) else 0
@@ -1237,23 +1277,72 @@ class FeedbackManager:
                 "total_review_entries": len(data),
                 "shinpan_reviewed_videos_count": len(shinpan_videos),
                 "auto_trainings_count": auto_trainings_count,
-                "indexed_sources_count": indexed_sources_count
+                "indexed_sources_count": indexed_sources_count,
+                "active_learning_queue_count": len(al_queue),
+                "active_learning_curated_count": len(al_history)
             },
             "review_items": data,
             "training_history": history,
             "shinpan_reviewed_videos": shinpan_videos,
             "calibration_profiles": profiles,
             "ai_knowledge_base": ai_kb,
-            "auto_training_checkpoint": auto_ckpt
+            "auto_training_checkpoint": auto_ckpt,
+            "active_learning_queue": al_queue,
+            "active_learning_curated_history": al_history,
+            "kenshi_baselines": kenshi_baselines,
+            "reviewer_trust_registry": trust_registry
         }
 
         log_event(
             "INFO",
             f"PACOTE DE TREINAMENTO EXPORTADO: Pacote v2.0 gerado com {len(data)} itens de revisão, "
-            f"{len(history)} sessões de treino, {len(shinpan_videos)} vídeos/links de streaming dos Shinpans e Base de Conhecimento de IA.",
+            f"{len(history)} sessões de treino, {len(shinpan_videos)} vídeos/links de streaming dos Shinpans, "
+            f"{len(al_queue)} pendências de Curadoria Ativa e Base de Conhecimento de IA.",
             "feedback_manager"
         )
         return pkg
+
+    def export_training_package_zip(
+        self,
+        auto_trainer_instance: Optional[Any] = None,
+        clips_dir: str = "data/active_learning_clips"
+    ) -> bytes:
+        """
+        Exporta o pacote de treinamento completo consolidado em um arquivo ZIP contendo:
+        1. training_package.json (revisões, histórico, decisões de shinpans, IA, calibrações e fila de pendências);
+        2. active_learning_clips/ (todos os arquivos reais de vídeo .mp4 dos golpes para curadoria imediata);
+        3. Baselines e registros auxiliares.
+        Permite transferir 100% dos dados entre servidor e local sem necessidade de copiar pastas avulsas.
+        """
+        pkg = self.export_training_package(auto_trainer_instance=auto_trainer_instance)
+        zip_buffer = io.BytesIO()
+
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+            # 1. Arquivo principal do pacote
+            pkg_json_str = json.dumps(pkg, indent=2, ensure_ascii=False)
+            zf.writestr("training_package.json", pkg_json_str)
+
+            # 2. Clipes de vídeo reais de curadoria ativa da pasta padrão
+            included_basenames = set()
+            if os.path.isdir(clips_dir):
+                for f_name in os.listdir(clips_dir):
+                    if f_name.lower().endswith((".mp4", ".mov", ".avi", ".webm")):
+                        f_path = os.path.join(clips_dir, f_name)
+                        if os.path.isfile(f_path) and os.path.getsize(f_path) > 0:
+                            zf.write(f_path, arcname=f"active_learning_clips/{f_name}")
+                            included_basenames.add(f_name)
+
+            # 3. Garantir que clipes referenciados na fila também sejam incluídos se estiverem fora da pasta padrão
+            for item in pkg.get("active_learning_queue", []):
+                c_path = item.get("clip_path")
+                if c_path and os.path.isfile(c_path):
+                    b_name = os.path.basename(c_path)
+                    if b_name not in included_basenames:
+                        zf.write(c_path, arcname=f"active_learning_clips/{b_name}")
+                        included_basenames.add(b_name)
+
+        zip_buffer.seek(0)
+        return zip_buffer.getvalue()
 
     def import_training_package(
         self,
@@ -1484,12 +1573,97 @@ class FeedbackManager:
                 kb_merge_res = self._merge_ai_knowledge_base(imported_kb, imported_checkpoint=imported_ckpt)
                 kb_updated = True
 
+        # 5. Mesclar Fila de Curadoria Ativa (Active Learning)
+        imported_al_queue = package_data.get("active_learning_queue") if isinstance(package_data, dict) else None
+        al_queue_imported = 0
+        if imported_al_queue and isinstance(imported_al_queue, list):
+            try:
+                queue_file = getattr(getattr(self, "uncertainty_sampler", None), "queue_file", "data/active_learning_queue.json")
+                curr_queue = []
+                if os.path.isfile(queue_file):
+                    try:
+                        with open(queue_file, "r", encoding="utf-8") as f:
+                            curr_queue = json.load(f)
+                    except Exception:
+                        curr_queue = []
+
+                existing_q_ids = {it.get("id") for it in curr_queue if it.get("id")}
+                for q_it in imported_al_queue:
+                    if not isinstance(q_it, dict):
+                        continue
+                    q_id = q_it.get("id")
+                    if q_id and q_id not in existing_q_ids:
+                        c_path = q_it.get("clip_path")
+                        if c_path:
+                            base_c = os.path.basename(c_path)
+                            local_cand = os.path.join("data", "active_learning_clips", base_c)
+                            if os.path.isfile(local_cand):
+                                q_it["clip_path"] = local_cand
+                        curr_queue.append(q_it)
+                        existing_q_ids.add(q_id)
+                        al_queue_imported += 1
+
+                os.makedirs(os.path.dirname(queue_file) or ".", exist_ok=True)
+                with open(queue_file, "w", encoding="utf-8") as f:
+                    json.dump(curr_queue, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                log_event("WARNING", f"Falha ao mesclar fila de curadoria ativa: {e}", "feedback_manager")
+
+        # 6. Mesclar Histórico de Curadorias já Realizadas
+        imported_al_hist = package_data.get("active_learning_curated_history") if isinstance(package_data, dict) else None
+        al_hist_imported = 0
+        if imported_al_hist and isinstance(imported_al_hist, list):
+            try:
+                hist_file = os.path.join(
+                    os.path.dirname(getattr(getattr(self, "uncertainty_sampler", None), "queue_file", "data/active_learning_queue.json")) or ".",
+                    "active_learning_curated_history.json"
+                )
+                curr_al_hist = []
+                if os.path.isfile(hist_file):
+                    try:
+                        with open(hist_file, "r", encoding="utf-8") as f:
+                            curr_al_hist = json.load(f)
+                    except Exception:
+                        curr_al_hist = []
+
+                existing_hist_ids = {h.get("id") for h in curr_al_hist if h.get("id")}
+                for h_it in imported_al_hist:
+                    if isinstance(h_it, dict) and h_it.get("id") and h_it.get("id") not in existing_hist_ids:
+                        curr_al_hist.append(h_it)
+                        existing_hist_ids.add(h_it.get("id"))
+                        al_hist_imported += 1
+
+                with open(hist_file, "w", encoding="utf-8") as f:
+                    json.dump(curr_al_hist, f, indent=2, ensure_ascii=False)
+            except Exception as e:
+                log_event("WARNING", f"Falha ao mesclar histórico de curadoria ativa: {e}", "feedback_manager")
+
+        # 7. Mesclar Baselines de Kenshis e Trust Registry se fornecidos
+        if isinstance(package_data, dict):
+            k_base = package_data.get("kenshi_baselines")
+            if k_base and isinstance(k_base, dict):
+                try:
+                    os.makedirs("data", exist_ok=True)
+                    with open("data/kenshi_baselines.json", "w", encoding="utf-8") as f:
+                        json.dump(k_base, f, indent=2, ensure_ascii=False)
+                except Exception:
+                    pass
+            t_reg = package_data.get("reviewer_trust_registry")
+            if t_reg and isinstance(t_reg, dict):
+                try:
+                    os.makedirs("data", exist_ok=True)
+                    with open("data/reviewer_trust_registry.json", "w", encoding="utf-8") as f:
+                        json.dump(t_reg, f, indent=2, ensure_ascii=False)
+                except Exception:
+                    pass
+
         updated_metrics = self.get_training_metrics()
 
         log_event(
             "INFO",
             f"PACOTE DE TREINAMENTO CARREGADO E RECALIBRADO: {new_added_count} novos itens de revisão, "
-            f"{new_history_count} treinamentos, {shinpan_imported_count} vídeos/links de streaming dos Shinpans integrados "
+            f"{new_history_count} treinamentos, {shinpan_imported_count} vídeos/links de streaming dos Shinpans integrados, "
+            f"{al_queue_imported} pendências da Curadoria Ativa restauradas "
             f"e Base de Conhecimento {'atualizada' if kb_updated else 'mantida'}. Nível Dan Médio: {updated_metrics['average_dan_label']}.",
             "feedback_manager"
         )
@@ -1502,11 +1676,101 @@ class FeedbackManager:
             "shinpan_videos_imported": shinpan_imported_count,
             "shinpan_videos_total": len(current_shinpan_videos),
             "auto_trainings_imported": auto_trainings_imported,
+            "active_learning_queue_imported": al_queue_imported,
+            "active_learning_history_imported": al_hist_imported,
             "knowledge_base_updated": kb_updated,
             "knowledge_merge_summary": kb_merge_res,
             "total_trainings_now": updated_metrics["total_trainings_count"],
             "average_dan_now": updated_metrics["average_dan_label"]
         }
+
+    def import_training_package_archive(
+        self,
+        file_or_bytes_or_dict: Any,
+        auto_trainer_instance: Optional[Any] = None,
+        target_clips_dir: str = "data/active_learning_clips"
+    ) -> Dict[str, Any]:
+        """
+        Importa o pacote de treinamento completo a partir de um arquivo ZIP (.zip),
+        arquivo JSON (.json), bytes em memória ou dicionário Python.
+        Se for um arquivo ZIP:
+        1. Extrai automaticamente todos os clipes de vídeo (.mp4) para target_clips_dir;
+        2. Carrega training_package.json e reconstitui 100% dos dados, pendências e aprendizado.
+        """
+        is_zip = False
+        raw_bytes = None
+
+        if isinstance(file_or_bytes_or_dict, bytes):
+            raw_bytes = file_or_bytes_or_dict
+            if raw_bytes.startswith(b"PK\x03\x04"):
+                is_zip = True
+        elif hasattr(file_or_bytes_or_dict, "read"):
+            name = getattr(file_or_bytes_or_dict, "name", "").lower()
+            try:
+                file_or_bytes_or_dict.seek(0)
+            except Exception:
+                pass
+            raw_bytes = file_or_bytes_or_dict.read()
+            if name.endswith(".zip") or (raw_bytes and raw_bytes.startswith(b"PK\x03\x04")):
+                is_zip = True
+        elif isinstance(file_or_bytes_or_dict, str):
+            if file_or_bytes_or_dict.lower().endswith(".zip") and os.path.isfile(file_or_bytes_or_dict):
+                is_zip = True
+                with open(file_or_bytes_or_dict, "rb") as f:
+                    raw_bytes = f.read()
+
+        clips_extracted = 0
+
+        if is_zip and raw_bytes:
+            os.makedirs(target_clips_dir, exist_ok=True)
+            pkg_data = None
+            with zipfile.ZipFile(io.BytesIO(raw_bytes), "r") as zf:
+                # 1. Extrair clipes de vídeo de demonstração
+                for info in zf.infolist():
+                    f_name = info.filename
+                    if ("active_learning_clips/" in f_name or f_name.endswith("_corte.mp4")) and f_name.lower().endswith((".mp4", ".mov", ".avi", ".webm")):
+                        dest_file = os.path.join(target_clips_dir, os.path.basename(f_name))
+                        with zf.open(info) as src, open(dest_file, "wb") as dst:
+                            dst.write(src.read())
+                        clips_extracted += 1
+                    elif f_name in ("training_package.json", "manifest.json") or f_name.endswith(".json"):
+                        if pkg_data is None:
+                            try:
+                                with zf.open(info) as src:
+                                    pkg_data = json.loads(src.read().decode("utf-8"))
+                            except Exception:
+                                pass
+
+            if not pkg_data:
+                raise ValueError("Nenhum arquivo JSON de treinamento válido encontrado dentro do pacote ZIP.")
+
+            res = self.import_training_package(pkg_data, auto_trainer_instance=auto_trainer_instance)
+            res["clips_extracted_count"] = clips_extracted
+            log_event("INFO", f"Pacote ZIP importado com sucesso: {clips_extracted} clipes de vídeo extraídos para {target_clips_dir}.", "feedback_manager")
+            return res
+
+        # Se for dicionário diretamente
+        if isinstance(file_or_bytes_or_dict, dict) or isinstance(file_or_bytes_or_dict, list):
+            res = self.import_training_package(file_or_bytes_or_dict, auto_trainer_instance=auto_trainer_instance)
+            res["clips_extracted_count"] = 0
+            return res
+
+        # Se for bytes de arquivo JSON
+        if raw_bytes:
+            parsed_json = json.loads(raw_bytes.decode("utf-8"))
+            res = self.import_training_package(parsed_json, auto_trainer_instance=auto_trainer_instance)
+            res["clips_extracted_count"] = 0
+            return res
+
+        # Se for caminho de arquivo no disco
+        if isinstance(file_or_bytes_or_dict, str) and os.path.isfile(file_or_bytes_or_dict):
+            with open(file_or_bytes_or_dict, "r", encoding="utf-8") as f:
+                parsed_json = json.load(f)
+            res = self.import_training_package(parsed_json, auto_trainer_instance=auto_trainer_instance)
+            res["clips_extracted_count"] = 0
+            return res
+
+        raise ValueError("Formato de pacote de treinamento inválido.")
 
     def optimize_profile_config(self, profile_key: str, current_config: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
