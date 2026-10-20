@@ -18,6 +18,48 @@ from src.utils.logger_manager import log_event
 
 
 DEFAULT_CLIPS_DIR = "data/active_learning_clips"
+DEFAULT_UPLOADS_DIR = "data/tmp/senpai_uploads"
+
+
+def get_senpai_uploads_dir(ensure_exists: bool = True) -> str:
+    """
+    Retorna o caminho do diretório padrão para armazenamento de uploads e downloads de vídeos do SenpAI.
+    Prioriza uma pasta dentro do projeto ('data/tmp/senpai_uploads'), garantindo:
+      1. Permissões de escrita estáveis dentro do workspace da aplicação.
+      2. Persistência dos vídeos de combate entre sessões para curadoria ativa (evitando apagamento pelo SO).
+      3. Prevenção de estouro de memória RAM por tmpfs no Linux.
+    Possui fallback automático para a pasta temporária do sistema operacional caso a pasta do projeto
+    seja somente leitura (ex: contêiner imutável).
+    Permite customização via variável de ambiente 'SENPAI_UPLOADS_DIR'.
+    """
+    env_dir = os.environ.get("SENPAI_UPLOADS_DIR")
+    candidates = [
+        env_dir,
+        DEFAULT_UPLOADS_DIR,
+        "data/uploads",
+    ]
+    for cand in candidates:
+        if not cand:
+            continue
+        try:
+            if ensure_exists:
+                os.makedirs(cand, exist_ok=True)
+                test_file = os.path.join(cand, f".write_test_{os.getpid()}")
+                with open(test_file, "w") as f:
+                    f.write("test")
+                if os.path.exists(test_file):
+                    os.remove(test_file)
+            return cand
+        except Exception:
+            continue
+
+    fallback_dir = os.path.join(tempfile.gettempdir(), "senpai_uploads")
+    if ensure_exists:
+        try:
+            os.makedirs(fallback_dir, exist_ok=True)
+        except Exception:
+            pass
+    return fallback_dir
 
 
 def get_cross_platform_basename(path_str: str) -> str:
@@ -50,7 +92,8 @@ def resolve_source_video_path(video_source: str) -> str:
     video_source_clean = str(video_source).replace("\\", "/")
 
     if "senpai_uploads" in video_source_clean or base_name.startswith("yt_") or base_name.startswith("upload_"):
-        return os.path.join(tempfile.gettempdir(), "senpai_uploads", base_name)
+        target_dir = get_senpai_uploads_dir(ensure_exists=False)
+        return os.path.join(target_dir, base_name)
     elif "data/uploads" in video_source_clean:
         return os.path.join("data", "uploads", base_name)
     elif "data/videos" in video_source_clean:
@@ -83,9 +126,12 @@ def find_source_video(video_source: str) -> Optional[str]:
     clean_stem = re.sub(r"^(upload_\d+_|yt_[^_]+_)", "", os.path.splitext(base_name)[0]).strip().lower()
 
     # 2. Diretórios potenciais onde o vídeo original da luta pode residir no host atual
+    active_uploads = get_senpai_uploads_dir(ensure_exists=False)
     search_dirs = [
-        os.path.join(tempfile.gettempdir(), "senpai_uploads"),
+        active_uploads,
+        DEFAULT_UPLOADS_DIR,
         "data/uploads",
+        os.path.join(tempfile.gettempdir(), "senpai_uploads"),
         "data/videos",
         "data",
         "."

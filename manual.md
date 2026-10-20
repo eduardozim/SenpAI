@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.7.1`
+> **Versão Oficial do Sistema**: `v 0.3.7.2`
 
 ---
 
@@ -810,7 +810,26 @@ Total de **246 testes automatizados** distribuídos em 26 módulos, executados e
 
 ---
 
-### `[v 0.3.7.1]` — 2026-10-13 *(Versão Atual)*
+### `[v 0.3.7.2]` — 2026-10-20 *(Versão Atual)*
+
+- **Resolução de Caminhos Agnóstica de Plataforma e Suporte Multi-Servidor ([strike_clip_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/strike_clip_manager.py), [active_learning.py](file:///d:/Projetos/SenpAI/Dev/src/engine/active_learning.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Extração Agnóstica de Nomes de Arquivo**: Implementação da função `get_cross_platform_basename()` para separar e extrair nomes de arquivo com segurança suportando tanto barras convencionais (`/`) quanto invertidas do Windows (`\`), eliminando falhas em servidores web/Linux onde caminhos como `C:\Users\...` eram interpretados incorretamente como nome literal de arquivo.
+  - **Arquitetura de Uploads no Workspace do Projeto (`data/tmp/senpai_uploads`)**: Substituição da dependência da pasta temporária global do SO (`/tmp`) por uma pasta interna do projeto gerenciada por `get_senpai_uploads_dir()`. Garante permissão irrestrita de escrita em contêineres Docker/nuvem, previne esgotamento de memória RAM em distribuições Linux que montam `/tmp` em `tmpfs`, preserva os vídeos originais de lutas para curadoria ativa posterior (retenção expandida para 7 dias) e possui fallback resiliente para a pasta temporária do SO caso a montagem do projeto seja somente leitura.
+  - **Resolução Dinâmica no Servidor/Host Atual**: Implementação de `resolve_source_video_path()`, mapeando o caminho de vídeos de luta e gravações automaticamente para a pasta de uploads do servidor ativo (`data/tmp/senpai_uploads/` ou fallback do SO), evitando a exibição de caminhos locais fixos de outros computadores.
+  - **Localização Confiável de Clipes em Nuvem**: Clipes recortados de lances controversos em `data/active_learning_clips/` passam a ser encontrados e exibidos imediatamente no player Streamlit em qualquer servidor ou sistema operacional.
+  - **Higienização de Filas e Registros**: Normalização completa de [active_learning_queue.json](file:///d:/Projetos/SenpAI/Dev/data/active_learning_queue.json) com referências portáteis e relativas.
+- **Botão e Decisão de Descarte na Fila de Curadoria Ativa ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py), [auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py) & [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py))**:
+  - Adicionado o botão `🗑️ Descartar` ao lado das opções de avaliação arbitral (`✅ Ippon`, `❌ Golpe Inválido` e `🚫 Não tem Golpe`);
+  - Permite descartar lances com recorte truncado, incertos ou ruidosos sem afetar o retreinamento adaptativo e sem registrar viés nos dados pedagógicos;
+  - Exclusão segura e automática do arquivo de vídeo do clipe em disco ao descartar a pendência.
+- **Pacotes Completos de Treinamento em Formato ZIP ([feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py))**:
+  - Exportação e importação de pacotes completos em `.zip` compactando clipes de vídeo, fila de curadoria ativa, base de conhecimento e histórico Dan, permitindo migração integral entre servidores web e computadores locais.
+- **Captura e Streaming em Ultra-Baixa Latência ([stream_capture.py](file:///d:/Projetos/SenpAI/Dev/src/utils/stream_capture.py))**:
+  - Transporte TCP forçado para RTSP, descarte automático de frames defasados e reconexão resiliente.
+
+---
+
+### `[v 0.3.7.1]` — 2026-10-13
 
 - **Correção Crítica e Feedback em Tempo Real do Treinamento Automático por IA (Web & Vídeo) ([auto_trainer.py](file:///d:/Projetos/SenpAI/Dev/src/engine/auto_trainer.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - **Execução Confiável em Background**: Resolução da perda de estado e desconexão do singleton causada por recarregamentos dinâmicos (`importlib.reload`) a cada rerun da interface Streamlit, garantindo que o treinamento permaneça ativo ininterruptamente em background;
@@ -1721,7 +1740,7 @@ Total de **246 testes automatizados** distribuídos em 26 módulos, executados e
 > [!IMPORTANT]
 > **AVISO LEGAL E TERMOS DE PROTEÇÃO INTELECTUAL**
 > 
-> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.3.7.1`.**  
+> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.3.7.2`.**  
 > **TODOS OS DIREITOS DE USO E CÓPIA RESERVADOS.**
 > 
 > 1. **Titularidade**: Todo o código-fonte, arquitetura de visão computacional, algoritmos biomecânicos de *Ki-Ken-Tai-Ichi*, modelos de detecção postural, pesos de rede neural, perfis de calibração heurística, identidade visual, interfaces e documentações pertencem exclusivamente aos desenvolvedores e detentores do projeto SenpAI.

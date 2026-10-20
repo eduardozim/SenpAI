@@ -74,6 +74,8 @@ tensorboard/
 data/training_runs/
 data/checkpoints/
 data/test_*.json
+data/tmp/
+data/uploads/
 
 # Serializações e dumps temporários de treino
 *.joblib

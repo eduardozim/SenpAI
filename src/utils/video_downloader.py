@@ -201,11 +201,17 @@ def get_cookie_file_path(custom_file: Optional[str] = None) -> Optional[str]:
             return cand
 
     try:
+        from src.utils.strike_clip_manager import get_senpai_uploads_dir
+        base_cookie_dir = get_senpai_uploads_dir()
+    except Exception:
+        base_cookie_dir = tempfile.gettempdir()
+
+    try:
         import streamlit as st
         if hasattr(st, "runtime") and st.runtime.exists():
             cookie_session = st.session_state.get("youtube_cookies_text", "")
             if cookie_session and len(str(cookie_session).strip()) > 10:
-                tmp_cookie = os.path.join(tempfile.gettempdir(), "senpai_yt_session_cookies.txt")
+                tmp_cookie = os.path.join(base_cookie_dir, "senpai_yt_session_cookies.txt")
                 norm_cookies = format_netscape_cookie_content(str(cookie_session))
                 with open(tmp_cookie, "w", encoding="utf-8") as f:
                     f.write(norm_cookies)
@@ -222,7 +228,7 @@ def get_cookie_file_path(custom_file: Optional[str] = None) -> Optional[str]:
             pass
 
     if cookie_content and len(str(cookie_content).strip()) > 10:
-        tmp_cookie = os.path.join(tempfile.gettempdir(), "senpai_yt_cookies.txt")
+        tmp_cookie = os.path.join(base_cookie_dir, "senpai_yt_cookies.txt")
         try:
             norm_cookies = format_netscape_cookie_content(str(cookie_content))
             with open(tmp_cookie, "w", encoding="utf-8") as f:
@@ -527,7 +533,11 @@ def download_video_stream(
         raise VideoDownloadError("Módulo yt-dlp não está instalado ou disponível no ambiente.")
 
     if output_dir is None:
-        output_dir = os.path.join(tempfile.gettempdir(), "senpai_uploads")
+        try:
+            from src.utils.strike_clip_manager import get_senpai_uploads_dir
+            output_dir = get_senpai_uploads_dir()
+        except Exception:
+            output_dir = os.path.join(tempfile.gettempdir(), "senpai_uploads")
     os.makedirs(output_dir, exist_ok=True)
     
     # 1. Extração prévia de metadados
