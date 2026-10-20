@@ -254,6 +254,87 @@ class TestStreamCapture(unittest.TestCase):
         self.assertEqual(format_stream_time(-5.0), "00:00.0")
 
 
+    def test_stream_sync_tracker_reference_and_badges(self):
+        """Valida inicialização, badges e referência zero do StreamSyncTracker."""
+        from src.utils.stream_capture import StreamSyncTracker
+        tracker = StreamSyncTracker(reference_index=0, fps=30.0)
+        self.assertEqual(tracker.get_delay_ms(0), 0.0)
+        self.assertIn("Ref. Local 0ms", tracker.get_sync_badge(0))
+
+        # Simula atraso medido
+        tracker._measured_delays_ms[1] = 30.0
+        self.assertIn("Sincronizado (+30ms)", tracker.get_sync_badge(1))
+
+        tracker._measured_delays_ms[1] = 95.0
+        self.assertIn("Atraso Real: +95ms", tracker.get_sync_badge(1))
+
+        tracker._measured_delays_ms[1] = 350.0
+        self.assertIn("Atraso Real: +0.35s", tracker.get_sync_badge(1))
+
+    def test_stream_sync_tracker_motion_calibration(self):
+        """Valida cálculo de correlação cruzada com sinal de movimento sintetizado."""
+        from src.utils.stream_capture import StreamSyncTracker
+        tracker = StreamSyncTracker(reference_index=0, fps=30.0)
+
+        # Gera frames sintéticos com pico de movimento em t=10 na ref e t=13 no target (lag de 3 frames = ~100ms)
+        f_black = np.zeros((100, 100, 3), dtype=np.uint8)
+        f_white = np.full((100, 100, 3), 255, dtype=np.uint8)
+
+        for i in range(35):
+            # Câmera 0 (Ref): pico em i=10
+            f0 = f_white if i == 10 else f_black
+            # Câmera 1 (Target): pico em i=13 (atraso de 3 frames)
+            f1 = f_white if i == 13 else f_black
+
+            tracker.update_frame(0, f0, timestamp=i * 0.033)
+            tracker.update_frame(1, f1, timestamp=i * 0.033)
+
+        delay_1 = tracker.get_delay_ms(1)
+        # O atraso esperado é ~100ms (3 frames a 30 fps)
+        self.assertGreater(delay_1, 0.0)
+        self.assertLessEqual(delay_1, 150.0)
+
+    def test_stream_sync_tracker_visual_compensation(self):
+        """Valida que get_synced_data busca o frame temporalmente equivalente na webcam (referência)."""
+        from src.utils.stream_capture import StreamSyncTracker
+        tracker = StreamSyncTracker(reference_index=0, fps=30.0)
+        tracker._measured_delays_ms[1] = 100.0  # 100ms de atraso calibrado no stream 1
+
+        t_base = time.time()
+        # Enfileira 10 frames na câmera 0 (Webcam)
+        for i in range(10):
+            t_f = t_base - (9 - i) * 0.033
+            frame_i = np.full((50, 50, 3), i, dtype=np.uint8)
+            tracker.register_processed_frame(
+                cam_idx=0,
+                frame=frame_i,
+                drawn_frame=frame_i,
+                landmarks={"frame_id": i},
+                timestamp=t_f
+            )
+
+        # Solicita dados sincronizados para a webcam
+        latest_frame = np.full((50, 50, 3), 9, dtype=np.uint8)
+        s_frame, s_drawn, s_lm = tracker.get_synced_data(
+            cam_idx=0,
+            current_frame=latest_frame,
+            current_drawn=latest_frame,
+            current_landmarks={"frame_id": 9}
+        )
+
+        # O alvo era t_base - 100ms (~3 frames atrás, logo frame_6)
+        self.assertIsNotNone(s_lm)
+        self.assertIn("frame_id", s_lm)
+        self.assertIn(s_lm["frame_id"], [5, 6, 7])
+
+        # Para câmera secundária (1), retorna o frame atual sem atraso adicional
+        f_target = np.full((50, 50, 3), 99, dtype=np.uint8)
+        t_frame, _, _ = tracker.get_synced_data(cam_idx=1, current_frame=f_target)
+        self.assertEqual(int(t_frame[0, 0, 0]), 99)
+
+
 if __name__ == "__main__":
     unittest.main()
+
+
 
