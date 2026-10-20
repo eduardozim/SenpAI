@@ -80,7 +80,7 @@ def resolve_source_video_path(video_source: str) -> str:
     Se não existir, ajusta caminhos de senpai_uploads ou pastas do projeto para a
     localização esperada no servidor/máquina atual (evitando referências fixas a pastas de outro computador).
     """
-    if not video_source or not str(video_source).strip():
+    if not video_source or not video_source.strip():
         return ""
 
     found = find_source_video(video_source)
@@ -89,7 +89,7 @@ def resolve_source_video_path(video_source: str) -> str:
 
     # Se não foi encontrado no disco, adaptar a indicação para a estrutura do host atual
     base_name = get_cross_platform_basename(video_source)
-    video_source_clean = str(video_source).replace("\\", "/")
+    video_source_clean = video_source.replace("\\", "/")
 
     if "senpai_uploads" in video_source_clean or base_name.startswith("yt_") or base_name.startswith("upload_"):
         target_dir = get_senpai_uploads_dir(ensure_exists=False)
@@ -111,10 +111,10 @@ def find_source_video(video_source: str) -> Optional[str]:
     o diretório raiz e pastas de dados.
     Retorna o caminho do vídeo correspondente ou None caso o arquivo de origem não exista.
     """
-    if not video_source or not str(video_source).strip():
+    if not video_source or not video_source.strip():
         return None
 
-    video_source_clean = str(video_source).strip()
+    video_source_clean = video_source.strip()
 
     # 1. Caminho direto se for válido e existir no SO atual
     if os.path.isfile(video_source_clean) and os.path.getsize(video_source_clean) > 0:
