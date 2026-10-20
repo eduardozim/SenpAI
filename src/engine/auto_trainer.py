@@ -784,7 +784,7 @@ class AutoTrainingEngine:
         return self.load_checkpoint()
 
     def reset_knowledge_base(self) -> None:
-        """Restaura a base de conhecimento de IA e limpa o checkpoint do auto trainer."""
+        """Restaura a base de conhecimento de IA, limpa o checkpoint e esvazia a fila de curadoria ativa."""
         self.clear_checkpoint()
         if os.path.exists(self.knowledge_base_path):
             try:
@@ -792,6 +792,11 @@ class AutoTrainingEngine:
             except Exception:
                 pass
         self._ensure_knowledge_base()
+        # Limpar Fila de Curadoria Ativa (Active Learning) e seus clipes de auditoria associados
+        try:
+            self.clear_active_learning_queue(include_history=True, delete_clips=True)
+        except Exception:
+            pass
 
     def _sync_history_entry(
         self,
@@ -2563,6 +2568,15 @@ class AutoTrainingEngine:
         except Exception:
             return None
 
+    def clear_active_learning_queue(self, include_history: bool = True, delete_clips: bool = True) -> Dict[str, Any]:
+        """Limpa a fila de curadoria ativa, histórico e clipes através do FeedbackManager."""
+        if hasattr(self.feedback_mgr, "clear_active_learning_queue"):
+            return self.feedback_mgr.clear_active_learning_queue(
+                include_history=include_history,
+                delete_clips=delete_clips
+            )
+        return {"cleared_items": 0, "clips_deleted": 0}
+
     def resolve_active_learning_item(
         self,
         item_id: str,
@@ -2577,7 +2591,7 @@ class AutoTrainingEngine:
     ) -> Any:
         """Resolve um item da fila de curadoria ativa, executando o retreinamento e apagando o vídeo de demonstração."""
         if hasattr(self.feedback_mgr, "resolve_active_learning_item"):
-            return self.feedback_mgr.resolve_active_learning_item(
+            res = self.feedback_mgr.resolve_active_learning_item(
                 item_id=item_id,
                 approved=label_approved,
                 reviewer_dan=reviewer_dan,
@@ -2588,6 +2602,13 @@ class AutoTrainingEngine:
                 *args,
                 **kwargs
             )
+            # Sincroniza o calibrador interno com os perfis atualizados pós-retreinamento
+            try:
+                if hasattr(self, "calibrator") and self.calibrator:
+                    self.calibrator._load_profiles()
+            except Exception:
+                pass
+            return res
         return False
 
     def discard_active_learning_item(

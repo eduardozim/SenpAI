@@ -405,5 +405,78 @@ class TestActiveLearningCurationClip(unittest.TestCase):
             self.assertTrue(os.path.isdir(dir_res))
 
 
+    def test_reset_training_clears_active_learning_queue(self):
+        """Valida que apagar o treinamento do sistema também limpa a fila de curadoria ativa, histórico e clipes."""
+        strike_data = {
+            "strike_type": "MEN",
+            "scores": {"target_impact": 0.52, "fumikomi_sync": 0.50, "posture": 0.50, "zanshin": 0.50},
+            "total_score": 52.0,
+            "timestamp_seconds": 1.5
+        }
+        item = self.sampler.evaluate_and_enqueue(
+            strike_data=strike_data,
+            confidence=0.52,
+            video_source=self.dummy_video_path,
+            profile_name="normal"
+        )
+        self.assertIsNotNone(item)
+        self.assertGreaterEqual(len(self.sampler.get_queue()), 1)
+
+        # Executa o reset do treinamento através do feedback_mgr
+        self.feedback_mgr.reset_all_training_data()
+
+        # Valida que a fila de curadoria foi completamente limpa
+        queue_after = self.sampler.get_queue()
+        self.assertEqual(len(queue_after), 0, "A fila de curadoria ativa deve estar vazia após reset_all_training_data.")
+        history_after = self.sampler.get_history()
+        self.assertEqual(len(history_after), 0, "O histórico de curadoria deve estar vazio após reset_all_training_data.")
+
+    def test_curation_decision_retrains_and_removes_from_queue(self):
+        """Valida que ao definir a decisão de um item de curadoria, o modelo é retreinado e o item é removido da fila."""
+        strike_data = {
+            "strike_type": "KOTE",
+            "scores": {"target_impact": 0.53, "fumikomi_sync": 0.52, "posture": 0.51, "zanshin": 0.50},
+            "total_score": 53.0,
+            "timestamp_seconds": 3.0
+        }
+        item = self.sampler.evaluate_and_enqueue(
+            strike_data=strike_data,
+            confidence=0.53,
+            video_source=self.dummy_video_path,
+            profile_name="normal"
+        )
+        self.assertIsNotNone(item)
+        assert item is not None
+        item_id = item["id"]
+        queue_before = self.sampler.get_queue()
+        self.assertTrue(any(it["id"] == item_id for it in queue_before))
+
+        hist_before_count = len(self.feedback_mgr.load_history())
+
+        # Define a decisão: Homologado como Ippon
+        res = self.trainer.resolve_active_learning_item(
+            item_id=item_id,
+            label_approved=True,
+            reviewer_dan=6,
+            notes="Homologado como Ippon pelo Sensei",
+            trigger_retrain=True,
+            cleanup_clip=True,
+            decision="IPPON"
+        )
+
+        self.assertTrue(res.get("success"), "A resolução do item deve ser bem-sucedida.")
+        self.assertTrue(res.get("retrained"), "O modelo deve ser retreinado após a decisão.")
+
+        # Valida remoção da fila de curadoria
+        queue_after = self.sampler.get_queue()
+        self.assertFalse(any(it["id"] == item_id for it in queue_after), "O item curado deve ser removido da fila.")
+
+        # Valida histórico de sessões de treinamento
+        hist_after = self.feedback_mgr.load_history()
+        self.assertGreater(len(hist_after), hist_before_count, "Uma sessão de retreinamento deve ser registrada no histórico.")
+        curation_sessions = [h for h in hist_after if "curation" in str(h.get("id", "")).lower() or h.get("curation_decision") == "IPPON"]
+        self.assertGreaterEqual(len(curation_sessions), 1, "A sessão de retreinamento de curadoria deve estar presente no histórico.")
+
+
 if __name__ == "__main__":
     unittest.main()

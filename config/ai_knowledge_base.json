@@ -1,7 +1,7 @@
 {
   "version": "2.0.0",
-  "last_updated": "2026-10-19T20:55:38.252370",
-  "total_web_sources_indexed": 10,
+  "last_updated": "2026-10-20T14:35:45.417113",
+  "total_web_sources_indexed": 3,
   "sources": {
     "fik_regulations": {
       "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
@@ -75,68 +75,6 @@
         ],
         "stamina_retention_ratio_target": 0.88
       }
-    },
-    "the_philosophy_and_practice_of_ji-geiko_": {
-      "title": "The Philosophy and Practice of Ji-geiko in Contemporary Kendo",
-      "type": "Manual Oficial AJKF / FIK",
-      "url": "https://www.kendo.or.jp/knowledge/ji_geiko",
-      "focus": "Ji-geiko (地稽古)",
-      "summary": "Diretrizes oficiais de execução para Ji-geiko (地稽古) (地稽古): foco em Construção de oportunidade com Seme, Manutenção da compostura e centro, Variedade técnica inteligente, Postura digna sob pressão.",
-      "principles": [
-        "Pressão com Seme (攻め): Rompimento da guarda e quebra da postura mental do adversário antes de desferir o ataque.",
-        "Ki-Ken-Tai-Ichi em Combate Livre: Aplicação plena dos fundamentos de golpe, corte e pés sem pré-determinação.",
-        "Chushin-sen: Disputa e domínio ininterrupto da linha central de corte e defesa."
-      ],
-      "biomechanical_thresholds": {
-        "cadence_cpm": [
-          8,
-          25
-        ],
-        "seme_retention_ratio": 0.88
-      },
-      "authority_tier": 1,
-      "authority_name": "FIK Official Rulebook",
-      "authority_desc": "Máxima — prevalece sempre",
-      "authority_weight": 1.0,
-      "physical_constraints": {
-        "fumikomi_hand_foot_window_ms": {
-          "min": -45.0,
-          "max": 30.0,
-          "ideal": 0.0,
-          "unit": "ms"
-        },
-        "hasuji_max_deviation_deg": 12.0,
-        "cadence_cpm": {
-          "min": 8.0,
-          "max": 25.0
-        },
-        "seme_retention_ratio": 0.88
-      },
-      "structured_concept": "do_strike_biomechanics"
-    },
-    "ajkf_/_znkr_kendo_shinpan_&_shiai_practi": {
-      "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
-      "type": "Manual de Arbitragem AJKF"
-    },
-    "fik_international_kendo_regulations_(art": {
-      "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
-      "type": "Manual Oficial FIK"
-    },
-    "treatise_on_nihon_kendo_kata_technical_&": {
-      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
-      "type": "Tratado Técnico Kata"
-    },
-    "high-speed_motion_capture_of_fumikomi-as": {
-      "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
-      "type": "Mocap Científico"
-    },
-    "all_japan_kendo_championship_finals_-_ki": {
-      "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
-      "type": "Corpus de Vídeo HD"
-    },
-    "kirikaeshi_continuous_stroke_cadence_&_d": {
-      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
-      "type": "Corpus de Vídeo Dojo"
     }
   },
   "learned_parameters": {
@@ -197,7 +135,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -241,7 +179,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -284,7 +222,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -327,7 +265,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -370,7 +308,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -412,7 +350,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -454,7 +392,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -496,7 +434,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -538,7 +476,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -581,7 +519,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -624,7 +562,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -667,7 +605,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -709,7 +647,7 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
@@ -751,356 +689,12 @@
         ],
         "evolution_log": [
           {
-            "date": "19/10/2026",
+            "date": "20/10/2026",
             "gain": "+0.0%",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ],
         "sessions_count": 0
-      }
-    },
-    "physical_constraints": {
-      "men_strike_biomechanics": {
-        "concept": "men_strike_biomechanics",
-        "modality": "men",
-        "source": "AJKF / FIK Referee Handbook",
-        "authority_tier": 1,
-        "authority_name": "FIK Official Rulebook",
-        "constraints": {
-          "elbow_extension_impact_deg": {
-            "min": 150.0,
-            "max": 175.0,
-            "ideal": 165.0,
-            "unit": "deg"
-          },
-          "spine_tilt_max_deg": 8.5,
-          "fumikomi_hand_foot_window_ms": {
-            "min": -45.0,
-            "max": 30.0,
-            "ideal": 0.0,
-            "unit": "ms"
-          },
-          "zanshin_duration_min_sec": 0.8,
-          "hasuji_max_deviation_deg": 12.0,
-          "blade_contact_zone": "monouchi"
-        }
-      },
-      "kote_strike_biomechanics": {
-        "concept": "kote_strike_biomechanics",
-        "modality": "kote",
-        "source": "FIK Official Regulations - Datotsu-bui Kote",
-        "authority_tier": 1,
-        "authority_name": "FIK Official Rulebook",
-        "constraints": {
-          "wrist_snap_flexion_deg": {
-            "min": 140.0,
-            "max": 175.0,
-            "ideal": 160.0,
-            "unit": "deg"
-          },
-          "spine_tilt_max_deg": 9.0,
-          "fumikomi_hand_foot_window_ms": {
-            "min": -40.0,
-            "max": 35.0,
-            "ideal": 0.0,
-            "unit": "ms"
-          },
-          "zanshin_duration_min_sec": 0.75,
-          "hasuji_max_deviation_deg": 14.0,
-          "blade_contact_zone": "monouchi"
-        }
-      },
-      "do_strike_biomechanics": {
-        "concept": "do_strike_biomechanics",
-        "modality": "do",
-        "source": "AJKF Kendo Manual - Section 4: Do-uchi",
-        "authority_tier": 2,
-        "authority_name": "AJKF Referee Handbook",
-        "constraints": {
-          "body_traverse_angle_deg": {
-            "min": 35.0,
-            "max": 55.0,
-            "ideal": 45.0,
-            "unit": "deg"
-          },
-          "spine_tilt_max_deg": 11.0,
-          "fumikomi_hand_foot_window_ms": {
-            "min": -50.0,
-            "max": 40.0,
-            "ideal": 0.0,
-            "unit": "ms"
-          },
-          "zanshin_duration_min_sec": 0.85,
-          "hasuji_max_deviation_deg": 10.0,
-          "blade_contact_zone": "monouchi"
-        }
-      },
-      "tsuki_thrust_biomechanics": {
-        "concept": "tsuki_thrust_biomechanics",
-        "modality": "tsuki",
-        "source": "FIK Regulations - Tsuki Datotsu-bui & Shisei",
-        "authority_tier": 1,
-        "authority_name": "FIK Official Rulebook",
-        "constraints": {
-          "collinear_thrust_tolerance": 0.07,
-          "spine_tilt_max_deg": 7.0,
-          "fumikomi_hand_foot_window_ms": {
-            "min": -35.0,
-            "max": 25.0,
-            "ideal": 0.0,
-            "unit": "ms"
-          },
-          "zanshin_duration_min_sec": 0.9,
-          "hasuji_max_deviation_deg": 6.0,
-          "blade_contact_zone": "kensaki"
-        }
-      },
-      "tenouchi_and_hasuji_core": {
-        "concept": "tenouchi_and_hasuji_core",
-        "modality": "general",
-        "source": "AJKF / ZNKR Shinpan Practical Handbook",
-        "authority_tier": 2,
-        "authority_name": "AJKF Referee Handbook",
-        "constraints": {
-          "tenouchi_grip_elasticity_ratio": {
-            "min": 0.7,
-            "max": 0.95,
-            "ideal": 0.85,
-            "unit": "ratio"
-          },
-          "hasuji_cut_angle_max_drift_deg": 12.0,
-          "left_heel_elevation_min_cm": 2.5
-        }
-      }
-    },
-    "empirical_distributions": {
-      "MEN": {
-        "target_impact": {
-          "mean": 0.8517,
-          "std": 0.0339,
-          "min": 0.8,
-          "max": 0.9,
-          "p25": 0.8275,
-          "p50": 0.855,
-          "p75": 0.875,
-          "p90": 0.89,
-          "sample_count": 6
-        },
-        "fumikomi_sync": {
-          "mean": 0.806,
-          "std": 0.0344,
-          "min": 0.76,
-          "max": 0.85,
-          "p25": 0.78,
-          "p50": 0.8,
-          "p75": 0.84,
-          "p90": 0.846,
-          "sample_count": 5
-        },
-        "posture": {
-          "mean": 0.85,
-          "std": 0.0224,
-          "min": 0.82,
-          "max": 0.88,
-          "p25": 0.835,
-          "p50": 0.85,
-          "p75": 0.865,
-          "p90": 0.874,
-          "sample_count": 4
-        },
-        "zanshin": {
-          "mean": 0.8025,
-          "std": 0.0334,
-          "min": 0.75,
-          "max": 0.84,
-          "p25": 0.7875,
-          "p50": 0.81,
-          "p75": 0.825,
-          "p90": 0.834,
-          "sample_count": 4
-        },
-        "hasuji": {
-          "mean": 0.8375,
-          "std": 0.0303,
-          "min": 0.8,
-          "max": 0.88,
-          "p25": 0.815,
-          "p50": 0.835,
-          "p75": 0.8575,
-          "p90": 0.871,
-          "sample_count": 4
-        }
-      },
-      "KOTE": {
-        "target_impact": {
-          "mean": 0.8375,
-          "std": 0.0303,
-          "min": 0.8,
-          "max": 0.88,
-          "p25": 0.815,
-          "p50": 0.835,
-          "p75": 0.8575,
-          "p90": 0.871,
-          "sample_count": 4
-        },
-        "fumikomi_sync": {
-          "mean": 0.805,
-          "std": 0.0296,
-          "min": 0.76,
-          "max": 0.84,
-          "p25": 0.79,
-          "p50": 0.81,
-          "p75": 0.825,
-          "p90": 0.834,
-          "sample_count": 4
-        },
-        "posture": {
-          "mean": 0.8133,
-          "std": 0.0249,
-          "min": 0.78,
-          "max": 0.84,
-          "p25": 0.8,
-          "p50": 0.82,
-          "p75": 0.83,
-          "p90": 0.836,
-          "sample_count": 3
-        },
-        "zanshin": {
-          "mean": 0.7667,
-          "std": 0.034,
-          "min": 0.72,
-          "max": 0.8,
-          "p25": 0.75,
-          "p50": 0.78,
-          "p75": 0.79,
-          "p90": 0.796,
-          "sample_count": 3
-        },
-        "hasuji": {
-          "mean": 0.8,
-          "std": 0.0163,
-          "min": 0.78,
-          "max": 0.82,
-          "p25": 0.79,
-          "p50": 0.8,
-          "p75": 0.81,
-          "p90": 0.816,
-          "sample_count": 3
-        }
-      },
-      "DO": {
-        "target_impact": {
-          "mean": 0.8567,
-          "std": 0.017,
-          "min": 0.84,
-          "max": 0.88,
-          "p25": 0.845,
-          "p50": 0.85,
-          "p75": 0.865,
-          "p90": 0.874,
-          "sample_count": 3
-        },
-        "fumikomi_sync": {
-          "mean": 0.7767,
-          "std": 0.0205,
-          "min": 0.75,
-          "max": 0.8,
-          "p25": 0.765,
-          "p50": 0.78,
-          "p75": 0.79,
-          "p90": 0.796,
-          "sample_count": 3
-        },
-        "posture": {
-          "mean": 0.77,
-          "std": 0.0216,
-          "min": 0.75,
-          "max": 0.8,
-          "p25": 0.755,
-          "p50": 0.76,
-          "p75": 0.78,
-          "p90": 0.792,
-          "sample_count": 3
-        },
-        "zanshin": {
-          "mean": 0.8233,
-          "std": 0.0205,
-          "min": 0.8,
-          "max": 0.85,
-          "p25": 0.81,
-          "p50": 0.82,
-          "p75": 0.835,
-          "p90": 0.844,
-          "sample_count": 3
-        },
-        "hasuji": {
-          "mean": 0.84,
-          "std": 0.0163,
-          "min": 0.82,
-          "max": 0.86,
-          "p25": 0.83,
-          "p50": 0.84,
-          "p75": 0.85,
-          "p90": 0.856,
-          "sample_count": 3
-        }
-      },
-      "TSUKI": {
-        "target_impact": {
-          "mean": 0.9,
-          "std": 0.0163,
-          "min": 0.88,
-          "max": 0.92,
-          "p25": 0.89,
-          "p50": 0.9,
-          "p75": 0.91,
-          "p90": 0.916,
-          "sample_count": 3
-        },
-        "fumikomi_sync": {
-          "mean": 0.8233,
-          "std": 0.0205,
-          "min": 0.8,
-          "max": 0.85,
-          "p25": 0.81,
-          "p50": 0.82,
-          "p75": 0.835,
-          "p90": 0.844,
-          "sample_count": 3
-        },
-        "posture": {
-          "mean": 0.8767,
-          "std": 0.0205,
-          "min": 0.85,
-          "max": 0.9,
-          "p25": 0.865,
-          "p50": 0.88,
-          "p75": 0.89,
-          "p90": 0.896,
-          "sample_count": 3
-        },
-        "zanshin": {
-          "mean": 0.85,
-          "std": 0.0245,
-          "min": 0.82,
-          "max": 0.88,
-          "p25": 0.835,
-          "p50": 0.85,
-          "p75": 0.865,
-          "p90": 0.874,
-          "sample_count": 3
-        },
-        "hasuji": {
-          "mean": 0.8767,
-          "std": 0.0205,
-          "min": 0.85,
-          "max": 0.9,
-          "p25": 0.865,
-          "p50": 0.88,
-          "p75": 0.89,
-          "p90": 0.896,
-          "sample_count": 3
-        }
       }
     }
   },

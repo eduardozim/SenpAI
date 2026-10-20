@@ -1007,7 +1007,7 @@ class FeedbackManager:
     def reset_all_training_data(self) -> None:
         """
         Apaga todo o treinamento do sistema, limpando conjuntos de dados,
-        registro de vídeos dos Shinpans e restaurando os perfis de calibração para a configuração padrão.
+        registro de vídeos dos Shinpans, fila de curadoria ativa e restaurando os perfis de calibração para a configuração padrão.
         """
         with open(self.dataset_path, "w", encoding="utf-8") as f:
             json.dump([], f, indent=2, ensure_ascii=False)
@@ -1022,7 +1022,10 @@ class FeedbackManager:
         with open(self.profiles_path, "w", encoding="utf-8") as f:
             json.dump(DEFAULT_CALIBRATION_PROFILES, f, indent=2, ensure_ascii=False)
 
-        log_event("WARNING", "TREINAMENTO APAGADO (RESET): Todo o histórico de revisões, dataset de feedbacks, registro de vídeos dos Shinpans e calibrações foram restaurados ao estágio inicial de fábrica.", "feedback_manager")
+        # Limpar Fila de Curadoria Ativa (Active Learning) e seus clipes de auditoria associados
+        self.clear_active_learning_queue(include_history=True, delete_clips=True)
+
+        log_event("WARNING", "TREINAMENTO APAGADO (RESET): Todo o histórico de revisões, dataset de feedbacks, registro de vídeos dos Shinpans, fila de curadoria ativa e calibrações foram restaurados ao estágio inicial de fábrica.", "feedback_manager")
 
     def _merge_ai_knowledge_base(
         self,
@@ -1908,6 +1911,16 @@ class FeedbackManager:
         """Garante que o clipe de demonstração do golpe esteja gerado e disponível para o Benchmark."""
         return self.uncertainty_sampler.ensure_item_clip(item)
 
+    def clear_active_learning_queue(self, include_history: bool = True, delete_clips: bool = True) -> Dict[str, Any]:
+        """
+        Limpa a fila de curadoria ativa, histórico de curadorias e opcionalmente os clipes de vídeo em disco.
+        """
+        if hasattr(self.uncertainty_sampler, "clear_all"):
+            return self.uncertainty_sampler.clear_all(include_history=include_history, delete_clips=delete_clips)
+        elif hasattr(self.uncertainty_sampler, "clear_queue"):
+            return self.uncertainty_sampler.clear_queue(delete_clips=delete_clips)
+        return {"cleared_items": 0, "clips_deleted": 0}
+
     def resolve_active_learning_item(
         self,
         item_id: str,
@@ -1933,10 +1946,20 @@ class FeedbackManager:
         # 1. Recuperar o item antes da resolução
         queue = self.get_active_learning_queue()
         target_item = None
+        target_id_str = item_id.strip()
         for it in queue:
-            if it.get("id") == item_id:
+            if str(it.get("id", "")).strip() == target_id_str:
                 target_item = it
                 break
+
+        # Fallback posicional se item_id for item_{idx}
+        if not target_item and target_id_str.startswith("item_"):
+            try:
+                idx_val = int(target_id_str.split("_")[1])
+                if 0 <= idx_val < len(queue):
+                    target_item = queue[idx_val]
+            except Exception:
+                pass
 
         profile_key = target_item.get("profile_name", "normal") if target_item else "normal"
         strike_data = target_item.get("strike_data", {}) if target_item else {}
@@ -2005,9 +2028,32 @@ class FeedbackManager:
                 profiles[profile_key] = new_cfg
                 self.save_profiles(profiles)
                 retrained = True
+
+                # Registrar formalmente a sessão de retreinamento no histórico para governança Dan/IA
+                now_iso = datetime.datetime.now().isoformat(timespec="seconds")
+                history = self.load_history()
+                session_id = f"train_curation_{now_iso.replace(':', '').replace('-', '')}_{len(history)+1}"
+                session_record = {
+                    "id": session_id,
+                    "timestamp": now_iso,
+                    "reviewer_dan": reviewer_dan,
+                    "reviewer_dan_name": f"{reviewer_dan}º Dan (Curadoria Ativa)" if isinstance(reviewer_dan, int) else str(reviewer_dan),
+                    "is_shinpan_decision": False,
+                    "video_name": str(target_item.get("video_source", "curadoria_ativa")) if target_item else "curadoria_ativa",
+                    "video_url": "",
+                    "video_identifier": f"curation:{item_id}",
+                    "profile_key": profile_key,
+                    "items_count": 1,
+                    "curation_decision": decision,
+                    "optimization_summary": opt_stats
+                }
+                history.append(session_record)
+                with open(self.history_path, "w", encoding="utf-8") as f:
+                    json.dump(history, f, indent=2, ensure_ascii=False)
+
                 log_event(
                     "INFO",
-                    f"Retreinamento pós-curadoria concluído com sucesso para perfil '{profile_key}' (Item: {item_id})",
+                    f"Retreinamento pós-curadoria concluído e registrado no histórico para perfil '{profile_key}' (Item: {item_id})",
                     "feedback_manager"
                 )
             except Exception as e:
