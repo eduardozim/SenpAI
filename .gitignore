@@ -79,6 +79,8 @@ data/uploads/
 
 # Serializações e dumps temporários de treino
 *.joblib
+*.pkl
+*.pickle
 
 # Scratch scripts e temporários de análise
 scratch/

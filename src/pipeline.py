@@ -24,7 +24,7 @@ from src.analytics.multi_camera_fusion import MultiCameraFusionEngine, MultiCame
 from src.analytics.training_analyzer import TrainingAnalyzer
 from src.engine.calibrator import CalibrationEngine
 from src.engine.reporter import DiagnosticReporter
-from src.utils.hardware import get_effective_device, ensure_browser_compatible_video, get_optimal_batch_size
+from src.utils.hardware import get_effective_device, ensure_browser_compatible_video, get_optimal_batch_size, HighQualityVideoWriter
 from src.utils.settings_manager import get_vision_model, get_vision_model_info
 from src.utils.logger_manager import log_event
 
@@ -156,7 +156,8 @@ class SenpAIPipeline:
         training_modality_override: Optional[str] = None,
         custom_kendoka_names: Optional[Dict[str, str]] = None,
         shiaijo_polygon: Optional[List[Tuple[float, float]]] = None,
-        analysis_mode: str = "match"
+        analysis_mode: str = "match",
+        training_segments_override: Optional[List[Dict[str, Any]]] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Executa a análise completa de um arquivo de vídeo de luta/treino de Kendo:
@@ -179,7 +180,8 @@ class SenpAIPipeline:
                 progress_callback=progress_callback,
                 is_cancelled=is_cancelled,
                 training_modality_override=training_modality_override,
-                custom_kendoka_names=custom_kendoka_names
+                custom_kendoka_names=custom_kendoka_names,
+                training_segments_override=training_segments_override
             )
 
         start_time = time.time()
@@ -516,8 +518,14 @@ class SenpAIPipeline:
             shiro_custom = (custom_kendoka_names or {}).get("KENSHI_SHIRO")
 
             cap_render = cv2.VideoCapture(video_path)
-            fourcc = cv2.VideoWriter.fourcc(*'mp4v')
-            writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
+            if width < 1280:
+                render_w = 1280
+                render_h = int(round(height * (1280.0 / max(1, width))))
+                render_h += render_h % 2
+            else:
+                render_w = width + (width % 2)
+                render_h = height + (height % 2)
+            writer = HighQualityVideoWriter(output_video_path, fps, (render_w, render_h))
 
             try:
                 f_idx = 0
@@ -530,6 +538,9 @@ class SenpAIPipeline:
                     ret, raw_f = cap_render.read()
                     if not ret or raw_f is None:
                         break
+
+                    if raw_f.shape[1] != render_w or raw_f.shape[0] != render_h:
+                        raw_f = cv2.resize(raw_f, (render_w, render_h), interpolation=cv2.INTER_LINEAR)
 
                     aka_p = aka_history[f_idx] if f_idx < len(aka_history) else None
                     shiro_p = shiro_history[f_idx] if f_idx < len(shiro_history) else None
@@ -635,7 +646,8 @@ class SenpAIPipeline:
             modality_override=training_modality_override,
             fps=fps,
             custom_kendoka_names=custom_kendoka_names,
-            has_sonkyo=has_sonkyo_in_video
+            has_sonkyo=has_sonkyo_in_video,
+            session_segments_override=training_segments_override
         )
 
         summary_log = (
@@ -685,7 +697,8 @@ class SenpAIPipeline:
         progress_callback: Optional[Callable[[float], None]] = None,
         is_cancelled: Optional[Callable[[], bool]] = None,
         training_modality_override: Optional[str] = None,
-        custom_kendoka_names: Optional[Dict[str, str]] = None
+        custom_kendoka_names: Optional[Dict[str, str]] = None,
+        training_segments_override: Optional[List[Dict[str, Any]]] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Executa a análise dedicada do Modo de Treinamento e Aprendizado:
@@ -693,7 +706,8 @@ class SenpAIPipeline:
         2. Re-identificação contínua (Re-ID) de praticantes que saem e retornam ao enquadramento
            via Zekken (frente do Tare), Tenugui (dorsal sob o Men), Tare lateral e Biometria.
         3. Detecção e atribuição de golpes sem barreiras de Sonkyō.
-        4. Avaliação individualizada dos 3 Pilares e cadência justa com base no tempo de presença em quadro.
+        4. Identificação de múltiplas sessões de treinamento dentro da mesma sequência
+           e concentração em blocos por modalidade.
         """
         start_time = time.time()
         tracker = TrainingMultiKenshiTracker(
@@ -776,81 +790,41 @@ class SenpAIPipeline:
                     "diagnostic_report": f"🥋 Golpe {st.type} executado por {k_name} ({st.timestamp_impact})."
                 })
 
-        all_training_events.sort(key=lambda e: e["event_info"].get("impact_frame", 0))
-
-        # Renderização do vídeo anotado com N Kenshis se solicitado
-        if output_video_path and total_frames > 0:
-            cap_render = cv2.VideoCapture(video_path)
-            fourcc = cv2.VideoWriter.fourcc(*'mp4v')
-            writer = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
-
-            # Paleta de cores para N praticantes
-            palette = [
-                (59, 130, 246),  # Azul
-                (239, 68, 68),   # Vermelho
-                (34, 197, 94),   # Verde
-                (234, 179, 8),   # Amarelo
-                (168, 85, 247),  # Roxo
-                (236, 72, 153),  # Rosa
-                (20, 184, 166)   # Ciano
-            ]
-
-            try:
-                f_idx = 0
-                while cap_render.isOpened():
-                    if is_cancelled and is_cancelled():
-                        return None
-                    ret, raw_f = cap_render.read()
-                    if not ret or raw_f is None:
-                        break
-
-                    ann_f = raw_f.copy()
-
-                    # Desenhar esqueletos dos Kenshis ativos no frame
-                    for idx_track, (k_id, track) in enumerate(tracker.tracks.items()):
-                        if f_idx < len(track.history):
-                            lm = track.history[f_idx]
-                            if lm is not None:
-                                col = palette[idx_track % len(palette)]
-                                c_name = (custom_kendoka_names or {}).get(k_id, track.display_name)
-                                label_txt = f"{c_name}"
-                                if track.reentry_count > 0:
-                                    label_txt += f" [Re-ID x{track.reentry_count}]"
-
-                                from src.vision.pose_detector import CombatantVisualizer
-                                CombatantVisualizer.draw_skeleton(ann_f, lm, color=col, label=label_txt)
-
-                    # Banner superior de treinamento
-                    cv2.rectangle(ann_f, (10, 10), (width - 10, 50), (15, 23, 42), -1)
-                    cv2.rectangle(ann_f, (10, 10), (width - 10, 50), (99, 102, 241), 1)
-                    active_now = sum(1 for t in tracker.tracks.values() if f_idx < len(t.history) and t.history[f_idx] is not None)
-                    txt_banner = f"MODO TREINAMENTO SENPAI | Kenshis em Cena: {active_now} | Total na Sessao: {len(tracker.tracks)} | Re-identificacoes: {tracker.total_reidentifications}"
-                    cv2.putText(ann_f, txt_banner, (20, 36), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
-
-                    writer.write(ann_f)
-                    f_idx += 1
-
-                    if progress_callback and f_idx % 12 == 0:
-                        progress_callback(0.65 + (f_idx / total_frames) * 0.35)
-            finally:
-                cap_render.release()
-                writer.release()
-
-            try:
-                ensure_browser_compatible_video(output_video_path)
-            except Exception as e_transcode:
-                log_event("WARNING", f"Transcodificação para H.264 não pôde ser completada: {e_transcode}", "pipeline")
+        all_training_events.sort(key=lambda e: e.get("event_info", {}).get("impact_frame", 0))
+        for idx_ev, ev_entry in enumerate(all_training_events, start=1):
+            ev_entry["event_index"] = idx_ev
+            if isinstance(ev_entry.get("event_info"), dict):
+                ev_entry["event_info"]["event_index"] = idx_ev
 
         summary_tracker = tracker.get_session_summary()
 
+        # Analisar sessões e blocos de modalidade antes da renderização para anotar o vídeo com a sessão corrente
         training_session_result = self.training_analyzer.analyze_multi_session(
             kenshi_histories=kenshi_histories,
             detected_strikes_by_kenshi=strikes_by_kenshi,
             modality_override=training_modality_override,
             fps=fps,
             custom_kendoka_names=custom_kendoka_names,
-            kenshis_metadata=summary_tracker.get("kenshis", [])
+            kenshis_metadata=summary_tracker.get("kenshis", []),
+            session_segments_override=training_segments_override
         )
+        detected_sub_sessions = training_session_result.sub_sessions or []
+
+        # Renderização do vídeo anotado com N Kenshis se solicitado
+        if output_video_path and total_frames > 0:
+            ok_render = self.render_training_annotated_video(
+                video_path=video_path,
+                output_video_path=output_video_path,
+                tracks=tracker.tracks,
+                custom_kendoka_names=custom_kendoka_names,
+                sub_sessions=detected_sub_sessions,
+                default_modality_name=training_session_result.modality_name,
+                total_reidentifications=tracker.total_reidentifications,
+                progress_callback=(lambda p: progress_callback(0.65 + p * 0.35)) if progress_callback else None,
+                is_cancelled=is_cancelled
+            )
+            if not ok_render and is_cancelled and is_cancelled():
+                return None
 
         total_elapsed_sec = round(time.time() - start_time, 2)
         processing_fps = round(total_frames / max(0.001, total_elapsed_sec), 1)
@@ -859,13 +833,34 @@ class SenpAIPipeline:
             f"RESUMO DE TREINAMENTO MULTI-KENSHI CONCLUÍDO:\n"
             f"  • Kenshis Detectados: {len(tracker.tracks)}\n"
             f"  • Re-identificações de Retorno ao Quadro: {tracker.total_reidentifications}\n"
-            f"  • Modalidade: {training_session_result.modality_name}\n"
+            f"  • Modalidade Principal: {training_session_result.modality_name}\n"
+            f"  • Sessões na Sequência: {len(training_session_result.sub_sessions)} | Blocos de Modalidade: {len(training_session_result.modality_blocks)}\n"
             f"  • Duração: {round(total_frames / fps, 2)}s ({total_elapsed_sec:.2f}s a {processing_fps} FPS)"
         )
         log_event("INFO", summary_log, "pipeline")
 
         if progress_callback:
             progress_callback(1.0)
+
+        try:
+            import pickle
+            cache_payload = {
+                "video_path": os.path.abspath(video_path),
+                "total_reidentifications": tracker.total_reidentifications,
+                "tracks": {
+                    k_id: {
+                        "history": t.history,
+                        "display_name": t.display_name,
+                        "reentry_count": t.reentry_count
+                    }
+                    for k_id, t in tracker.tracks.items()
+                }
+            }
+            cache_file = os.path.abspath("annotated_tracks_cache.pkl")
+            with open(cache_file, "wb") as f_cache:
+                pickle.dump(cache_payload, f_cache)
+        except Exception:
+            pass
 
         return {
             "video_path": video_path,
@@ -892,6 +887,178 @@ class SenpAIPipeline:
             "multi_kenshi_tracker_summary": summary_tracker
         }
 
+    @staticmethod
+    def render_training_annotated_video(
+        video_path: str,
+        output_video_path: str,
+        tracks: Dict[str, Any],
+        custom_kendoka_names: Optional[Dict[str, str]] = None,
+        merged_id_map: Optional[Dict[str, str]] = None,
+        sub_sessions: Optional[List[Any]] = None,
+        default_modality_name: str = "Treinamento",
+        total_reidentifications: int = 0,
+        progress_callback: Optional[Callable[[float], None]] = None,
+        is_cancelled: Optional[Callable[[], bool]] = None
+    ) -> bool:
+        """
+        Renderiza (ou re-renderiza rapidamente) o vídeo anotado de treinamento com os nomes
+        personalizados, IDs mesclados e sessões atualizadas sem precisar repetir a detecção de pose.
+        """
+        if not video_path or not os.path.exists(video_path) or not output_video_path or not tracks:
+            return False
+
+        from src.vision.pose_detector import CombatantVisualizer
+        from src.analytics.training_analyzer import get_kendoka_id_aliases
+
+        cap_render = cv2.VideoCapture(video_path)
+        if not cap_render.isOpened():
+            return False
+
+        fps = float(cap_render.get(cv2.CAP_PROP_FPS) or 30.0)
+        if fps <= 0:
+            fps = 30.0
+        total_frames = max(1, int(cap_render.get(cv2.CAP_PROP_FRAME_COUNT) or 1))
+        width = int(cap_render.get(cv2.CAP_PROP_FRAME_WIDTH) or 1280)
+        height = int(cap_render.get(cv2.CAP_PROP_FRAME_HEIGHT) or 720)
+
+        if width < 1280:
+            render_w = 1280
+            render_h = round(height * (1280.0 / max(1, width)))
+            render_h += render_h % 2
+        else:
+            render_w = width + (width % 2)
+            render_h = height + (height % 2)
+
+        writer = HighQualityVideoWriter(output_video_path, fps, (render_w, render_h))
+
+        palette = [
+            (246, 130, 59),  # Azul Brilhante
+            (59, 214, 115),  # Verde Esmeralda
+            (37, 99, 235),   # Laranja Vibrante
+            (217, 70, 239),  # Magenta / Roxo
+            (14, 165, 233),  # Ouro / Âmbar
+            (235, 180, 30),  # Ciano Turquesa
+            (153, 72, 236),  # Rosa Coral
+            (128, 222, 74)   # Verde Lima
+        ]
+
+        names_map = custom_kendoka_names or {}
+        m_map = merged_id_map or {}
+        track_keys = list(tracks.keys())
+        color_idx_by_id = {tk: i for i, tk in enumerate(track_keys)}
+        unique_active_ids = len({m_map.get(tk, tk) for tk in track_keys})
+
+        def _resolve_track_label_and_color(raw_k_id: str, track_obj: Any, idx_t: int) -> Tuple[str, Tuple[int, int, int]]:
+            eff_id = m_map.get(raw_k_id, raw_k_id)
+            col_idx = color_idx_by_id.get(eff_id, idx_t)
+            col = palette[col_idx % len(palette)]
+
+            def_disp = getattr(track_obj, "display_name", None) or (
+                track_obj.get("display_name") if isinstance(track_obj, dict) else f"Kenshi {eff_id.replace('KENSHI_', '')}"
+            )
+            c_name = None
+            for al in get_kendoka_id_aliases(eff_id):
+                val = names_map.get(al)
+                if val and val.strip():
+                    c_name = val.strip()
+                    break
+            if not c_name:
+                c_name = str(def_disp)
+
+            reentries = getattr(track_obj, "reentry_count", 0) if not isinstance(track_obj, dict) else int(track_obj.get("reentry_count", 0))
+            label_txt = f"{c_name}"
+            if reentries > 0 or eff_id != raw_k_id:
+                label_txt += f" [Re-ID x{max(1, reentries)}]"
+            return label_txt, col
+
+        try:
+            f_idx = 0
+            while cap_render.isOpened():
+                if is_cancelled and is_cancelled():
+                    return False
+                ret, raw_f = cap_render.read()
+                if not ret or raw_f is None:
+                    break
+
+                if raw_f.shape[1] != render_w or raw_f.shape[0] != render_h:
+                    ann_f = cv2.resize(raw_f, (render_w, render_h), interpolation=cv2.INTER_LINEAR)
+                else:
+                    ann_f = raw_f.copy()
+
+                occupied_label_rects: List[Tuple[int, int, int, int]] = []
+                active_eff_ids_in_frame = set()
+                for idx_track, (k_id, track) in enumerate(tracks.items()):
+                    hist = getattr(track, "history", None) if not isinstance(track, dict) else track.get("history", [])
+                    if hist and f_idx < len(hist):
+                        lm = hist[f_idx]
+                        if lm is not None:
+                            active_eff_ids_in_frame.add(m_map.get(k_id, k_id))
+                            label_txt, col = _resolve_track_label_and_color(k_id, track, idx_track)
+                            CombatantVisualizer.draw_skeleton(
+                                ann_f,
+                                lm,
+                                color=col,
+                                label=label_txt,
+                                occupied_label_rects=occupied_label_rects
+                            )
+
+                curr_ss_label = default_modality_name.split("(")[0].strip()
+                for ss_item in (sub_sessions or []):
+                    ss_sf = ss_item.get("start_frame", 0) if isinstance(ss_item, dict) else getattr(ss_item, "start_frame", 0)
+                    ss_ef = ss_item.get("end_frame", total_frames) if isinstance(ss_item, dict) else getattr(ss_item, "end_frame", total_frames)
+                    if ss_sf <= f_idx <= ss_ef:
+                        raw_mname = ss_item.get("modality_name", "") if isinstance(ss_item, dict) else getattr(ss_item, "modality_name", "")
+                        ss_mod_short = str(raw_mname).split("(")[0].strip()
+                        ss_idx = ss_item.get("segment_index", 1) if isinstance(ss_item, dict) else getattr(ss_item, "segment_index", 1)
+                        ss_ts_s = ss_item.get("start_timestamp", "00:00") if isinstance(ss_item, dict) else getattr(ss_item, "start_timestamp", "00:00")
+                        ss_ts_e = ss_item.get("end_timestamp", "00:00") if isinstance(ss_item, dict) else getattr(ss_item, "end_timestamp", "00:00")
+                        curr_ss_label = f"Sessão #{ss_idx} ({ss_ts_s}-{ss_ts_e}): {ss_mod_short}"
+                        break
+
+                active_now = len(active_eff_ids_in_frame)
+                txt_banner = f"SENPAI TREINO  |  {curr_ss_label}  |  Kenshis: {active_now}/{max(1, unique_active_ids)}  |  Re-ID: {total_reidentifications}"
+                CombatantVisualizer.draw_top_hud_banner(ann_f, txt_banner)
+
+                writer.write(ann_f)
+                f_idx += 1
+
+                if progress_callback and f_idx % 12 == 0:
+                    progress_callback(min(0.99, f_idx / total_frames))
+        finally:
+            cap_render.release()
+            writer.release()
+
+        try:
+            ensure_browser_compatible_video(output_video_path)
+        except Exception as e_transcode:
+            log_event("WARNING", f"Transcodificação para H.264 não pôde ser completada: {e_transcode}", "pipeline")
+
+        if progress_callback:
+            progress_callback(1.0)
+        return True
+
+    @staticmethod
+    def load_cached_training_tracks(video_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """
+        Carrega do disco o cache de poses rastreadas (annotated_tracks_cache.pkl)
+        caso o objeto em memória da sessão tenha sido reciclado pelo Streamlit.
+        """
+        cache_file = os.path.abspath("annotated_tracks_cache.pkl")
+        if not os.path.exists(cache_file):
+            return None
+        try:
+            import pickle
+            with open(cache_file, "rb") as f_cache:
+                data = pickle.load(f_cache)
+            if not isinstance(data, dict) or not data.get("tracks"):
+                return None
+            if video_path and data.get("video_path"):
+                if os.path.abspath(video_path) != os.path.abspath(str(data["video_path"])):
+                    return None
+            return data
+        except Exception:
+            return None
+
 
 class AnalysisWorker:
     """
@@ -909,7 +1076,8 @@ class AnalysisWorker:
         training_modality_override: Optional[str] = None,
         custom_kendoka_names: Optional[Dict[str, str]] = None,
         shiaijo_polygon: Optional[List[Tuple[float, float]]] = None,
-        analysis_mode: str = "match"
+        analysis_mode: str = "match",
+        training_segments_override: Optional[List[Dict[str, Any]]] = None
     ):
         self.pipeline = pipeline
         self.video_path = video_path
@@ -921,6 +1089,7 @@ class AnalysisWorker:
         self.custom_kendoka_names = custom_kendoka_names
         self.shiaijo_polygon = shiaijo_polygon
         self.analysis_mode = analysis_mode
+        self.training_segments_override = training_segments_override
         
         self.progress: float = 0.0
         self.status_message: str = "Inicializando pipeline de visão e pose tracking..."
@@ -981,7 +1150,8 @@ class AnalysisWorker:
                 training_modality_override=self.training_modality_override,
                 custom_kendoka_names=self.custom_kendoka_names,
                 shiaijo_polygon=self.shiaijo_polygon,
-                analysis_mode=self.analysis_mode
+                analysis_mode=self.analysis_mode,
+                training_segments_override=self.training_segments_override
             )
 
             self.end_time = time.time()

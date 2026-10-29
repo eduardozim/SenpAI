@@ -507,7 +507,7 @@ def download_video_stream(
     output_dir: Optional[str] = None,
     progress_callback: Optional[Callable[[float, str], None]] = None,
     quality: str = "media",
-    max_duration_seconds: int = 1800, # 30 minutos máx para proteção
+    max_duration_seconds: Optional[int] = 1800, # 30 minutos máx para proteção (None ou <= 0 desativa o limite)
     cookie_file: Optional[str] = None
 ) -> Tuple[str, Dict[str, Any]]:
     """
@@ -519,7 +519,7 @@ def download_video_stream(
     - output_dir: Diretório para armazenamento do vídeo baixado.
     - progress_callback: Função para atualização de progresso na interface.
     - quality: Nível de qualidade desejado ('baixa', 'media', 'alta'). Padrão: 'media'.
-    - max_duration_seconds: Duração máxima permitida para o vídeo.
+    - max_duration_seconds: Duração máxima permitida para o vídeo (None ou <= 0 desativa verificação).
     - cookie_file: Caminho opcional para arquivo de cookies (caso configurado).
     
     Retorna:
@@ -547,7 +547,7 @@ def download_video_stream(
         raise VideoDownloadError("Transmissões ao vivo não finalizadas não são suportadas para análise pré-gravada.")
         
     duration = info.get("duration_seconds", 0.0)
-    if duration > max_duration_seconds:
+    if max_duration_seconds is not None and max_duration_seconds > 0 and duration > max_duration_seconds:
         raise VideoDownloadError(
             f"O vídeo possui {format_video_duration(duration)}, excedendo o limite máximo recomendado de {format_video_duration(max_duration_seconds)} para análise gravada."
         )

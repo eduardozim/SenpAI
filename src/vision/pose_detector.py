@@ -530,14 +530,16 @@ class PoseDetector:
                     shiro_is_striking = True
 
         # 1. Desenhar Aka (Vermelho) e seu Shinai
+        occupied_rects: List[Tuple[int, int, int, int]] = []
         label_aka = aka_label or "KENSHI AKA (VERMELHO)"
         if aka_landmarks:
             CombatantVisualizer.draw_skeleton(
                 out,
                 aka_landmarks,
                 color=(40, 40, 235) if not aka_is_striking else (0, 0, 255),
-                label=f"🔴 {label_aka}" + (" [⚡ ATAQUE]" if aka_is_striking else ""),
-                is_striking=aka_is_striking
+                label=f"{label_aka}" + (" [ATAQUE]" if aka_is_striking else ""),
+                is_striking=aka_is_striking,
+                occupied_label_rects=occupied_rects
             )
             CombatantVisualizer.draw_shinai(out, aka_landmarks, is_striking=aka_is_striking)
 
@@ -548,8 +550,9 @@ class PoseDetector:
                 out,
                 shiro_landmarks,
                 color=(240, 240, 50) if not shiro_is_striking else (255, 255, 0),
-                label=f"⚪ {label_shiro}" + (" [⚡ ATAQUE]" if shiro_is_striking else ""),
-                is_striking=shiro_is_striking
+                label=f"{label_shiro}" + (" [ATAQUE]" if shiro_is_striking else ""),
+                is_striking=shiro_is_striking,
+                occupied_label_rects=occupied_rects
             )
             CombatantVisualizer.draw_shinai(out, shiro_landmarks, is_striking=shiro_is_striking)
 
@@ -588,29 +591,268 @@ class PoseDetector:
 
 
 class CombatantVisualizer:
+    _FONT_CACHE: Dict[int, Any] = {}
+    _BADGE_CACHE: Dict[Tuple[str, Tuple[int, int, int], int], np.ndarray] = {}
+
+    @staticmethod
+    def _get_ttf_font(font_size: int) -> Any:
+        if font_size in CombatantVisualizer._FONT_CACHE:
+            return CombatantVisualizer._FONT_CACHE[font_size]
+        font_obj = None
+        try:
+            from PIL import ImageFont
+            candidates = [
+                "C:/Windows/Fonts/segoeuib.ttf",
+                "C:/Windows/Fonts/arialbd.ttf",
+                "C:/Windows/Fonts/calibrib.ttf",
+                "C:/Windows/Fonts/tahoamabd.ttf",
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+            ]
+            for fp in candidates:
+                if os.path.exists(fp):
+                    font_obj = ImageFont.truetype(fp, font_size)
+                    break
+            if font_obj is None:
+                font_obj = ImageFont.load_default()
+        except Exception:
+            font_obj = None
+        CombatantVisualizer._FONT_CACHE[font_size] = font_obj
+        return font_obj
+
+    @staticmethod
+    def _render_cached_badge_rgba(
+        text: str,
+        color_bgr: Tuple[int, int, int],
+        font_size: int
+    ) -> Optional[np.ndarray]:
+        """
+        Renderiza um badge de alta nitidez (TrueType Bold + contorno escuro + barra lateral colorida)
+        em buffer BGRA (H, W, 4) e armazena em cache para aplicação instantânea via NumPy.
+        """
+        key = (text, color_bgr, font_size)
+        if key in CombatantVisualizer._BADGE_CACHE:
+            return CombatantVisualizer._BADGE_CACHE[key]
+
+        font = CombatantVisualizer._get_ttf_font(font_size)
+        if font is None:
+            return None
+
+        try:
+            from PIL import Image, ImageDraw
+            dummy = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
+            d_dummy = ImageDraw.Draw(dummy)
+            bbox = d_dummy.textbbox((0, 0), text, font=font, stroke_width=2)
+            tw = max(1, bbox[2] - bbox[0])
+            th = max(1, bbox[3] - bbox[1])
+
+            accent_w = 7
+            pad_x = 12
+            pad_y = 6
+            bw = accent_w + pad_x * 2 + tw
+            bh = max(font_size + pad_y * 2, th + pad_y * 2)
+
+            # Converter cor BGR para RGB
+            r_c, g_c, b_c = color_bgr[2], color_bgr[1], color_bgr[0]
+
+            # Fundo escuro de alto contraste (#0F172A com 92% de opacidade) resistente à subamostragem YUV420p
+            img = Image.new("RGBA", (bw, bh), (15, 23, 42, 238))
+            draw = ImageDraw.Draw(img)
+
+            # Borda externa colorida (2px) e barra lateral de destaque (accent_w)
+            draw.rectangle([(0, 0), (bw - 1, bh - 1)], outline=(r_c, g_c, b_c, 255), width=2)
+            draw.rectangle([(0, 0), (accent_w, bh - 1)], fill=(r_c, g_c, b_c, 255))
+
+            # Texto branco puro com contorno preto de 2px para legibilidade máxima em qualquer vídeo
+            tx = accent_w + pad_x - bbox[0]
+            ty = (bh - th) // 2 - bbox[1]
+            draw.text(
+                (tx, ty),
+                text,
+                font=font,
+                fill=(255, 255, 255, 255),
+                stroke_width=2,
+                stroke_fill=(0, 0, 0, 255)
+            )
+
+            rgba = np.array(img, dtype=np.uint8)
+            # Converter RGBA -> BGRA para mesclagem direta no frame OpenCV
+            bgra = rgba[:, :, [2, 1, 0, 3]].copy()
+
+            if len(CombatantVisualizer._BADGE_CACHE) > 512:
+                CombatantVisualizer._BADGE_CACHE.clear()
+            CombatantVisualizer._BADGE_CACHE[key] = bgra
+            return bgra
+        except Exception:
+            return None
+
+    @staticmethod
+    def _blend_bgra_patch(frame: np.ndarray, bgra: np.ndarray, x: int, y: int) -> Tuple[int, int, int, int]:
+        """Mescla um patch BGRA no frame BGR nas coordenadas (x, y) com clip seguro."""
+        fh, fw = frame.shape[:2]
+        bh, bw = bgra.shape[:2]
+
+        x1 = int(np.clip(x, 0, max(0, fw - bw)))
+        y1 = int(np.clip(y, 0, max(0, fh - bh)))
+        x2 = min(fw, x1 + bw)
+        y2 = min(fh, y1 + bh)
+
+        pw = x2 - x1
+        ph = y2 - y1
+        if pw <= 0 or ph <= 0:
+            return (x1, y1, x1, y1)
+
+        patch = bgra[:ph, :pw]
+        alpha = (patch[:, :, 3:4].astype(np.float32)) / 255.0
+        roi = frame[y1:y2, x1:x2].astype(np.float32)
+        blended = patch[:, :, :3].astype(np.float32) * alpha + roi * (1.0 - alpha)
+        frame[y1:y2, x1:x2] = blended.astype(np.uint8)
+        return (x1, y1, x2, y2)
+
+    @staticmethod
+    def draw_crisp_badge(
+        frame: np.ndarray,
+        text: str,
+        anchor_x: int,
+        anchor_y: int,
+        color_bgr: Tuple[int, int, int],
+        occupied_rects: Optional[List[Tuple[int, int, int, int]]] = None,
+        target_box: Optional[Tuple[int, int, int, int]] = None
+    ) -> Tuple[int, int, int, int]:
+        """
+        Desenha uma etiqueta de identificação de alta definição para um Kenshi,
+        com resolução automática de colisão vertical quando vários Kenshis estão próximos.
+        """
+        fh, fw = frame.shape[:2]
+        font_size = max(16, round(max(fw, fh) * 0.0155))
+        bgra = CombatantVisualizer._render_cached_badge_rgba(text, color_bgr, font_size)
+
+        if bgra is None:
+            # Fallback OpenCV de alto contraste caso PIL não esteja disponível
+            scale = max(0.62, max(fw, fh) / 1600.0)
+            (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_DUPLEX, scale, 2)
+            bw, bh = tw + 24, th + 16
+            x1 = int(np.clip(anchor_x, 4, max(4, fw - bw - 4)))
+            y1 = int(np.clip(anchor_y - bh - 4, 58, max(58, fh - bh - 4)))
+            x2, y2 = x1 + bw, y1 + bh
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (15, 23, 42), -1)
+            cv2.rectangle(frame, (x1, y1), (x1 + 7, y2), color_bgr, -1)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color_bgr, 2)
+            cv2.putText(frame, text, (x1 + 13, y2 - 6), cv2.FONT_HERSHEY_DUPLEX, scale, (0, 0, 0), 4, cv2.LINE_AA)
+            cv2.putText(frame, text, (x1 + 13, y2 - 6), cv2.FONT_HERSHEY_DUPLEX, scale, (255, 255, 255), 1, cv2.LINE_AA)
+            rect = (x1, y1, x2, y2)
+            if occupied_rects is not None:
+                occupied_rects.append(rect)
+            return rect
+
+        bh, bw = bgra.shape[:2]
+        min_top_y = max(56, int(fh * 0.065))  # Evita sobrepor o banner superior
+        cand_x = int(np.clip(anchor_x, 6, max(6, fw - bw - 6)))
+        cand_y = int(np.clip(anchor_y - bh - 6, min_top_y, max(min_top_y, fh - bh - 6)))
+
+        def _overlaps(r1: Tuple[int, int, int, int], r2: Tuple[int, int, int, int], pad: int = 4) -> bool:
+            return not (
+                r1[2] + pad < r2[0]
+                or r1[0] - pad > r2[2]
+                or r1[3] + pad < r2[1]
+                or r1[1] - pad > r2[3]
+            )
+
+        if occupied_rects:
+            # Testar deslocamentos verticais (acima e abaixo) para evitar sobreposição entre Kenshis próximos
+            step = bh + 6
+            offsets = [0, -step, step, -2 * step, 2 * step, -3 * step, 3 * step]
+            for off_y in offsets:
+                ty = int(np.clip(cand_y + off_y, min_top_y, max(min_top_y, fh - bh - 6)))
+                test_rect = (cand_x, ty, cand_x + bw, ty + bh)
+                if not any(_overlaps(test_rect, occ) for occ in occupied_rects):
+                    cand_y = ty
+                    break
+
+        placed_rect = CombatantVisualizer._blend_bgra_patch(frame, bgra, cand_x, cand_y)
+        if occupied_rects is not None:
+            occupied_rects.append(placed_rect)
+
+        # Se a etiqueta precisou ser deslocada da caixa original do Kenshi, desenha uma linha guia discreta
+        if target_box is not None:
+            bx1, by1, bx2, by2 = target_box
+            px1, py1, px2, py2 = placed_rect
+            if abs(py2 - by1) > 14:
+                lead_start = (min(max(px1 + 16, bx1 + 8), px2 - 8), py2 if py2 < by1 else py1)
+                lead_end = (min(max(px1 + 16, bx1 + 8), bx2 - 8), by1)
+                cv2.line(frame, lead_start, lead_end, (15, 23, 42), 4, cv2.LINE_AA)
+                cv2.line(frame, lead_start, lead_end, color_bgr, 2, cv2.LINE_AA)
+
+        return placed_rect
+
+    @staticmethod
+    def draw_top_hud_banner(frame: np.ndarray, text: str) -> None:
+        """
+        Renderiza a barra de status superior (HUD) com fonte TrueType nítida e fundo escuro de alto contraste.
+        """
+        fh, fw = frame.shape[:2]
+        banner_h = max(44, round(fh * 0.056))
+        margin_x = 10
+        margin_y = 8
+
+        # Fundo translúcido escuro no topo
+        x1, y1 = margin_x, margin_y
+        x2, y2 = fw - margin_x, margin_y + banner_h
+        roi = frame[y1:y2, x1:x2].astype(np.float32)
+        bg = np.full_like(roi, (15, 23, 42), dtype=np.float32)
+        frame[y1:y2, x1:x2] = (bg * 0.88 + roi * 0.12).astype(np.uint8)
+
+        # Borda e barra de destaque lateral Indigo (#6366F1 -> BGR 241, 102, 99)
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (241, 102, 99), 2)
+        cv2.rectangle(frame, (x1, y1), (x1 + 8, y2), (241, 102, 99), -1)
+
+        font_size = max(16, round(banner_h * 0.44))
+        bgra = CombatantVisualizer._render_cached_badge_rgba(text, (241, 102, 99), font_size)
+        if bgra is not None:
+            bh, bw = bgra.shape[:2]
+            ty = y1 + max(2, (banner_h - bh) // 2)
+            CombatantVisualizer._blend_bgra_patch(frame, bgra, x1 + 12, ty)
+        else:
+            scale = max(0.60, banner_h / 72.0)
+            cv2.putText(frame, text, (x1 + 18, y1 + int(banner_h * 0.68)), cv2.FONT_HERSHEY_DUPLEX, scale, (0, 0, 0), 3, cv2.LINE_AA)
+            cv2.putText(frame, text, (x1 + 18, y1 + int(banner_h * 0.68)), cv2.FONT_HERSHEY_DUPLEX, scale, (255, 255, 255), 1, cv2.LINE_AA)
+
     @staticmethod
     def _extract_pt(pt_data: Any, w: int, h: int) -> Optional[Tuple[int, int]]:
-        """Extrai coordenadas em pixels de um landmark com fallback seguro para coordenadas normalizadas."""
+        """
+        Extrai coordenadas em pixels de um landmark adaptadas à resolução atual (w, h) do frame.
+        Prioriza coordenadas normalizadas (x, y em 0..1) quando disponíveis para permitir
+        renderização nítida em canvas redimensionado (HD Upscaling), com fallback para px/py.
+        """
         if not isinstance(pt_data, dict):
             return None
         vis = pt_data.get("visibility", 1.0)
         if vis is not None and float(vis) < 0.15:
             return None
+        if "x" in pt_data and "y" in pt_data and pt_data["x"] is not None and pt_data["y"] is not None:
+            fx, fy = float(pt_data["x"]), float(pt_data["y"])
+            if 0.0 < fx <= 1.05 and 0.0 < fy <= 1.05:
+                px = int(np.clip(round(fx * w), 0, w - 1))
+                py = int(np.clip(round(fy * h), 0, h - 1))
+                if px <= 3 and py <= 3:
+                    return None
+                return px, py
         if "px" in pt_data and "py" in pt_data and pt_data["px"] is not None and pt_data["py"] is not None:
             px, py = int(pt_data["px"]), int(pt_data["py"])
-            if px <= 3 and py <= 3:
-                return None
-            return px, py
-        if "x" in pt_data and "y" in pt_data and pt_data["x"] is not None and pt_data["y"] is not None:
-            px = int(np.clip(pt_data["x"] * w, 0, w - 1))
-            py = int(np.clip(pt_data["y"] * h, 0, h - 1))
             if px <= 3 and py <= 3:
                 return None
             return px, py
         return None
 
     @staticmethod
-    def draw_skeleton(frame: np.ndarray, landmarks: Dict[str, Any], color: Tuple[int, int, int], label: str, is_striking: bool = False):
+    def draw_skeleton(
+        frame: np.ndarray,
+        landmarks: Dict[str, Any],
+        color: Tuple[int, int, int],
+        label: str,
+        is_striking: bool = False,
+        occupied_label_rects: Optional[List[Tuple[int, int, int, int]]] = None
+    ):
         h, w, _ = frame.shape
         if not landmarks:
             return
@@ -627,19 +869,27 @@ class CombatantVisualizer:
         xs = [p[0] for p in pts_map.values()]
         ys = [p[1] for p in pts_map.values()]
 
-        xmin, xmax = max(0, min(xs) - 15), min(w - 1, max(xs) + 15)
-        ymin, ymax = max(0, min(ys) - 15), min(h - 1, max(ys) + 15)
+        pad_box = max(14, round(max(w, h) * 0.012))
+        xmin, xmax = max(0, min(xs) - pad_box), min(w - 1, max(xs) + pad_box)
+        ymin, ymax = max(0, min(ys) - pad_box), min(h - 1, max(ys) + pad_box)
 
-        # Caixa delimitadora do lutador (mais grossa se estiver executando golpe)
+        # Caixa delimitadora com halo escuro externo + cantoneiras reforçadas para contraste no dojo
         box_thickness = 3 if is_striking else 2
-        cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), color, box_thickness)
+        cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), (15, 23, 42), box_thickness + 2, cv2.LINE_AA)
+        cv2.rectangle(frame, (xmin, ymin), (xmax, ymax), color, box_thickness, cv2.LINE_AA)
 
-        # Label no topo da caixa com fundo colorido
-        lbl_w = len(label) * 9 + 14
-        cv2.rectangle(frame, (xmin, max(0, ymin - 22)), (min(w - 1, xmin + lbl_w), ymin), color, -1)
-        cv2.putText(frame, label, (xmin + 5, max(15, ymin - 6)), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 0, 0), 1, cv2.LINE_AA)
+        corner_len = max(10, min(24, (xmax - xmin) // 4, (ymax - ymin) // 4))
+        c_thick = box_thickness + 2
+        for cx, cy, dx, dy in [
+            (xmin, ymin, 1, 1),
+            (xmax, ymin, -1, 1),
+            (xmin, ymax, 1, -1),
+            (xmax, ymax, -1, -1),
+        ]:
+            cv2.line(frame, (cx, cy), (cx + dx * corner_len, cy), color, c_thick, cv2.LINE_AA)
+            cv2.line(frame, (cx, cy), (cx, cy + dy * corner_len), color, c_thick, cv2.LINE_AA)
 
-        # Desenhar articulações chave
+        # Desenhar articulações chave com halo escuro para destacar sobre Hakama/Bogu ou piso claro
         connections = [
             ("RIGHT_SHOULDER", "LEFT_SHOULDER"),
             ("RIGHT_SHOULDER", "RIGHT_ELBOW"),
@@ -655,21 +905,35 @@ class CombatantVisualizer:
             ("LEFT_KNEE", "LEFT_ANKLE")
         ]
 
-        bone_thickness = 3 if is_striking else 2
+        bone_thickness = max(2, round(max(w, h) / 480.0)) + (1 if is_striking else 0)
         for p1_name, p2_name in connections:
             if p1_name in pts_map and p2_name in pts_map:
+                cv2.line(frame, pts_map[p1_name], pts_map[p2_name], (15, 23, 42), bone_thickness + 2, cv2.LINE_AA)
                 cv2.line(frame, pts_map[p1_name], pts_map[p2_name], color, bone_thickness, cv2.LINE_AA)
 
+        joint_radius = max(3, round(max(w, h) / 360.0)) + (1 if is_striking else 0)
         for pt in pts_map.values():
-            cv2.circle(frame, pt, 3 if not is_striking else 4, (255, 255, 255), -1, cv2.LINE_AA)
+            cv2.circle(frame, pt, joint_radius + 1, (15, 23, 42), -1, cv2.LINE_AA)
+            cv2.circle(frame, pt, joint_radius, (255, 255, 255), -1, cv2.LINE_AA)
 
-        # Destaque de Mãos / Empunhadura (Kote / Tsuka) garantindo que as mãos fiquem visualmente evidentes e persistentes
+        # Destaque de Mãos / Empunhadura (Kote / Tsuka)
         r_w = pts_map.get("RIGHT_WRIST")
         l_w = pts_map.get("LEFT_WRIST")
         for hand_pt in [r_w, l_w]:
             if hand_pt:
-                cv2.circle(frame, hand_pt, 5 if not is_striking else 7, (255, 255, 255), -1, cv2.LINE_AA)
-                cv2.circle(frame, hand_pt, 7 if not is_striking else 9, (0, 215, 255) if not is_striking else (0, 69, 255), 2, cv2.LINE_AA)
+                cv2.circle(frame, hand_pt, joint_radius + 2, (255, 255, 255), -1, cv2.LINE_AA)
+                cv2.circle(frame, hand_pt, joint_radius + 4, (0, 215, 255) if not is_striking else (0, 69, 255), 2, cv2.LINE_AA)
+
+        # Etiqueta de identificação do Kenshi em alta definição (TrueType Bold + anti-colisão)
+        CombatantVisualizer.draw_crisp_badge(
+            frame,
+            text=label,
+            anchor_x=xmin,
+            anchor_y=ymin,
+            color_bgr=color,
+            occupied_rects=occupied_label_rects,
+            target_box=(xmin, ymin, xmax, ymax)
+        )
 
     @staticmethod
     def draw_shinai(frame: np.ndarray, landmarks: Dict[str, Any], is_striking: bool = False):
@@ -686,9 +950,15 @@ class CombatantVisualizer:
         is_visual = False
 
         if shinai_data and isinstance(shinai_data, dict) and shinai_data.get("detected"):
+            b_norm = shinai_data.get("base_norm")
+            t_norm = shinai_data.get("tip_norm")
             b_px = shinai_data.get("base_px")
             t_px = shinai_data.get("tip_px")
-            if b_px and t_px:
+            if b_norm and t_norm:
+                base_pt = (int(np.clip(round(float(b_norm[0]) * w), 0, w - 1)), int(np.clip(round(float(b_norm[1]) * h), 0, h - 1)))
+                tip_pt = (int(np.clip(round(float(t_norm[0]) * w), 0, w - 1)), int(np.clip(round(float(t_norm[1]) * h), 0, h - 1)))
+                is_visual = bool(shinai_data.get("is_visual", False))
+            elif b_px and t_px:
                 base_pt = (int(b_px[0]), int(b_px[1]))
                 tip_pt = (int(t_px[0]), int(t_px[1]))
                 is_visual = bool(shinai_data.get("is_visual", False))

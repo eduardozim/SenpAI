@@ -397,6 +397,7 @@ class TrainingMultiKenshiTracker:
 
         from src.vision.pose_detector import CombatantVisualizer
 
+        occupied_rects: List[Tuple[int, int, int, int]] = []
         for idx_track, (k_id, lm) in enumerate(current_results.items()):
             if lm is not None:
                 track = self.tracks.get(k_id)
@@ -407,13 +408,17 @@ class TrainingMultiKenshiTracker:
                 if track and track.reentry_count > 0:
                     label_txt += f" [Re-ID x{track.reentry_count}]"
 
-                CombatantVisualizer.draw_skeleton(out, lm, color=col, label=label_txt)
+                CombatantVisualizer.draw_skeleton(
+                    out,
+                    lm,
+                    color=col,
+                    label=label_txt,
+                    occupied_label_rects=occupied_rects
+                )
 
-        # Banner de Treinamento
+        # Banner de Treinamento em Alta Definição
         active_now = sum(1 for lm in current_results.values() if lm is not None)
-        cv2.rectangle(out, (10, 10), (w - 10, 48), (15, 23, 42), -1)
-        cv2.rectangle(out, (10, 10), (w - 10, 48), (99, 102, 241), 1)
-        txt_banner = f"MODO TREINAMENTO SENPAI | Kenshis em Cena: {active_now} | Total na Sessao: {len(self.tracks)} | Re-IDs: {self.total_reidentifications}"
-        cv2.putText(out, txt_banner, (20, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+        txt_banner = f"MODO TREINAMENTO SENPAI  |  Kenshis em Cena: {active_now}  |  Total na Sessão: {len(self.tracks)}  |  Re-IDs: {self.total_reidentifications}"
+        CombatantVisualizer.draw_top_hud_banner(out, txt_banner)
 
         return out

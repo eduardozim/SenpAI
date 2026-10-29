@@ -1,1 +1,86 @@
-[]
+[
+  {
+    "id": "train_curation_20261029T162745_1",
+    "timestamp": "2026-10-29T16:27:45",
+    "reviewer_dan": 6,
+    "reviewer_dan_name": "6º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "C:\\Users\\eduaz\\AppData\\Local\\Temp\\tmp_cnk2xyu\\demo_kendo_match.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1793302065154_0",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "IPPON",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 0,
+      "tps_analyzed": 1,
+      "fns_analyzed": 0,
+      "optimization_method": "scipy_slsqp",
+      "f1_score": 0.0,
+      "accuracy": 0.0,
+      "loss_reduction_pct": 0.0,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261029T162746_2",
+    "timestamp": "2026-10-29T16:27:46",
+    "reviewer_dan": 6,
+    "reviewer_dan_name": "6º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "C:\\Users\\eduaz\\AppData\\Local\\Temp\\tmp_cnk2xyu\\demo_kendo_match.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1793302065600_0",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 1,
+      "tps_analyzed": 1,
+      "fns_analyzed": 0,
+      "optimization_method": "scipy_slsqp",
+      "f1_score": 0.0,
+      "accuracy": 0.5,
+      "loss_reduction_pct": 0.0,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261029T162746_3",
+    "timestamp": "2026-10-29T16:27:46",
+    "reviewer_dan": 6,
+    "reviewer_dan_name": "6º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "C:\\Users\\eduaz\\AppData\\Local\\Temp\\tmp_cnk2xyu\\demo_kendo_match.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1793302066053_0",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 2,
+      "tps_analyzed": 1,
+      "fns_analyzed": 0,
+      "optimization_method": "scipy_slsqp",
+      "f1_score": 0.0,
+      "accuracy": 0.6667,
+      "loss_reduction_pct": 0.0,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000)."
+      ]
+    }
+  }
+]

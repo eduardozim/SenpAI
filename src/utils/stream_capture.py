@@ -28,6 +28,14 @@ FFMPEG_RTSP_OPTIONS = (
     "reconnect_delay_max;2"
 )
 
+# Inicializa temporizador de alta precisão (1ms) no Windows
+try:
+    import ctypes
+    if hasattr(ctypes, "windll") and hasattr(ctypes.windll, "winmm"):
+        ctypes.windll.winmm.timeBeginPeriod(1)
+except Exception:
+    pass
+
 
 def set_c_runtime_env(key: str, value: str) -> None:
     """
@@ -152,6 +160,7 @@ class ThreadedVideoStream:
         self._seek_lock = threading.Lock()
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
+        self._flush_requested: bool = False
 
         # Controle de Velocidade e Posição (0.5x, 1.0x, 1.5x, 2.0x e Retroceder/Avançar)
         self.playback_speed: float = max(0.25, min(4.0, float(playback_speed)))
@@ -161,30 +170,30 @@ class ThreadedVideoStream:
         if auto_start:
             self.start()
 
+    _open_lock = threading.Lock()
+
     def _open_capture(self) -> bool:
-        """Inicializa e configura a conexão do VideoCapture."""
+        """Inicializa e configura a conexão do VideoCapture de forma thread-safe."""
         try:
-            if self.is_rtsp:
-                rtsp_opts = FFMPEG_RTSP_OPTIONS
-                src_str = str(self.src).lower()
-                if "transport=udp" in src_str or "?udp" in src_str or "&udp" in src_str:
-                    rtsp_opts = rtsp_opts.replace("rtsp_transport;tcp", "rtsp_transport;udp")
-                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", rtsp_opts)
-                self.cap = cv2.VideoCapture(self.src, cv2.CAP_FFMPEG)
-                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", "")
-            elif self.is_network:
-                # Streams HTTP/HTTPS/TLS (YouTube, HLS, DASH, etc.): reconexão resiliente sem 'nobuffer'
-                http_stream_opts = "reconnect;1|reconnect_streamed;1|reconnect_delay_max;5|flags;low_delay"
-                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", http_stream_opts)
-                self.cap = cv2.VideoCapture(self.src, cv2.CAP_FFMPEG)
-                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", "")
-            elif isinstance(self.src, int):
-                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", "")
-                backend = cv2.CAP_DSHOW if hasattr(cv2, "CAP_DSHOW") else cv2.CAP_ANY
-                self.cap = cv2.VideoCapture(self.src, backend)
-            else:
-                set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", "")
-                self.cap = cv2.VideoCapture(self.src)
+            with ThreadedVideoStream._open_lock:
+                if self.is_rtsp:
+                    rtsp_opts = FFMPEG_RTSP_OPTIONS
+                    src_str = str(self.src).lower()
+                    if "transport=udp" in src_str or "?udp" in src_str or "&udp" in src_str:
+                        rtsp_opts = rtsp_opts.replace("rtsp_transport;tcp", "rtsp_transport;udp")
+                    set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", rtsp_opts)
+                    self.cap = cv2.VideoCapture(self.src, cv2.CAP_FFMPEG)
+                elif self.is_network:
+                    # Streams HTTP/HTTPS/TLS (YouTube, HLS, DASH, etc.): reconexão resiliente sem 'nobuffer'
+                    http_stream_opts = "reconnect;1|reconnect_streamed;1|reconnect_delay_max;5|flags;low_delay"
+                    set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", http_stream_opts)
+                    self.cap = cv2.VideoCapture(self.src, cv2.CAP_FFMPEG)
+                elif isinstance(self.src, int):
+                    backend = cv2.CAP_DSHOW if hasattr(cv2, "CAP_DSHOW") else cv2.CAP_ANY
+                    self.cap = cv2.VideoCapture(self.src, backend)
+                else:
+                    set_c_runtime_env("OPENCV_FFMPEG_CAPTURE_OPTIONS", "")
+                    self.cap = cv2.VideoCapture(self.src)
 
             if not self.cap or not self.cap.isOpened():
                 self.status = "ERROR"
@@ -197,14 +206,14 @@ class ThreadedVideoStream:
             except Exception:
                 pass
 
-            # Capturar primeiro frame para validação e resolução (com retries para aguardar I-frame/keyframe inicial)
+            # Capturar primeiro frame para validação e resolução (com retries rápidos para aguardar I-frame inicial)
             ret, frame = False, None
-            max_initial_reads = 5 if self.is_network else 2
+            max_initial_reads = 8 if self.is_network else 2
             for _ in range(max_initial_reads):
                 ret, frame = self.cap.read()
                 if ret and frame is not None:
                     break
-                time.sleep(0.1)
+                time.sleep(0.05)
 
             if ret and frame is not None:
                 h, w = frame.shape[:2]
@@ -243,6 +252,12 @@ class ThreadedVideoStream:
             time.sleep(0.05)
         return self.is_connected()
 
+    def flush_buffer(self) -> None:
+        """
+        Sinaliza à thread de captura para descartar frames defasados acumulados em buffer.
+        Operação não-bloqueante e 100% thread-safe.
+        """
+        self._flush_requested = True
 
     def start(self) -> "ThreadedVideoStream":
         """Inicia a thread de captura contínua."""
@@ -256,33 +271,8 @@ class ThreadedVideoStream:
 
     def _worker_loop(self) -> None:
         """Loop contínuo em segundo plano para consumir frames e manter o stream atualizado."""
-        def _drain_stale_rtsp_frames() -> None:
-            """Drena frames defasados retidos no buffer interno do FFmpeg/RTSP para sincronizar em tempo real."""
-            if not self.is_rtsp or not self.cap or not self.cap.isOpened():
-                return
-            drained = 0
-            while drained < 90 and not self._stop_event.is_set():
-                t0 = time.time()
-                ret_g = self.cap.grab()
-                t1 = time.time()
-                if not ret_g:
-                    break
-                drained += 1
-                # Se demorou mais que 8ms, significa que o buffer interno esvaziou e atingimos o sinal ao vivo da câmera
-                if (t1 - t0) >= 0.008:
-                    break
-            if drained > 0:
-                ret_r, f_r = self.cap.retrieve()
-                if ret_r and f_r is not None:
-                    with self._lock:
-                        self.last_frame = f_r
-                        self.last_frame_time = time.time()
-                log_event("INFO", f"[{self.name}] Buffer RTSP inicial drenado: {drained} frames defasados descartados.", "stream_capture")
-
         # Tentativa inicial de conexão
         opened = self._open_capture()
-        if opened:
-            _drain_stale_rtsp_frames()
         reconnect_count = 0
 
         fps_calc_time = time.time()
@@ -306,8 +296,6 @@ class ThreadedVideoStream:
                     except Exception:
                         pass
                 opened = self._open_capture()
-                if opened:
-                    _drain_stale_rtsp_frames()
                 continue
 
             # Processamento de requisição pendente de Seek (Avançar / Retroceder)
@@ -337,29 +325,50 @@ class ThreadedVideoStream:
                 time.sleep(0.04)
                 continue
 
-            # Captura de frame
-            t_before = time.time()
-            ret, frame = self.cap.read()
-            t_after = time.time()
-
-            # Para streams RTSP: drenagem contínua de frames acumulados no socket/demuxer
-            # Se a leitura demorou < 3ms, significa que o frame veio de um buffer local acumulado.
-            if self.is_rtsp and ret and (t_after - t_before) < 0.003 and not self.is_paused:
+            # Atendimento de pedido de flush de buffer da thread principal
+            if self._flush_requested and self.cap and self.cap.isOpened() and self.is_network:
+                self._flush_requested = False
                 drain_count = 0
-                while drain_count < 15 and not self._stop_event.is_set():
-                    t_d0 = time.time()
+                while drain_count < 20 and not self._stop_event.is_set():
+                    t_d0 = time.perf_counter()
                     ret_d = self.cap.grab()
-                    t_d1 = time.time()
+                    if not ret_d or (time.perf_counter() - t_d0) >= 0.004:
+                        break
+                    drain_count += 1
+                if drain_count > 0:
+                    ret_last, frame_last = self.cap.retrieve()
+                    if ret_last and frame_last is not None:
+                        with self._lock:
+                            self.last_frame = frame_last
+                            self.last_frame_time = time.time()
+
+            # Captura de frame
+            t_before = time.perf_counter()
+            ret, frame = self.cap.read()
+            t_after = time.perf_counter()
+
+            # Para streams RTSP: drenagem rápida de backlog se leitura demorou < 4ms (buffer interno)
+            if self.is_rtsp and ret and (t_after - t_before) < 0.004 and not self.is_paused:
+                drain_count = 0
+                while drain_count < 8 and not self._stop_event.is_set():
+                    t_d0 = time.perf_counter()
+                    ret_d = self.cap.grab()
+                    t_d1 = time.perf_counter()
                     if not ret_d:
                         break
                     drain_count += 1
-                    if (t_d1 - t_d0) >= 0.005:
+                    # Se demorou >= 3ms, significa que o buffer interno esvaziou e alcançou o sinal ao vivo
+                    if (t_d1 - t_d0) >= 0.003:
                         break
                 if drain_count > 0:
                     ret_last, frame_last = self.cap.retrieve()
                     if ret_last and frame_last is not None:
                         frame = frame_last
-                        t_after = time.time()
+                        t_after = time.perf_counter()
+            else:
+                t_before = time.time()
+                ret, frame = self.cap.read()
+                t_after = time.time()
 
             if ret and frame is not None:
                 reconnect_count = 0  # Reseta contador de reconexões após sucesso
@@ -411,14 +420,17 @@ class ThreadedVideoStream:
 
             # Cadência de tempo:
             # - Arquivos locais gravados (self.is_file): respeitam a velocidade de reprodução (0.5x, 1.0x, etc.)
-            # - Streams ao vivo (RTSP, RTMP, Webcams): rodam sem atraso artificial (tempo real estrito)
+            # - Streams de rede ao vivo (RTSP, RTMP): rodam no ritmo de chegada dos pacotes (sem sleep artificial)
+            # - Webcams USB locais: pequena pausa de 1ms para ceder a CPU
             if self.is_file:
                 with self._lock:
                     eff_speed = max(0.25, min(4.0, self.playback_speed))
                 base_fps = self.native_fps if (hasattr(self, "native_fps") and self.native_fps > 0) else 30.0
                 cadence_delay = (1.0 / max(10.0, base_fps)) / eff_speed
                 time.sleep(max(0.002, cadence_delay))
-            else:
+            elif not ret:
+                time.sleep(0.005)
+            elif not self.is_network:
                 time.sleep(0.001)
 
 
@@ -868,46 +880,65 @@ class StreamSyncTracker:
     Monitor e Calibrador Automático de Atraso Temporal Multi-Câmeras.
 
     Funcionalidades Principais:
-    1. Ancoragem na Webcam Local: A webcam local (DirectShow/USB) é sempre a Referência Zero (Ground Truth 0ms).
+    1. Compensação Total de Webcams Locais: Todas as câmeras do tipo Webcam local são sincronizadas
+       e compensadas temporalmente através de buffers FIFO para equiparar o atraso físico das câmeras RTSP/IP.
     2. Calibração Contínua de Atraso: Mede continuamente o atraso temporal (delay offset em milissegundos)
-       entre o fluxo RTSP/IP e a webcam local através de correlação cruzada de perfil de movimento.
-    3. Tempo Real Estrito: Não impõe atraso artificial — todas as câmeras exibem seus frames mais
-       recentes de forma fluida e direta.
+       entre as câmeras RTSP/IP e as webcams locais através de correlação cruzada de perfil de movimento.
+    3. Minimização ao Máximo do Atraso RTSP: Reduz a latência da decodificação RTSP para próximo de 0ms,
+       minimizando o tempo de compensação nas webcams locais para máxima responsividade.
     4. Diagnóstico em Tempo Real: Fornece badges e métricas de latência para legendas e HUDs do SenpAI.
     """
 
     def __init__(
         self,
         reference_index: int = 0,
+        local_indices: Optional[Any] = None,
         window_size: int = 90,
         buffer_capacity: int = 150,
         fps: float = 30.0,
         smoothing_alpha: float = 0.20,
-        initial_delay_ms: float = 100.0
+        initial_delay_ms: float = 0.0
     ):
         self.reference_index = reference_index
+        if local_indices is not None:
+            self.local_indices = set(int(i) for i in local_indices)
+        else:
+            self.local_indices = {reference_index}
+        self.local_indices.add(reference_index)
+
         self.window_size = window_size
         self.buffer_capacity = buffer_capacity
         self.fps = max(1.0, float(fps))
         self.smoothing_alpha = smoothing_alpha
         self.initial_delay_ms = max(0.0, float(initial_delay_ms))
 
-        # Buffer temporal de frames para compensação visual e biomecânica da webcam (referência)
+        # Buffer temporal de frames para compensação visual e biomecânica de TODAS as webcams locais
         # Armazena tuplas: (timestamp: float, frame: np.ndarray, drawn_frame: Optional[np.ndarray], landmarks: Optional[Any])
         self._frame_buffers: Dict[int, deque] = {}
 
         # Estruturas por câmera: histórico de movimento e último frame em escala reduzida
         self._prev_thumbnails: Dict[int, np.ndarray] = {}
         self._motion_histories: Dict[int, deque] = {}  # deque de (timestamp, motion_energy)
-        self._measured_delays_ms: Dict[int, float] = {reference_index: 0.0}
+        self._measured_delays_ms: Dict[int, float] = {idx: 0.0 for idx in self.local_indices}
         self._last_calc_time = 0.0
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     def set_reference_index(self, ref_idx: int) -> None:
-        """Define o índice da câmera de referência (Webcam local = 0ms)."""
+        """Define o índice da câmera de referência primária (Webcam local = 0ms)."""
         with self._lock:
             self.reference_index = ref_idx
+            self.local_indices.add(ref_idx)
             self._measured_delays_ms[ref_idx] = 0.0
+
+    def set_camera_types(self, local_indices: Any) -> None:
+        """Configura os índices de todas as câmeras locais (Webcams USB) a serem compensadas."""
+        with self._lock:
+            self.local_indices = set(int(i) for i in local_indices)
+            if self.reference_index not in self.local_indices and self.local_indices:
+                self.reference_index = min(self.local_indices)
+            for idx in self.local_indices:
+                if idx not in self._measured_delays_ms:
+                    self._measured_delays_ms[idx] = 0.0
 
     def register_processed_frame(
         self,
@@ -919,7 +950,7 @@ class StreamSyncTracker:
     ) -> None:
         """
         Registra um frame capturado e processado no calibrador.
-        Para a câmera de referência (Webcam), enfileira no buffer FIFO para permitir a compensação do atraso.
+        Para TODAS as câmeras locais (Webcams), enfileira no buffer FIFO para permitir a compensação do atraso.
         Também atualiza o histórico de movimento para calibração contínua de latência.
         """
         if frame is None or not isinstance(frame, np.ndarray):
@@ -928,14 +959,14 @@ class StreamSyncTracker:
         ts = timestamp if timestamp is not None else time.time()
 
         with self._lock:
-            # Armazena no buffer temporal da câmera de referência para compensação visual
-            if cam_idx == self.reference_index:
+            # Armazena no buffer temporal de TODAS as webcams locais para permitir compensação
+            if cam_idx in self.local_indices:
                 if cam_idx not in self._frame_buffers:
                     self._frame_buffers[cam_idx] = deque(maxlen=self.buffer_capacity)
                 self._frame_buffers[cam_idx].append((ts, frame, drawn_frame, landmarks))
 
-            # Se for stream secundário (RTSP) e ainda não tiver delay registrado, inicializa com initial_delay_ms
-            if cam_idx != self.reference_index and cam_idx not in self._measured_delays_ms:
+            # Se for stream de rede (RTSP) e ainda não tiver delay registrado
+            if cam_idx not in self.local_indices and cam_idx not in self._measured_delays_ms:
                 self._measured_delays_ms[cam_idx] = self.initial_delay_ms
 
         # Atualiza métricas de movimento para a correlação cruzada
@@ -951,16 +982,17 @@ class StreamSyncTracker:
         """
         Retorna o frame, overlay anotado e landmarks sincronizados no mesmo instante temporal exato.
 
-        - Para a Webcam (referência): busca no buffer FIFO o instante (t_now - delta_t),
-          compensando o atraso da câmera RTSP para que ambas as imagens exibam o MESMO momento.
-        - Para streams RTSP / IP: retorna o frame atual (que já é o mais recente decodificado).
+        - Para TODAS as Webcams locais: busca no buffer FIFO o instante (t_now - delta_t),
+          compensando o atraso das câmeras RTSP para que todas as câmeras exibam o MESMO momento.
+        - Para streams RTSP / IP: retorna o frame atual decodificado (que já tem latência minimizada).
         """
-        if cam_idx != self.reference_index:
+        if cam_idx not in self.local_indices:
             return current_frame, current_drawn, current_landmarks
 
         with self._lock:
-            delays = [d for idx, d in self._measured_delays_ms.items() if idx != self.reference_index]
-            max_delay_ms = max(delays) if delays else 0.0
+            # Identifica o atraso das câmeras RTSP em relação às webcams locais
+            rtsp_delays = [d for idx, d in self._measured_delays_ms.items() if idx not in self.local_indices]
+            max_delay_ms = max(rtsp_delays) if rtsp_delays else 0.0
 
             # Se o atraso for desprezível (< 15ms) ou o buffer ainda estiver vazio, exibe tempo real direto
             if max_delay_ms < 15.0 or cam_idx not in self._frame_buffers or len(self._frame_buffers[cam_idx]) == 0:
@@ -1040,61 +1072,79 @@ class StreamSyncTracker:
 
             # Dispara calibração periódica (a cada ~8 frames ou 0.25s)
             now = ts
-            if cam_idx != self.reference_index and (now - self._last_calc_time) >= 0.25:
-                self.recalculate_delays()
+            should_recalc = False
+            if (now - self._last_calc_time) >= 0.25:
                 self._last_calc_time = now
+                should_recalc = True
+
+        if should_recalc:
+            self.recalculate_delays()
 
     def recalculate_delays(self) -> None:
-        """Recalcula a correlação cruzada entre a câmera de referência e os streams secundários."""
-        ref_hist = self._motion_histories.get(self.reference_index)
-        if not ref_hist or len(ref_hist) < 20:
-            return
+        """Recalcula a correlação cruzada entre a webcam local e os fluxos RTSP."""
+        # Seleciona a webcam local com movimentação mais ativa como sinal de referência
+        active_ref = self.reference_index
+        best_std = -1.0
+        with self._lock:
+            for l_idx in self.local_indices:
+                hist = self._motion_histories.get(l_idx)
+                if hist and len(hist) >= 20:
+                    energies = np.array([m for _, m in hist], dtype=np.float32)
+                    std_val = float(np.std(energies))
+                    if std_val > best_std:
+                        best_std = std_val
+                        active_ref = l_idx
 
-        ref_energies = np.array([m for _, m in ref_hist], dtype=np.float32)
-        ref_std = float(np.std(ref_energies))
-        # Se não há movimentação detectável na cena (kendokas imóveis), manter última estimativa
-        if ref_std < 0.2:
-            return
+            ref_hist = self._motion_histories.get(active_ref)
+            if not ref_hist or len(ref_hist) < 20 or best_std < 0.2:
+                return
 
-        ref_norm = (ref_energies - float(np.mean(ref_energies))) / (ref_std + 1e-6)
+            ref_energies = np.array([m for _, m in ref_hist], dtype=np.float32)
+            ref_norm = (ref_energies - float(np.mean(ref_energies))) / (best_std + 1e-6)
 
-        for cam_idx, target_hist in self._motion_histories.items():
-            if cam_idx == self.reference_index or len(target_hist) < 20:
-                continue
+            for cam_idx, target_hist in self._motion_histories.items():
+                if cam_idx == active_ref or len(target_hist) < 20:
+                    continue
 
-            target_energies = np.array([m for _, m in target_hist], dtype=np.float32)
-            target_std = float(np.std(target_energies))
-            if target_std < 0.2:
-                continue
+                target_energies = np.array([m for _, m in target_hist], dtype=np.float32)
+                target_std = float(np.std(target_energies))
+                if target_std < 0.2:
+                    continue
 
-            # Alinha tamanhos
-            min_len = min(len(ref_norm), len(target_energies))
-            s1 = ref_norm[-min_len:]
-            t_slice = target_energies[-min_len:]
-            s2 = (t_slice - float(np.mean(t_slice))) / (target_std + 1e-6)
+                # Alinha tamanhos
+                min_len = min(len(ref_norm), len(target_energies))
+                s1 = ref_norm[-min_len:]
+                t_slice = target_energies[-min_len:]
+                s2 = (t_slice - float(np.mean(t_slice))) / (target_std + 1e-6)
 
-            # Correlação cruzada
-            corr = np.correlate(s2, s1, mode="full") / min_len
-            lags = np.arange(-min_len + 1, min_len)
+                # Correlação cruzada
+                corr = np.correlate(s2, s1, mode="full") / min_len
+                lags = np.arange(-min_len + 1, min_len)
 
-            # Restringe faixa razoável de atraso (-5 a +60 frames, ou seja, -150ms a +2000ms)
-            valid_mask = (lags >= -5) & (lags <= 60)
-            if not np.any(valid_mask):
-                continue
+                # Restringe faixa razoável de atraso (-5 a +60 frames, ou seja, -150ms a +2000ms)
+                valid_mask = (lags >= -5) & (lags <= 60)
+                if not np.any(valid_mask):
+                    continue
 
-            sub_corr = corr[valid_mask]
-            sub_lags = lags[valid_mask]
-            best_idx = np.argmax(sub_corr)
-            best_lag_frames = int(sub_lags[best_idx])
-            best_corr_val = float(sub_corr[best_idx])
+                sub_corr = corr[valid_mask]
+                sub_lags = lags[valid_mask]
+                best_idx = np.argmax(sub_corr)
+                best_lag_frames = int(sub_lags[best_idx])
+                best_corr_val = float(sub_corr[best_idx])
 
-            # Apenas atualiza se a correlação for estatisticamente consistente (> 0.35)
-            if best_corr_val > 0.35:
-                measured_ms = max(0.0, best_lag_frames * (1000.0 / self.fps))
-                prev = self._measured_delays_ms.get(cam_idx, measured_ms)
-                # Suavização exponencial (EMA)
-                smoothed = (self.smoothing_alpha * measured_ms) + ((1.0 - self.smoothing_alpha) * prev)
-                self._measured_delays_ms[cam_idx] = round(smoothed, 1)
+                # Apenas atualiza se a correlação for consistente (> 0.35)
+                if best_corr_val > 0.35:
+                    if cam_idx in self.local_indices:
+                        measured_ms = max(0.0, best_lag_frames * (1000.0 / self.fps))
+                        if measured_ms < 20.0:
+                            measured_ms = 0.0
+                    else:
+                        measured_ms = max(0.0, best_lag_frames * (1000.0 / self.fps))
+
+                    prev = self._measured_delays_ms.get(cam_idx, measured_ms)
+                    # Suavização exponencial (EMA)
+                    smoothed = (self.smoothing_alpha * measured_ms) + ((1.0 - self.smoothing_alpha) * prev)
+                    self._measured_delays_ms[cam_idx] = round(smoothed, 1)
 
     def get_delay_ms(self, cam_idx: int) -> float:
         """Retorna o atraso em milissegundos relativo à Webcam local (0.0 para referência)."""
@@ -1104,11 +1154,12 @@ class StreamSyncTracker:
     def get_sync_badge(self, cam_idx: int) -> str:
         """Retorna badge descritivo de sincronização para legendas e HUDs."""
         with self._lock:
-            if cam_idx == self.reference_index:
-                delays = [d for idx, d in self._measured_delays_ms.items() if idx != self.reference_index]
-                comp_ms = max(delays) if delays else 0.0
+            # Se for uma das webcams locais (compensadas pelo atraso das RTSP)
+            if cam_idx in self.local_indices:
+                rtsp_delays = [d for idx, d in self._measured_delays_ms.items() if idx not in self.local_indices]
+                comp_ms = max(rtsp_delays) if rtsp_delays else 0.0
                 if comp_ms < 15.0:
-                    return "⏱️ Ref. Local 0ms"
+                    return "⏱️ Ref. Local 0ms (Sincronizada)"
                 elif comp_ms <= 150.0:
                     return f"⏱️ Ref. Local (Compensado -{comp_ms:.0f}ms)"
                 else:

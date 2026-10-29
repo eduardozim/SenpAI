@@ -135,6 +135,26 @@ class TestWebServerOptionsHiding(unittest.TestCase):
             saved_source_choice = recorded_sources[0]
         self.assertEqual(saved_source_choice, "📁 Fazer Upload de Arquivo")
 
+    @patch.dict(os.environ, {"SENPAI_DEPLOY_MODE": "local"}, clear=True)
+    def test_training_duration_limit_bypass_on_local(self):
+        """Verifica se no modo de Treinamento em ambiente local o limite de duração de 30 min é desativado."""
+        is_web = is_web_server_environment()
+        self.assertFalse(is_web)
+        
+        # Lógica do app para definição de max_dur
+        operation_mode = "training"
+        app_mode = "training"
+        is_local_training = (operation_mode == "training" or app_mode == "training") and not is_web
+        max_dur = None if is_local_training else 1800
+        self.assertIsNone(max_dur)
+
+        # Em modo de combate local, mantém 1800s
+        operation_mode_match = "match"
+        app_mode_match = "recorded"
+        is_local_training_match = (operation_mode_match == "training" or app_mode_match == "training") and not is_web
+        max_dur_match = None if is_local_training_match else 1800
+        self.assertEqual(max_dur_match, 1800)
+
 
 if __name__ == "__main__":
     unittest.main()

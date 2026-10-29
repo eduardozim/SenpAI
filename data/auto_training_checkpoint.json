@@ -1,0 +1,99 @@
+{
+  "status": "completed_consolidated",
+  "session_id": "auto_train_20261028_130648",
+  "scope_key": "modality_uchikomi_geiko",
+  "scope_name": "🎯 Necessidade Mais Latente (🥋 Modalidade: Uchikomi-geiko (打込稽古))",
+  "samples_processed": 336750,
+  "final_accuracy": 61.6,
+  "sources_consulted": [
+    {
+      "title": "AJKF Teaching Methodology: Motodachi & Kakarite Dynamics",
+      "type": "Manual Oficial AJKF / FIK",
+      "url": "https://www.kendo.or.jp/knowledge/uchikomi_geiko",
+      "focus": "Uchikomi-geiko (打込稽古)",
+      "summary": "Diretrizes oficiais de execução para Uchikomi-geiko (打込稽古) (打込稽古): foco em Velocidade de reação na abertura, Aceleração e Fumikomi, Passagem rápida (Nuke), Retorno imediato em Kamae.",
+      "principles": [
+        "Explosão na Abertura: Reconhecimento e ataque instantâneo no milissegundo em que o Motodachi abre o alvo.",
+        "Fumikomi Potente: Aterrissagem com a planta do pé direito sincrônica ao impacto no alvo (Ki-Ken-Tai-Ichi).",
+        "Passagem Rápida (Nuke): Cruzamento ágil pelo lado do oponente sem perder o equilíbrio e giro veloz em Zanshin."
+      ],
+      "biomechanical_thresholds": {
+        "cadence_cpm": [
+          20,
+          50
+        ],
+        "fumikomi_sync_ms": 50.0
+      },
+      "authority_tier": 1,
+      "authority_name": "FIK Official Rulebook",
+      "authority_desc": "Máxima — prevalece sempre",
+      "authority_weight": 1.0,
+      "physical_constraints": {
+        "fumikomi_hand_foot_window_ms": {
+          "min": -45.0,
+          "max": 30.0,
+          "ideal": 0.0,
+          "unit": "ms"
+        },
+        "zanshin_duration_min_sec": 0.8,
+        "hasuji_max_deviation_deg": 12.0,
+        "cadence_cpm": {
+          "min": 20.0,
+          "max": 50.0
+        },
+        "fumikomi_sync_ms": 50.0
+      },
+      "structured_concept": "do_strike_biomechanics"
+    },
+    {
+      "title": "FIK International Kendo Regulations (Artigos 12 a 24 - Yuko-Datotsu)",
+      "type": "Manual Oficial FIK"
+    },
+    {
+      "title": "AJKF / ZNKR Kendo Shinpan & Shiai Practical Referee Handbook",
+      "type": "Manual de Arbitragem AJKF"
+    },
+    {
+      "title": "Treatise on Nihon Kendo Kata Technical & Posture Standards",
+      "type": "Tratado Técnico Kata"
+    },
+    {
+      "title": "All Japan Kendo Championship Finals - Kinematic Video Corpus (60-120 FPS)",
+      "type": "Corpus de Vídeo HD"
+    },
+    {
+      "title": "High-Speed Motion Capture of Fumikomi-ashi & Left Heel Elevation Dynamics",
+      "type": "Mocap Científico"
+    },
+    {
+      "title": "Kirikaeshi Continuous Stroke Cadence & Dynamic Posture Reference Bank",
+      "type": "Corpus de Vídeo Dojo"
+    },
+    {
+      "title": "Kendo Pedagogical Training Curriculum: 14 Core Dojo Keiko Modalities",
+      "type": "Currículo Pedagógico"
+    },
+    {
+      "title": "Physiological & Biomechanical Load in Suburi, Kirikaeshi & Kakari-geiko",
+      "type": "Estudo Biomecânico"
+    },
+    {
+      "title": "Reinforcement Optimization on Dan Review Feedback Dataset",
+      "type": "Dataset de Calibração"
+    },
+    {
+      "title": "Multi-View Neural Consensus & Perspective Fusion for Martial Arts Scoring",
+      "type": "Modelo Neural"
+    },
+    {
+      "title": "SenpAI Knowledge Base & Calibration Profiles Schema v1.6.0",
+      "type": "Base de Conhecimento"
+    }
+  ],
+  "duration_seconds": 18000.0,
+  "wall_clock_seconds": 18000.9,
+  "last_updated": "2026-10-28T18:06:49.106333",
+  "consolidated": true,
+  "web_mode": true,
+  "last_checkpoint_timestamp": "2026-10-29T09:19:23.407879"
+}

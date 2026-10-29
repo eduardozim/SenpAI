@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.7.2`
+> **Versão Oficial do Sistema**: `v 0.3.8.0`
 
 ---
 
@@ -810,7 +810,29 @@ Total de **246 testes automatizados** distribuídos em 26 módulos, executados e
 
 ---
 
-### `[v 0.3.7.2]` — 2026-10-20 *(Versão Atual)*
+### `[v 0.3.8.0]` — 2026-10-29 *(Versão Atual)*
+
+- **Identificação Multi-Sessões na Mesma Sequência & Blocos por Modalidade ([training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) & [training_pdf_generator.py](file:///d:/Projetos/SenpAI/Dev/src/utils/training_pdf_generator.py))**:
+  - **Segmentação Cronológica na Sequência**: Capacidade de reconhecer e separar múltiplas sessões temporais dentro do mesmo vídeo gravado (ex.: 00:00 a 03:00 Kirikaeshi, 03:00 a 05:00 Waza-geiko), com suporte tanto à detecção inteligente automática pela IA quanto à pré-definição/edição manual de intervalos (`session_segments_override`).
+  - **Concentração por Blocos de Modalidade (`modality_blocks`)**: O relatório agrupa todas as sessões da mesma modalidade em blocos consolidados, integrando tempos acumulados, total de repetições executadas, cadência e avaliação biomecânica minuciosa dos 3 Pilares por praticante.
+  - **Relatórios Técnicos Aprofundados**: Atualização dos relatórios no Dashboard, Markdown individual (.md) e PDF consolidado ([training_pdf_generator.py](file:///d:/Projetos/SenpAI/Dev/src/utils/training_pdf_generator.py)), com tabelas de cronograma de sessões e cartões diagnósticos específicos por modalidade.
+- **Nitidez de Alta Definição & Anti-Colisão Visual nas Etiquetas dos Kenshis ([pose_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/pose_detector.py), [hardware.py](file:///d:/Projetos/SenpAI/Dev/src/utils/hardware.py) & [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py))**:
+  - **Badges TrueType Bold de Alto Contraste**: Renderização tipográfica em alta definição via PIL/Pillow com fundo escuro (#0F172A), borda e traço de realce nas cores dos praticantes e contorno protetor antissubamostragem YUV420p.
+  - **Algoritmo de Anti-Colisão Vertical**: Resolução dinâmica de sobreposição de etiquetas com linhas guia automáticas conectando a identificação ao praticante quando múltiplos Kenshis estão muito próximos no enquadramento.
+  - **Upscaling Pré-Renderização & Gravação em Passo Único**: Upscaling automático para HD 720p em vídeos com resolução inferior a 1280px antes da aplicação de overlays e codificação direta via FFmpeg (`HighQualityVideoWriter`, `libx264 -crf 17 -preset fast`), eliminando o desfoque da compressão do OpenCV (`mp4v`).
+- **Re-renderização Dinâmica do Vídeo Anotado com Pop-up de Acompanhamento ao Vivo ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py) & [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py))**:
+  - **Atualização Direta no Vídeo Anotado**: Botão `🎬 Atualizar Nomes no Vídeo Anotado` permitindo gravar os novos nomes de praticantes e mesclagens diretamente sobre as etiquetas do arquivo `.mp4`.
+  - **Pop-up Modal com Progresso em Tempo Real (`@st.dialog`)**: Acompanhamento visual da re-renderização com barra de progresso (0% a 100%), contagem de quadros processados, tempo decorrido e taxa de FPS ao vivo.
+  - **Cache de Poses Rápido (`annotated_tracks_cache.pkl`)**: Persistência do histórico de esqueletos e reidentificações em disco e memória, viabilizando a re-renderização das etiquetas em poucos segundos sem recalcular poses ou modelos de IA.
+  - **Transição Segura de Visualização**: Agendamento por `pending_video_display_type` prevenindo exceções de ciclo de vida de widgets do Streamlit e alternando automaticamente o player para o vídeo anotado atualizado.
+- **Gestão de Identidade, Mesclagem de Perfis & Sincronização de Eventos ([training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - Prevenção de loops e falsos disparos no modal de mesclagem de Kendocas ordenados por tempo de presença.
+  - Diálogo de mesclagem interativo com unificação consolidada ou diferenciação automática de nomes `(1)` e `(2)`.
+  - Sincronização em tempo real dos nomes de atacantes na lista de eventos de golpes (`res['events']`) e botões da linha do tempo.
+
+---
+
+### `[v 0.3.7.2]` — 2026-10-20
 
 - **Resolução de Caminhos Agnóstica de Plataforma e Suporte Multi-Servidor ([strike_clip_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/strike_clip_manager.py), [active_learning.py](file:///d:/Projetos/SenpAI/Dev/src/engine/active_learning.py), [feedback_manager.py](file:///d:/Projetos/SenpAI/Dev/src/engine/feedback_manager.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - **Extração Agnóstica de Nomes de Arquivo**: Implementação da função `get_cross_platform_basename()` para separar e extrair nomes de arquivo com segurança suportando tanto barras convencionais (`/`) quanto invertidas do Windows (`\`), eliminando falhas em servidores web/Linux onde caminhos como `C:\Users\...` eram interpretados incorretamente como nome literal de arquivo.
@@ -1740,7 +1762,7 @@ Total de **246 testes automatizados** distribuídos em 26 módulos, executados e
 > [!IMPORTANT]
 > **AVISO LEGAL E TERMOS DE PROTEÇÃO INTELECTUAL**
 > 
-> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.3.7.2`.**  
+> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.3.8.0`.**  
 > **TODOS OS DIREITOS DE USO E CÓPIA RESERVADOS.**
 > 
 > 1. **Titularidade**: Todo o código-fonte, arquitetura de visão computacional, algoritmos biomecânicos de *Ki-Ken-Tai-Ichi*, modelos de detecção postural, pesos de rede neural, perfis de calibração heurística, identidade visual, interfaces e documentações pertencem exclusivamente aos desenvolvedores e detentores do projeto SenpAI.
