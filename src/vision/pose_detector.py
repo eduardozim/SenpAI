@@ -81,6 +81,11 @@ class PoseDetector:
             try:
                 import torch
                 from ultralytics import YOLO
+                try:
+                    from ultralytics.utils import LOGGER as YOLO_LOGGER
+                    YOLO_LOGGER.setLevel(logging.ERROR)
+                except Exception:
+                    pass
                 if torch.cuda.is_available():
                     self.use_gpu = True
                     self.torch_device = "cuda:0"
@@ -327,7 +332,7 @@ class PoseDetector:
             dev = "cuda:0" if self.use_gpu else "cpu"
             ctx = self.torch.inference_mode() if (self.torch is not None and hasattr(self.torch, "inference_mode")) else contextlib.nullcontext()
             with ctx:
-                results = self.yolo_model(frame, device=dev, verbose=False, conf=0.25, imgsz=640)
+                results = self.yolo_model(frame, device=dev, verbose=False, conf=0.25, imgsz=640, half=self.use_gpu)
             candidates = self._yolo_results_to_landmarks_list(results, w, h)
             
             if candidates:
@@ -391,7 +396,8 @@ class PoseDetector:
                     batch=len(frames),
                     verbose=False,
                     conf=0.25,
-                    imgsz=640
+                    imgsz=640,
+                    half=self.use_gpu
                 )
             batch_candidates = []
             for res in results:
@@ -418,7 +424,7 @@ class PoseDetector:
             dev = "cuda:0" if self.use_gpu else "cpu"
             ctx = self.torch.inference_mode() if (self.torch is not None and hasattr(self.torch, "inference_mode")) else contextlib.nullcontext()
             with ctx:
-                results = self.yolo_model(frame, device=dev, verbose=False, conf=0.25, imgsz=640)
+                results = self.yolo_model(frame, device=dev, verbose=False, conf=0.25, imgsz=640, half=self.use_gpu)
             candidates = self._yolo_results_to_landmarks_list(results, w, h)
             return candidates, frame
 
@@ -643,17 +649,17 @@ class CombatantVisualizer:
             dummy = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
             d_dummy = ImageDraw.Draw(dummy)
             bbox = d_dummy.textbbox((0, 0), text, font=font, stroke_width=2)
-            tw = max(1, bbox[2] - bbox[0])
-            th = max(1, bbox[3] - bbox[1])
+            tw = int(max(1, bbox[2] - bbox[0]))
+            th = int(max(1, bbox[3] - bbox[1]))
 
             accent_w = 7
             pad_x = 12
             pad_y = 6
-            bw = accent_w + pad_x * 2 + tw
-            bh = max(font_size + pad_y * 2, th + pad_y * 2)
+            bw = int(accent_w + pad_x * 2 + tw)
+            bh = int(max(font_size + pad_y * 2, th + pad_y * 2))
 
             # Converter cor BGR para RGB
-            r_c, g_c, b_c = color_bgr[2], color_bgr[1], color_bgr[0]
+            r_c, g_c, b_c = int(color_bgr[2]), int(color_bgr[1]), int(color_bgr[0])
 
             # Fundo escuro de alto contraste (#0F172A com 92% de opacidade) resistente à subamostragem YUV420p
             img = Image.new("RGBA", (bw, bh), (15, 23, 42, 238))

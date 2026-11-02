@@ -35,16 +35,19 @@ class AsyncVideoBatchReader:
     Desacopla a decodificação de frames de disco do pipeline de inferência da GPU,
     mantendo uma fila em memória RAM para que a GPU opere em saturação contínua.
     """
-    def __init__(self, video_path: str, batch_size: int = 64, max_queue: int = 4):
+    def __init__(self, video_path: str, batch_size: int = 64, max_queue: int = 4, frame_step: int = 1):
         self.video_path = video_path
         self.batch_size = max(1, batch_size)
+        self.frame_step = max(1, frame_step or 1)
         self.queue: queue.Queue = queue.Queue(maxsize=max_queue)
         self.stopped = False
         self.error: Optional[Exception] = None
 
         self.cap = cv2.VideoCapture(video_path)
-        self.fps = float(self.cap.get(cv2.CAP_PROP_FPS) or 30.0)
-        self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT) or 1)
+        raw_fps = float(self.cap.get(cv2.CAP_PROP_FPS) or 30.0)
+        self.fps = max(1.0, raw_fps / self.frame_step)
+        raw_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT) or 1)
+        self.total_frames = max(1, raw_frames // self.frame_step)
         self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 640)
         self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 480)
 
@@ -62,6 +65,10 @@ class AsyncVideoBatchReader:
                     if not ret or frame is None:
                         break
                     batch.append(frame)
+                    if self.frame_step > 1:
+                        for _ in range(self.frame_step - 1):
+                            if not self.cap.grab():
+                                break
 
                 if not batch:
                     break
@@ -148,7 +155,7 @@ class SenpAIPipeline:
         self,
         video_path: str,
         output_video_path: Optional[str] = None,
-        progress_callback: Optional[Callable[[float], None]] = None,
+        progress_callback: Optional[Callable[..., None]] = None,
         is_cancelled: Optional[Callable[[], bool]] = None,
         initial_sonkyo_override: Optional[Dict[str, Any]] = None,
         final_sonkyo_override: Optional[Dict[str, Any]] = None,
@@ -157,7 +164,8 @@ class SenpAIPipeline:
         custom_kendoka_names: Optional[Dict[str, str]] = None,
         shiaijo_polygon: Optional[List[Tuple[float, float]]] = None,
         analysis_mode: str = "match",
-        training_segments_override: Optional[List[Dict[str, Any]]] = None
+        training_segments_override: Optional[List[Dict[str, Any]]] = None,
+        frame_step: int = 1
     ) -> Optional[Dict[str, Any]]:
         """
         Executa a análise completa de um arquivo de vídeo de luta/treino de Kendo:
@@ -181,7 +189,8 @@ class SenpAIPipeline:
                 is_cancelled=is_cancelled,
                 training_modality_override=training_modality_override,
                 custom_kendoka_names=custom_kendoka_names,
-                training_segments_override=training_segments_override
+                training_segments_override=training_segments_override,
+                frame_step=frame_step
             )
 
         start_time = time.time()
@@ -201,7 +210,7 @@ class SenpAIPipeline:
         frame_idx = 0
 
         # Passo 1: Extração Paralela com Prefetching Assíncrono em Thread
-        with AsyncVideoBatchReader(video_path, batch_size=batch_size, max_queue=4) as reader:
+        with AsyncVideoBatchReader(video_path, batch_size=batch_size, max_queue=4, frame_step=frame_step) as reader:
             fps = reader.fps
             total_frames = reader.total_frames
             width = reader.width
@@ -263,7 +272,16 @@ class SenpAIPipeline:
                         frame_idx += 1
 
                     if progress_callback:
-                        progress_callback(min(0.60, (frame_idx / total_frames) * 0.60)) # 60% para extração de poses
+                        pct = int((frame_idx / total_frames) * 100)
+                        elapsed = max(0.001, time.time() - start_time)
+                        fps_cur = frame_idx / elapsed
+                        eta_sec = max(0, (total_frames - frame_idx) / max(0.1, fps_cur))
+                        eta_str = f"{int(eta_sec // 60)}m {int(eta_sec % 60):02d}s" if eta_sec >= 60 else f"{int(eta_sec)}s"
+                        msg = f"Rastreando poses na GPU ({pct}% • {frame_idx:,}/{total_frames:,} quadros • {fps_cur:.1f} FPS • Restante: ~{eta_str})"
+                        try:
+                            progress_callback(min(0.60, (frame_idx / total_frames) * 0.60), msg)
+                        except TypeError:
+                            progress_callback(min(0.60, (frame_idx / total_frames) * 0.60))
             finally:
                 if self.effective_device == "gpu":
                     try:
@@ -520,7 +538,7 @@ class SenpAIPipeline:
             cap_render = cv2.VideoCapture(video_path)
             if width < 1280:
                 render_w = 1280
-                render_h = int(round(height * (1280.0 / max(1, width))))
+                render_h = round(height * (1280.0 / max(1, width)))
                 render_h += render_h % 2
             else:
                 render_w = width + (width % 2)
@@ -694,11 +712,12 @@ class SenpAIPipeline:
         self,
         video_path: str,
         output_video_path: Optional[str] = None,
-        progress_callback: Optional[Callable[[float], None]] = None,
+        progress_callback: Optional[Callable[..., None]] = None,
         is_cancelled: Optional[Callable[[], bool]] = None,
         training_modality_override: Optional[str] = None,
         custom_kendoka_names: Optional[Dict[str, str]] = None,
-        training_segments_override: Optional[List[Dict[str, Any]]] = None
+        training_segments_override: Optional[List[Dict[str, Any]]] = None,
+        frame_step: int = 1
     ) -> Optional[Dict[str, Any]]:
         """
         Executa a análise dedicada do Modo de Treinamento e Aprendizado:
@@ -721,7 +740,7 @@ class SenpAIPipeline:
         batch_size = self.batch_size if (self.effective_device == "gpu" and self.pose_detector.use_gpu) else 1
         frame_idx = 0
 
-        with AsyncVideoBatchReader(video_path, batch_size=batch_size, max_queue=4) as reader:
+        with AsyncVideoBatchReader(video_path, batch_size=batch_size, max_queue=4, frame_step=frame_step) as reader:
             fps = reader.fps
             total_frames = reader.total_frames
             width = reader.width
@@ -745,7 +764,16 @@ class SenpAIPipeline:
                         frame_idx += 1
 
                     if progress_callback:
-                        progress_callback(min(0.65, (frame_idx / total_frames) * 0.65))
+                        pct = int((frame_idx / total_frames) * 100)
+                        elapsed = max(0.001, time.time() - start_time)
+                        fps_cur = frame_idx / elapsed
+                        eta_sec = max(0, (total_frames - frame_idx) / max(0.1, fps_cur))
+                        eta_str = f"{int(eta_sec // 60)}m {int(eta_sec % 60):02d}s" if eta_sec >= 60 else f"{int(eta_sec)}s"
+                        msg = f"Rastreando poses na GPU ({pct}% • {frame_idx:,}/{total_frames:,} quadros • {fps_cur:.1f} FPS • Restante: ~{eta_str})"
+                        try:
+                            progress_callback(min(0.65, (frame_idx / total_frames) * 0.65), msg)
+                        except TypeError:
+                            progress_callback(min(0.65, (frame_idx / total_frames) * 0.65))
             finally:
                 if self.effective_device == "gpu":
                     try:
@@ -897,7 +925,7 @@ class SenpAIPipeline:
         sub_sessions: Optional[List[Any]] = None,
         default_modality_name: str = "Treinamento",
         total_reidentifications: int = 0,
-        progress_callback: Optional[Callable[[float], None]] = None,
+        progress_callback: Optional[Callable[..., None]] = None,
         is_cancelled: Optional[Callable[[], bool]] = None
     ) -> bool:
         """
@@ -1077,7 +1105,8 @@ class AnalysisWorker:
         custom_kendoka_names: Optional[Dict[str, str]] = None,
         shiaijo_polygon: Optional[List[Tuple[float, float]]] = None,
         analysis_mode: str = "match",
-        training_segments_override: Optional[List[Dict[str, Any]]] = None
+        training_segments_override: Optional[List[Dict[str, Any]]] = None,
+        frame_step: int = 1
     ):
         self.pipeline = pipeline
         self.video_path = video_path
@@ -1090,6 +1119,7 @@ class AnalysisWorker:
         self.shiaijo_polygon = shiaijo_polygon
         self.analysis_mode = analysis_mode
         self.training_segments_override = training_segments_override
+        self.frame_step = max(1, frame_step or 1)
         
         self.progress: float = 0.0
         self.status_message: str = "Inicializando pipeline de visão e pose tracking..."
@@ -1132,9 +1162,12 @@ class AnalysisWorker:
 
     def _run(self):
         try:
-            def on_progress(p: float):
+            def on_progress(p: float, msg: Optional[str] = None):
                 self.progress = min(1.0, max(0.0, p))
-                self.status_message = f"Processando frames... {int(self.progress * 100)}%"
+                if msg:
+                    self.status_message = msg
+                else:
+                    self.status_message = f"Processando frames... {int(self.progress * 100)}%"
 
             def check_cancel() -> bool:
                 return self._cancel_event.is_set()
@@ -1151,7 +1184,8 @@ class AnalysisWorker:
                 custom_kendoka_names=self.custom_kendoka_names,
                 shiaijo_polygon=self.shiaijo_polygon,
                 analysis_mode=self.analysis_mode,
-                training_segments_override=self.training_segments_override
+                training_segments_override=self.training_segments_override,
+                frame_step=self.frame_step
             )
 
             self.end_time = time.time()

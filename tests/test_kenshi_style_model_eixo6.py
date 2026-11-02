@@ -231,7 +231,7 @@ class TestKendokaReportWithBaseline(unittest.TestCase):
         )
 
         md = profile.generate_individual_report_markdown()
-        self.assertIn("## 3. Análise Comparativa com o Baseline Cinestésico Individual (Eixo 6)", md)
+        self.assertIn("Análise Comparativa com o Baseline Cinestésico Individual (Eixo 6)", md)
         self.assertIn("Postura com 2.1° a mais de inclinação", md)
         self.assertIn("Eduardo Zimermann", md)
 

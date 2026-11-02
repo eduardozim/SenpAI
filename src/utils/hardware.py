@@ -519,6 +519,41 @@ def detect_connected_cameras() -> List[Dict[str, Any]]:
     return cameras
 
 
+_BEST_H264_ENCODER_ARGS_CACHE: Optional[List[str]] = None
+
+def get_best_h264_encoder_args(ffmpeg_bin: str) -> List[str]:
+    """
+    Detecta e retorna os melhores argumentos de encoder H.264 disponíveis no executável FFmpeg,
+    priorizando aceleração nativa por GPU (h264_nvenc ou h264_mf no Windows).
+    """
+    global _BEST_H264_ENCODER_ARGS_CACHE
+    if _BEST_H264_ENCODER_ARGS_CACHE is not None:
+        return _BEST_H264_ENCODER_ARGS_CACHE
+
+    candidate_encoders = ["h264_nvenc", "h264_mf", "libx264", "libopenh264", "h264"]
+    best_enc = "libx264"
+    try:
+        enc_out = subprocess.run([ffmpeg_bin, "-encoders"], capture_output=True, text=True, timeout=4).stdout
+        for enc in candidate_encoders:
+            if enc in enc_out:
+                best_enc = enc
+                break
+    except Exception:
+        pass
+
+    if best_enc == "h264_mf":
+        args = ["-vcodec", "h264_mf", "-b:v", "6M"]
+    elif best_enc == "h264_nvenc":
+        args = ["-vcodec", "h264_nvenc", "-preset", "p4", "-cq", "19"]
+    elif best_enc == "libx264":
+        args = ["-vcodec", "libx264", "-crf", "17", "-preset", "veryfast"]
+    else:
+        args = ["-vcodec", best_enc]
+
+    _BEST_H264_ENCODER_ARGS_CACHE = args
+    return args
+
+
 class HighQualityVideoWriter:
     """
     Gravador de vídeo em alta definição (H.264 / AVC1 direto via pipe FFmpeg com CRF 17),
@@ -542,6 +577,7 @@ class HighQualityVideoWriter:
         except Exception:
             ffmpeg_bin = "ffmpeg"
 
+        enc_args = get_best_h264_encoder_args(ffmpeg_bin)
         cmd = [
             ffmpeg_bin,
             "-y",
@@ -552,9 +588,7 @@ class HighQualityVideoWriter:
             "-r", f"{self.fps:.3f}",
             "-i", "-",
             "-an",
-            "-vcodec", "libx264",
-            "-crf", "17",
-            "-preset", "veryfast",
+            *enc_args,
             "-pix_fmt", "yuv420p",
             "-movflags", "+faststart",
             self.output_path,

@@ -803,17 +803,18 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
         curr_k_names = st.session_state.get("training_kendoka_names", {})
         curr_reviews = st.session_state.get("session_reviews", {})
         try:
-            training_pkg_bytes = export_training_session_package(
-                analysis_result=res,
-                video_path=curr_v_path,
-                annotated_video_path=curr_ann_path,
-                kendoka_names=curr_k_names,
-                invert_aka_shiro=is_inverted,
-                session_reviews=curr_reviews
-            )
+            def _get_training_pkg_bytes() -> bytes:
+                return export_training_session_package(
+                    analysis_result=res,
+                    video_path=curr_v_path,
+                    annotated_video_path=curr_ann_path,
+                    kendoka_names=curr_k_names,
+                    invert_aka_shiro=is_inverted,
+                    session_reviews=curr_reviews
+                )
             st.download_button(
                 label="📦 Salvar Análise (.zip)",
-                data=training_pkg_bytes,
+                data=_get_training_pkg_bytes,
                 file_name=f"analise_treino_{mod_key}_{int(time.time())}.zip",
                 mime="application/zip",
                 width="stretch",
@@ -824,14 +825,15 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
             st.error(f"Erro ao preparar pacote: {ex_exp}")
     with top_c3:
         try:
-            pdf_bytes = generate_training_pdf_report(
-                analysis_result=res,
-                kendoka_names=curr_k_names,
-                modality_key=mod_key
-            )
+            def _get_pdf_bytes() -> bytes:
+                return generate_training_pdf_report(
+                    analysis_result=res,
+                    kendoka_names=curr_k_names,
+                    modality_key=mod_key
+                )
             st.download_button(
                 label="📄 Relatório PDF",
-                data=pdf_bytes,
+                data=_get_pdf_bytes,
                 file_name=f"relatorio_treino_kendo_{mod_key}_{int(time.time())}.pdf",
                 mime="application/pdf",
                 width="stretch",
@@ -841,10 +843,9 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
         except Exception as ex_pdf:
             st.error(f"Erro ao gerar PDF: {ex_pdf}")
     with top_c4:
-        report_json_str = json.dumps(train_data, indent=2, ensure_ascii=False)
         st.download_button(
             label="📥 JSON",
-            data=report_json_str,
+            data=lambda: json.dumps(train_data, indent=2, ensure_ascii=False),
             file_name=f"sessao_treino_{mod_key}_{int(time.time())}.json",
             mime="application/json",
             width="stretch",
@@ -2779,10 +2780,13 @@ elif nav_page == "settings":
         with act_col2:
             st.markdown("**📥 Baixar Treinamento Atual**")
             st.caption("Exporta pacote completo consolidando revisões por Dan, Decisão dos Shinpans, Base de Conhecimento de IA e **todos os clipes de vídeo das pendências**.")
-            pkg_zip_bytes = feedback_mgr.export_training_package_zip(auto_trainer_instance=auto_trainer)
+            
+            def _export_full_training_pkg_zip() -> bytes:
+                return feedback_mgr.export_training_package_zip(auto_trainer_instance=auto_trainer)
+
             dl_train_clicked = st.download_button(
                 label="📦 Baixar Pacote Completo (.zip)",
-                data=pkg_zip_bytes,
+                data=_export_full_training_pkg_zip,
                 file_name=f"senpai_pacote_treinamento_completo_{int(time.time())}.zip",
                 mime="application/zip",
                 width="stretch",
@@ -2792,7 +2796,7 @@ elif nav_page == "settings":
             if dl_train_clicked:
                 st.session_state["training_download_success_msg"] = (
                     "✅ **Download do Pacote Completo (.zip) realizado com sucesso!**\n\n"
-                    f"O arquivo ZIP ({len(pkg_zip_bytes) / 1024:.1f} KB) foi gerado e baixado contendo "
+                    "O arquivo ZIP foi gerado e baixado contendo "
                     "todas as revisões por Dan, Decisões dos Shinpans, fila de pendências da Curadoria Ativa, "
                     "todos os clipes de vídeo dos lances para auditoria e a Base de Conhecimento do Auto-Trainer."
                 )
@@ -2802,11 +2806,13 @@ elif nav_page == "settings":
                 st.success("✅ Pacote baixado recentemente.", icon="📥")
 
             with st.expander("📄 Exportar apenas metadados (.json)", expanded=False):
-                pkg_data = feedback_mgr.export_training_package(auto_trainer_instance=auto_trainer)
-                pkg_json_str = json.dumps(pkg_data, indent=2, ensure_ascii=False)
+                def _export_training_pkg_json() -> str:
+                    pkg_data = feedback_mgr.export_training_package(auto_trainer_instance=auto_trainer)
+                    return json.dumps(pkg_data, indent=2, ensure_ascii=False)
+
                 st.download_button(
                     label="📥 Baixar Apenas JSON",
-                    data=pkg_json_str,
+                    data=_export_training_pkg_json,
                     file_name=f"senpai_training_package_{int(time.time())}.json",
                     mime="application/json",
                     width="stretch",
@@ -3137,10 +3143,9 @@ elif nav_page == "settings":
                         key="btn_dl_auto_train_md"
                     )
                 with dl_c2:
-                    kb_dump = json.dumps(auto_trainer.load_knowledge_base(), indent=2, ensure_ascii=False)
                     st.download_button(
                         "📥 Baixar Base de Conhecimento (.json)",
-                        data=kb_dump,
+                        data=lambda: json.dumps(auto_trainer.load_knowledge_base(), indent=2, ensure_ascii=False),
                         file_name=f"senpai_ai_knowledge_base_{int(time.time())}.json",
                         mime="application/json",
                         width="stretch",
@@ -3448,10 +3453,9 @@ elif nav_page == "settings":
         st.markdown("---")
         evo_export_c1, evo_export_c2 = st.columns(2)
         with evo_export_c1:
-            evo_dump_json = json.dumps(evo_stats, indent=2, ensure_ascii=False)
             st.download_button(
                 "📥 Baixar Painel de Evolução Completo (.json)",
-                data=evo_dump_json,
+                data=lambda: json.dumps(evo_stats, indent=2, ensure_ascii=False),
                 file_name=f"senpai_ai_evolution_stats_{int(time.time())}.json",
                 mime="application/json",
                 width="stretch",
@@ -7320,6 +7324,24 @@ elif nav_page in ["match", "training", "analysis"]:
                     st.warning("⚠️ O processamento foi interrompido pelo usuário.")
                     st.session_state["processing_cancelled"] = False
 
+                with st.expander("⚡ Opções de Desempenho & Otimização do Processamento", expanded=False):
+                    opt_c1, opt_c2 = st.columns([1.1, 0.9])
+                    with opt_c1:
+                        st.radio(
+                            "Cadência de Análise dos Quadros:",
+                            ["🎯 Completa (100% dos quadros • Alta precisão)", "⚡ Turbo 2x (Quadros alternados • Dobra a velocidade)"],
+                            index=0,
+                            key="perf_cadence_choice",
+                            help="O Modo Turbo analisa 1 a cada 2 quadros com interpolação contínua, reduzindo pela metade o tempo de IA sem comprometer a contagem e avaliação dos golpes."
+                        )
+                    with opt_c2:
+                        st.checkbox(
+                            "🎬 Gerar Vídeo Anotado Completo (.mp4)",
+                            value=True,
+                            key="opt_render_annotated_video_on_finish",
+                            help="Se desmarcado, o SenpAI conclui a análise biomecânica e exibe os relatórios imediatamente. O vídeo anotado poderá ser gerado sob demanda a qualquer momento."
+                        )
+
                 col_btn1, col_btn2 = st.columns([1, 1])
                 with col_btn1:
                     btn_start_label = "⚡ Executar Análise de Treinamento" if app_mode == "training" else "⚡ Executar Análise com SenpAI"
@@ -7376,7 +7398,9 @@ elif nav_page in ["match", "training", "analysis"]:
                             weight_zanshin=w_zanshin
                         )
 
-                    annotated_output = os.path.abspath("annotated_match.mp4")
+                    chosen_step = 2 if "Turbo" in st.session_state.get("perf_cadence_choice", "") else 1
+                    should_render_video = st.session_state.get("opt_render_annotated_video_on_finish", True)
+                    annotated_output = os.path.abspath("annotated_match.mp4") if should_render_video else None
                     target_analysis_mode = "training" if app_mode == "training" else "match"
                     pre_segments_arg = (
                         st.session_state.get("pre_training_segments_override")
@@ -7391,7 +7415,8 @@ elif nav_page in ["match", "training", "analysis"]:
                         training_modality_override=st.session_state.get("training_modality_selected"),
                         training_segments_override=pre_segments_arg,
                         custom_kendoka_names=st.session_state.get("training_kendoka_names", {}),
-                        analysis_mode=target_analysis_mode
+                        analysis_mode=target_analysis_mode,
+                        frame_step=chosen_step
                     )
                     worker.start()
                     st.session_state["analysis_worker"] = worker
@@ -7437,7 +7462,10 @@ elif nav_page in ["match", "training", "analysis"]:
                     else:
                         res = active_worker.result
                         st.session_state["analysis_result"] = res
-                        st.session_state["annotated_output"] = os.path.abspath(active_worker.output_video_path)
+                        if active_worker.output_video_path and os.path.exists(active_worker.output_video_path):
+                            st.session_state["annotated_output"] = os.path.abspath(active_worker.output_video_path)
+                        else:
+                            st.session_state.pop("annotated_output", None)
                         tracker_inst = getattr(getattr(active_worker, "pipeline", None), "training_multi_tracker", None)
                         if tracker_inst is not None:
                             st.session_state["training_multi_tracker_cache"] = tracker_inst

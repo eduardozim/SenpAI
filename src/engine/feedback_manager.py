@@ -1322,10 +1322,10 @@ class FeedbackManager:
         pkg = self.export_training_package(auto_trainer_instance=auto_trainer_instance)
         zip_buffer = io.BytesIO()
 
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(zip_buffer, "w") as zf:
             # 1. Arquivo principal do pacote
             pkg_json_str = json.dumps(pkg, indent=2, ensure_ascii=False)
-            zf.writestr("training_package.json", pkg_json_str)
+            zf.writestr("training_package.json", pkg_json_str.encode("utf-8"), compress_type=zipfile.ZIP_DEFLATED)
 
             # 2. Clipes de vídeo reais de curadoria ativa da pasta padrão
             included_basenames = set()
@@ -1334,7 +1334,7 @@ class FeedbackManager:
                     if f_name.lower().endswith((".mp4", ".mov", ".avi", ".webm")):
                         f_path = os.path.join(clips_dir, f_name)
                         if os.path.isfile(f_path) and os.path.getsize(f_path) > 0:
-                            zf.write(f_path, arcname=f"active_learning_clips/{f_name}")
+                            zf.write(f_path, arcname=f"active_learning_clips/{f_name}", compress_type=zipfile.ZIP_STORED)
                             included_basenames.add(f_name)
 
             # 3. Garantir que clipes referenciados na fila também sejam incluídos se estiverem fora da pasta padrão
@@ -1343,7 +1343,7 @@ class FeedbackManager:
                 if c_path and os.path.isfile(c_path):
                     b_name = os.path.basename(c_path)
                     if b_name not in included_basenames:
-                        zf.write(c_path, arcname=f"active_learning_clips/{b_name}")
+                        zf.write(c_path, arcname=f"active_learning_clips/{b_name}", compress_type=zipfile.ZIP_STORED)
                         included_basenames.add(b_name)
 
         zip_buffer.seek(0)

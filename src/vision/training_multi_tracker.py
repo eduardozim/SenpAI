@@ -66,7 +66,7 @@ class TrainingTrackState:
             return nose["x"], nose["y"]
         return 0.5, 0.5
 
-    def update_active(self, landmarks: Dict[str, Any], snap: KenshiAppearanceSnapshot, frame_idx: int):
+    def update_active(self, landmarks: Dict[str, Any], snap: Optional[KenshiAppearanceSnapshot], frame_idx: int):
         """Atualiza estado ativo do Kenshi com amortecimento de velocidade para evitar picos por jitter."""
         cx, cy = self._get_center(landmarks)
         if self.last_center_x is not None:
@@ -82,7 +82,8 @@ class TrainingTrackState:
         self.hit_streak += 1
         self.status = "ACTIVE"
 
-        self.signature.update(snap)
+        if snap is not None:
+            self.signature.update(snap)
 
     def mark_lost(self):
         """Marca como perdido temporariamente (oclusão breve ou movimento rápido)."""
@@ -170,10 +171,13 @@ class TrainingMultiKenshiTracker:
         self.frame_idx += 1
         current_frame_results: Dict[str, Optional[Dict[str, Any]]] = {}
 
-        cand_snapshots = [
-            KenshiReIDExtractor.extract_snapshot(frame, lm)
-            for lm in candidates
-        ]
+        cand_snapshots: List[Optional[KenshiAppearanceSnapshot]] = [None] * len(candidates)
+
+        def _get_snapshot(c_i: int) -> KenshiAppearanceSnapshot:
+            if cand_snapshots[c_i] is None:
+                cand_snapshots[c_i] = KenshiReIDExtractor.extract_snapshot(frame, candidates[c_i])
+            return cand_snapshots[c_i]
+
         cand_centers = [TrainingTrackState._get_center(lm) for lm in candidates]
 
         matched_tracks = set()
@@ -199,7 +203,9 @@ class TrainingMultiKenshiTracker:
                     matched_tracks.add(t_id)
                     matched_candidates.add(c)
                     track = self.tracks[t_id]
-                    track.update_active(candidates[c], cand_snapshots[c], self.frame_idx)
+                    # Amostragem periódica de snapshots para economizar CPU em vídeos longos
+                    snap = _get_snapshot(c) if (track.signature.sample_count < 15 or self.frame_idx % 6 == 0) else None
+                    track.update_active(candidates[c], snap, self.frame_idx)
                     current_frame_results[t_id] = candidates[c]
 
         # ---------------------------------------------------------------------
@@ -225,7 +231,8 @@ class TrainingMultiKenshiTracker:
                     matched_tracks.add(t_id)
                     matched_candidates.add(real_c_idx)
                     track = self.tracks[t_id]
-                    track.update_active(candidates[real_c_idx], cand_snapshots[real_c_idx], self.frame_idx)
+                    snap = _get_snapshot(real_c_idx) if (track.signature.sample_count < 15 or self.frame_idx % 6 == 0) else None
+                    track.update_active(candidates[real_c_idx], snap, self.frame_idx)
                     current_frame_results[t_id] = candidates[real_c_idx]
 
         # ---------------------------------------------------------------------
@@ -236,7 +243,7 @@ class TrainingMultiKenshiTracker:
 
         if dormant_tracks and still_unmatched:
             for c_idx in list(still_unmatched):
-                cand_snap = cand_snapshots[c_idx]
+                cand_snap = _get_snapshot(c_idx)
                 cand_sig = KenshiAppearanceSignature("CANDIDATE")
                 cand_sig.update(cand_snap)
 
@@ -280,7 +287,7 @@ class TrainingMultiKenshiTracker:
         for c_idx in still_unmatched:
             cx, cy = cand_centers[c_idx]
             cand_lm = candidates[c_idx]
-            cand_snap = cand_snapshots[c_idx]
+            cand_snap = _get_snapshot(c_idx)
 
             matched_tentative = None
             best_tent_dist = 0.32
