@@ -55,14 +55,14 @@ class AsyncVideoBatchReader:
         if not self.cap or not self.cap.isOpened():
             if self.cap:
                 self.cap.release()
-            raise ValueError(f"Não foi possível abrir o arquivo de vídeo (arquivo corrompido ou formato não suportado): '{os.path.basename(str(video_path))}'")
+            raise ValueError(f"Não foi possível abrir o arquivo de vídeo (arquivo corrompido ou formato não suportado): '{os.path.basename(video_path)}'")
 
         raw_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
         if raw_frames <= 0:
             ret, test_frame = self.cap.read()
             if not ret or test_frame is None:
                 self.cap.release()
-                raise ValueError(f"O arquivo de vídeo '{os.path.basename(str(video_path))}' está corrompido ou não contém quadros legíveis (0 frames decodificados).")
+                raise ValueError(f"O arquivo de vídeo '{os.path.basename(video_path)}' está corrompido ou não contém quadros legíveis (0 frames decodificados).")
             # Reset posição do stream para o início
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
             raw_frames = 1
