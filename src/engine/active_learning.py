@@ -1,3 +1,4 @@
+from src.utils.test_isolation import get_safe_data_path, assert_not_production_write
 """
 Módulo de Aprendizado Ativo (Active Learning), Golden Benchmark e Governança Multi-Árbitro.
 Implementa os 4 pilares do Eixo 4 do SenpAI:
@@ -34,7 +35,7 @@ class UncertaintySampler:
         max_threshold: float = 0.65,
         llm_assistant: Optional[KendoLLMAssistant] = None
     ):
-        self.queue_file = queue_file
+        self.queue_file = get_safe_data_path(queue_file, 'test_active_learning_queue.json')
         self.min_threshold = min_threshold
         self.max_threshold = max_threshold
         self.llm_assistant = llm_assistant or KendoLLMAssistant()

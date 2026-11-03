@@ -1195,12 +1195,13 @@ class TrainingAnalyzer:
                 kin_devs_k1 = eval_k1.get("deviations", {})
                 kin_ins_k1 = eval_k1.get("insights", [])
 
-                kin_mgr.record_training_session(
-                    kenshi_id=k_id,
-                    display_name=c_name,
-                    cadence_cpm=pillars_k1.cadence_cpm,
-                    mean_spine_tilt=pillars_k1.movimentacao_submetrics.get("verticalidade_coluna")
-                )
+                if len(valid_prim) >= 10:
+                    kin_mgr.record_training_session(
+                        kenshi_id=k_id,
+                        display_name=c_name,
+                        cadence_cpm=pillars_k1.cadence_cpm,
+                        mean_spine_tilt=pillars_k1.movimentacao_submetrics.get("verticalidade_coluna")
+                    )
             except Exception:
                 pass
 
@@ -1251,12 +1252,13 @@ class TrainingAnalyzer:
                 kin_devs_k1 = eval_k1.get("deviations", {})
                 kin_ins_k1 = eval_k1.get("insights", [])
 
-                kin_mgr.record_training_session(
-                    kenshi_id=k1_id,
-                    display_name=k1_c_name,
-                    cadence_cpm=pillars_k1.cadence_cpm,
-                    mean_spine_tilt=pillars_k1.movimentacao_submetrics.get("verticalidade_coluna")
-                )
+                if len(valid_prim) >= 10:
+                    kin_mgr.record_training_session(
+                        kenshi_id=k1_id,
+                        display_name=k1_c_name,
+                        cadence_cpm=pillars_k1.cadence_cpm,
+                        mean_spine_tilt=pillars_k1.movimentacao_submetrics.get("verticalidade_coluna")
+                    )
             except Exception:
                 pass
 

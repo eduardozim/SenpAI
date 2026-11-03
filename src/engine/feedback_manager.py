@@ -14,6 +14,7 @@ from typing import Dict, Any, List, Tuple, Optional
 from urllib.parse import urlparse
 from src.utils.logger_manager import log_event
 from src.utils.strike_clip_manager import get_cross_platform_basename
+from src.utils.test_isolation import get_safe_data_path, assert_not_production_write
 from src.engine.active_learning import (
     UncertaintySampler,
     GoldenBenchmark,
@@ -151,13 +152,13 @@ class FeedbackManager:
         shinpan_registry_path: str = "data/shinpan_reviewed_videos.json",
         checkpoint_path: str = "data/auto_training_checkpoint.json"
     ):
-        self.dataset_path = dataset_path
-        self.history_path = history_path
-        self.profiles_path = profiles_path
+        self.dataset_path = get_safe_data_path(dataset_path, "test_feedback_dataset.json")
+        self.history_path = get_safe_data_path(history_path, "test_training_history.json")
+        self.profiles_path = get_safe_data_path(profiles_path, "test_calibration_profiles.json")
         self.models_dir = models_dir
-        self.knowledge_base_path = knowledge_base_path
-        self.shinpan_registry_path = shinpan_registry_path
-        self.checkpoint_path = checkpoint_path
+        self.knowledge_base_path = get_safe_data_path(knowledge_base_path, "test_ai_knowledge_base.json")
+        self.shinpan_registry_path = get_safe_data_path(shinpan_registry_path, "test_shinpan_reviewed_videos.json")
+        self.checkpoint_path = get_safe_data_path(checkpoint_path, "test_auto_training_checkpoint.json")
         self._ensure_files_exist()
         
         # Componentes do Eixo 4: Aprendizado Ativo, Padrão-Ouro e Governança
@@ -247,6 +248,7 @@ class FeedbackManager:
     def _ensure_files_exist(self):
         os.makedirs(os.path.dirname(self.dataset_path), exist_ok=True)
         if not os.path.exists(self.dataset_path):
+            assert_not_production_write(self.dataset_path, "_ensure_files_exist")
             with open(self.dataset_path, "w", encoding="utf-8") as f:
                 json.dump([], f, indent=2, ensure_ascii=False)
 
@@ -507,6 +509,8 @@ class FeedbackManager:
 
         if not updated:
             data.append(entry)
+
+        assert_not_production_write(self.dataset_path, "save_feedback")
 
         with open(self.dataset_path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
@@ -1009,6 +1013,11 @@ class FeedbackManager:
         Apaga todo o treinamento do sistema, limpando conjuntos de dados,
         registro de vídeos dos Shinpans, fila de curadoria ativa e restaurando os perfis de calibração para a configuração padrão.
         """
+        assert_not_production_write(self.dataset_path, "reset_all_training_data (dataset)")
+        assert_not_production_write(self.history_path, "reset_all_training_data (history)")
+        assert_not_production_write(self.shinpan_registry_path, "reset_all_training_data (shinpan_registry)")
+        assert_not_production_write(self.profiles_path, "reset_all_training_data (profiles)")
+
         with open(self.dataset_path, "w", encoding="utf-8") as f:
             json.dump([], f, indent=2, ensure_ascii=False)
 
@@ -1442,6 +1451,8 @@ class FeedbackManager:
                 current_data.append(item)
                 existing_ids.add(item_id)
                 new_added_count += 1
+
+        assert_not_production_write(self.dataset_path, "save_feedback")
 
         with open(self.dataset_path, "w", encoding="utf-8") as f:
             json.dump(current_data, f, indent=2, ensure_ascii=False)
@@ -2119,6 +2130,7 @@ class FeedbackManager:
 
     def save_profiles(self, profiles: Dict[str, Any]) -> bool:
         """Salva o dicionário de perfis de calibração em config/calibration_profiles.json."""
+        assert_not_production_write(self.profiles_path, "save_profiles")
         try:
             os.makedirs(os.path.dirname(self.profiles_path) or ".", exist_ok=True)
             with open(self.profiles_path, "w", encoding="utf-8") as f:

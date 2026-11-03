@@ -1,3 +1,4 @@
+from src.utils.test_isolation import get_safe_data_path, assert_not_production_write
 """
 Módulo de Modelagem do Estilo Individual do Kenshi (Eixo 6).
 Implementa o Perfil Cinestésico Individual (Kinesthetic Baseline) e
@@ -277,7 +278,7 @@ class KinestheticProfileManager:
     """
 
     def __init__(self, storage_path: str = "data/kenshi_baselines.json"):
-        self.storage_path = storage_path
+        self.storage_path = get_safe_data_path(storage_path, 'test_kenshi_baselines.json')
         self.profiles: Dict[str, KinestheticBaselineModel] = {}
         self.load_baselines()
 

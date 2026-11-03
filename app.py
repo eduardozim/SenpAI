@@ -136,12 +136,54 @@ from src.utils.webrtc_manager import (
 )
 from src.utils.stream_capture import (
     ThreadedVideoStream, probe_stream_connection, normalize_stream_source, apply_ffmpeg_network_optimizations,
-    resolve_streaming_url, is_web_streaming_url, format_stream_time, StreamSyncTracker
+    resolve_streaming_url, is_web_streaming_url, format_stream_time, StreamSyncTracker,
+    LiveStreamNotStartedError, parse_upcoming_stream_error
 )
 from src.utils.video_player_controls import render_video_playback_controls
 
 # Inicializa o logger central do sistema
 setup_system_logger()
+
+
+def render_live_stream_not_started_warning(time_remaining: Optional[str] = None) -> None:
+    """Exibe aviso formatado e pedagógico quando uma transmissão ao vivo agendada ainda não iniciou."""
+    is_imminent = False
+    if time_remaining:
+        time_lower = time_remaining.lower()
+        if any(w in time_lower for w in ["instantes", "moments", "segundos", "seconds", "qualquer momento", "breve", "shortly"]):
+            is_imminent = True
+
+    if is_imminent:
+        st.warning(
+            f"""
+            ### ⏳ Transmissão Ao Vivo Prestes a Começar!
+
+            O streaming do YouTube está programado e **deve começar a qualquer momento (em instantes)**.
+
+            ⏱️ **Previsão de Início:** `{time_remaining or 'A qualquer momento (em instantes)'}`
+
+            💡 **O que fazer:**
+            - O canal já está preparando a abertura da transmissão ao vivo.
+            - Aguarde alguns instantes até o criador iniciar o sinal de vídeo e clique em **Testar Conexão** ou marque **Iniciar Análise**.
+            """,
+            icon="⏳"
+        )
+    else:
+        time_badge = f"⏱️ **Previsão de Início:** `{time_remaining}`" if time_remaining else "⏱️ **Previsão de Início:** *Aguardando liberação do canal*"
+        st.warning(
+            f"""
+            ### ⏳ Transmissão Ao Vivo Agendada (Aguardando Início)
+
+            O streaming informado é uma transmissão **ao vivo** no YouTube, porém o evento **ainda não começou**.
+
+            {time_badge}
+
+            💡 **O que fazer:**
+            - O sinal de vídeo ainda não está sendo transmitido pelo criador/canal.
+            - Aguarde o horário previsto e, assim que o evento começar, inicie a análise novamente.
+            """,
+            icon="⏳"
+        )
 
 # Versão Oficial do Sistema
 SYSTEM_VERSION = "v 0.3.8.0"
@@ -1533,13 +1575,12 @@ st.markdown("""
         width: 100% !important;
     }
 
-    /* 3. Expansão e Fundo Contínuo da Barra Lateral */
+    /* 3. Expansão e Fundo Contínuo da Barra Lateral com Alto Contraste (WCAG AA >= 4.5:1) */
     [data-testid="stSidebar"],
     [data-testid="stSidebar"] > div,
     [data-testid="stSidebarContent"],
     [data-testid="stSidebarUserContent"],
     [data-testid="stSidebar"] .block-container {
-        background-color: #0F172A !important;
         min-height: 100% !important;
         height: auto !important;
     }
@@ -1548,13 +1589,157 @@ st.markdown("""
         height: 100vh !important;
         min-height: 100vh !important;
         scrollbar-width: thin !important;
-        scrollbar-color: #475569 #0F172A !important;
     }
 
     /* Aplica largura de 360px apenas quando a barra lateral está expandida (permite recolher suavemente) */
     [data-testid="stSidebar"][aria-expanded="true"] {
         min-width: 360px !important;
         width: 360px !important;
+    }
+
+    /* Configuração Padrão / Tema Escuro */
+    [data-testid="stSidebar"],
+    [data-testid="stSidebar"] > div,
+    [data-testid="stSidebarContent"],
+    [data-testid="stSidebarUserContent"],
+    [data-testid="stSidebar"] .block-container {
+        background-color: #0F172A !important;
+    }
+    [data-testid="stSidebar"] {
+        scrollbar-color: #475569 #0F172A !important;
+    }
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] h4,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] span,
+    [data-testid="stSidebar"] label {
+        color: #F8FAFC !important;
+    }
+    .sidebar-brand-title {
+        color: #F1F5F9 !important;
+    }
+    .sidebar-footer-text {
+        color: #94A3B8 !important;
+    }
+    /* Opções de Rádio Limpas e Elegantes (Sem Caixas ou Bordas) */
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
+        gap: 4px !important;
+    }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
+        color: #E2E8F0 !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 4px 6px !important;
+        margin-bottom: 2px !important;
+        cursor: pointer !important;
+        transition: color 0.15s ease-in-out !important;
+    }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label p,
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label span {
+        color: #E2E8F0 !important;
+        font-weight: 500 !important;
+    }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover p,
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover span {
+        color: #60A5FA !important;
+    }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) p,
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) span {
+        color: #60A5FA !important;
+        font-weight: 700 !important;
+    }
+
+    /* Configuração Acessível para TEMA CLARO (Light Theme) - Contraste Superior a 12:1 */
+    @media (prefers-color-scheme: light), [data-theme="light"], .stApp[data-theme="light"], [data-testid="stAppViewContainer"][data-theme="light"] {
+        [data-testid="stSidebar"],
+        [data-testid="stSidebar"] > div,
+        [data-testid="stSidebarContent"],
+        [data-testid="stSidebarUserContent"],
+        [data-testid="stSidebar"] .block-container {
+            background-color: #F8FAFC !important;
+            border-right: 1px solid #E2E8F0 !important;
+        }
+        [data-testid="stSidebar"] {
+            scrollbar-color: #CBD5E1 #F8FAFC !important;
+        }
+        [data-testid="stSidebar"] h1,
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] h4,
+        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] span,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] .stSelectbox label,
+        [data-testid="stSidebar"] .stSlider label {
+            color: #0F172A !important;
+        }
+        .sidebar-brand-title {
+            color: #0F172A !important;
+        }
+        .sidebar-footer-text {
+            color: #475569 !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
+            gap: 4px !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
+            color: #1E293B !important;
+            background: transparent !important;
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 4px 6px !important;
+            margin-bottom: 2px !important;
+            cursor: pointer !important;
+            transition: color 0.15s ease-in-out !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label p,
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label span {
+            color: #1E293B !important;
+            font-weight: 500 !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover p,
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover span {
+            color: #1D4ED8 !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) {
+            background: transparent !important;
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) p,
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) span {
+            color: #1D4ED8 !important;
+            font-weight: 700 !important;
+        }
+        [data-testid="stSidebar"] .stCaption,
+        [data-testid="stSidebar"] small {
+            color: #475569 !important;
+        }
+        [data-testid="stSidebarCollapseButton"] {
+            color: #1E293B !important;
+            background: rgba(226, 232, 240, 0.8) !important;
+            border: 1px solid #CBD5E1 !important;
+        }
+        [data-testid="stSidebarCollapseButton"]:hover {
+            color: #1D4ED8 !important;
+            background: #DBEAFE !important;
+            border-color: #3B82F6 !important;
+        }
+        [data-testid="stSidebarCollapseButton"] button {
+            color: #1E293B !important;
+        }
     }
 
     /* Botão de Fechar/Recolher a Barra Lateral (<<): Sempre visível e acessível */
@@ -2191,7 +2376,7 @@ def render_welcome_home_page():
 st.sidebar.markdown(
     f"""
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-        <span style="font-size: 1.15rem; font-weight: 800; color: #F1F5F9;">🥋 SenpAI</span>
+        <span class="sidebar-brand-title" style="font-size: 1.15rem; font-weight: 800;">🥋 SenpAI</span>
         <span style="font-size: 0.72rem; color: #818CF8; background: rgba(99, 102, 241, 0.15); padding: 2px 8px; border-radius: 9999px; border: 1px solid rgba(99, 102, 241, 0.3); font-weight: 700;">{SYSTEM_VERSION}</span>
     </div>
     """,
@@ -2300,7 +2485,7 @@ st.session_state["nav_page_selection"] = nav_page
 def render_sidebar_footer():
     st.sidebar.markdown(
         f"""
-        <div style="font-size: 10.5px; color: #64748B; text-align: center; margin-top: 24px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); line-height: 1.4;">
+        <div class="sidebar-footer-text" style="font-size: 10.5px; text-align: center; margin-top: 24px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); line-height: 1.4;">
             <div><b>© 2026 SenpAI • {SYSTEM_VERSION}</b></div>
             <div>Todos os direitos de uso e cópia reservados.</div>
         </div>
@@ -5399,7 +5584,11 @@ elif nav_page in ["match", "training", "analysis"]:
                         else:
                             st.error(f"❌ {diag['message']}")
                     except Exception as ex:
-                        st.error(f"❌ Erro ao conectar ao streaming: {ex}")
+                        time_rem = parse_upcoming_stream_error(str(ex))
+                        if time_rem is not None:
+                            render_live_stream_not_started_warning(time_rem)
+                        else:
+                            st.error(f"❌ Erro ao conectar ao streaming: {ex}")
 
         st.markdown("---")
         run_streaming_detection = st.checkbox("▶️ Iniciar Análise de Streaming em Tempo Real", value=False, key="run_match_streaming_checkbox")
@@ -5509,7 +5698,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     # Barra de Controle de Velocidade e Navegação do Vídeo
                     stream_ctrl_card = st.container()
                     with stream_ctrl_card:
-                        c_speed, c_nav = st.columns([5, 7])
+                        c_speed, c_nav = st.columns([4, 8])
                         with c_speed:
                             speed_choice = st.radio(
                                 "⚡ Velocidade:",
@@ -5521,7 +5710,7 @@ elif nav_page in ["match", "training", "analysis"]:
                             )
                         with c_nav:
                             st.markdown("<div style='font-size: 0.78rem; font-weight: 600; color: #94A3B8; margin-bottom: 2px;'>Navegação no Vídeo:</div>", unsafe_allow_html=True)
-                            nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns(5)
+                            nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns(6)
                             with nav_col1:
                                 btn_r10 = st.button("⏪ -10s", key="match_btn_r10", help="Retroceder 10 segundos")
                             with nav_col2:
@@ -5532,6 +5721,8 @@ elif nav_page in ["match", "training", "analysis"]:
                                 btn_f5 = st.button("⏩ +5s", key="match_btn_f5", help="Avançar 5 segundos")
                             with nav_col5:
                                 btn_f10 = st.button("⏩ +10s", key="match_btn_f10", help="Avançar 10 segundos")
+                            with nav_col6:
+                                btn_live = st.button("🔴 Ao Vivo", key="match_btn_live", help="Sincronizar imediatamente com o ponto ao vivo da transmissão")
 
                     speed_map: dict[str, float] = {"0.5x": 0.5, "1.0x": 1.0, "1.5x": 1.5, "2.0x": 2.0}
                     active_match_speed: float = speed_map.get(speed_choice or "1.0x", 1.0)
@@ -5553,7 +5744,11 @@ elif nav_page in ["match", "training", "analysis"]:
                             st.session_state["match_stream_meta"] = meta
                             st.session_state["match_streaming_url"] = effective_url
                         except Exception as e:
-                            st.error(f"❌ Falha ao resolver URL do streaming: {e}")
+                            time_rem = parse_upcoming_stream_error(str(e))
+                            if time_rem is not None:
+                                render_live_stream_not_started_warning(time_rem)
+                            else:
+                                st.error(f"❌ Falha ao resolver URL do streaming: {e}")
                             resolved_stream_src = None
 
                 if resolved_stream_src:
@@ -5566,13 +5761,16 @@ elif nav_page in ["match", "training", "analysis"]:
                                 active_stream_inst.stop()
                             except Exception:
                                 pass
+                        match_stream_meta = st.session_state.get("match_stream_meta") or {}
                         stream_obj = ThreadedVideoStream(
                             src=resolved_stream_src,
                             name="MatchStreaming",
                             playback_speed=active_match_speed,
                             max_reconnect_attempts=5,
                             reconnect_delay=1.5,
-                            auto_start=True
+                            auto_start=True,
+                            target_fps=float(match_stream_meta.get("fps") or 30.0),
+                            is_live=bool(match_stream_meta.get("is_live", False))
                         )
                         st.session_state["match_active_stream_obj"] = stream_obj
 
@@ -5599,6 +5797,9 @@ elif nav_page in ["match", "training", "analysis"]:
                         elif btn_f10:
                             stream_obj.seek(10.0)
                             st.toast("⏩ Avançando 10 segundos no streaming...", icon="⏩")
+                        elif btn_live:
+                            stream_obj.go_to_live()
+                            st.toast("🔴 Sincronizado com o ponto Ao Vivo!", icon="🔴")
 
                         if btn_pause:
                             is_p = stream_obj.toggle_pause()
@@ -5694,9 +5895,11 @@ elif nav_page in ["match", "training", "analysis"]:
                                 dur_sec = stream_obj.get_duration_seconds()
                                 dur_str = f" / {format_stream_time(dur_sec)}" if dur_sec > 0 else ""
                                 pause_tag = " [PAUSADO]" if stream_obj.is_paused else ""
+                                is_live_m = stream_obj.is_at_live()
+                                live_m_tag = "🔴 AO VIVO" if is_live_m else f"⏪ REPLAY (-{stream_obj.get_live_delay_seconds():.0f}s)"
                                 stream_frame_ph.image(
                                     frame_rgb,
-                                    caption=f"🌐 Transmissão ({'🟢 CONECTADO' if stream_obj.is_connected() else '🟡 BUFFER'} — {stream_fps_val:.1f} FPS | ⏱️ {pos_str}{dur_str} | ⚡ {active_match_speed:.1f}x{pause_tag})",
+                                    caption=f"🌐 Transmissão ({live_m_tag} — {stream_fps_val:.1f} FPS | ⏱️ {pos_str}{dur_str} | ⚡ {active_match_speed:.1f}x{pause_tag})",
                                     channels="RGB",
                                     width="stretch"
                                 )
@@ -6529,7 +6732,11 @@ elif nav_page in ["match", "training", "analysis"]:
                         else:
                             st.error(f"❌ {diag['message']}")
                     except Exception as ex:
-                        st.error(f"❌ Erro ao conectar ao streaming de treino: {ex}")
+                        time_rem = parse_upcoming_stream_error(str(ex))
+                        if time_rem is not None:
+                            render_live_stream_not_started_warning(time_rem)
+                        else:
+                            st.error(f"❌ Erro ao conectar ao streaming de treino: {ex}")
 
         st.markdown("---")
         run_streaming_train = st.checkbox("▶️ Iniciar Análise de Treinamento em Tempo Real", value=False, key="run_train_streaming_checkbox")
@@ -6577,7 +6784,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     # Barra de Controle de Velocidade e Navegação do Vídeo de Treino
                     train_stream_ctrl_card = st.container()
                     with train_stream_ctrl_card:
-                        ct_speed, ct_nav = st.columns([5, 7])
+                        ct_speed, ct_nav = st.columns([4, 8])
                         with ct_speed:
                             train_speed_choice = st.radio(
                                 "⚡ Velocidade:",
@@ -6589,7 +6796,7 @@ elif nav_page in ["match", "training", "analysis"]:
                             )
                         with ct_nav:
                             st.markdown("<div style='font-size: 0.78rem; font-weight: 600; color: #94A3B8; margin-bottom: 2px;'>Navegação no Vídeo:</div>", unsafe_allow_html=True)
-                            tr_col1, tr_col2, tr_col3, tr_col4, tr_col5 = st.columns(5)
+                            tr_col1, tr_col2, tr_col3, tr_col4, tr_col5, tr_col6 = st.columns(6)
                             with tr_col1:
                                 train_btn_r10 = st.button("⏪ -10s", key="train_btn_r10", help="Retroceder 10 segundos")
                             with tr_col2:
@@ -6600,6 +6807,8 @@ elif nav_page in ["match", "training", "analysis"]:
                                 train_btn_f5 = st.button("⏩ +5s", key="train_btn_f5", help="Avançar 5 segundos")
                             with tr_col5:
                                 train_btn_f10 = st.button("⏩ +10s", key="train_btn_f10", help="Avançar 10 segundos")
+                            with tr_col6:
+                                train_btn_live = st.button("🔴 Ao Vivo", key="train_btn_live", help="Sincronizar imediatamente com o ponto ao vivo da transmissão")
 
                     speed_map_train: dict[str, float] = {"0.5x": 0.5, "1.0x": 1.0, "1.5x": 1.5, "2.0x": 2.0}
                     active_train_speed: float = speed_map_train.get(train_speed_choice or "1.0x", 1.0)
@@ -6621,7 +6830,11 @@ elif nav_page in ["match", "training", "analysis"]:
                             st.session_state["train_stream_meta"] = meta
                             st.session_state["train_streaming_url"] = effective_train_url
                         except Exception as e:
-                            st.error(f"❌ Falha ao resolver URL do streaming de treino: {e}")
+                            time_rem = parse_upcoming_stream_error(str(e))
+                            if time_rem is not None:
+                                render_live_stream_not_started_warning(time_rem)
+                            else:
+                                st.error(f"❌ Falha ao resolver URL do streaming de treino: {e}")
                             resolved_train_src = None
 
                 if resolved_train_src:
@@ -6634,13 +6847,16 @@ elif nav_page in ["match", "training", "analysis"]:
                                 active_train_stream_inst.stop()
                             except Exception:
                                 pass
+                        train_stream_meta = st.session_state.get("train_stream_meta") or {}
                         train_stream_obj = ThreadedVideoStream(
                             src=resolved_train_src,
                             name="TrainStreaming",
                             playback_speed=active_train_speed,
                             max_reconnect_attempts=5,
                             reconnect_delay=1.5,
-                            auto_start=True
+                            auto_start=True,
+                            target_fps=float(train_stream_meta.get("fps") or 30.0),
+                            is_live=bool(train_stream_meta.get("is_live", False))
                         )
                         st.session_state["train_active_stream_obj"] = train_stream_obj
 
@@ -6667,6 +6883,9 @@ elif nav_page in ["match", "training", "analysis"]:
                         elif train_btn_f10:
                             train_stream_obj.seek(10.0)
                             st.toast("⏩ Avançando 10 segundos no treino...", icon="⏩")
+                        elif train_btn_live:
+                            train_stream_obj.go_to_live()
+                            st.toast("🔴 Sincronizado com o ponto Ao Vivo!", icon="🔴")
 
                         if train_btn_pause:
                             is_p = train_stream_obj.toggle_pause()
@@ -6757,9 +6976,11 @@ elif nav_page in ["match", "training", "analysis"]:
                                 dur_sec = train_stream_obj.get_duration_seconds()
                                 dur_str = f" / {format_stream_time(dur_sec)}" if dur_sec > 0 else ""
                                 pause_label = " [PAUSADO]" if train_stream_obj.is_paused else ""
+                                is_live_tr = train_stream_obj.is_at_live()
+                                live_tr_tag = "🔴 AO VIVO" if is_live_tr else f"⏪ REPLAY (-{train_stream_obj.get_live_delay_seconds():.0f}s)"
                                 train_stream_frame_ph.image(
                                     frame_rgb,
-                                    caption=f"🌐 Transmissão de Treino ({'🟢 ATIVO' if train_stream_obj.is_connected() else '🟡 BUFFER'} — {stream_fps_val:.1f} FPS | ⏱️ {pos_str}{dur_str} | ⚡ {active_train_speed:.1f}x{pause_label})",
+                                    caption=f"🌐 Transmissão de Treino ({live_tr_tag} — {stream_fps_val:.1f} FPS | ⏱️ {pos_str}{dur_str} | ⚡ {active_train_speed:.1f}x{pause_label})",
                                     channels="RGB",
                                     width="stretch"
                                 )
@@ -7171,10 +7392,20 @@ elif nav_page in ["match", "training", "analysis"]:
                                 st.session_state.pop("uploaded_file_size", None)
                                 st.toast(f"✅ Vídeo '{extracted_info.get('title', 'Kendo')}' carregado com sucesso!", icon="🎥")
                                 st.rerun()
+                            except LiveStreamNotStartedError as e:
+                                render_live_stream_not_started_warning(e.time_remaining)
                             except VideoDownloadError as e:
-                                st.error(f"❌ {str(e)}")
+                                time_rem = parse_upcoming_stream_error(str(e))
+                                if time_rem is not None:
+                                    render_live_stream_not_started_warning(time_rem)
+                                else:
+                                    st.error(f"❌ {str(e)}")
                             except Exception as e:
-                                st.error(f"❌ Erro ao carregar vídeo do YouTube: {str(e)}")
+                                time_rem = parse_upcoming_stream_error(str(e))
+                                if time_rem is not None:
+                                    render_live_stream_not_started_warning(time_rem)
+                                else:
+                                    st.error(f"❌ Erro ao carregar vídeo do YouTube: {str(e)}")
 
                     # Exibir card informativo se o vídeo do YouTube estiver carregado
                     if yt_loaded_path and yt_info and os.path.exists(yt_loaded_path):
@@ -7458,9 +7689,17 @@ elif nav_page in ["match", "training", "analysis"]:
                     elif active_worker.error:
                         err_msg = active_worker.error
                         st.session_state.pop("analysis_worker", None)
-                        st.error(f"❌ Erro durante o processamento de vídeo: {err_msg}")
+                        st.session_state.pop("analysis_result", None)
+                        st.session_state.pop("annotated_output", None)
+                        st.error(f"❌ **Falha na Análise de Vídeo**: {err_msg}\n\n*Nenhuma pontuação (0-0) foi gerada e nenhuma sessão foi registrada nos perfis dos praticantes.*")
                     else:
                         res = active_worker.result
+                        if not res or res.get("total_frames", 0) <= 0:
+                            st.session_state.pop("analysis_worker", None)
+                            st.session_state.pop("analysis_result", None)
+                            st.session_state.pop("annotated_output", None)
+                            st.error("❌ **Vídeo Corrompido ou Sem Quadros Legíveis**: O arquivo não pôde ser decodificado (0 frames processados). Nenhuma pontuação (0-0) foi gerada e nenhuma sessão foi registrada nos perfis.")
+                            st.rerun()
                         st.session_state["analysis_result"] = res
                         if active_worker.output_video_path and os.path.exists(active_worker.output_video_path):
                             st.session_state["annotated_output"] = os.path.abspath(active_worker.output_video_path)

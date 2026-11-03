@@ -5,6 +5,7 @@ descarte automático de frames defasados, reconexão resiliente e diagnóstico p
 """
 
 import os
+import re
 import time
 import threading
 from collections import deque
@@ -109,6 +110,57 @@ def normalize_stream_source(source_input: Union[str, int]) -> Union[str, int]:
     return cleaned
 
 
+class LiveStreamNotStartedError(Exception):
+    """Exceção levantada quando um streaming ao vivo agendado ainda não foi iniciado pelo canal."""
+    def __init__(self, message: str, time_remaining: Optional[str] = None):
+        super().__init__(message)
+        self.time_remaining = time_remaining
+        self.message = message
+
+
+def parse_upcoming_stream_error(error_str: Union[str, Exception]) -> Optional[str]:
+    """
+    Analisa mensagens de erro para identificar se o streaming de vídeo é um evento ao vivo
+    agendado que ainda não começou (ex: YouTube Live agendado).
+
+    Retorna:
+        - str com tempo restante estimado (ex: '23 minutos', '2 horas', 'alguns instantes') se detectado.
+        - '' se detectado que é um evento agendado mas sem tempo específico.
+        - None se não for um erro de evento agendado.
+    """
+    if not error_str:
+        return None
+    s = str(error_str)
+    # 1. Verifica se já foi formatado em português
+    m_pt = re.search(r'Previs[aã]o de in[ií]cio em:\s*([^.]+)', s, re.IGNORECASE)
+    if m_pt:
+        return m_pt.group(1).strip()
+    # 2. Verifica mensagens nativas do yt-dlp / YouTube
+    m = re.search(r'(?:This live event will begin in|Premieres in|Live event will begin in|will begin in)\s+([^.\n\r]+)', s, re.IGNORECASE)
+    if m:
+        t = m.group(1).strip()
+        t = re.sub(r'\bminutes\b', 'minutos', t, flags=re.I)
+        t = re.sub(r'\bminute\b', 'minuto', t, flags=re.I)
+        t = re.sub(r'\bhours\b', 'horas', t, flags=re.I)
+        t = re.sub(r'\bhour\b', 'hora', t, flags=re.I)
+        t = re.sub(r'\bdays\b', 'dias', t, flags=re.I)
+        t = re.sub(r'\bday\b', 'dia', t, flags=re.I)
+        t = re.sub(r'\bseconds\b', 'segundos', t, flags=re.I)
+        t = re.sub(r'\bsecond\b', 'segundo', t, flags=re.I)
+        t = re.sub(r'\ba few moments\b', 'a qualquer momento (em instantes)', t, flags=re.I)
+        t = re.sub(r'\bshortly\b', 'a qualquer momento (em instantes)', t, flags=re.I)
+        t = re.sub(r'\ba few seconds\b', 'em poucos segundos', t, flags=re.I)
+        return t
+    if any(k in s.lower() for k in [
+        'live event will begin', 'premieres in', 'ainda não iniciada', 'ainda nao iniciada',
+        'live event has not started', 'live stream has not started', 'stream has not started',
+        'has not started', 'has not yet started', 'live stream will begin', 'stream will begin in',
+        'waiting for stream'
+    ]):
+        return ''
+    return None
+
+
 class ThreadedVideoStream:
     """
     Leitor de vídeo em thread dedicada para Webcams locais e streams de rede (RTSP, RTMP, HTTP/MJPEG).
@@ -127,7 +179,9 @@ class ThreadedVideoStream:
         playback_speed: float = 1.0,
         max_reconnect_attempts: int = 5,
         reconnect_delay: float = 1.5,
-        auto_start: bool = True
+        auto_start: bool = True,
+        target_fps: float = 30.0,
+        is_live: bool = False
     ):
         self.raw_src = src
         self.src = normalize_stream_source(src)
@@ -162,10 +216,18 @@ class ThreadedVideoStream:
         self._thread: Optional[threading.Thread] = None
         self._flush_requested: bool = False
 
-        # Controle de Velocidade e Posição (0.5x, 1.0x, 1.5x, 2.0x e Retroceder/Avançar)
+        self.target_fps: float = max(5.0, min(120.0, float(target_fps)))
+        self.is_live: bool = bool(is_live)
+        self.fps: float = self.target_fps
+        self.native_fps: float = self.target_fps
+
+        # Controle de Velocidade, Posição e Ponto Ao Vivo (Live Edge)
         self.playback_speed: float = max(0.25, min(4.0, float(playback_speed)))
         self.is_paused: bool = False
         self._seek_requested_sec: Optional[float] = None
+        self._seek_live_requested: bool = False
+        self._live_head_sec: float = 0.0
+        self._is_dvr_mode: bool = False
 
         if auto_start:
             self.start()
@@ -218,8 +280,11 @@ class ThreadedVideoStream:
             if ret and frame is not None:
                 h, w = frame.shape[:2]
                 self.resolution = (w, h)
-                stream_fps = self.cap.get(cv2.CAP_PROP_FPS) or 30.0
-                self.native_fps = float(stream_fps) if (0 < stream_fps <= 120) else 30.0
+                stream_fps = self.cap.get(cv2.CAP_PROP_FPS) or 0.0
+                if 10.0 <= stream_fps <= 120.0:
+                    self.native_fps = float(stream_fps)
+                else:
+                    self.native_fps = self.target_fps or 30.0
                 self.fps = self.native_fps
                 with self._lock:
                     self.last_frame = frame
@@ -279,6 +344,7 @@ class ThreadedVideoStream:
         fps_frame_counter = 0
 
         while not self._stop_event.is_set():
+            loop_cycle_start = time.perf_counter()
             if not opened or self.cap is None or not self.cap.isOpened():
                 if reconnect_count >= self.max_reconnect_attempts:
                     self.status = "DISCONNECTED"
@@ -298,12 +364,46 @@ class ThreadedVideoStream:
                 opened = self._open_capture()
                 continue
 
-            # Processamento de requisição pendente de Seek (Avançar / Retroceder)
+            # Processamento de requisições de Ao Vivo ou Seek (Avançar / Retroceder)
             with self._seek_lock:
+                if self._seek_live_requested:
+                    self._seek_live_requested = False
+                    self._seek_requested_sec = None
+                    self._is_dvr_mode = False
+                    self.is_paused = False
+                    self.dropped_frames = 0
+                    if self.is_rtsp or self.is_live:
+                        if self.cap and self.cap.isOpened():
+                            drain_count = 0
+                            while drain_count < 30 and not self._stop_event.is_set():
+                                t_d0 = time.perf_counter()
+                                ret_d = self.cap.grab()
+                                if not ret_d or (time.perf_counter() - t_d0) >= 0.005:
+                                    break
+                                drain_count += 1
+                            if drain_count > 0:
+                                ret_last, frame_last = self.cap.retrieve()
+                                if ret_last and frame_last is not None:
+                                    with self._lock:
+                                        self.last_frame = frame_last
+                                        self.last_frame_time = time.time()
+                    else:
+                        target_sec = max(0.0, self._live_head_sec)
+                        if self.cap and self.cap.isOpened():
+                            try:
+                                target_ms = max(0.0, target_sec * 1000.0)
+                                seek_ok = self.cap.set(cv2.CAP_PROP_POS_MSEC, target_ms)
+                                if not seek_ok and self.fps > 0:
+                                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, int(target_sec * self.fps))
+                            except Exception:
+                                pass
+
                 if self._seek_requested_sec is not None and self.cap and self.cap.isOpened():
                     target_sec = self._seek_requested_sec
                     self._seek_requested_sec = None
                     self.dropped_frames = 0
+                    if target_sec < max(0.0, self._live_head_sec - 1.0):
+                        self._is_dvr_mode = True
                     try:
                         target_ms = max(0.0, target_sec * 1000.0)
                         seek_ok = self.cap.set(cv2.CAP_PROP_POS_MSEC, target_ms)
@@ -342,7 +442,7 @@ class ThreadedVideoStream:
                             self.last_frame = frame_last
                             self.last_frame_time = time.time()
 
-            # Captura de frame
+            # Captura de frame único
             t_before = time.perf_counter()
             ret, frame = self.cap.read()
             t_after = time.perf_counter()
@@ -365,10 +465,6 @@ class ThreadedVideoStream:
                     if ret_last and frame_last is not None:
                         frame = frame_last
                         t_after = time.perf_counter()
-            else:
-                t_before = time.time()
-                ret, frame = self.cap.read()
-                t_after = time.time()
 
             if ret and frame is not None:
                 reconnect_count = 0  # Reseta contador de reconexões após sucesso
@@ -382,7 +478,16 @@ class ThreadedVideoStream:
                     self.latency_ms = (t_after - t_before) * 1000.0
                     cur_speed = self.playback_speed
 
-                # Para velocidades aceleradas (1.5x ou 2.0x), adiantar leitura de frames
+                # Atualiza a posição máxima da cabeça de transmissão (live head)
+                current_pos = self.get_position_seconds()
+                if not self._is_dvr_mode:
+                    if current_pos > self._live_head_sec:
+                        self._live_head_sec = current_pos
+                else:
+                    if current_pos >= (self._live_head_sec - 0.5):
+                        self._is_dvr_mode = False
+
+                # Para velocidades aceleradas (1.5x ou 2.0x), adiantar leitura de frames se necessário
                 if cur_speed >= 1.75 and self.cap and self.cap.isOpened():
                     self.cap.grab()  # Pula 1 frame para reproduzir a 2.0x em tempo de vídeo
                 elif cur_speed >= 1.4 and self.cap and self.cap.isOpened() and self.frame_count % 2 == 0:
@@ -418,20 +523,18 @@ class ThreadedVideoStream:
                 if self.dropped_frames >= max_allowed_dropped:
                     opened = False
 
-            # Cadência de tempo:
-            # - Arquivos locais gravados (self.is_file): respeitam a velocidade de reprodução (0.5x, 1.0x, etc.)
-            # - Streams de rede ao vivo (RTSP, RTMP): rodam no ritmo de chegada dos pacotes (sem sleep artificial)
-            # - Webcams USB locais: pequena pausa de 1ms para ceder a CPU
-            if self.is_file:
-                with self._lock:
-                    eff_speed = max(0.25, min(4.0, self.playback_speed))
-                base_fps = self.native_fps if (hasattr(self, "native_fps") and self.native_fps > 0) else 30.0
-                cadence_delay = (1.0 / max(10.0, base_fps)) / eff_speed
-                time.sleep(max(0.002, cadence_delay))
+            # Cadência de tempo estrita para garantir taxa fluida de 30 FPS (ou taxa do stream ajustada pela velocidade):
+            with self._lock:
+                eff_speed = max(0.25, min(4.0, self.playback_speed))
+            base_fps = self.native_fps if (hasattr(self, "native_fps") and 10.0 <= self.native_fps <= 120.0) else (self.target_fps or 30.0)
+            target_period = (1.0 / base_fps) / eff_speed
+
+            time_spent = time.perf_counter() - loop_cycle_start
+            delay_remaining = target_period - time_spent
+            if delay_remaining > 0.001:
+                time.sleep(delay_remaining)
             elif not ret:
                 time.sleep(0.005)
-            elif not self.is_network:
-                time.sleep(0.001)
 
 
         # Finalização da thread
@@ -514,6 +617,34 @@ class ThreadedVideoStream:
             log_event("INFO", f"[{self.name}] Seek absoluto solicitado para {target:.1f}s", "stream_capture")
             return True
 
+    def go_to_live(self) -> bool:
+        """
+        Sincroniza a reprodução imediatamente com o ponto ao vivo (tempo real).
+        Descarta defasagem de buffer e cancela modo DVR de retrocesso.
+        """
+        with self._seek_lock:
+            self._seek_live_requested = True
+            self.is_paused = False
+            self._is_dvr_mode = False
+            log_event("INFO", f"[{self.name}] Retorno ao ponto Ao Vivo solicitado", "stream_capture")
+            return True
+
+    def is_at_live(self) -> bool:
+        """Verifica se a reprodução está sincronizada no ponto ao vivo."""
+        if self._is_dvr_mode:
+            return False
+        curr_pos = self.get_position_seconds()
+        if self._live_head_sec > 0 and (self._live_head_sec - curr_pos) > 2.5:
+            return False
+        return True
+
+    def get_live_delay_seconds(self) -> float:
+        """Retorna o atraso em segundos em relação ao ponto ao vivo (0.0 se estiver ao vivo)."""
+        if self.is_at_live():
+            return 0.0
+        curr = self.get_position_seconds()
+        return max(0.0, self._live_head_sec - curr)
+
     def toggle_pause(self) -> bool:
         """Alterna o estado de pausa da reprodução."""
         with self._lock:
@@ -571,7 +702,9 @@ class ThreadedVideoStream:
             "is_rtsp": self.is_rtsp,
             "playback_speed": self.playback_speed,
             "position_seconds": round(self.get_position_seconds(), 1),
-            "is_paused": self.is_paused
+            "is_paused": self.is_paused,
+            "is_at_live": self.is_at_live(),
+            "live_delay_seconds": round(self.get_live_delay_seconds(), 1)
         }
 
     def stop(self) -> None:
@@ -849,6 +982,17 @@ def resolve_streaming_url(
                     pass
 
     log_event("ERROR", f"Falha ao resolver streaming para {clean_url}: {last_error}", "stream_capture")
+
+    # Detecta se é transmissão ao vivo agendada que ainda não iniciou
+    time_upcoming = parse_upcoming_stream_error(last_error)
+    if time_upcoming is not None:
+        time_msg = f" Previsão de início em: {time_upcoming}." if time_upcoming else ""
+        msg = f"Transmissão ao vivo agendada no YouTube, mas ainda não iniciada.{time_msg}"
+        raise LiveStreamNotStartedError(msg, time_remaining=time_upcoming or None)
+
+    if "this live event has ended" in last_error.lower() or "live event ended" in last_error.lower():
+        raise VideoDownloadError("Esta transmissão ao vivo já foi encerrada pelo criador no YouTube.")
+
     if "This video is unavailable" in last_error or "Video unavailable" in last_error:
         user_msg = "Este vídeo não está disponível no YouTube (verifique se há erro de digitação no link ou se o vídeo foi tornado privado/removido)."
     else:

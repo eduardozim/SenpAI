@@ -242,7 +242,7 @@ class TestMultimodalYukoDatotsuEixo3(unittest.TestCase):
     # ==========================================================================
     def test_calibrator_5th_pillar_hasuji_integration(self):
         """Valida que o Calibrador integra hasuji_score como 5° pilar e rejeita Hasuji incorreto."""
-        calibrator = CalibrationEngine(profile_name="normal")
+        calibrator = CalibrationEngine(config_path="config/test_e3_calibration_profiles.json", profile_name="normal")
 
         # Golpe com excelentes Ki-Ken-Tai-Ichi e Hasuji perfeito
         res_good = calibrator.evaluate_strike(
@@ -271,7 +271,7 @@ class TestMultimodalYukoDatotsuEixo3(unittest.TestCase):
 
     def test_calibrator_ku_totsu_rejection(self):
         """Valida que o Calibrador invalida ponto com bandeira is_ku_totsu ativa."""
-        calibrator = CalibrationEngine(profile_name="normal")
+        calibrator = CalibrationEngine(config_path="config/test_e3_calibration_profiles.json", profile_name="normal")
         res = calibrator.evaluate_strike(
             target_score=0.90,
             fumikomi_score=0.85,

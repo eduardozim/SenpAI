@@ -21,6 +21,9 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
+from src.utils.test_isolation import enable_test_mode
+enable_test_mode()
+
 from src.utils.test_runner import run_automated_tests, TEST_LOG_PATH
 
 def main():

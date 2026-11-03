@@ -435,6 +435,21 @@ def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] =
             last_error_msg = str(e)
             continue
 
+    # Detecta se é transmissão ao vivo agendada que ainda não iniciou
+    try:
+        from src.utils.stream_capture import parse_upcoming_stream_error, LiveStreamNotStartedError
+        time_upcoming = parse_upcoming_stream_error(last_error_msg)
+        if time_upcoming is not None:
+            time_msg = f" Previsão de início: {time_upcoming}." if time_upcoming else ""
+            raise LiveStreamNotStartedError(
+                f"Transmissão ao vivo agendada no YouTube, mas ainda não iniciada.{time_msg}",
+                time_remaining=time_upcoming or None
+            )
+    except LiveStreamNotStartedError:
+        raise
+    except Exception:
+        pass
+
     if any(token in last_error_msg.lower() for token in [
         "requested format is not available", "only images are available",
         "sign in to confirm", "bot", "403", "forbidden"

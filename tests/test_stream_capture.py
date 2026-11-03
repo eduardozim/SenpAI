@@ -400,6 +400,55 @@ class TestStreamCapture(unittest.TestCase):
         stream.flush_buffer()
         self.assertTrue(stream._flush_requested)
 
+    def test_threaded_video_stream_live_point_controls(self):
+        """Valida controles de ponto ao vivo (go_to_live, is_at_live, delay)."""
+        from src.utils.stream_capture import ThreadedVideoStream
+        stream = ThreadedVideoStream(src=0, auto_start=False, target_fps=30.0, is_live=True)
+        self.assertTrue(stream.is_at_live())
+        self.assertEqual(stream.get_live_delay_seconds(), 0.0)
+
+        # Simula DVR rewind
+        stream._live_head_sec = 25.0
+        stream.seek(-10.0)
+        stream._is_dvr_mode = True
+        self.assertFalse(stream.is_at_live())
+
+        # Aciona retorno ao vivo
+        stream.go_to_live()
+        self.assertTrue(stream._seek_live_requested)
+        self.assertFalse(stream._is_dvr_mode)
+        self.assertFalse(stream.is_paused)
+
+    def test_threaded_video_stream_stats_include_live_fields(self):
+        """Valida se get_stats inclui campos de sincronização ao vivo e taxa de 30 FPS."""
+        from src.utils.stream_capture import ThreadedVideoStream
+        stream = ThreadedVideoStream(src=0, auto_start=False, target_fps=30.0)
+        stats = stream.get_stats()
+        self.assertIn("is_at_live", stats)
+        self.assertIn("live_delay_seconds", stats)
+        self.assertEqual(stats["fps"], 30.0)
+
+    def test_live_stream_not_started_error_and_parser(self):
+        """Valida detecção e tradução de mensagens de eventos ao vivo agendados do YouTube."""
+        from src.utils.stream_capture import LiveStreamNotStartedError, parse_upcoming_stream_error
+
+        # Erro real citado pelo usuário
+        err_user = "ERROR: [youtube] UKfdixiGqz0: This live event will begin in 23 minutes."
+        time_rem = parse_upcoming_stream_error(err_user)
+        self.assertEqual(time_rem, "23 minutos")
+
+        # Variações em horas e instantes
+        self.assertEqual(parse_upcoming_stream_error("Premieres in 2 hours."), "2 horas")
+        self.assertEqual(parse_upcoming_stream_error("This live event will begin in a few moments."), "a qualquer momento (em instantes)")
+        self.assertEqual(parse_upcoming_stream_error("This live event will begin in 1 day."), "1 dia")
+        self.assertEqual(parse_upcoming_stream_error("Live stream has not started"), "")
+        self.assertIsNone(parse_upcoming_stream_error("HTTP Error 404: Not Found"))
+
+        # Exceção personalizada
+        ex = LiveStreamNotStartedError("Evento agendado", time_remaining="23 minutos")
+        self.assertEqual(ex.time_remaining, "23 minutos")
+        self.assertIn("Evento agendado", str(ex))
+
 
 if __name__ == "__main__":
     unittest.main()

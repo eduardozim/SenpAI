@@ -43,10 +43,32 @@ class AsyncVideoBatchReader:
         self.stopped = False
         self.error: Optional[Exception] = None
 
+        # Validação antecipada de arquivo para evitar falso positivo de análise em vídeos corrompidos
+        is_url = isinstance(video_path, str) and video_path.startswith(("http://", "https://", "rtsp://", "rtmp://"))
+        if not is_url:
+            if not os.path.exists(video_path):
+                raise ValueError(f"Arquivo de vídeo não encontrado: '{video_path}'")
+            if os.path.isfile(video_path) and os.path.getsize(video_path) == 0:
+                raise ValueError(f"Arquivo de vídeo corrompido (tamanho 0 bytes): '{os.path.basename(video_path)}'")
+
         self.cap = cv2.VideoCapture(video_path)
+        if not self.cap or not self.cap.isOpened():
+            if self.cap:
+                self.cap.release()
+            raise ValueError(f"Não foi possível abrir o arquivo de vídeo (arquivo corrompido ou formato não suportado): '{os.path.basename(str(video_path))}'")
+
+        raw_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0)
+        if raw_frames <= 0:
+            ret, test_frame = self.cap.read()
+            if not ret or test_frame is None:
+                self.cap.release()
+                raise ValueError(f"O arquivo de vídeo '{os.path.basename(str(video_path))}' está corrompido ou não contém quadros legíveis (0 frames decodificados).")
+            # Reset posição do stream para o início
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            raw_frames = 1
+
         raw_fps = float(self.cap.get(cv2.CAP_PROP_FPS) or 30.0)
         self.fps = max(1.0, raw_fps / self.frame_step)
-        raw_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT) or 1)
         self.total_frames = max(1, raw_frames // self.frame_step)
         self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 640)
         self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 480)
@@ -290,6 +312,13 @@ class SenpAIPipeline:
                             torch.cuda.empty_cache()
                     except Exception:
                         pass
+
+        # Validação pós-leitura: abortar imediatamente se nenhum frame foi decodificado
+        if frame_idx == 0:
+            raise ValueError(
+                f"O arquivo de vídeo '{os.path.basename(video_path)}' está corrompido ou não possui quadros legíveis "
+                f"(0 frames decodificados). A análise foi interrompida para proteger a integridade dos dados."
+            )
 
         # Interpolação suave para quaisquer gaps residuais de detecção (ex: oclusões mútuas de até 10 frames)
         aka_history = self.combatant_tracker.interpolate_missing_poses(aka_history, max_gap=10)
@@ -783,6 +812,13 @@ class SenpAIPipeline:
                     except Exception:
                         pass
 
+        # Validação pós-leitura: abortar imediatamente se nenhum frame foi decodificado
+        if frame_idx == 0:
+            raise ValueError(
+                f"O arquivo de vídeo '{os.path.basename(video_path)}' está corrompido ou não possui quadros legíveis "
+                f"(0 frames decodificados). A análise de treinamento foi interrompida para proteger a integridade dos dados."
+            )
+
         tracker.finish_session(total_frames)
 
         if is_cancelled and is_cancelled():
@@ -1086,6 +1122,11 @@ class SenpAIPipeline:
             return data
         except Exception:
             return None
+
+    def process_training_video(self, *args, **kwargs):
+        """Atalho de conveniência para processamento dedicado em modo treinamento."""
+        kwargs["analysis_mode"] = "training"
+        return self.process_video(*args, **kwargs)
 
 
 class AnalysisWorker:
