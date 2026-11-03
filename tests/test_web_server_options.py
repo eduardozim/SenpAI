@@ -13,7 +13,8 @@ from unittest.mock import patch
 
 from src.utils.environment import (
     is_web_server_environment,
-    get_execution_environment_info
+    get_execution_environment_info,
+    get_max_upload_size_mb
 )
 
 
@@ -155,6 +156,34 @@ class TestWebServerOptionsHiding(unittest.TestCase):
         max_dur_match = None if is_local_training_match else 1800
         self.assertEqual(max_dur_match, 1800)
 
+
+
+    def test_streamlit_config_toml_server_protections(self):
+        """Verifica que .streamlit/config.toml possui proteções ativas (enableCORS, enableXsrfProtection) e limite padrão seguro."""
+        import configparser
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".streamlit", "config.toml")
+        self.assertTrue(os.path.exists(config_path), "config.toml deve existir")
+
+        parser = configparser.ConfigParser()
+        parser.read(config_path, encoding="utf-8")
+        
+        self.assertTrue(parser.has_section("server"))
+        self.assertEqual(parser.get("server", "enableCORS").lower(), "true")
+        self.assertEqual(parser.get("server", "enableXsrfProtection").lower(), "true")
+        self.assertEqual(parser.getint("server", "maxUploadSize"), 1024)
+        self.assertEqual(parser.getint("server", "maxMessageSize"), 1024)
+
+    @patch.dict(os.environ, {"SENPAI_DEPLOY_MODE": "web"}, clear=True)
+    def test_max_upload_size_web_mode(self):
+        """Verifica que em modo web o limite de upload é 1 GB (1024 MB)."""
+        self.assertTrue(is_web_server_environment())
+        self.assertEqual(get_max_upload_size_mb(), 1024)
+
+    @patch.dict(os.environ, {"SENPAI_DEPLOY_MODE": "local"}, clear=True)
+    def test_max_upload_size_local_mode(self):
+        """Verifica que em modo local o limite de upload é 50 GB (51200 MB)."""
+        self.assertFalse(is_web_server_environment())
+        self.assertEqual(get_max_upload_size_mb(), 51200)
 
 if __name__ == "__main__":
     unittest.main()

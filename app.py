@@ -128,7 +128,7 @@ from src.utils.video_downloader import (
 )
 from src.utils.environment import (
     get_virtual_environment_info, is_in_virtual_environment, get_execution_environment_info,
-    is_web_server_environment
+    is_web_server_environment, get_max_upload_size_mb
 )
 from src.utils.webrtc_manager import (
     HAS_WEBRTC, webrtc_streamer, WebRtcMode, get_rtc_configuration,
@@ -143,6 +143,20 @@ from src.utils.video_player_controls import render_video_playback_controls
 
 # Inicializa o logger central do sistema
 setup_system_logger()
+
+# Configuração dinâmica de limites de upload do Streamlit
+# No servidor Web / Nuvem: restringe o upload a 1 GB (1024 MB) e mantém proteções ativas (CORS e XSRF).
+# No ambiente Local (Desktop / Dojo): eleva o limite para 50 GB (51200 MB) para vídeos brutos pesados.
+try:
+    from streamlit import config as _st_config
+    if is_web_server_environment():
+        _st_config.set_option("server.maxUploadSize", 1024)
+        _st_config.set_option("server.maxMessageSize", 1024)
+    else:
+        _st_config.set_option("server.maxUploadSize", 51200)
+        _st_config.set_option("server.maxMessageSize", 51200)
+except Exception:
+    pass
 
 
 def render_live_stream_not_started_warning(time_remaining: Optional[str] = None) -> None:
@@ -792,7 +806,11 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
         blocks_title_summary = mod_display_name
 
     # 1. CABEÇALHO DA MODALIDADE DE TREINO
-    st.markdown(
+    diag_html = (
+        f"<div style='color: #38BDF8; font-size: 12px; margin-top: 4px;'>💡 <b>Diagnóstico da IA:</b> {train_data.get('justification', '')}</div>"
+        if train_data.get("justification") else ""
+    )
+    st.html(
         f"""
         <div style="background: linear-gradient(135deg, #090D16 0%, #1E1B4B 100%); border: 2px solid #6366F1; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25);">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(99, 102, 241, 0.35); padding-bottom: 8px; margin-bottom: 10px;">
@@ -815,11 +833,10 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
             <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.06);">
                 <div style="color: #E2E8F0; font-size: 13px; margin-bottom: 3px;"><b>{meta.get('category', 'Modalidade')}:</b> {meta.get('description', '')}</div>
                 <div style="color: #94A3B8; font-size: 12px; margin-bottom: 3px;">🎯 <b>Focos Principais de Avaliação:</b> {' • '.join(meta.get('focus_areas', []))}</div>
-                {f"<div style='color: #38BDF8; font-size: 12px; margin-top: 4px;'>💡 <b>Diagnóstico da IA:</b> {train_data.get('justification', '')}</div>" if train_data.get('justification') else ""}
+                {diag_html}
             </div>
         </div>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
     # Princípios Aprendidos e Fontes de Conhecimento Mineradas
@@ -1234,7 +1251,14 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
         pres_sec = float(k_prof.get("presence_seconds", 0.0))
         reentries = int(k_prof.get("reentry_count", 0))
 
-        st.markdown(
+        extra_tags = []
+        if pres_sec > 0:
+            extra_tags.append(f"<span>👁️ Presença em Cena: <b style='color:#38BDF8;'>{pres_sec:.1f}s</b></span>")
+        if reentries > 0:
+            extra_tags.append(f"<span>🔄 Retornos (Re-ID): <b style='color:#A855F7;'>{reentries}x</b></span>")
+        extra_tags_html = " ".join(extra_tags)
+
+        st.html(
             f"""
             <div style="background: #0B1120; border: 1.5px solid #334155; border-radius: 10px; padding: 14px 18px; margin-bottom: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 8px; margin-bottom: 10px;">
@@ -1250,12 +1274,10 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     <span>⏱️ Cadência: <b style="color:#F8FAFC;">{cadence_cpm:.1f} CPM</b></span>
                     <span>🔁 Repetições: <b style="color:#F8FAFC;">{reps}</b></span>
                     <span>📊 Desvio: <b style="color:#F8FAFC;">{pillars.get('cadence_std_dev_seconds', 0.0):.2f}s DP</b></span>
-                    {f"<span>👁️ Presença em Cena: <b style='color:#38BDF8;'>{pres_sec:.1f}s</b></span>" if pres_sec > 0 else ""}
-                    {f"<span>🔄 Retornos (Re-ID): <b style='color:#A855F7;'>{reentries}x</b></span>" if reentries > 0 else ""}
+                    {extra_tags_html}
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
 
         col_in_name, col_dl_indiv = st.columns([1.6, 1.4])
@@ -3007,8 +3029,18 @@ elif nav_page == "settings":
         with act_col3:
             st.markdown("**📤 Carregar Treinamento Baixado**")
             st.caption("Importa pacote (.zip ou .json) para restaurar revisões, links de streaming, clipes de vídeo e aprendizado da IA.")
-            imported_file = st.file_uploader("Selecione pacote (.zip ou .json)", type=["zip", "json"], key="import_pkg_file_tab")
+            imported_file = st.file_uploader(
+                "Selecione pacote (.zip ou .json)",
+                type=["zip", "json"],
+                max_upload_size=get_max_upload_size_mb(),
+                key="import_pkg_file_tab"
+            )
             if imported_file is not None:
+                max_pkg_mb = get_max_upload_size_mb()
+                if getattr(imported_file, "size", 0) > max_pkg_mb * 1024 * 1024:
+                    limit_label = f"{max_pkg_mb // 1024} GB" if max_pkg_mb >= 1024 else f"{max_pkg_mb} MB"
+                    st.error(f"❌ O pacote excede o limite máximo permitido de {limit_label}.")
+                    st.stop()
                 st.info(f"📄 **Arquivo selecionado:** `{imported_file.name}` ({imported_file.size / 1024:.1f} KB)\n\nPronto para restauração. Clique no botão abaixo para restaurar configurações, descompactar clipes e retreinar o modelo.")
                 if st.button("📤 Importar e Retreinar Modelo", type="primary", width="stretch", key="btn_import_train_tab"):
                     with st.spinner("⏳ Processando e aplicando pacote de treinamento..."):
@@ -7149,13 +7181,30 @@ elif nav_page in ["match", "training", "analysis"]:
 
                 if source_choice == "📁 Fazer Upload de Arquivo":
                     st.markdown("Selecione o arquivo de vídeo local do treinamento de Kendo a ser analisado:" if app_mode == "training" else "Selecione o arquivo de vídeo local da luta de Kendo a ser analisado:")
+                    max_upload_mb = get_max_upload_size_mb()
+                    help_msg = (
+                        "Limite de até 1 GB no servidor Web / Nuvem. Suporta arquivos de vídeo nos formatos .mp4, .avi ou .mov."
+                        if is_web_server
+                        else "Limite de até 50 GB em execução local. Suporta arquivos de vídeo nos formatos .mp4, .avi ou .mov."
+                    )
                     uploaded_file = st.file_uploader(
                         "Vídeo de Treinamento (.mp4, .avi, .mov)" if app_mode == "training" else "Vídeo da Luta (.mp4, .avi, .mov)",
                         type=["mp4", "avi", "mov"],
-                        help="Suporta arquivos de vídeo nos formatos .mp4, .avi ou .mov.",
+                        max_upload_size=max_upload_mb,
+                        help=help_msg,
                         key="recorded_local_file_uploader"
                     )
                     if uploaded_file is not None:
+                        max_allowed_bytes = max_upload_mb * 1024 * 1024
+                        if getattr(uploaded_file, "size", 0) > max_allowed_bytes:
+                            limit_label = f"{max_upload_mb // 1024} GB" if max_upload_mb >= 1024 else f"{max_upload_mb} MB"
+                            st.error(
+                                f"❌ **Tamanho do Arquivo Excedido**: O arquivo selecionado possui "
+                                f"`{uploaded_file.size / (1024 * 1024 * 1024):.2f} GB`, ultrapassando o limite "
+                                f"máximo permitido de {limit_label} no modo {'Web / Nuvem' if is_web_server else 'Local'}."
+                            )
+                            st.stop()
+
                         cached_file_name = st.session_state.get("uploaded_file_name")
                         cached_file_size = st.session_state.get("uploaded_file_size")
                         cached_file_path = st.session_state.get("video_file_path")
@@ -7243,13 +7292,24 @@ elif nav_page in ["match", "training", "analysis"]:
 
                 elif source_choice and "Importar" in source_choice:
                     st.markdown("Selecione um pacote de análise de treinamento salvo anteriormente (`.zip`) contendo o vídeo analisado e os dados do relatório:")
+                    max_upload_mb = get_max_upload_size_mb()
                     pkg_uploaded_file = st.file_uploader(
                         "📦 Pacote de Sessão de Treinamento (.zip)",
                         type=["zip"],
+                        max_upload_size=max_upload_mb,
                         help="Importa o pacote .zip exportado pelo SenpAI para restaurar o vídeo analisado e dar continuidade à análise.",
                         key="training_package_file_uploader"
                     )
                     if pkg_uploaded_file is not None:
+                        max_allowed_bytes = max_upload_mb * 1024 * 1024
+                        if getattr(pkg_uploaded_file, "size", 0) > max_allowed_bytes:
+                            limit_label = f"{max_upload_mb // 1024} GB" if max_upload_mb >= 1024 else f"{max_upload_mb} MB"
+                            st.error(
+                                f"❌ **Tamanho do Pacote Excedido**: O arquivo selecionado ultrapassa o limite "
+                                f"máximo permitido de {limit_label} no modo {'Web / Nuvem' if is_web_server else 'Local'}."
+                            )
+                            st.stop()
+
                         last_pkg_name = st.session_state.get("last_imported_pkg_name")
                         last_pkg_size = st.session_state.get("last_imported_pkg_size")
                         if last_pkg_name == pkg_uploaded_file.name and last_pkg_size == pkg_uploaded_file.size and st.session_state.get("analysis_result"):

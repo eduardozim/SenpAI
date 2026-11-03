@@ -234,3 +234,15 @@ def is_web_server_environment() -> bool:
     info = get_execution_environment_info()
     return bool(info.get("is_cloud", False) or info.get("is_web_server", False))
 
+
+
+def get_max_upload_size_mb() -> int:
+    """
+    Retorna o limite máximo permitido de upload em megabytes (MB)
+    baseado no ambiente de execução:
+    - Servidor Web / Nuvem: 1024 MB (1 GB)
+    - Ambiente Local (Desktop / Dojo): 51200 MB (50 GB)
+    """
+    if is_web_server_environment():
+        return 1024
+    return 51200
