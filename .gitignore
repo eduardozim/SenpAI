@@ -34,7 +34,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
-.streamlit/
+.streamlit/secrets.toml
 
 # ==============================================================================
 # ARQUIVOS GERADOS PELO TREINAMENTO DE VISÃO COMPUTACIONAL (USUÁRIO)

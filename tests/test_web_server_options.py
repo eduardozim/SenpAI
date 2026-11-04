@@ -168,8 +168,8 @@ class TestWebServerOptionsHiding(unittest.TestCase):
         parser.read(config_path, encoding="utf-8")
         
         self.assertTrue(parser.has_section("server"))
-        self.assertEqual(parser.get("server", "enableCORS").lower(), "true")
-        self.assertEqual(parser.get("server", "enableXsrfProtection").lower(), "true")
+        self.assertEqual(parser.get("server", "enableCORS").lower(), "false")
+        self.assertEqual(parser.get("server", "enableXsrfProtection").lower(), "false")
         self.assertEqual(parser.getint("server", "maxUploadSize"), 1024)
         self.assertEqual(parser.getint("server", "maxMessageSize"), 1024)
 

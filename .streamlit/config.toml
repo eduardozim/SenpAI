@@ -1,7 +1,7 @@
 [server]
-# Proteções de segurança de rede e requisições
-enableCORS = true
-enableXsrfProtection = true
+# Compatibilidade com proxies reversos do Streamlit Community Cloud (evita travamento no WebSocket/spinner infinito)
+enableCORS = false
+enableXsrfProtection = false
 
 # Limite padrão para servidor Web / Nuvem (1 GB = 1024 MB)
 # Em execução local (Desktop / Dojo), o limite é elevado dinamicamente para 50 GB no app.py
