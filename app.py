@@ -158,6 +158,21 @@ try:
 except Exception:
     pass
 
+# Patch defensivo para compatibilidade ASGI Starlette / Uvicorn (evita crash 'http.response.start' out-of-order em assets)
+try:
+    import streamlit.web.server.starlette.starlette_gzip_middleware as _st_gzip
+    _orig_bypass = _st_gzip._should_bypass_static_gzip
+    def _senpai_robust_static_bypass(path: str) -> bool:
+        if not path or path == "/" or _orig_bypass(path):
+            return True
+        p_lower = path.lower()
+        if any(p_lower.endswith(ext) for ext in ('.js', '.css', '.png', '.jpg', '.jpeg', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.json', '.map')):
+            return True
+        return False
+    _st_gzip._should_bypass_static_gzip = _senpai_robust_static_bypass
+except Exception:
+    pass
+
 
 def render_live_stream_not_started_warning(time_remaining: Optional[str] = None) -> None:
     """Exibe aviso formatado e pedagógico quando uma transmissão ao vivo agendada ainda não iniciou."""
@@ -1587,7 +1602,7 @@ if "_senpai_startup_cleanup" not in st.session_state:
         pass
 
 # Estilização CSS Moderna, Equilibrada (Escala 90%) e sem Cortes na Interface
-st.html("""
+st.markdown("""
 <style>
     /* 1. Escala Global Ajustada para 90% via Container Principal para não interferir em Popovers/Comboboxes */
     .stApp {
@@ -2062,36 +2077,7 @@ st.html("""
         display: none !important;
     }
 </style>
-""")
-
-# Script de auto-recuperação defensiva para dessincronia de módulos dinâmicos do frontend (chunks JS durante hot-reload)
-st.html(
-    """
-    <script>
-    (function() {
-        function handleChunkError(errStr) {
-            if (errStr && (errStr.includes('Failed to fetch dynamically imported module') || errStr.includes('error loading dynamically imported module'))) {
-                var key = '_senpai_last_chunk_reload';
-                var now = Date.now();
-                var last = sessionStorage.getItem(key);
-                if (!last || (now - parseInt(last)) > 8000) {
-                    sessionStorage.setItem(key, now.toString());
-                    console.warn('[SenpAI] Módulo dinâmico em dessincronia durante atualização do servidor. Recarregando página para sincronizar...');
-                    window.location.reload();
-                }
-            }
-        }
-        window.addEventListener('error', function(e) {
-            handleChunkError(e && (e.message || (e.error && e.error.message)));
-        });
-        window.addEventListener('unhandledrejection', function(e) {
-            handleChunkError(e && e.reason && (e.reason.message || String(e.reason)));
-        });
-    })();
-    </script>
-    """,
-    unsafe_allow_javascript=True
-)
+""", unsafe_allow_html=True)
 
 
 #st.markdown('<div class="main-title">⚔️ SenpAI (先輩 AI)</div>', unsafe_allow_html=True)
@@ -2522,6 +2508,9 @@ current_nav_val = st.session_state.get("sidebar_nav_radio", "home")
 if current_nav_val == "analysis":
     current_nav_val = "match"
     st.session_state["sidebar_nav_radio"] = "match"
+elif current_nav_val == "labels":
+    current_nav_val = "settings"
+    st.session_state["sidebar_nav_radio"] = "settings"
 elif current_nav_val not in page_nav_options:
     current_nav_val = "home"
     st.session_state["sidebar_nav_radio"] = "home"
@@ -2644,8 +2633,9 @@ elif nav_page == "settings":
     default_device_pref = st.session_state.get("device_preference", saved_sys_settings.get("processing_device", "cpu"))
     default_vision_pref = st.session_state.get("vision_model_preference", saved_sys_settings.get("vision_model", "yolov8"))
 
-    tab_hw, tab_train, tab_calib, tab_diag, tab_docs = st.tabs([
+    tab_hw, tab_labels, tab_train, tab_calib, tab_diag, tab_docs = st.tabs([
         "🖥️ Processamento & Hardware",
+        "🏷️ Gabarito de Lutas",
         "🎓 Governança de Treinamento",
         "🎛️ Perfis de Calibração",
         "🐛 Diagnóstico, Alertas & Logs",
@@ -2867,7 +2857,16 @@ elif nav_page == "settings":
                     st.info("💻 **Computador rodando em Modo CPU.** Nenhuma GPU NVIDIA dedicada detectada.")
 
     # --------------------------------------------------------------------------
-    # GUIA 2: GOVERNANÇA DE TREINAMENTO & PAINEL DE REVISÃO POR DAN
+    # GUIA: GABARITO DE LUTAS (ROTULAGEM FRACA & COMPARAÇÃO ARBITRAL)
+    # --------------------------------------------------------------------------
+    with tab_labels:
+        if is_web_server:
+            st.info("ℹ️ **Ambiente em Nuvem:** O Gabarito de Lutas utiliza a pasta de vídeos de combate e cache de poses em disco. No ambiente local Desktop/Dojo, todos os dados são persistidos diretamente no seu workspace.")
+        from src.utils.match_labels_page import render_match_labels_page
+        render_match_labels_page(device_preference=st.session_state.get("device_preference", default_device_pref))
+
+    # --------------------------------------------------------------------------
+    # GUIA: GOVERNANÇA DE TREINAMENTO & PAINEL DE REVISÃO POR DAN
     # --------------------------------------------------------------------------
     with tab_train:
         st.markdown("### 🎓 Governança de Treinamento & Painel de Revisão por Dan")
@@ -9557,6 +9556,9 @@ elif nav_page in ["match", "training", "analysis"]:
                                                 st.markdown(f"- {chg}")
                                     except DuplicateShinpanReviewError as dup_err:
                                         st.error(f"⛔ {str(dup_err)}")
+elif nav_page == "labels":
+    st.session_state["sidebar_nav_radio"] = "settings"
+    st.rerun()
 else:
     # Estado inicial ou fallback se nenhuma página específica for selecionada
     render_welcome_home_page()

@@ -76,6 +76,8 @@ data/checkpoints/
 data/test_*.json
 data/tmp/
 data/uploads/
+data/feature_cache/
+data/weak_labels/
 
 # Serializações e dumps temporários de treino
 *.joblib

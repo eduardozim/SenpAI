@@ -27,6 +27,7 @@ from src.engine.reporter import DiagnosticReporter
 from src.utils.hardware import get_effective_device, ensure_browser_compatible_video, get_optimal_batch_size, HighQualityVideoWriter
 from src.utils.settings_manager import get_vision_model, get_vision_model_info
 from src.utils.logger_manager import log_event
+from src.utils import feature_cache
 
 
 class AsyncVideoBatchReader:
@@ -173,49 +174,83 @@ class SenpAIPipeline:
         except Exception:
             self.kinesthetic_manager = None
 
-    def process_video(
+    def extract_match_features(
         self,
         video_path: str,
-        output_video_path: Optional[str] = None,
-        progress_callback: Optional[Callable[..., None]] = None,
-        is_cancelled: Optional[Callable[[], bool]] = None,
-        initial_sonkyo_override: Optional[Dict[str, Any]] = None,
-        final_sonkyo_override: Optional[Dict[str, Any]] = None,
+        frame_step: int = 1,
         invert_combatants: bool = False,
-        training_modality_override: Optional[str] = None,
-        custom_kendoka_names: Optional[Dict[str, str]] = None,
-        shiaijo_polygon: Optional[List[Tuple[float, float]]] = None,
-        analysis_mode: str = "match",
-        training_segments_override: Optional[List[Dict[str, Any]]] = None,
-        frame_step: int = 1
-    ) -> Optional[Dict[str, Any]]:
+        shiaijo_polygon: Optional[List[Tuple[float, float]]] = None
+    ) -> Dict[str, Any]:
         """
-        Executa a análise completa de um arquivo de vídeo de luta/treino de Kendo:
-        1. Rastreamento e associação exclusiva dos 2 Kenshi (Aka e Shiro) no Plano Principal com detecção da cor da flag dorsal (Tasukuki).
-        2. Descarte automático de elementos fora do Shiai-jo, Segundo Plano (Background) e Oclusões na frente da câmera.
-        3. Detecção e verificação dos momentos de Sonkyō (Abertura e Encerramento) ou aplicação de ajustes manuais com aprendizado contínuo.
-        4. Delimitação estrita do início (match_start_frame) e fim (match_end_frame) da luta.
-        5. Detecção e avaliação biomecânica exclusiva dos golpes dentro da janela de Sonkyō.
-        6. Análise especializada de Treinamento & Aprendizado (14 modalidades oficiais com Kanji, 3 pilares, diagnósticos pedagógicos).
-        7. Controle de pontuação (Placar Oficial de Ippon) e renderização de vídeo anotado.
+        Extrai (ou reaproveita) somente as features de pose e rastreamento de um vídeo de luta,
+        gravando-as no cache de features. Usado para pré-processar lotes de vídeos de treino.
         """
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
+        features = self._extract_match_features(
+            video_path,
+            invert_combatants=invert_combatants,
+            shiaijo_polygon=shiaijo_polygon,
+            frame_step=frame_step,
+            use_feature_cache=True
+        )
+        if features is None:
+            raise RuntimeError("Extração de features interrompida.")
+        return features
 
-        # BIFURCAÇÃO ESTRITA: Modo Treinamento & Aprendizado usa rastreador dedicado
-        if analysis_mode == "training":
-            return self._process_training_video(
-                video_path=video_path,
-                output_video_path=output_video_path,
-                progress_callback=progress_callback,
-                is_cancelled=is_cancelled,
-                training_modality_override=training_modality_override,
-                custom_kendoka_names=custom_kendoka_names,
-                training_segments_override=training_segments_override,
-                frame_step=frame_step
-            )
+    def _extract_match_features(
+        self,
+        video_path: str,
+        progress_callback: Optional[Callable[..., None]] = None,
+        is_cancelled: Optional[Callable[[], bool]] = None,
+        invert_combatants: bool = False,
+        shiaijo_polygon: Optional[List[Tuple[float, float]]] = None,
+        frame_step: int = 1,
+        use_feature_cache: Optional[bool] = None,
+        start_time: Optional[float] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Passos 1-2 do modo luta: inferência de pose em lote e associação exclusiva Aka/Shiro.
+        É a etapa mais cara da análise; com o cache de features ligado, cada vídeo é processado
+        pela rede neural uma única vez e as reanálises seguintes leem as poses do disco.
+        Retorna None se cancelado. As histórias retornadas ainda não foram interpoladas.
+        """
+        if start_time is None:
+            start_time = time.time()
+        if use_feature_cache is None:
+            use_feature_cache = feature_cache.is_feature_cache_enabled_by_default()
 
-        start_time = time.time()
+        cache_key = None
+        if use_feature_cache:
+            try:
+                cache_key = feature_cache.build_cache_key(
+                    video_path,
+                    vision_model=self.vision_model,
+                    frame_step=frame_step,
+                    invert_combatants=invert_combatants,
+                    shiaijo_polygon=shiaijo_polygon
+                )
+                cached = feature_cache.load_match_features(cache_key)
+            except Exception as e:
+                log_event("WARNING", f"Cache de features indisponível: {e}", "pipeline")
+                cache_key, cached = None, None
+
+            if cached is not None:
+                # Rastreador novo para não carregar estado de análises anteriores
+                self.combatant_tracker = CombatantTracker(
+                    invert_assignment=invert_combatants,
+                    shiaijo_polygon=shiaijo_polygon
+                )
+                log_event("INFO", f"Features de pose carregadas do cache para '{os.path.basename(video_path)}' ({cached['total_frames']} frames).", "pipeline")
+                if progress_callback:
+                    msg = "Poses carregadas do cache de features (vídeo já processado anteriormente)"
+                    try:
+                        progress_callback(0.60, msg)
+                    except TypeError:
+                        progress_callback(0.60)
+                cached["from_cache"] = True
+                cached["cache_key"] = cache_key
+                return cached
 
         # Resetar o rastreador para uma nova análise de vídeo com configuração de inversão e polígono do Shiai-jo
         self.combatant_tracker = CombatantTracker(
@@ -320,9 +355,100 @@ class SenpAIPipeline:
                 f"(0 frames decodificados). A análise foi interrompida para proteger a integridade dos dados."
             )
 
+        features = {
+            "fps": fps,
+            "total_frames": total_frames,
+            "width": width,
+            "height": height,
+            "frames_decoded": frame_idx,
+            "aka_history": aka_history,
+            "shiro_history": shiro_history,
+            "discarded_per_frame": discarded_per_frame,
+            "tracker_summary": self.combatant_tracker.get_summary(),
+            "video_name": os.path.basename(video_path),
+            "vision_model": self.vision_model,
+            "frame_step": frame_step
+        }
+        if cache_key:
+            feature_cache.save_match_features(cache_key, features)
+        features["from_cache"] = False
+        features["cache_key"] = cache_key
+        return features
+
+    def process_video(
+        self,
+        video_path: str,
+        output_video_path: Optional[str] = None,
+        progress_callback: Optional[Callable[..., None]] = None,
+        is_cancelled: Optional[Callable[[], bool]] = None,
+        initial_sonkyo_override: Optional[Dict[str, Any]] = None,
+        final_sonkyo_override: Optional[Dict[str, Any]] = None,
+        invert_combatants: bool = False,
+        training_modality_override: Optional[str] = None,
+        custom_kendoka_names: Optional[Dict[str, str]] = None,
+        shiaijo_polygon: Optional[List[Tuple[float, float]]] = None,
+        analysis_mode: str = "match",
+        training_segments_override: Optional[List[Dict[str, Any]]] = None,
+        frame_step: int = 1,
+        use_feature_cache: Optional[bool] = None,
+        record_learning_side_effects: bool = True
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Executa a análise completa de um arquivo de vídeo de luta/treino de Kendo:
+        1. Rastreamento e associação exclusiva dos 2 Kenshi (Aka e Shiro) no Plano Principal com detecção da cor da flag dorsal (Tasukuki).
+        2. Descarte automático de elementos fora do Shiai-jo, Segundo Plano (Background) e Oclusões na frente da câmera.
+        3. Detecção e verificação dos momentos de Sonkyō (Abertura e Encerramento) ou aplicação de ajustes manuais com aprendizado contínuo.
+        4. Delimitação estrita do início (match_start_frame) e fim (match_end_frame) da luta.
+        5. Detecção e avaliação biomecânica exclusiva dos golpes dentro da janela de Sonkyō.
+        6. Análise especializada de Treinamento & Aprendizado (14 modalidades oficiais com Kanji, 3 pilares, diagnósticos pedagógicos).
+        7. Controle de pontuação (Placar Oficial de Ippon) e renderização de vídeo anotado.
+
+        use_feature_cache: reaproveita poses já extraídas deste vídeo (None = padrão; ligado fora de testes).
+        record_learning_side_effects: False desliga a gravação de baselines do Kenshi e da fila de
+        curadoria ativa, para reanálises repetidas (ex.: ajuste de limiares) não contaminarem os dados.
+        """
+        if not os.path.exists(video_path):
+            raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
+
+        # BIFURCAÇÃO ESTRITA: Modo Treinamento & Aprendizado usa rastreador dedicado
+        if analysis_mode == "training":
+            return self._process_training_video(
+                video_path=video_path,
+                output_video_path=output_video_path,
+                progress_callback=progress_callback,
+                is_cancelled=is_cancelled,
+                training_modality_override=training_modality_override,
+                custom_kendoka_names=custom_kendoka_names,
+                training_segments_override=training_segments_override,
+                frame_step=frame_step
+            )
+
+        start_time = time.time()
+
+        # Passos 1-2: Extração de poses e associação Aka/Shiro (reaproveitada do cache de features quando disponível)
+        features = self._extract_match_features(
+            video_path,
+            progress_callback=progress_callback,
+            is_cancelled=is_cancelled,
+            invert_combatants=invert_combatants,
+            shiaijo_polygon=shiaijo_polygon,
+            frame_step=frame_step,
+            use_feature_cache=use_feature_cache,
+            start_time=start_time
+        )
+        if features is None:
+            return None
+
+        fps = features["fps"]
+        total_frames = features["total_frames"]
+        width = features["width"]
+        height = features["height"]
+        discarded_per_frame = features["discarded_per_frame"]
+        feature_cache_hit = features["from_cache"]
+
         # Interpolação suave para quaisquer gaps residuais de detecção (ex: oclusões mútuas de até 10 frames)
-        aka_history = self.combatant_tracker.interpolate_missing_poses(aka_history, max_gap=10)
-        shiro_history = self.combatant_tracker.interpolate_missing_poses(shiro_history, max_gap=10)
+        aka_history = self.combatant_tracker.interpolate_missing_poses(features["aka_history"], max_gap=10)
+        shiro_history = self.combatant_tracker.interpolate_missing_poses(features["shiro_history"], max_gap=10)
 
         # Checagem de cancelamento antes de processamento dos eventos
         if is_cancelled and is_cancelled():
@@ -474,7 +600,7 @@ class SenpAIPipeline:
 
             # Eixo 6: Modelagem do Estilo Individual do Kenshi
             kin_eval = {}
-            if self.kinesthetic_manager:
+            if self.kinesthetic_manager and record_learning_side_effects:
                 try:
                     atk_disp = (custom_kendoka_names or {}).get(ev.attacker_id, ev.attacker_name)
                     # Estimativa de inclinação da coluna no impacto
@@ -514,7 +640,7 @@ class SenpAIPipeline:
 
             # Curadoria Ativa: Se o lance recai na faixa de incerteza arbitral (45%-65%), extrair corte real da luta
             conf_val = float(evaluation.get("total_score", 0.0)) / 100.0 if float(evaluation.get("total_score", 0.0)) > 1.0 else float(evaluation.get("total_score", 0.0))
-            if 0.45 <= conf_val <= 0.65 and video_path and os.path.isfile(video_path):
+            if record_learning_side_effects and 0.45 <= conf_val <= 0.65 and video_path and os.path.isfile(video_path):
                 try:
                     from src.utils.strike_clip_manager import extract_strike_subclip, DEFAULT_CLIPS_DIR
                     from src.engine.active_learning import UncertaintySampler
@@ -641,7 +767,7 @@ class SenpAIPipeline:
 
         total_elapsed_sec = round(time.time() - start_time, 2)
         processing_fps = round(total_frames / max(0.001, total_elapsed_sec), 1)
-        tracker_summary = self.combatant_tracker.get_summary()
+        tracker_summary = features["tracker_summary"]
 
         # 7. Controle de Pontuação Oficial dos Combatentes (Placar de Ippon)
         aka_valid_strikes = [ev for ev in analyzed_events if ev["event_info"]["attacker_id"] == "KENSHI_AKA" and ev["evaluation"].get("is_valid", False)]
@@ -701,6 +827,7 @@ class SenpAIPipeline:
             f"RESUMO DO PROCESSAMENTO DE VÍDEO CONCLUÍDO:\n"
             f"  • Arquivo de Vídeo: {os.path.basename(video_path)} ({video_path})\n"
             f"  • Tempo Total de Processamento: {total_elapsed_sec:.2f}s ({total_frames} frames a {processing_fps:.1f} FPS)\n"
+            f"  • Cache de Features: {'Reaproveitado (poses lidas do disco)' if feature_cache_hit else 'Extração completa'}\n"
             f"  • Duração do Vídeo: {round(total_frames / fps, 2)}s (Tempo Efetivo de Combate: {sonkyo_analysis['effective_combat_duration_seconds']}s)\n"
             f"  • Dispositivo / Acelerador: {self.effective_device.upper()} ({self.device_status_message})\n"
             f"  • Perfil de Avaliação Aplicado: {self.calibrator.active_config.get('name', 'Custom')}\n"
@@ -720,6 +847,7 @@ class SenpAIPipeline:
             "duration_seconds": round(total_frames / fps, 2),
             "processing_time_seconds": total_elapsed_sec,
             "processing_fps": processing_fps,
+            "feature_cache_hit": feature_cache_hit,
             "effective_combat_duration_seconds": sonkyo_analysis["effective_combat_duration_seconds"],
             "events_detected_count": len(analyzed_events),
             "profile_applied": self.calibrator.active_config.get("name", "Custom"),
