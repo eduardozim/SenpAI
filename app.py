@@ -1587,7 +1587,7 @@ if "_senpai_startup_cleanup" not in st.session_state:
         pass
 
 # Estilização CSS Moderna, Equilibrada (Escala 90%) e sem Cortes na Interface
-st.markdown("""
+st.html("""
 <style>
     /* 1. Escala Global Ajustada para 90% via Container Principal para não interferir em Popovers/Comboboxes */
     .stApp {
@@ -2062,7 +2062,7 @@ st.markdown("""
         display: none !important;
     }
 </style>
-""", unsafe_allow_html=True)
+""")
 
 
 #st.markdown('<div class="main-title">⚔️ SenpAI (先輩 AI)</div>', unsafe_allow_html=True)
