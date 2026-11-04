@@ -519,27 +519,165 @@ def detect_connected_cameras() -> List[Dict[str, Any]]:
     return cameras
 
 
+_BEST_H264_ENCODER_ARGS_CACHE: Optional[List[str]] = None
+
+def get_best_h264_encoder_args(ffmpeg_bin: str) -> List[str]:
+    """
+    Detecta e retorna os melhores argumentos de encoder H.264 disponíveis no executável FFmpeg,
+    priorizando aceleração nativa por GPU (h264_nvenc ou h264_mf no Windows).
+    """
+    global _BEST_H264_ENCODER_ARGS_CACHE
+    if _BEST_H264_ENCODER_ARGS_CACHE is not None:
+        return _BEST_H264_ENCODER_ARGS_CACHE
+
+    candidate_encoders = ["h264_nvenc", "h264_mf", "libx264", "libopenh264", "h264"]
+    best_enc = "libx264"
+    try:
+        enc_out = subprocess.run([ffmpeg_bin, "-encoders"], capture_output=True, text=True, timeout=4).stdout
+        for enc in candidate_encoders:
+            if enc in enc_out:
+                best_enc = enc
+                break
+    except Exception:
+        pass
+
+    if best_enc == "h264_mf":
+        args = ["-vcodec", "h264_mf", "-b:v", "6M"]
+    elif best_enc == "h264_nvenc":
+        args = ["-vcodec", "h264_nvenc", "-preset", "p4", "-cq", "19"]
+    elif best_enc == "libx264":
+        args = ["-vcodec", "libx264", "-crf", "17", "-preset", "veryfast"]
+    else:
+        args = ["-vcodec", best_enc]
+
+    _BEST_H264_ENCODER_ARGS_CACHE = args
+    return args
+
+
+class HighQualityVideoWriter:
+    """
+    Gravador de vídeo em alta definição (H.264 / AVC1 direto via pipe FFmpeg com CRF 17),
+    evitando a compressão intermediária destrutiva do codec 'mp4v' do OpenCV que borra
+    textos, etiquetas de Kenshis e linhas finas de esqueleto.
+    Inclui fallback transparente para cv2.VideoWriter caso o pipe FFmpeg não esteja disponível.
+    """
+
+    def __init__(self, output_path: str, fps: float, size: Tuple[int, int]):
+        self.output_path = output_path
+        self.fps = max(1.0, float(fps or 30.0))
+        # Garantir dimensões pares para compatibilidade estrita com YUV420p H.264
+        self.width = size[0] + (size[0] % 2)
+        self.height = size[1] + (size[1] % 2)
+        self._proc = None
+        self._cv_writer = None
+
+        try:
+            from src.utils.video_downloader import get_ffmpeg_executable_path
+            ffmpeg_bin = get_ffmpeg_executable_path() or "ffmpeg"
+        except Exception:
+            ffmpeg_bin = "ffmpeg"
+
+        enc_args = get_best_h264_encoder_args(ffmpeg_bin)
+        cmd = [
+            ffmpeg_bin,
+            "-y",
+            "-f", "rawvideo",
+            "-vcodec", "rawvideo",
+            "-pix_fmt", "bgr24",
+            "-s", f"{self.width}x{self.height}",
+            "-r", f"{self.fps:.3f}",
+            "-i", "-",
+            "-an",
+            *enc_args,
+            "-pix_fmt", "yuv420p",
+            "-movflags", "+faststart",
+            self.output_path,
+        ]
+        try:
+            self._proc = subprocess.Popen(
+                cmd,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            self._proc = None
+
+        if self._proc is None:
+            self._init_cv_fallback()
+
+    def _init_cv_fallback(self):
+        import cv2
+        fourcc = cv2.VideoWriter.fourcc(*"mp4v")
+        self._cv_writer = cv2.VideoWriter(self.output_path, fourcc, self.fps, (self.width, self.height))
+
+    def write(self, frame) -> None:
+        if frame is None:
+            return
+        h, w = frame.shape[:2]
+        if w != self.width or h != self.height:
+            import cv2
+            frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_LINEAR)
+
+        if self._proc is not None and self._proc.stdin is not None:
+            try:
+                self._proc.stdin.write(frame.tobytes())
+                return
+            except Exception:
+                try:
+                    self._proc.kill()
+                except Exception:
+                    pass
+                self._proc = None
+                self._init_cv_fallback()
+
+        if self._cv_writer is not None:
+            self._cv_writer.write(frame)
+
+    def release(self) -> None:
+        if self._proc is not None:
+            try:
+                if self._proc.stdin:
+                    self._proc.stdin.close()
+                self._proc.wait(timeout=120)
+            except Exception:
+                try:
+                    self._proc.kill()
+                except Exception:
+                    pass
+            finally:
+                self._proc = None
+        if self._cv_writer is not None:
+            try:
+                self._cv_writer.release()
+            except Exception:
+                pass
+            self._cv_writer = None
+
+
 def ensure_browser_compatible_video(video_path: str) -> bool:
     """
     Garante que o arquivo de vídeo MP4 gerado pelo OpenCV (originalmente em codec MPEG-4 / mp4v / FMP4)
-    seja transcodificado de forma síncrona e ultrarrápida para H.264 (AVC1 com pixel format YUV420p
-    e flag +faststart), permitindo reprodução direta, instantânea e compatível em todos os navegadores web
-    modernos (Chrome, Edge, Firefox, Safari) dentro do player HTML5 do Streamlit.
+    seja transcodificado de forma síncrona e com alta taxa de bits (CRF 17 / 8 Mbps+) para H.264
+    (AVC1 com pixel format YUV420p e flag +faststart), preservando nitidez total nas etiquetas dos Kenshis.
     """
     if not video_path or not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
         return False
 
-    # 1. Verifica se já está codificado em H.264 para evitar reprocessamento desnecessário
-    try:
-        import cv2
-        cap = cv2.VideoCapture(video_path)
-        fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
-        fourcc_str = "".join([chr((fourcc >> 8 * i) & 0xFF) for i in range(4)]).lower()
-        cap.release()
-        if fourcc_str in ("h264", "x264", "avc1"):
-            return True
-    except Exception:
-        pass
+    # 1. Verifica se já é MP4 nativo codificado em H.264 para evitar reprocessamento desnecessário
+    # Arquivos que não terminam com .mp4 (ex: .avi, .mov) NUNCA devem ser ignorados,
+    # pois navegadores web exigem container MP4 estrito para reprodução HTML5.
+    if video_path.lower().endswith(".mp4"):
+        try:
+            import cv2
+            cap = cv2.VideoCapture(video_path)
+            fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+            fourcc_str = "".join([chr((fourcc >> 8 * i) & 0xFF) for i in range(4)]).lower()
+            cap.release()
+            if fourcc_str in ("h264", "x264", "avc1"):
+                return True
+        except Exception:
+            pass
 
     # 2. Localiza o executável FFmpeg no sistema ou pacote imageio-ffmpeg
     try:
@@ -549,8 +687,20 @@ def ensure_browser_compatible_video(video_path: str) -> bool:
         ffmpeg_bin = "ffmpeg"
 
     tmp_converted = video_path + ".browser_h264.mp4"
-    # Ordem de preferência de encoders: aceleradores de hardware primeiro (nvenc, mf), seguidos por libx264 ultrarrápido
-    encoders = ["h264_nvenc", "h264_mf", "libx264", "libopenh264", "h264"]
+    encoders = ["libx264", "h264_nvenc", "h264_mf", "libopenh264", "h264"]
+
+    # Determina timeout dinâmico proporcional à duração do vídeo (mínimo 600 segundos, ou 2x a duração)
+    calc_timeout = 600
+    try:
+        import cv2
+        cap_t = cv2.VideoCapture(video_path)
+        fps_t = cap_t.get(cv2.CAP_PROP_FPS) or 30.0
+        cnt_t = cap_t.get(cv2.CAP_PROP_FRAME_COUNT) or 0
+        cap_t.release()
+        dur_t = cnt_t / max(1.0, fps_t)
+        calc_timeout = max(600, int(dur_t * 2))
+    except Exception:
+        calc_timeout = 1800
 
     for enc in encoders:
         cmd = [
@@ -559,14 +709,22 @@ def ensure_browser_compatible_video(video_path: str) -> bool:
             "-vcodec", enc,
             "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",  # Garante largura e altura pares obrigatórias no yuv420p
             "-pix_fmt", "yuv420p",
+            "-c:a", "aac",
+            "-b:a", "128k",
             "-movflags", "+faststart",
         ]
-        if enc in ("libx264", "libopenh264", "h264"):
-            cmd.extend(["-preset", "ultrafast"])
+        if enc == "libx264":
+            cmd.extend(["-crf", "17", "-preset", "veryfast"])
+        elif enc == "h264_nvenc":
+            cmd.extend(["-cq", "18", "-b:v", "8M", "-maxrate", "12M"])
+        elif enc == "h264_mf":
+            cmd.extend(["-b:v", "8M"])
+        else:
+            cmd.extend(["-b:v", "8M"])
         cmd.append(tmp_converted)
 
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=calc_timeout)
             if res.returncode == 0 and os.path.exists(tmp_converted) and os.path.getsize(tmp_converted) > 0:
                 os.replace(tmp_converted, video_path)
                 return True

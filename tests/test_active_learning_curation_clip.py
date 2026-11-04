@@ -27,6 +27,10 @@ class TestActiveLearningCurationClip(unittest.TestCase):
         self.queue_file = os.path.join(self.test_dir, "test_queue.json")
         self.dataset_file = os.path.join(self.test_dir, "test_feedback.json")
         self.profiles_file = os.path.join(self.test_dir, "test_profiles.json")
+        self.history_file = os.path.join(self.test_dir, "test_history.json")
+        self.shinpan_file = os.path.join(self.test_dir, "test_shinpan_registry.json")
+        self.checkpoint_file = os.path.join(self.test_dir, "test_checkpoint.json")
+        self.kb_file = os.path.join(self.test_dir, "test_kb.json")
         self.clips_dir = os.path.join(self.test_dir, "clips")
         os.makedirs(self.clips_dir, exist_ok=True)
 
@@ -43,12 +47,19 @@ class TestActiveLearningCurationClip(unittest.TestCase):
         self.sampler = UncertaintySampler(queue_file=self.queue_file, min_threshold=0.45, max_threshold=0.65)
         self.feedback_mgr = FeedbackManager(
             dataset_path=self.dataset_file,
-            profiles_path=self.profiles_file
+            history_path=self.history_file,
+            profiles_path=self.profiles_file,
+            shinpan_registry_path=self.shinpan_file,
+            checkpoint_path=self.checkpoint_file,
+            knowledge_base_path=self.kb_file
         )
         self.feedback_mgr.uncertainty_sampler = self.sampler
         self.trainer = AutoTrainingEngine(
             profiles_path=self.profiles_file,
-            feedback_path=self.dataset_file
+            feedback_path=self.dataset_file,
+            history_path=self.history_file,
+            checkpoint_path=self.checkpoint_file,
+            knowledge_base_path=self.kb_file
         )
         self.trainer.feedback_mgr = self.feedback_mgr
 

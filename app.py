@@ -49,6 +49,25 @@ import json
 import time
 from typing import Any, Dict, List, Optional
 
+import importlib
+import sys
+for _mod_name in [
+    "src.utils.environment",
+    "src.utils.hardware",
+    "src.utils.strike_clip_manager",
+    "src.engine.active_learning",
+    "src.engine.feedback_manager",
+    "src.vision.pose_detector",
+    "src.vision.training_multi_tracker",
+    "src.analytics.training_analyzer",
+    "src.analytics.training_live_manager",
+    "src.utils.training_pdf_generator",
+    "src.utils.training_package_manager",
+    "src.pipeline"
+]:
+    if _mod_name in sys.modules:
+        importlib.reload(sys.modules[_mod_name])
+
 from src.pipeline import SenpAIPipeline, AnalysisWorker
 from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager, DuplicateShinpanReviewError
@@ -60,17 +79,15 @@ from src.utils.excel_strikes_manager import (
     execute_training_from_imported_strikes
 )
 from src.engine.reporter import DiagnosticReporter
-import importlib
-import sys
-for _mod_name in [
-    "src.utils.environment",
-    "src.utils.strike_clip_manager",
-    "src.engine.active_learning",
-    "src.engine.feedback_manager",
-    "src.vision.training_multi_tracker"
-]:
-    if _mod_name in sys.modules:
-        importlib.reload(sys.modules[_mod_name])
+from src.utils.training_package_manager import (
+    export_training_session_package,
+    import_training_session_package,
+    is_valid_training_package
+)
+from src.utils.training_pdf_generator import (
+    generate_training_pdf_report,
+    generate_individual_kendoka_pdf_report
+)
 from src.vision.training_multi_tracker import TrainingMultiKenshiTracker
 from src.analytics.sonkyo_detector import SonkyoDetector
 from src.analytics.training_analyzer import (
@@ -78,7 +95,16 @@ from src.analytics.training_analyzer import (
     TRAINING_MODALITIES_METADATA,
     TrainingPillarMetrics,
     KendokaTrainingProfile,
-    TrainingSessionResult
+    TrainingSessionResult,
+    merge_kendoka_profiles_dict,
+    differentiate_kendoka_names,
+    format_training_mmss,
+    parse_training_mmss,
+    sync_kendoka_names_in_training_data,
+    sync_kendoka_names_in_events,
+    merge_kendokas_in_training_data,
+    recalculate_blocks_from_segments,
+    get_kendoka_id_aliases
 )
 from src.analytics.training_live_manager import LiveTrainingSessionManager
 from src.utils.hardware import (
@@ -102,7 +128,7 @@ from src.utils.video_downloader import (
 )
 from src.utils.environment import (
     get_virtual_environment_info, is_in_virtual_environment, get_execution_environment_info,
-    is_web_server_environment
+    is_web_server_environment, get_max_upload_size_mb
 )
 from src.utils.webrtc_manager import (
     HAS_WEBRTC, webrtc_streamer, WebRtcMode, get_rtc_configuration,
@@ -110,15 +136,71 @@ from src.utils.webrtc_manager import (
 )
 from src.utils.stream_capture import (
     ThreadedVideoStream, probe_stream_connection, normalize_stream_source, apply_ffmpeg_network_optimizations,
-    resolve_streaming_url, is_web_streaming_url, format_stream_time, StreamSyncTracker
+    resolve_streaming_url, is_web_streaming_url, format_stream_time, StreamSyncTracker,
+    LiveStreamNotStartedError, parse_upcoming_stream_error
 )
 from src.utils.video_player_controls import render_video_playback_controls
 
 # Inicializa o logger central do sistema
 setup_system_logger()
 
+# Configuração dinâmica de limites de upload do Streamlit
+# No servidor Web / Nuvem: restringe o upload a 1 GB (1024 MB) e mantém proteções ativas (CORS e XSRF).
+# No ambiente Local (Desktop / Dojo): eleva o limite para 50 GB (51200 MB) para vídeos brutos pesados.
+try:
+    from streamlit import config as _st_config
+    if is_web_server_environment():
+        _st_config.set_option("server.maxUploadSize", 1024)
+        _st_config.set_option("server.maxMessageSize", 1024)
+    else:
+        _st_config.set_option("server.maxUploadSize", 51200)
+        _st_config.set_option("server.maxMessageSize", 51200)
+except Exception:
+    pass
+
+
+def render_live_stream_not_started_warning(time_remaining: Optional[str] = None) -> None:
+    """Exibe aviso formatado e pedagógico quando uma transmissão ao vivo agendada ainda não iniciou."""
+    is_imminent = False
+    if time_remaining:
+        time_lower = time_remaining.lower()
+        if any(w in time_lower for w in ["instantes", "moments", "segundos", "seconds", "qualquer momento", "breve", "shortly"]):
+            is_imminent = True
+
+    if is_imminent:
+        st.warning(
+            f"""
+            ### ⏳ Transmissão Ao Vivo Prestes a Começar!
+
+            O streaming do YouTube está programado e **deve começar a qualquer momento (em instantes)**.
+
+            ⏱️ **Previsão de Início:** `{time_remaining or 'A qualquer momento (em instantes)'}`
+
+            💡 **O que fazer:**
+            - O canal já está preparando a abertura da transmissão ao vivo.
+            - Aguarde alguns instantes até o criador iniciar o sinal de vídeo e clique em **Testar Conexão** ou marque **Iniciar Análise**.
+            """,
+            icon="⏳"
+        )
+    else:
+        time_badge = f"⏱️ **Previsão de Início:** `{time_remaining}`" if time_remaining else "⏱️ **Previsão de Início:** *Aguardando liberação do canal*"
+        st.warning(
+            f"""
+            ### ⏳ Transmissão Ao Vivo Agendada (Aguardando Início)
+
+            O streaming informado é uma transmissão **ao vivo** no YouTube, porém o evento **ainda não começou**.
+
+            {time_badge}
+
+            💡 **O que fazer:**
+            - O sinal de vídeo ainda não está sendo transmitido pelo criador/canal.
+            - Aguarde o horário previsto e, assim que o evento começar, inicie a análise novamente.
+            """,
+            icon="⏳"
+        )
+
 # Versão Oficial do Sistema
-SYSTEM_VERSION = "v 0.3.7.2"
+SYSTEM_VERSION = "v 0.3.8.0"
 
 st.set_page_config(
     page_title=f"SenpAI ({SYSTEM_VERSION}) - AI Kendo Referee & Analysis System",
@@ -285,6 +367,390 @@ def format_seconds_to_ts(seconds: float) -> str:
     secs = seconds % 60
     return f"{mins:02d}:{secs:06.3f}"
 
+
+def _resolve_kendoka_ui_name(
+    kp: Dict[str, Any],
+    saved_k_names: Dict[str, str],
+    idx_fallback: int = 0
+) -> str:
+    """
+    Resolve o nome efetivo de um Kendoca usando estritamente os aliases do seu próprio kendoka_id
+    (sem usar o índice da lista ordenada por presença), com auto-cura contra rótulos padrão trocados.
+    """
+    k_id = str(kp.get("kendoka_id") or f"KENSHI_{idx_fallback + 1:02d}").strip()
+    k_def = str(kp.get("default_name") or f"Kenshi {k_id.replace('KENSHI_', '')}").strip()
+    m_kid = re.match(r"^KENSHI_0*(\d+)$", k_id, flags=re.IGNORECASE)
+
+    for al in get_kendoka_id_aliases(k_id, fallback_index=idx_fallback):
+        val = saved_k_names.get(al)
+        if val and val.strip():
+            cand = val.strip()
+            m_cand = re.match(r"^(?:Kenshi|Kendoca)\s+0*(\d+)$", cand, flags=re.IGNORECASE)
+            if m_kid and m_cand and int(m_kid.group(1)) != int(m_cand.group(1)):
+                continue
+            return cand
+
+    raw_cust = str(kp.get("custom_name") or "").strip()
+    if raw_cust:
+        m_rc = re.match(r"^(?:Kenshi|Kendoca)\s+0*(\d+)$", raw_cust, flags=re.IGNORECASE)
+        if m_kid and m_rc and int(m_kid.group(1)) != int(m_rc.group(1)):
+            return k_def
+        return raw_cust
+    return k_def
+
+
+def _reset_kendoka_name_widgets():
+    st.session_state.pop("kendoka_merge_prompt", None)
+    st.session_state["kendoka_name_widget_ver"] = st.session_state.get("kendoka_name_widget_ver", 0) + 1
+    for k in list(st.session_state.keys()):
+        if str(k).startswith("train_name_in_"):
+            st.session_state.pop(k, None)
+
+
+def _on_merge_dialog_dismiss():
+    _reset_kendoka_name_widgets()
+
+
+@st.dialog("🥋 Mesclagem & Reidentificação de Kendoca", width="medium", on_dismiss=_on_merge_dialog_dismiss)
+def show_kendoka_merge_dialog(
+    merge_prompt: Dict[str, Any],
+    kendokas_raw: List[Dict[str, Any]],
+    train_data: Dict[str, Any],
+    res: Dict[str, Any]
+):
+    cand_name = merge_prompt["candidate_name"]
+    src_id = merge_prompt["source_k_id"]
+    src_def = merge_prompt.get("source_def", src_id)
+    ext_id = merge_prompt["existing_k_id"]
+    ext_def = merge_prompt.get("existing_def", ext_id)
+
+    st.markdown(
+        f"""
+        <div style="font-size: 15px; font-weight: 700; color: #F8FAFC; margin-bottom: 6px;">
+            O nome "{html.escape(cand_name)}" já pertence a outro praticante nesta sessão.
+        </div>
+        <div style="color: #CBD5E1; font-size: 13px; line-height: 1.5; margin-bottom: 12px;">
+            Você atribuiu o nome <b>{html.escape(cand_name)}</b> para o <b>{html.escape(src_def)}</b> ({src_id}), que já foi cadastrado para <b>{html.escape(ext_def)}</b> ({ext_id}).<br><br>
+            <b>Trata-se da mesma pessoa? Deseja mesclar os dados de ambos?</b>
+        </div>
+        <div style="background: rgba(30, 41, 59, 0.7); border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.08); font-size: 12px; color: #94A3B8;">
+            • <b>Mesclar Dados:</b> Junta as repetições, linha do tempo e tempos de presença, recalculando os 3 Pilares e a cadência em um único praticante unificado.<br>
+            • <b>Não Mesclar:</b> Mantém praticantes separados e adiciona um diferenciador automático <code>(1)</code> e <code>(2)</code> aos nomes.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    col_m_yes, col_m_no = st.columns([1.5, 1.5])
+    with col_m_yes:
+        if st.button("🔗 Sim, Mesclar Dados e Reprocessar", type="primary", use_container_width=True, key="btn_dlg_confirm_merge"):
+            p_ext = None
+            p_src = None
+            for kp in kendokas_raw:
+                if kp.get("kendoka_id") == ext_id:
+                    p_ext = kp
+                elif kp.get("kendoka_id") == src_id:
+                    p_src = kp
+
+            if p_ext and p_src:
+                merge_kendokas_in_training_data(train_data, ext_id, src_id, cand_name)
+                kendokas_raw[:] = train_data.get("kendokas", [])
+                res["training_analysis"] = train_data
+
+                if "training_kendoka_names" not in st.session_state:
+                    st.session_state["training_kendoka_names"] = {}
+                for al_src in get_kendoka_id_aliases(src_id):
+                    st.session_state["training_kendoka_names"].pop(al_src, None)
+                for al_ext in get_kendoka_id_aliases(ext_id):
+                    st.session_state["training_kendoka_names"][al_ext] = cand_name
+                sync_kendoka_names_in_training_data(train_data, st.session_state["training_kendoka_names"])
+                sync_kendoka_names_in_events(res.get("events"), st.session_state["training_kendoka_names"], train_data.get("merged_id_map"))
+                st.session_state["training_video_names_dirty"] = True
+
+            _reset_kendoka_name_widgets()
+            st.toast(f"✅ Dados de '{cand_name}' mesclados com sucesso em todas as sessões e blocos!", icon="🥋")
+            st.rerun()
+
+    with col_m_no:
+        if st.button("🏷️ Não Mesclar (Diferenciar com (1), (2))", type="secondary", use_container_width=True, key="btn_dlg_cancel_merge"):
+            n1, n2 = differentiate_kendoka_names(kendokas_raw, ext_id, src_id, cand_name)
+            for kp in kendokas_raw:
+                if kp.get("kendoka_id") == ext_id:
+                    kp["custom_name"] = n1
+                elif kp.get("kendoka_id") == src_id:
+                    kp["custom_name"] = n2
+
+            if "training_kendoka_names" not in st.session_state:
+                st.session_state["training_kendoka_names"] = {}
+            for al_ext in get_kendoka_id_aliases(ext_id):
+                st.session_state["training_kendoka_names"][al_ext] = n1
+            for al_src in get_kendoka_id_aliases(src_id):
+                st.session_state["training_kendoka_names"][al_src] = n2
+            sync_kendoka_names_in_training_data(train_data, st.session_state["training_kendoka_names"])
+            sync_kendoka_names_in_events(res.get("events"), st.session_state["training_kendoka_names"], train_data.get("merged_id_map"))
+            st.session_state["training_video_names_dirty"] = True
+
+            _reset_kendoka_name_widgets()
+            st.toast(f"🏷️ Nomes diferenciados como '{n1}' e '{n2}'.", icon="ℹ️")
+            st.rerun()
+
+    st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
+    if st.button("❌ Desfazer / Cancelar", use_container_width=True, key="btn_dlg_abort_merge"):
+        _reset_kendoka_name_widgets()
+        st.rerun()
+
+
+def _on_kendoka_name_input_change(
+    w_key: str,
+    k_id: str,
+    k_def: str,
+    prev_name: str,
+    idx_k: int,
+    kendokas_raw: List[Dict[str, Any]],
+    train_data: Dict[str, Any]
+):
+    """
+    Callback acionado EXCLUSIVAMENTE quando o usuário altera manualmente o campo de nome de um Kendoca.
+    Caso o novo nome colida com outro praticante, restaura imediatamente o valor anterior no widget
+    (evitando loop infinito de reabertura do modal) e agenda o diálogo de confirmação de mesclagem.
+    """
+    raw_val = st.session_state.get(w_key)
+    if raw_val is None:
+        return
+    new_clean = str(raw_val).strip()
+    if not new_clean or new_clean == prev_name.strip():
+        st.session_state[w_key] = prev_name
+        return
+
+    if "training_kendoka_names" not in st.session_state:
+        st.session_state["training_kendoka_names"] = {}
+    saved_k_names = st.session_state["training_kendoka_names"]
+
+    # Ignorar colisão se o usuário apenas restaurou o próprio nome padrão do Kendoca (ex: "Kenshi 03")
+    is_own_default = (new_clean.lower() == k_def.strip().lower())
+
+    colliding_k = None
+    if not is_own_default:
+        for other_idx, other_kp in enumerate(kendokas_raw):
+            other_id = str(other_kp.get("kendoka_id") or f"KENSHI_{other_idx + 1:02d}").strip()
+            if other_id == k_id:
+                continue
+            other_name = _resolve_kendoka_ui_name(other_kp, saved_k_names, other_idx)
+            if other_name.strip().lower() == new_clean.lower():
+                colliding_k = (
+                    other_id,
+                    other_idx,
+                    other_name,
+                    other_kp.get("default_name", f"Kendoca {other_idx + 1}")
+                )
+                break
+
+    if colliding_k:
+        # Restaura o valor anterior no widget ANTES da renderização para que fechar/cancelar o modal nunca trave a página
+        st.session_state[w_key] = prev_name
+        st.session_state["kendoka_merge_prompt"] = {
+            "candidate_name": new_clean,
+            "source_k_id": k_id,
+            "source_idx": idx_k,
+            "source_def": k_def,
+            "existing_k_id": colliding_k[0],
+            "existing_idx": colliding_k[1],
+            "existing_name": colliding_k[2],
+            "existing_def": colliding_k[3]
+        }
+    else:
+        for al in get_kendoka_id_aliases(k_id, fallback_index=idx_k):
+            saved_k_names[al] = new_clean
+        for kp in kendokas_raw:
+            if kp.get("kendoka_id") == k_id:
+                kp["custom_name"] = new_clean
+        sync_kendoka_names_in_training_data(train_data, saved_k_names)
+        curr_res = st.session_state.get("analysis_result")
+        if isinstance(curr_res, dict):
+            sync_kendoka_names_in_events(curr_res.get("events"), saved_k_names, train_data.get("merged_id_map"))
+        st.session_state["training_video_names_dirty"] = True
+
+
+@st.dialog("🎬 Re-renderização do Vídeo Anotado", width="medium")
+def show_training_video_rerender_dialog(res: Dict[str, Any], train_data: Dict[str, Any]):
+    """
+    Exibe um pop-up modal com o acompanhamento em tempo real da atualização
+    das etiquetas e nomes dos Kenshis diretamente no Vídeo Anotado (.mp4).
+    """
+    v_path = st.session_state.get("video_file_path") or res.get("video_path")
+    if not v_path or not os.path.exists(v_path):
+        st.error("❌ O arquivo de vídeo original não foi encontrado para atualizar o vídeo anotado.")
+        if st.button("Fechar", use_container_width=True, key="btn_close_rerender_err"):
+            st.rerun()
+        return
+
+    saved_k_names = st.session_state.get("training_kendoka_names", {})
+    merged_map = train_data.get("merged_id_map", {})
+    sub_sessions = train_data.get("sub_sessions", [])
+    mod_name = train_data.get("modality_name", "Treinamento")
+    tracker_cache = st.session_state.get("training_multi_tracker_cache")
+    kendokas_list = train_data.get("kendokas", [])
+    total_frames = max(1, int(res.get("total_frames", 1) or 1))
+
+    # Resumo visual dos nomes que serão gravados nas etiquetas do vídeo
+    badges_html = []
+    for idx_k, kp in enumerate(kendokas_list):
+        k_id = str(kp.get("kendoka_id") or f"KENSHI_{idx_k + 1:02d}")
+        k_def = str(kp.get("default_name") or k_id)
+        k_eff = _resolve_kendoka_ui_name(kp, saved_k_names, idx_k)
+        badges_html.append(
+            f"<span style='background: rgba(99, 102, 241, 0.22); border: 1px solid #6366F1; color: #E0E7FF; "
+            f"padding: 3px 9px; border-radius: 6px; font-size: 12px; font-weight: 700; display: inline-block; margin: 2px;'>"
+            f"🥋 {html.escape(k_def)} ➔ <b style='color:#38BDF8;'>{html.escape(k_eff)}</b></span>"
+        )
+
+    st.markdown(
+        f"""
+        <div style="background: #0F172A; border: 1px solid #334155; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px;">
+            <div style="color: #94A3B8; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px;">
+                Etiquetas de Identificação Aplicadas ao Vídeo:
+            </div>
+            <div style="line-height: 1.8;">
+                {"".join(badges_html) if badges_html else "<span style='color:#CBD5E1; font-size:12px;'>Praticantes rastreados na sessão</span>"}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    status_box = st.empty()
+    prog_bar = st.progress(0.0, text="Iniciando pipeline de renderização gráfica HD...")
+    metrics_box = st.empty()
+
+    prev_ann = st.session_state.get("annotated_output", "")
+    new_ann_path = os.path.abspath(f"annotated_training_{int(time.time())}.mp4")
+    t_start = time.time()
+
+    def _on_rerender_progress(p: float, is_full_pass: bool = False):
+        p_clamped = min(1.0, max(0.0, float(p)))
+        pct = round(p_clamped * 100)
+        cur_frame = min(total_frames, round(p_clamped * total_frames))
+        elapsed = max(0.01, time.time() - t_start)
+        fps_cur = cur_frame / elapsed
+        if is_full_pass:
+            if p_clamped < 0.65:
+                stage_txt = "Fase 1/2: Rastreando poses e movimentos dos Kenshis no vídeo..."
+            elif p_clamped < 0.96:
+                stage_txt = "Fase 2/2: Desenhando esqueletos e etiquetas TrueType Bold HD..."
+            else:
+                stage_txt = "Finalizando codificação H.264 de alta nitidez (CRF 17)..."
+        else:
+            stage_txt = (
+                "Codificando stream H.264 de alta nitidez (CRF 17)..."
+                if p_clamped >= 0.96
+                else "Desenhando esqueletos e etiquetas TrueType Bold nos quadros..."
+            )
+        prog_bar.progress(p_clamped, text=f"⏳ {stage_txt} ({pct}%)")
+        status_box.markdown(
+            f"""
+            <div style="background: rgba(30, 27, 75, 0.75); border: 1px solid #4F46E5; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <div style="color: #A5B4FC; font-size: 11px; font-weight: 700; text-transform: uppercase;">Andamento da Re-renderização</div>
+                    <div style="color: #F8FAFC; font-size: 14px; font-weight: 800;">{stage_txt}</div>
+                </div>
+                <div style="text-align: right; font-family: monospace;">
+                    <span style="color: #38BDF8; font-size: 20px; font-weight: 900;">{pct}%</span>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        metrics_box.markdown(
+            f"""
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 12px; text-align: center; margin-top: 4px;">
+                <div style="background: #0B1120; border: 1px solid #1E293B; padding: 6px; border-radius: 6px;">
+                    <span style="color:#94A3B8;">🎞️ Quadros:</span><br><b style="color:#F8FAFC;">{cur_frame} / {total_frames}</b>
+                </div>
+                <div style="background: #0B1120; border: 1px solid #1E293B; padding: 6px; border-radius: 6px;">
+                    <span style="color:#94A3B8;">⏱️ Tempo:</span><br><b style="color:#34D399;">{elapsed:.1f}s</b>
+                </div>
+                <div style="background: #0B1120; border: 1px solid #1E293B; padding: 6px; border-radius: 6px;">
+                    <span style="color:#94A3B8;">⚡ Velocidade:</span><br><b style="color:#38BDF8;">{fps_cur:.1f} FPS</b>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    tracks_dict = getattr(tracker_cache, "tracks", None) if tracker_cache else None
+    total_reids = getattr(tracker_cache, "total_reidentifications", 0) if tracker_cache else 0
+
+    if not tracks_dict:
+        disk_cache = SenpAIPipeline.load_cached_training_tracks(v_path)
+        if disk_cache and disk_cache.get("tracks"):
+            tracks_dict = disk_cache["tracks"]
+            total_reids = int(disk_cache.get("total_reidentifications", 0))
+
+    if tracks_dict:
+        ok = SenpAIPipeline.render_training_annotated_video(
+            video_path=v_path,
+            output_video_path=new_ann_path,
+            tracks=tracks_dict,
+            custom_kendoka_names=saved_k_names,
+            merged_id_map=merged_map,
+            sub_sessions=sub_sessions,
+            default_modality_name=mod_name,
+            total_reidentifications=total_reids,
+            progress_callback=lambda p: _on_rerender_progress(p, is_full_pass=False)
+        )
+    else:
+        # Como a análise atual foi executada antes da criação do cache de poses, executa a passagem completa
+        # diretamente dentro deste pop-up exibindo o progresso ao vivo de 0% a 100% e já cria o cache para as próximas vezes
+        _on_rerender_progress(0.01, is_full_pass=True)
+        dev_pref = st.session_state.get("device_preference", get_processing_device())
+        vis_pref = st.session_state.get("vision_model_preference", get_vision_model())
+        pipeline = SenpAIPipeline(
+            calibration_profile="normal",
+            device_preference=dev_pref,
+            vision_model=vis_pref
+        )
+        new_res = pipeline.process_video(
+            video_path=v_path,
+            output_video_path=new_ann_path,
+            progress_callback=lambda p: _on_rerender_progress(p, is_full_pass=True),
+            invert_combatants=st.session_state.get("invert_aka_shiro", False),
+            training_modality_override=train_data.get("modality_key"),
+            custom_kendoka_names=saved_k_names,
+            analysis_mode="training",
+            training_segments_override=sub_sessions if sub_sessions else None
+        )
+        if getattr(pipeline, "training_multi_tracker", None) is not None:
+            st.session_state["training_multi_tracker_cache"] = pipeline.training_multi_tracker
+            # Se havia IDs mesclados, re-renderiza rapidamente aplicando também o mapa de mesclagem
+            if merged_map:
+                SenpAIPipeline.render_training_annotated_video(
+                    video_path=v_path,
+                    output_video_path=new_ann_path,
+                    tracks=pipeline.training_multi_tracker.tracks,
+                    custom_kendoka_names=saved_k_names,
+                    merged_id_map=merged_map,
+                    sub_sessions=sub_sessions,
+                    default_modality_name=mod_name,
+                    total_reidentifications=getattr(pipeline.training_multi_tracker, "total_reidentifications", 0)
+                )
+        ok = bool(new_res and os.path.exists(new_ann_path))
+
+    if ok and os.path.exists(new_ann_path):
+        if prev_ann and os.path.exists(prev_ann) and os.path.abspath(prev_ann) != os.path.abspath(new_ann_path):
+            try:
+                os.remove(prev_ann)
+            except Exception:
+                pass
+        st.session_state["annotated_output"] = new_ann_path
+        st.session_state["pending_video_display_type"] = "🎥 Vídeo Anotado (Pose, Tracking & Golpes)"
+        st.session_state["training_video_names_dirty"] = False
+        prog_bar.progress(1.0, text="✅ Re-renderização concluída com sucesso (100%)!")
+        st.success("✅ As novas identificações dos Kenshis foram gravadas no Vídeo Anotado!")
+        time.sleep(0.45)
+        st.toast("✅ Vídeo Anotado atualizado com os novos nomes dos Kenshis!", icon="🎬")
+        st.rerun()
+
+
 def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
     """
     Renderiza o Painel Especializado de Treinamento & Aprendizado de Kendo:
@@ -309,8 +775,42 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
     meta = TRAINING_MODALITIES_METADATA.get(mod_key, TRAINING_MODALITIES_METADATA.get("suburi", {}))
     mod_display_name = meta.get("name", "Treinamento de Kendo")
 
+    # Sincronização limpa dos nomes dos Kendocas (usando exclusivamente aliases do próprio kendoka_id)
+    if "training_kendoka_names" not in st.session_state:
+        st.session_state["training_kendoka_names"] = {}
+    saved_k_names = st.session_state["training_kendoka_names"]
+    sync_kendoka_names_in_training_data(train_data, saved_k_names)
+
+    # Sanitizar qualquer prompt residual inválido (ex.: nome padrão ou IDs inexistentes)
+    pending_prompt = st.session_state.get("kendoka_merge_prompt")
+    if pending_prompt:
+        cand_n = str(pending_prompt.get("candidate_name") or "").strip()
+        src_k = str(pending_prompt.get("source_k_id") or "").strip()
+        ext_k = str(pending_prompt.get("existing_k_id") or "").strip()
+        valid_ids = {str(kp.get("kendoka_id") or "").strip() for kp in kendokas_raw}
+        is_generic_default = bool(re.match(r"^(?:Kenshi|Kendoca)\s+0*\d+$", cand_n, flags=re.IGNORECASE))
+        if is_generic_default or src_k == ext_k or src_k not in valid_ids or ext_k not in valid_ids:
+            st.session_state.pop("kendoka_merge_prompt", None)
+
+    sub_sessions = train_data.get("sub_sessions", [])
+    modality_blocks = train_data.get("modality_blocks", [])
+    seq_fps = float(res.get("fps", res.get("processing_fps", 30.0)) or 30.0)
+
+    # Resumo de cabeçalho caso haja múltiplas modalidades concentradas
+    if len(modality_blocks) > 1:
+        blocks_title_summary = " + ".join(
+            f"{mb.get('modality_name', mb.get('modality_key', 'Kihon'))} ({mb.get('intervals_label', '')})"
+            for mb in modality_blocks
+        )
+    else:
+        blocks_title_summary = mod_display_name
+
     # 1. CABEÇALHO DA MODALIDADE DE TREINO
-    st.markdown(
+    diag_html = (
+        f"<div style='color: #38BDF8; font-size: 12px; margin-top: 4px;'>💡 <b>Diagnóstico da IA:</b> {train_data.get('justification', '')}</div>"
+        if train_data.get("justification") else ""
+    )
+    st.html(
         f"""
         <div style="background: linear-gradient(135deg, #090D16 0%, #1E1B4B 100%); border: 2px solid #6366F1; border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25);">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(99, 102, 241, 0.35); padding-bottom: 8px; margin-bottom: 10px;">
@@ -318,26 +818,25 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     <span style="font-size: 26px;">🎓</span>
                     <div>
                         <div style="color: #A5B4FC; font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">AVALIAÇÃO DE TREINAMENTO & APRENDIZADO DE KENDO</div>
-                        <div style="color: #FFFFFF; font-size: 19px; font-weight: 900; font-family: monospace; line-height: 1.2;">
-                            {mod_display_name}
+                        <div style="color: #FFFFFF; font-size: 18px; font-weight: 900; font-family: monospace; line-height: 1.2;">
+                            {html.escape(blocks_title_summary)}
                         </div>
                     </div>
                 </div>
                 <div style="text-align: right;">
                     <span style="background: rgba(99, 102, 241, 0.25); color: #C7D2FE; border: 1px solid #6366F1; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;">
-                        {'🔍 IA Detectou' if det_method == 'AUTO_DETECTED' else '⚙️ Seleção Manual'} ({mod_conf}% Confiança)
+                        {'🔍 IA Detectou' if 'AUTO' in str(det_method).upper() else '⚙️ Segmentação / Manual'} ({mod_conf}% Confiança)
                     </span>
-                    <div style="color: #94A3B8; font-size: 11px; margin-top: 3px;">⏱️ Duração: {dur_sec:.1f}s • 🥋 Praticantes: {len(kendokas)}</div>
+                    <div style="color: #94A3B8; font-size: 11px; margin-top: 3px;">⏱️ Duração: {dur_sec:.1f}s • 🗂️ Sessões: {max(1, len(sub_sessions))} • 🥋 Praticantes: {len(kendokas)}</div>
                 </div>
             </div>
             <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 8px 12px; border: 1px solid rgba(255,255,255,0.06);">
                 <div style="color: #E2E8F0; font-size: 13px; margin-bottom: 3px;"><b>{meta.get('category', 'Modalidade')}:</b> {meta.get('description', '')}</div>
                 <div style="color: #94A3B8; font-size: 12px; margin-bottom: 3px;">🎯 <b>Focos Principais de Avaliação:</b> {' • '.join(meta.get('focus_areas', []))}</div>
-                {f"<div style='color: #38BDF8; font-size: 12px; margin-top: 4px;'>💡 <b>Diagnóstico da IA:</b> {train_data.get('justification', '')}</div>" if train_data.get('justification') else ""}
+                {diag_html}
             </div>
         </div>
-        """,
-        unsafe_allow_html=True
+        """
     )
 
     # Princípios Aprendidos e Fontes de Conhecimento Mineradas
@@ -353,26 +852,379 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                 for ws in web_sources:
                     st.markdown(f"- 🌐 [{ws.get('title', 'Fonte')}]({ws.get('url', '#')}) *(Tipo: {ws.get('type', 'Web')})*")
 
-    # 2. CONTROLES: DOWNLOAD DO RELATÓRIO CONSOLIDADO
-    top_c1, top_c2 = st.columns([2.8, 1.2])
+    # 2. CONTROLES: DOWNLOAD DO RELATÓRIO CONSOLIDADO E PACOTE COMPLETO DE ANÁLISE
+    top_c1, top_c2, top_c3, top_c4 = st.columns([1.5, 1.1, 1.1, 0.6])
     with top_c1:
         st.caption("💡 *Os 3 Pilares avaliam a biomecânica e trabalho de pés (Movimentação), sincronismo Ki-Ken-Tai-Ichi e alvo (Precisão) e cadência com ritmo respiratório (Constância).*")
     with top_c2:
-        report_json_str = json.dumps(train_data, indent=2, ensure_ascii=False)
+        curr_v_path = st.session_state.get("video_file_path")
+        curr_ann_path = st.session_state.get("annotated_output")
+        curr_k_names = st.session_state.get("training_kendoka_names", {})
+        curr_reviews = st.session_state.get("session_reviews", {})
+        try:
+            def _get_training_pkg_bytes() -> bytes:
+                return export_training_session_package(
+                    analysis_result=res,
+                    video_path=curr_v_path,
+                    annotated_video_path=curr_ann_path,
+                    kendoka_names=curr_k_names,
+                    invert_aka_shiro=is_inverted,
+                    session_reviews=curr_reviews
+                )
+            st.download_button(
+                label="📦 Salvar Análise (.zip)",
+                data=_get_training_pkg_bytes,
+                file_name=f"analise_treino_{mod_key}_{int(time.time())}.zip",
+                mime="application/zip",
+                width="stretch",
+                help="Salva e exporta o vídeo analisado junto com os dados completos do relatório dos 3 Pilares, sessões e blocos por modalidade em um pacote (.zip).",
+                key="btn_dl_train_package_zip"
+            )
+        except Exception as ex_exp:
+            st.error(f"Erro ao preparar pacote: {ex_exp}")
+    with top_c3:
+        try:
+            def _get_pdf_bytes() -> bytes:
+                return generate_training_pdf_report(
+                    analysis_result=res,
+                    kendoka_names=curr_k_names,
+                    modality_key=mod_key
+                )
+            st.download_button(
+                label="📄 Relatório PDF",
+                data=_get_pdf_bytes,
+                file_name=f"relatorio_treino_kendo_{mod_key}_{int(time.time())}.pdf",
+                mime="application/pdf",
+                width="stretch",
+                help="Exporta o relatório técnico consolidado de treinamento em PDF detalhado, separando as sessões e concentrando os blocos de cada modalidade.",
+                key="btn_dl_train_pdf_report"
+            )
+        except Exception as ex_pdf:
+            st.error(f"Erro ao gerar PDF: {ex_pdf}")
+    with top_c4:
         st.download_button(
-            label="📥 Sessão (.JSON)",
-            data=report_json_str,
+            label="📥 JSON",
+            data=lambda: json.dumps(train_data, indent=2, ensure_ascii=False),
             file_name=f"sessao_treino_{mod_key}_{int(time.time())}.json",
             mime="application/json",
             width="stretch",
             key="btn_dl_train_report_json"
         )
 
+    # 2.B CRONOGRAMA DE SESSÕES IDENTIFICADAS NA SEQUÊNCIA & EDITOR DE INTERVALOS POR MODALIDADE
+    if sub_sessions:
+        st.markdown("##### ⏱️ Cronograma de Sessões Identificadas na Sequência")
+        for idx_ss, ss in enumerate(sub_sessions):
+            ss_idx = ss.get("segment_index", idx_ss + 1)
+            s_ts = ss.get("start_timestamp", format_training_mmss(float(ss.get("start_seconds", 0.0))))
+            e_ts = ss.get("end_timestamp", format_training_mmss(float(ss.get("end_seconds", dur_sec))))
+            s_sec_val = float(ss.get("start_seconds", 0.0))
+            s_dur = float(ss.get("duration_seconds", 0.0))
+            s_mname = ss.get("modality_name", ss.get("modality_key", "Kihon"))
+            s_mcat = ss.get("modality_category", "Treino")
+            s_reps = int(ss.get("total_repetitions", 0))
+            s_conf = round(float(ss.get("detection_confidence", 0.90)) * 100)
+
+            sc1, sc2 = st.columns([4.2, 1.2])
+            with sc1:
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(15, 23, 42, 0.85); border-left: 4px solid #6366F1; border: 1px solid #1E293B; border-left-width: 4px; border-left-color: #6366F1; border-radius: 8px; padding: 7px 12px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+                        <div>
+                            <span style="background: #312E81; color: #C7D2FE; font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 4px; margin-right: 6px;">Sessão #{ss_idx}: {html.escape(s_ts)} a {html.escape(s_ts if not e_ts else e_ts)}</span>
+                            <span style="color: #F8FAFC; font-weight: 800; font-size: 13.5px;">🥋 {html.escape(s_mname)}</span>
+                            <span style="color: #94A3B8; font-size: 11.5px; margin-left: 6px;">({html.escape(s_mcat)})</span>
+                        </div>
+                        <div style="font-size: 11.5px; color: #CBD5E1;">
+                            ⏱️ <b>{s_dur:.1f}s</b> &nbsp;|&nbsp; 🔁 <b>{s_reps} reps</b> &nbsp;|&nbsp; 🎯 <b>{s_conf}%</b>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+            with sc2:
+                if st.button(f"🎬 {s_ts}", key=f"btn_seek_subsession_{ss_idx}_{idx_ss}", width="stretch", help=f"Posicionar vídeo no início da Sessão #{ss_idx} ({s_ts} a {e_ts} — {s_mname})"):
+                    st.session_state["video_start_time"] = s_sec_val
+                    st.session_state["video_seek_label"] = f"Sessão #{ss_idx} ({s_ts} a {e_ts}): {s_mname}"
+                    st.session_state["video_seek_key"] = st.session_state.get("video_seek_key", 0) + 1
+                    st.rerun()
+
+    with st.expander("✂️ Identificar / Editar Sessões de Treinamento na Sequência (Ex: 00:00 a 03:00 Kirikaeshi, 03:00 a 05:00 Waza-geiko)", expanded=False):
+        st.caption(
+            "Defina ou ajuste os intervalos de tempo (`MM:SS`) e a modalidade de cada sessão dentro da mesma sequência. "
+            "O relatório irá separar as sessões por modalidade e concentrar automaticamente o bloco de cada modalidade."
+        )
+        if "training_editable_segments" not in st.session_state or not st.session_state["training_editable_segments"]:
+            if sub_sessions:
+                st.session_state["training_editable_segments"] = [
+                    {
+                        "start_time": ss.get("start_timestamp", format_training_mmss(float(ss.get("start_seconds", 0.0)))),
+                        "end_time": ss.get("end_timestamp", format_training_mmss(float(ss.get("end_seconds", dur_sec)))),
+                        "modality_key": ss.get("modality_key", mod_key)
+                    }
+                    for ss in sub_sessions
+                ]
+            else:
+                st.session_state["training_editable_segments"] = [
+                    {
+                        "start_time": "00:00",
+                        "end_time": format_training_mmss(float(dur_sec)),
+                        "modality_key": mod_key
+                    }
+                ]
+
+        editable_segs: List[Dict[str, Any]] = st.session_state["training_editable_segments"]
+        all_mod_keys = list(TRAINING_MODALITIES_METADATA.keys())
+        updated_segs: List[Dict[str, Any]] = []
+        remove_idx: Optional[int] = None
+
+        for s_i, seg_item in enumerate(editable_segs):
+            ec1, ec2, ec3, ec4 = st.columns([1.1, 1.1, 2.4, 0.5])
+            with ec1:
+                st_val = st.text_input(
+                    f"Início #{s_i+1} (MM:SS)",
+                    value=str(seg_item.get("start_time", "00:00")),
+                    key=f"seg_edit_start_{s_i}"
+                )
+            with ec2:
+                et_val = st.text_input(
+                    f"Fim #{s_i+1} (MM:SS)",
+                    value=str(seg_item.get("end_time", format_training_mmss(float(dur_sec)))),
+                    key=f"seg_edit_end_{s_i}"
+                )
+            with ec3:
+                cur_m = seg_item.get("modality_key", mod_key)
+                m_idx = all_mod_keys.index(cur_m) if cur_m in all_mod_keys else 0
+                sel_m = st.selectbox(
+                    f"Modalidade da Sessão #{s_i+1}",
+                    options=all_mod_keys,
+                    index=m_idx,
+                    format_func=lambda k: f"{TRAINING_MODALITIES_METADATA[k]['name']} — {TRAINING_MODALITIES_METADATA[k]['category']}",
+                    key=f"seg_edit_mod_{s_i}"
+                )
+            with ec4:
+                st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                if st.button("🗑️", key=f"btn_del_seg_{s_i}", disabled=(len(editable_segs) <= 1), help="Remover esta sessão"):
+                    remove_idx = s_i
+
+            updated_segs.append({
+                "start_time": st_val.strip() or "00:00",
+                "end_time": et_val.strip() or format_training_mmss(float(dur_sec)),
+                "modality_key": sel_m
+            })
+
+        if remove_idx is not None:
+            updated_segs.pop(remove_idx)
+            st.session_state["training_editable_segments"] = updated_segs
+            for k in list(st.session_state.keys()):
+                if str(k).startswith(("seg_edit_start_", "seg_edit_end_", "seg_edit_mod_")):
+                    st.session_state.pop(k, None)
+            st.rerun()
+        else:
+            st.session_state["training_editable_segments"] = updated_segs
+
+        btn_seg_c1, btn_seg_c2 = st.columns([1.3, 2.2])
+        with btn_seg_c1:
+            if st.button("➕ Adicionar Nova Sessão na Sequência", use_container_width=True, key="btn_add_training_segment"):
+                last_end = updated_segs[-1]["end_time"] if updated_segs else "00:00"
+                last_end_sec = parse_training_mmss(last_end, 0.0)
+                new_end_sec = max(last_end_sec + 60.0, float(dur_sec))
+                updated_segs.append({
+                    "start_time": format_training_mmss(last_end_sec),
+                    "end_time": format_training_mmss(new_end_sec),
+                    "modality_key": "waza_geiko" if updated_segs and updated_segs[-1]["modality_key"] == "kirikaeshi" else "kirikaeshi"
+                })
+                st.session_state["training_editable_segments"] = updated_segs
+                for k in list(st.session_state.keys()):
+                    if str(k).startswith(("seg_edit_start_", "seg_edit_end_", "seg_edit_mod_")):
+                        st.session_state.pop(k, None)
+                st.rerun()
+        with btn_seg_c2:
+            if st.button("🔄 Aplicar Sessões e Concentrar Blocos por Modalidade", type="primary", use_container_width=True, key="btn_apply_training_segments"):
+                recalculate_blocks_from_segments(
+                    training_data=train_data,
+                    segments_override=updated_segs,
+                    fps=seq_fps
+                )
+                sync_kendoka_names_in_training_data(train_data, saved_k_names)
+                res["training_analysis"] = train_data
+                st.session_state["analysis_result"] = res
+                st.toast("✅ Sessões separadas e blocos concentrados por modalidade com sucesso!", icon="🗂️")
+                st.rerun()
+
+    # 2.C RELATÓRIO SEPARADO E CONCENTRADO POR BLOCO DE MODALIDADE
+    if modality_blocks:
+        st.markdown("##### 🗂️ Relatório Separado por Modalidade (Blocos Concentrados)")
+        tab_labels = [
+            f"🥋 {mb.get('modality_name', mb.get('modality_key', 'Modalidade')).split('(')[0].strip()} ({mb.get('intervals_label', '')})"
+            for mb in modality_blocks
+        ]
+        mod_tabs = st.tabs(tab_labels)
+        for idx_mb, (mb_tab, mb) in enumerate(zip(mod_tabs, modality_blocks)):
+            with mb_tab:
+                b_idx = mb.get("block_index", idx_mb + 1)
+                b_mkey = mb.get("modality_key", "kihon")
+                b_meta = TRAINING_MODALITIES_METADATA.get(b_mkey, {})
+                b_mname = mb.get("modality_name") or b_meta.get("name", b_mkey)
+                b_mcat = mb.get("modality_category") or b_meta.get("category", "Geral")
+                b_desc = mb.get("description") or b_meta.get("description", "")
+                b_focus = mb.get("focus_areas") or b_meta.get("focus_areas", [])
+                b_intervals = mb.get("intervals_label", "Sessão Completa")
+                b_dur = float(mb.get("total_duration_seconds", 0.0))
+                b_reps = int(mb.get("total_repetitions", 0))
+                b_scount = int(mb.get("session_count", max(1, len(mb.get("intervals", [])))))
+                b_kendokas_raw = mb.get("kendokas", [])
+                b_kendokas = list(reversed(b_kendokas_raw)) if (is_inverted and len(b_kendokas_raw) > 1) else b_kendokas_raw
+
+                st.markdown(
+                    f"""
+                    <div style="background: linear-gradient(135deg, #1E1B4B 0%, #0F172A 100%); border: 1.5px solid #818CF8; border-radius: 10px; padding: 12px 16px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid rgba(129, 140, 248, 0.3); padding-bottom: 6px; margin-bottom: 8px;">
+                            <div>
+                                <div style="color: #A5B4FC; font-size: 10.5px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;">BLOCO CONCENTRADO DE MODALIDADE #{b_idx}</div>
+                                <div style="color: #FFFFFF; font-size: 17px; font-weight: 900; font-family: monospace;">🎓 {html.escape(b_mname)} <span style="color:#94A3B8; font-size:12px; font-weight:500;">({html.escape(b_mcat)})</span></div>
+                            </div>
+                            <div style="text-align: right; font-size: 12px; color: #E0E7FF;">
+                                <div>⏱️ <b>Intervalos Concentrados:</b> <span style="color:#38BDF8; font-weight:800;">{html.escape(b_intervals)}</span></div>
+                                <div style="color:#CBD5E1; font-size:11px;">⏳ Duração Acumulada: <b>{b_dur:.1f}s</b> • 🗂️ Sessões Agrupadas: <b>{b_scount}</b> • 🔁 Repetições no Bloco: <b>{b_reps}</b></div>
+                            </div>
+                        </div>
+                        <div style="font-size: 12px; color: #CBD5E1;">
+                            <b>Fundamento da Modalidade:</b> {html.escape(b_desc)}<br/>
+                            <span style="color:#94A3B8;">🎯 <b>Focos Técnicos:</b> {html.escape(' • '.join(b_focus))}</span>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+                # Botões de navegação para cada intervalo concentrado neste bloco
+                b_ivs = mb.get("intervals", [])
+                if b_ivs:
+                    iv_cols = st.columns(min(4, len(b_ivs)))
+                    for iv_i, iv_info in enumerate(b_ivs[:4]):
+                        with iv_cols[iv_i]:
+                            iv_s = iv_info.get("start_timestamp", "00:00")
+                            iv_e = iv_info.get("end_timestamp", "00:00")
+                            iv_sec = float(iv_info.get("start_seconds", 0.0))
+                            if st.button(
+                                f"🎬 Trecho {iv_s}–{iv_e}",
+                                key=f"btn_seek_block_{b_idx}_iv_{iv_i}",
+                                width="stretch",
+                                help=f"Assistir trecho {iv_s} a {iv_e} de {b_mname}"
+                            ):
+                                st.session_state["video_start_time"] = iv_sec
+                                st.session_state["video_seek_label"] = f"Bloco {b_mname} ({iv_s} a {iv_e})"
+                                st.session_state["video_seek_key"] = st.session_state.get("video_seek_key", 0) + 1
+                                st.rerun()
+
+                # Avaliação de cada praticante concentrada neste Bloco de Modalidade
+                for idx_bk, bkp in enumerate(b_kendokas):
+                    bk_id = bkp.get("kendoka_id") or f"KENSHI_{idx_bk+1:02d}"
+                    bk_def = bkp.get("default_name", f"Kendoca {idx_bk+1}")
+                    bk_name = _resolve_kendoka_ui_name(bkp, saved_k_names, idx_bk)
+                    bk_role = bkp.get("role", "Praticante")
+                    bk_pil = bkp.get("pillars", {})
+                    bk_ov = float(bk_pil.get("overall_score", 0.0))
+                    bk_mov = float(bk_pil.get("movimentacao", bk_pil.get("forma", 0.0)))
+                    bk_prec = float(bk_pil.get("precisao", 0.0))
+                    bk_const = float(bk_pil.get("constancia", 0.0))
+                    bk_reps = int(bk_pil.get("total_repetitions", 0))
+                    bk_cpm = float(bk_pil.get("cadence_cpm", 0.0))
+                    bk_str = bkp.get("strengths", [])
+                    bk_imp = bkp.get("improvements", [])
+                    bk_ex = bkp.get("recommended_exercises", [])
+
+                    st.markdown(
+                        f"""
+                        <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid #334155; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <div>
+                                    <span style="color: #F8FAFC; font-weight: 800; font-size: 14.5px;">🥋 {html.escape(bk_name)}</span>
+                                    <span style="color: #94A3B8; font-size: 11.5px; margin-left: 6px;">({html.escape(bk_role)} em {html.escape(b_mname)})</span>
+                                </div>
+                                <div style="color: #38BDF8; font-weight: 800; font-size: 13px;">
+                                    ⭐ Nota no Bloco: {bk_ov:.1f}/100 &nbsp;|&nbsp; 🔁 {bk_reps} reps ({bk_cpm:.1f} CPM)
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 12px;">
+                                <div style="background: #0F172A; border-left: 3px solid #38BDF8; padding: 6px 10px; border-radius: 4px;">
+                                    <span style="color:#94A3B8;">🏃 Movimentação:</span> <b style="color:#38BDF8;">{bk_mov:.1f}%</b>
+                                </div>
+                                <div style="background: #0F172A; border-left: 3px solid #A855F7; padding: 6px 10px; border-radius: 4px;">
+                                    <span style="color:#94A3B8;">🎯 Precisão:</span> <b style="color:#C084FC;">{bk_prec:.1f}%</b>
+                                </div>
+                                <div style="background: #0F172A; border-left: 3px solid #F59E0B; padding: 6px 10px; border-radius: 4px;">
+                                    <span style="color:#94A3B8;">⏱️ Constância:</span> <b style="color:#FBBF24;">{bk_const:.1f}%</b>
+                                </div>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    if bk_str or bk_imp or bk_ex:
+                        b_dc1, b_dc2 = st.columns(2)
+                        with b_dc1:
+                            for s_txt in bk_str[:2]:
+                                st.markdown(f"✅ <span style='color:#86EFAC; font-size:12px;'>{s_txt}</span>", unsafe_allow_html=True)
+                        with b_dc2:
+                            for i_txt in bk_imp[:2]:
+                                st.markdown(f"⚠️ <span style='color:#FCA5A5; font-size:12px;'>{i_txt}</span>", unsafe_allow_html=True)
+                            if bk_ex:
+                                ex_first = bk_ex[0]
+                                st.markdown(
+                                    f"🏋️ <span style='color:#C7D2FE; font-size:12px;'><b>{ex_first.get('name', 'Drill')}:</b> {ex_first.get('prescription', '')}</span>",
+                                    unsafe_allow_html=True
+                                )
+
+        st.markdown("---")
+        st.markdown("##### 🥋 Perfis Consolidados dos Praticantes & Laudos Individuais")
+
     # 3. RASTREAMENTO INDIVIDUAL DOS KENDOCAS NO DOJO
+    sync_kendoka_names_in_events(res.get("events"), saved_k_names, train_data.get("merged_id_map"))
+
+    merge_prompt = st.session_state.get("kendoka_merge_prompt")
+    if merge_prompt:
+        show_kendoka_merge_dialog(merge_prompt, kendokas_raw, train_data, res)
+
+    if st.session_state.get("training_video_names_dirty"):
+        col_vn_msg, col_vn_btn = st.columns([2.2, 1.3])
+        with col_vn_msg:
+            st.markdown(
+                """
+                <div style="background: rgba(99, 102, 241, 0.16); border: 1px solid #6366F1; border-radius: 8px; padding: 8px 12px; font-size: 12.5px; color: #E0E7FF;">
+                    🏷️ <b>Nomes dos Kenshis alterados!</b> Os relatórios e a linha do tempo já foram atualizados. Clique ao lado para aplicar os novos nomes diretamente nas etiquetas do <b>Vídeo Anotado</b>.
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        with col_vn_btn:
+            if st.button(
+                "🎬 Atualizar Nomes no Vídeo Anotado",
+                type="primary",
+                width="stretch",
+                key="btn_apply_names_to_annotated_video_banner",
+                help="Abre o pop-up de progresso e re-renderiza as etiquetas de identificação no Vídeo Anotado (.mp4) com os novos nomes e mesclagens."
+            ):
+                show_training_video_rerender_dialog(res, train_data)
+    else:
+        col_hdr_k1, col_hdr_k2 = st.columns([2.3, 1.2])
+        with col_hdr_k2:
+            if st.button(
+                "🎬 Atualizar Nomes no Vídeo Anotado",
+                type="secondary",
+                width="stretch",
+                key="btn_apply_names_to_annotated_video_subtle",
+                help="Abre o pop-up de progresso e aplica os nomes personalizados atuais diretamente nas etiquetas visuais do Vídeo Anotado (.mp4)."
+            ):
+                show_training_video_rerender_dialog(res, train_data)
+
+    widget_ver = st.session_state.get("kendoka_name_widget_ver", 0)
+
     for idx_k, k_prof in enumerate(kendokas):
-        k_id = k_prof.get("kendoka_id", f"KENSHI_{idx_k+1}")
+        k_id = k_prof.get("kendoka_id", f"KENSHI_{idx_k+1:02d}")
         k_def = k_prof.get("default_name", f"Kendoca {idx_k+1}")
-        k_cust = k_prof.get("custom_name", k_def)
+        k_cust = _resolve_kendoka_ui_name(k_prof, saved_k_names, idx_k)
         k_role = k_prof.get("role", "Praticante")
         pillars = k_prof.get("pillars", {})
         strengths = k_prof.get("strengths", [])
@@ -399,7 +1251,14 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
         pres_sec = float(k_prof.get("presence_seconds", 0.0))
         reentries = int(k_prof.get("reentry_count", 0))
 
-        st.markdown(
+        extra_tags = []
+        if pres_sec > 0:
+            extra_tags.append(f"<span>👁️ Presença em Cena: <b style='color:#38BDF8;'>{pres_sec:.1f}s</b></span>")
+        if reentries > 0:
+            extra_tags.append(f"<span>🔄 Retornos (Re-ID): <b style='color:#A855F7;'>{reentries}x</b></span>")
+        extra_tags_html = " ".join(extra_tags)
+
+        st.html(
             f"""
             <div style="background: #0B1120; border: 1.5px solid #334155; border-radius: 10px; padding: 14px 18px; margin-bottom: 12px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1E293B; padding-bottom: 8px; margin-bottom: 10px;">
@@ -415,30 +1274,26 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     <span>⏱️ Cadência: <b style="color:#F8FAFC;">{cadence_cpm:.1f} CPM</b></span>
                     <span>🔁 Repetições: <b style="color:#F8FAFC;">{reps}</b></span>
                     <span>📊 Desvio: <b style="color:#F8FAFC;">{pillars.get('cadence_std_dev_seconds', 0.0):.2f}s DP</b></span>
-                    {f"<span>👁️ Presença em Cena: <b style='color:#38BDF8;'>{pres_sec:.1f}s</b></span>" if pres_sec > 0 else ""}
-                    {f"<span>🔄 Retornos (Re-ID): <b style='color:#A855F7;'>{reentries}x</b></span>" if reentries > 0 else ""}
+                    {extra_tags_html}
                 </div>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
 
         col_in_name, col_dl_indiv = st.columns([1.6, 1.4])
         with col_in_name:
-            curr_name_input = st.text_input(
+            w_input_key = f"train_name_in_{k_id}_v{widget_ver}"
+            if w_input_key not in st.session_state:
+                st.session_state[w_input_key] = k_cust
+            st.text_input(
                 f"Nomear Kendoca ({k_def}):",
-                value=k_cust,
-                key=f"train_name_in_{k_id}_{idx_k}"
+                key=w_input_key,
+                on_change=_on_kendoka_name_input_change,
+                args=(w_input_key, k_id, k_def, k_cust, idx_k, kendokas_raw, train_data)
             )
-            if curr_name_input and curr_name_input != k_cust:
-                if "training_kendoka_names" not in st.session_state:
-                    st.session_state["training_kendoka_names"] = {}
-                st.session_state["training_kendoka_names"][k_id] = curr_name_input
-                k_prof["custom_name"] = curr_name_input
-                k_cust = curr_name_input
         with col_dl_indiv:
             st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-            # Gerar relatório individual em Markdown
+            # Gerar relatório individual em Markdown (com separação por bloco de modalidade)
             k_obj = KendokaTrainingProfile(
                 kendoka_id=k_id,
                 default_name=k_def,
@@ -458,18 +1313,41 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                 strengths=strengths,
                 improvements=improvements,
                 recommended_exercises=exercises,
-                repetition_timeline=timeline
+                repetition_timeline=timeline,
+                modality_breakdown=k_prof.get("modality_breakdown", [])
             )
-            indiv_md = k_obj.generate_individual_report_markdown(meta)
+            indiv_md = k_obj.generate_individual_report_markdown(meta, modality_blocks=modality_blocks)
             safe_k_name = k_cust.replace(" ", "_").lower()
-            st.download_button(
-                label=f"📥 Relatório .MD ({k_cust[:8]})",
-                data=indiv_md,
-                file_name=f"relatorio_kenshi_{safe_k_name}_{int(time.time())}.md",
-                mime="text/markdown",
-                width="stretch",
-                key=f"btn_dl_indiv_md_{k_id}_{idx_k}"
-            )
+            col_indiv_md, col_indiv_pdf = st.columns([1, 1])
+            with col_indiv_md:
+                st.download_button(
+                    label=f"📥 MD ({k_cust[:7]})",
+                    data=indiv_md,
+                    file_name=f"relatorio_kenshi_{safe_k_name}_{int(time.time())}.md",
+                    mime="text/markdown",
+                    width="stretch",
+                    key=f"btn_dl_indiv_md_{k_id}_{idx_k}"
+                )
+            with col_indiv_pdf:
+                try:
+                    indiv_pdf_bytes = generate_individual_kendoka_pdf_report(
+                        kendoka_profile=k_prof,
+                        modality_meta=meta,
+                        custom_name=k_cust,
+                        modality_blocks=modality_blocks,
+                        sub_sessions=sub_sessions
+                    )
+                    st.download_button(
+                        label=f"📄 PDF ({k_cust[:7]})",
+                        data=indiv_pdf_bytes,
+                        file_name=f"laudo_kendo_{safe_k_name}_{int(time.time())}.pdf",
+                        mime="application/pdf",
+                        width="stretch",
+                        help=f"Exporta o laudo individual especializado em PDF com o diagnóstico completo do kendoca {k_cust}.",
+                        key=f"btn_dl_indiv_pdf_{k_id}_{idx_k}"
+                    )
+                except Exception as ex_indiv_pdf:
+                    st.caption(f"PDF indisponível: {ex_indiv_pdf}")
 
         # OS 3 PILARES (MOVIMENTAÇÃO, PRECISÃO, CONSTÂNCIA)
         p_col1, p_col2, p_col3 = st.columns(3)
@@ -615,9 +1493,23 @@ def clear_previous_analysis() -> None:
         "video_display_type_selector",
         "last_recorded_source_choice",
         "recorded_youtube_url_input",
+        "last_imported_pkg_name",
+        "last_imported_pkg_size",
+        "training_package_file_uploader",
+        "kendoka_merge_prompt",
+        "training_editable_segments",
+        "pre_training_segments_override",
+        "enable_pre_training_segments",
     ]
     for k in keys_to_clear:
         st.session_state.pop(k, None)
+
+    dynamic_train_keys = [
+        k for k in list(st.session_state.keys())
+        if str(k).startswith(("train_name_in_", "seg_edit_start_", "seg_edit_end_", "seg_edit_mod_"))
+    ]
+    for dk in dynamic_train_keys:
+        st.session_state.pop(dk, None)
 
     # 3. Remover arquivo temporário de vídeo anotado se existir
     annotated_out = os.path.abspath("annotated_match.mp4")
@@ -655,9 +1547,20 @@ def clear_analysis_results_only() -> None:
         "video_seek_key",
         "video_display_type_selector",
         "processing_cancelled",
+        "last_imported_pkg_name",
+        "last_imported_pkg_size",
+        "kendoka_merge_prompt",
+        "training_editable_segments",
     ]
     for k in keys_to_clear:
         st.session_state.pop(k, None)
+
+    dynamic_train_keys = [
+        k for k in list(st.session_state.keys())
+        if str(k).startswith(("train_name_in_", "seg_edit_start_", "seg_edit_end_", "seg_edit_mod_"))
+    ]
+    for dk in dynamic_train_keys:
+        st.session_state.pop(dk, None)
 
     annotated_out = os.path.abspath("annotated_match.mp4")
     if os.path.exists(annotated_out):
@@ -665,6 +1568,23 @@ def clear_analysis_results_only() -> None:
             os.remove(annotated_out)
         except Exception:
             pass
+
+    # Limpeza de arquivos temporários de análises anteriores
+    try:
+        from src.utils.strike_clip_manager import cleanup_senpai_uploads
+        keep_v = [st.session_state.get("video_file_path")]
+        cleanup_senpai_uploads(max_age_hours=12.0, keep_paths=keep_v)
+    except Exception:
+        pass
+
+# Limpeza automática de arquivos temporários obsoletos na inicialização do app
+if "_senpai_startup_cleanup" not in st.session_state:
+    st.session_state["_senpai_startup_cleanup"] = True
+    try:
+        from src.utils.strike_clip_manager import cleanup_senpai_uploads
+        cleanup_senpai_uploads(max_age_hours=24.0)
+    except Exception:
+        pass
 
 # Estilização CSS Moderna, Equilibrada (Escala 90%) e sem Cortes na Interface
 st.markdown("""
@@ -694,13 +1614,12 @@ st.markdown("""
         width: 100% !important;
     }
 
-    /* 3. Expansão e Fundo Contínuo da Barra Lateral */
+    /* 3. Expansão e Fundo Contínuo da Barra Lateral com Alto Contraste (WCAG AA >= 4.5:1) */
     [data-testid="stSidebar"],
     [data-testid="stSidebar"] > div,
     [data-testid="stSidebarContent"],
     [data-testid="stSidebarUserContent"],
     [data-testid="stSidebar"] .block-container {
-        background-color: #0F172A !important;
         min-height: 100% !important;
         height: auto !important;
     }
@@ -709,13 +1628,157 @@ st.markdown("""
         height: 100vh !important;
         min-height: 100vh !important;
         scrollbar-width: thin !important;
-        scrollbar-color: #475569 #0F172A !important;
     }
 
     /* Aplica largura de 360px apenas quando a barra lateral está expandida (permite recolher suavemente) */
     [data-testid="stSidebar"][aria-expanded="true"] {
         min-width: 360px !important;
         width: 360px !important;
+    }
+
+    /* Configuração Padrão / Tema Escuro */
+    [data-testid="stSidebar"],
+    [data-testid="stSidebar"] > div,
+    [data-testid="stSidebarContent"],
+    [data-testid="stSidebarUserContent"],
+    [data-testid="stSidebar"] .block-container {
+        background-color: #0F172A !important;
+    }
+    [data-testid="stSidebar"] {
+        scrollbar-color: #475569 #0F172A !important;
+    }
+    [data-testid="stSidebar"] h1,
+    [data-testid="stSidebar"] h2,
+    [data-testid="stSidebar"] h3,
+    [data-testid="stSidebar"] h4,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] span,
+    [data-testid="stSidebar"] label {
+        color: #F8FAFC !important;
+    }
+    .sidebar-brand-title {
+        color: #F1F5F9 !important;
+    }
+    .sidebar-footer-text {
+        color: #94A3B8 !important;
+    }
+    /* Opções de Rádio Limpas e Elegantes (Sem Caixas ou Bordas) */
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
+        gap: 4px !important;
+    }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
+        color: #E2E8F0 !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 4px 6px !important;
+        margin-bottom: 2px !important;
+        cursor: pointer !important;
+        transition: color 0.15s ease-in-out !important;
+    }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label p,
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label span {
+        color: #E2E8F0 !important;
+        font-weight: 500 !important;
+    }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover p,
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover span {
+        color: #60A5FA !important;
+    }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) p,
+    [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) span {
+        color: #60A5FA !important;
+        font-weight: 700 !important;
+    }
+
+    /* Configuração Acessível para TEMA CLARO (Light Theme) - Contraste Superior a 12:1 */
+    @media (prefers-color-scheme: light), [data-theme="light"], .stApp[data-theme="light"], [data-testid="stAppViewContainer"][data-theme="light"] {
+        [data-testid="stSidebar"],
+        [data-testid="stSidebar"] > div,
+        [data-testid="stSidebarContent"],
+        [data-testid="stSidebarUserContent"],
+        [data-testid="stSidebar"] .block-container {
+            background-color: #F8FAFC !important;
+            border-right: 1px solid #E2E8F0 !important;
+        }
+        [data-testid="stSidebar"] {
+            scrollbar-color: #CBD5E1 #F8FAFC !important;
+        }
+        [data-testid="stSidebar"] h1,
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3,
+        [data-testid="stSidebar"] h4,
+        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+        [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] span,
+        [data-testid="stSidebar"] label,
+        [data-testid="stSidebar"] .stSelectbox label,
+        [data-testid="stSidebar"] .stSlider label {
+            color: #0F172A !important;
+        }
+        .sidebar-brand-title {
+            color: #0F172A !important;
+        }
+        .sidebar-footer-text {
+            color: #475569 !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] {
+            gap: 4px !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label {
+            color: #1E293B !important;
+            background: transparent !important;
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 4px 6px !important;
+            margin-bottom: 2px !important;
+            cursor: pointer !important;
+            transition: color 0.15s ease-in-out !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label p,
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label span {
+            color: #1E293B !important;
+            font-weight: 500 !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover p,
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:hover span {
+            color: #1D4ED8 !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) {
+            background: transparent !important;
+            background-color: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) p,
+        [data-testid="stSidebar"] .stRadio div[role="radiogroup"] label:has(input:checked) span {
+            color: #1D4ED8 !important;
+            font-weight: 700 !important;
+        }
+        [data-testid="stSidebar"] .stCaption,
+        [data-testid="stSidebar"] small {
+            color: #475569 !important;
+        }
+        [data-testid="stSidebarCollapseButton"] {
+            color: #1E293B !important;
+            background: rgba(226, 232, 240, 0.8) !important;
+            border: 1px solid #CBD5E1 !important;
+        }
+        [data-testid="stSidebarCollapseButton"]:hover {
+            color: #1D4ED8 !important;
+            background: #DBEAFE !important;
+            border-color: #3B82F6 !important;
+        }
+        [data-testid="stSidebarCollapseButton"] button {
+            color: #1E293B !important;
+        }
     }
 
     /* Botão de Fechar/Recolher a Barra Lateral (<<): Sempre visível e acessível */
@@ -1352,7 +2415,7 @@ def render_welcome_home_page():
 st.sidebar.markdown(
     f"""
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
-        <span style="font-size: 1.15rem; font-weight: 800; color: #F1F5F9;">🥋 SenpAI</span>
+        <span class="sidebar-brand-title" style="font-size: 1.15rem; font-weight: 800;">🥋 SenpAI</span>
         <span style="font-size: 0.72rem; color: #818CF8; background: rgba(99, 102, 241, 0.15); padding: 2px 8px; border-radius: 9999px; border: 1px solid rgba(99, 102, 241, 0.3); font-weight: 700;">{SYSTEM_VERSION}</span>
     </div>
     """,
@@ -1461,7 +2524,7 @@ st.session_state["nav_page_selection"] = nav_page
 def render_sidebar_footer():
     st.sidebar.markdown(
         f"""
-        <div style="font-size: 10.5px; color: #64748B; text-align: center; margin-top: 24px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); line-height: 1.4;">
+        <div class="sidebar-footer-text" style="font-size: 10.5px; text-align: center; margin-top: 24px; padding-top: 10px; border-top: 1px solid rgba(148, 163, 184, 0.15); line-height: 1.4;">
             <div><b>© 2026 SenpAI • {SYSTEM_VERSION}</b></div>
             <div>Todos os direitos de uso e cópia reservados.</div>
         </div>
@@ -1941,10 +3004,13 @@ elif nav_page == "settings":
         with act_col2:
             st.markdown("**📥 Baixar Treinamento Atual**")
             st.caption("Exporta pacote completo consolidando revisões por Dan, Decisão dos Shinpans, Base de Conhecimento de IA e **todos os clipes de vídeo das pendências**.")
-            pkg_zip_bytes = feedback_mgr.export_training_package_zip(auto_trainer_instance=auto_trainer)
+            
+            def _export_full_training_pkg_zip() -> bytes:
+                return feedback_mgr.export_training_package_zip(auto_trainer_instance=auto_trainer)
+
             dl_train_clicked = st.download_button(
                 label="📦 Baixar Pacote Completo (.zip)",
-                data=pkg_zip_bytes,
+                data=_export_full_training_pkg_zip,
                 file_name=f"senpai_pacote_treinamento_completo_{int(time.time())}.zip",
                 mime="application/zip",
                 width="stretch",
@@ -1954,7 +3020,7 @@ elif nav_page == "settings":
             if dl_train_clicked:
                 st.session_state["training_download_success_msg"] = (
                     "✅ **Download do Pacote Completo (.zip) realizado com sucesso!**\n\n"
-                    f"O arquivo ZIP ({len(pkg_zip_bytes) / 1024:.1f} KB) foi gerado e baixado contendo "
+                    "O arquivo ZIP foi gerado e baixado contendo "
                     "todas as revisões por Dan, Decisões dos Shinpans, fila de pendências da Curadoria Ativa, "
                     "todos os clipes de vídeo dos lances para auditoria e a Base de Conhecimento do Auto-Trainer."
                 )
@@ -1964,11 +3030,13 @@ elif nav_page == "settings":
                 st.success("✅ Pacote baixado recentemente.", icon="📥")
 
             with st.expander("📄 Exportar apenas metadados (.json)", expanded=False):
-                pkg_data = feedback_mgr.export_training_package(auto_trainer_instance=auto_trainer)
-                pkg_json_str = json.dumps(pkg_data, indent=2, ensure_ascii=False)
+                def _export_training_pkg_json() -> str:
+                    pkg_data = feedback_mgr.export_training_package(auto_trainer_instance=auto_trainer)
+                    return json.dumps(pkg_data, indent=2, ensure_ascii=False)
+
                 st.download_button(
                     label="📥 Baixar Apenas JSON",
-                    data=pkg_json_str,
+                    data=_export_training_pkg_json,
                     file_name=f"senpai_training_package_{int(time.time())}.json",
                     mime="application/json",
                     width="stretch",
@@ -1978,8 +3046,18 @@ elif nav_page == "settings":
         with act_col3:
             st.markdown("**📤 Carregar Treinamento Baixado**")
             st.caption("Importa pacote (.zip ou .json) para restaurar revisões, links de streaming, clipes de vídeo e aprendizado da IA.")
-            imported_file = st.file_uploader("Selecione pacote (.zip ou .json)", type=["zip", "json"], key="import_pkg_file_tab")
+            imported_file = st.file_uploader(
+                "Selecione pacote (.zip ou .json)",
+                type=["zip", "json"],
+                max_upload_size=get_max_upload_size_mb(),
+                key="import_pkg_file_tab"
+            )
             if imported_file is not None:
+                max_pkg_mb = get_max_upload_size_mb()
+                if getattr(imported_file, "size", 0) > max_pkg_mb * 1024 * 1024:
+                    limit_label = f"{max_pkg_mb // 1024} GB" if max_pkg_mb >= 1024 else f"{max_pkg_mb} MB"
+                    st.error(f"❌ O pacote excede o limite máximo permitido de {limit_label}.")
+                    st.stop()
                 st.info(f"📄 **Arquivo selecionado:** `{imported_file.name}` ({imported_file.size / 1024:.1f} KB)\n\nPronto para restauração. Clique no botão abaixo para restaurar configurações, descompactar clipes e retreinar o modelo.")
                 if st.button("📤 Importar e Retreinar Modelo", type="primary", width="stretch", key="btn_import_train_tab"):
                     with st.spinner("⏳ Processando e aplicando pacote de treinamento..."):
@@ -2299,10 +3377,9 @@ elif nav_page == "settings":
                         key="btn_dl_auto_train_md"
                     )
                 with dl_c2:
-                    kb_dump = json.dumps(auto_trainer.load_knowledge_base(), indent=2, ensure_ascii=False)
                     st.download_button(
                         "📥 Baixar Base de Conhecimento (.json)",
-                        data=kb_dump,
+                        data=lambda: json.dumps(auto_trainer.load_knowledge_base(), indent=2, ensure_ascii=False),
                         file_name=f"senpai_ai_knowledge_base_{int(time.time())}.json",
                         mime="application/json",
                         width="stretch",
@@ -2610,10 +3687,9 @@ elif nav_page == "settings":
         st.markdown("---")
         evo_export_c1, evo_export_c2 = st.columns(2)
         with evo_export_c1:
-            evo_dump_json = json.dumps(evo_stats, indent=2, ensure_ascii=False)
             st.download_button(
                 "📥 Baixar Painel de Evolução Completo (.json)",
-                data=evo_dump_json,
+                data=lambda: json.dumps(evo_stats, indent=2, ensure_ascii=False),
                 file_name=f"senpai_ai_evolution_stats_{int(time.time())}.json",
                 mime="application/json",
                 width="stretch",
@@ -3469,7 +4545,9 @@ elif nav_page == "settings":
         with dbg_col3:
             st.markdown("**🔬 Testes Automatizados**")
             st.caption("Executa toda a suíte de testes automatizados e salva o log detalhado.")
-            if st.button("🔬 Rodar Testes (79)", type="primary", width="stretch", key="btn_run_tests_tab"):
+            from src.utils.test_runner import get_total_test_count
+            total_tests_num = get_total_test_count()
+            if st.button(f"🔬 Rodar Testes ({total_tests_num})", type="primary", width="stretch", key="btn_run_tests_tab"):
                 with st.spinner("Executando suíte de testes automatizados..."):
                     t_res = run_automated_tests(test_dir="tests", log_file=TEST_LOG_PATH, verbosity=1)
                     if t_res["success"]:
@@ -3491,12 +4569,21 @@ elif nav_page == "settings":
                 key="btn_dl_test_rep_tab"
             )
 
-        col_clean, _ = st.columns([1, 3])
+        col_clean, col_clean_uploads, _ = st.columns([1, 1, 2])
         with col_clean:
             if st.button("🧹 Limpar Logs de Debug", type="secondary", width="stretch", key="btn_clear_logs_tab"):
                 clear_debug_logs()
                 st.success("✅ Histórico de logs de debug zerado com sucesso!")
                 st.rerun()
+
+        with col_clean_uploads:
+            if st.button("🗑️ Limpar Vídeos Temporários", type="secondary", width="stretch", key="btn_clear_tmp_uploads_tab"):
+                with st.spinner("Limpando arquivos temporários obsoletos..."):
+                    from src.utils.strike_clip_manager import cleanup_senpai_uploads
+                    c_res = cleanup_senpai_uploads(max_age_hours=0.0, keep_paths=[st.session_state.get("video_file_path")])
+                    mb_fr = c_res["bytes_freed"] / (1024 * 1024)
+                    st.success(f"✅ {c_res['files_deleted']} arquivo(s) e {c_res['dirs_deleted']} pasta(s) removidos ({mb_fr:.1f} MB liberados)!")
+                    st.rerun()
 
         st.markdown("#### 📜 Alertas e Registros de Debug em Tempo Real:")
         filter_col1, filter_col2 = st.columns([1, 2])
@@ -4176,11 +5263,11 @@ elif nav_page in ["match", "training", "analysis"]:
 
                 # Aguardar conexão inicial de forma resiliente com feedback visual (até 5.0 segundos)
                 with st.spinner("📡 Estabelecendo conexão com as fontes de vídeo (Webcam / RTSP / Câmeras IP)..."):
-                    deadline = time.time() + 5.0
+                    deadline = time.time() + 4.5
                     while time.time() < deadline:
-                        if any(s.is_connected() for s in streams):
+                        if all(s.is_connected() for s in streams):
                             break
-                        time.sleep(0.1)
+                        time.sleep(0.05)
 
                 open_indices = [i for i, s in enumerate(streams) if s.is_connected()]
                 if not open_indices:
@@ -4200,13 +5287,25 @@ elif nav_page in ["match", "training", "analysis"]:
                     latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
                     live_strike_history: list[str] = []
 
-                    # Calibrador Automático de Atraso Temporal: Ancoragem na Webcam Local (Referência Zero 0ms)
-                    ref_cam_idx = 0
-                    for idx_c, st_c in enumerate(streams):
-                        if not getattr(st_c, "is_network", False):
-                            ref_cam_idx = idx_c
-                            break
-                    sync_tracker = StreamSyncTracker(reference_index=ref_cam_idx, fps=30.0)
+                    # Calibrador Automático de Atraso Temporal: Ancoragem em TODAS as Webcams Locais (Ground Truth)
+                    local_cam_indices = [
+                        idx_c for idx_c, st_c in enumerate(streams)
+                        if not getattr(st_c, "is_network", False)
+                    ]
+                    if not local_cam_indices:
+                        local_cam_indices = [0]
+                    ref_cam_idx = local_cam_indices[0]
+
+                    sync_tracker = StreamSyncTracker(
+                        reference_index=ref_cam_idx,
+                        local_indices=local_cam_indices,
+                        fps=30.0
+                    )
+
+                    # Drena qualquer atraso acumulado durante a inicialização para iniciar no tempo real mínimo
+                    for s in streams:
+                        if hasattr(s, "flush_buffer"):
+                            s.flush_buffer()
 
                     score_shiro = 0
                     score_aka = 0
@@ -4545,7 +5644,11 @@ elif nav_page in ["match", "training", "analysis"]:
                         else:
                             st.error(f"❌ {diag['message']}")
                     except Exception as ex:
-                        st.error(f"❌ Erro ao conectar ao streaming: {ex}")
+                        time_rem = parse_upcoming_stream_error(str(ex))
+                        if time_rem is not None:
+                            render_live_stream_not_started_warning(time_rem)
+                        else:
+                            st.error(f"❌ Erro ao conectar ao streaming: {ex}")
 
         st.markdown("---")
         run_streaming_detection = st.checkbox("▶️ Iniciar Análise de Streaming em Tempo Real", value=False, key="run_match_streaming_checkbox")
@@ -4655,7 +5758,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     # Barra de Controle de Velocidade e Navegação do Vídeo
                     stream_ctrl_card = st.container()
                     with stream_ctrl_card:
-                        c_speed, c_nav = st.columns([5, 7])
+                        c_speed, c_nav = st.columns([4, 8])
                         with c_speed:
                             speed_choice = st.radio(
                                 "⚡ Velocidade:",
@@ -4667,7 +5770,7 @@ elif nav_page in ["match", "training", "analysis"]:
                             )
                         with c_nav:
                             st.markdown("<div style='font-size: 0.78rem; font-weight: 600; color: #94A3B8; margin-bottom: 2px;'>Navegação no Vídeo:</div>", unsafe_allow_html=True)
-                            nav_col1, nav_col2, nav_col3, nav_col4, nav_col5 = st.columns(5)
+                            nav_col1, nav_col2, nav_col3, nav_col4, nav_col5, nav_col6 = st.columns(6)
                             with nav_col1:
                                 btn_r10 = st.button("⏪ -10s", key="match_btn_r10", help="Retroceder 10 segundos")
                             with nav_col2:
@@ -4678,6 +5781,8 @@ elif nav_page in ["match", "training", "analysis"]:
                                 btn_f5 = st.button("⏩ +5s", key="match_btn_f5", help="Avançar 5 segundos")
                             with nav_col5:
                                 btn_f10 = st.button("⏩ +10s", key="match_btn_f10", help="Avançar 10 segundos")
+                            with nav_col6:
+                                btn_live = st.button("🔴 Ao Vivo", key="match_btn_live", help="Sincronizar imediatamente com o ponto ao vivo da transmissão")
 
                     speed_map: dict[str, float] = {"0.5x": 0.5, "1.0x": 1.0, "1.5x": 1.5, "2.0x": 2.0}
                     active_match_speed: float = speed_map.get(speed_choice or "1.0x", 1.0)
@@ -4699,7 +5804,11 @@ elif nav_page in ["match", "training", "analysis"]:
                             st.session_state["match_stream_meta"] = meta
                             st.session_state["match_streaming_url"] = effective_url
                         except Exception as e:
-                            st.error(f"❌ Falha ao resolver URL do streaming: {e}")
+                            time_rem = parse_upcoming_stream_error(str(e))
+                            if time_rem is not None:
+                                render_live_stream_not_started_warning(time_rem)
+                            else:
+                                st.error(f"❌ Falha ao resolver URL do streaming: {e}")
                             resolved_stream_src = None
 
                 if resolved_stream_src:
@@ -4712,13 +5821,16 @@ elif nav_page in ["match", "training", "analysis"]:
                                 active_stream_inst.stop()
                             except Exception:
                                 pass
+                        match_stream_meta = st.session_state.get("match_stream_meta") or {}
                         stream_obj = ThreadedVideoStream(
                             src=resolved_stream_src,
                             name="MatchStreaming",
                             playback_speed=active_match_speed,
                             max_reconnect_attempts=5,
                             reconnect_delay=1.5,
-                            auto_start=True
+                            auto_start=True,
+                            target_fps=float(match_stream_meta.get("fps") or 30.0),
+                            is_live=bool(match_stream_meta.get("is_live", False))
                         )
                         st.session_state["match_active_stream_obj"] = stream_obj
 
@@ -4745,6 +5857,9 @@ elif nav_page in ["match", "training", "analysis"]:
                         elif btn_f10:
                             stream_obj.seek(10.0)
                             st.toast("⏩ Avançando 10 segundos no streaming...", icon="⏩")
+                        elif btn_live:
+                            stream_obj.go_to_live()
+                            st.toast("🔴 Sincronizado com o ponto Ao Vivo!", icon="🔴")
 
                         if btn_pause:
                             is_p = stream_obj.toggle_pause()
@@ -4840,9 +5955,11 @@ elif nav_page in ["match", "training", "analysis"]:
                                 dur_sec = stream_obj.get_duration_seconds()
                                 dur_str = f" / {format_stream_time(dur_sec)}" if dur_sec > 0 else ""
                                 pause_tag = " [PAUSADO]" if stream_obj.is_paused else ""
+                                is_live_m = stream_obj.is_at_live()
+                                live_m_tag = "🔴 AO VIVO" if is_live_m else f"⏪ REPLAY (-{stream_obj.get_live_delay_seconds():.0f}s)"
                                 stream_frame_ph.image(
                                     frame_rgb,
-                                    caption=f"🌐 Transmissão ({'🟢 CONECTADO' if stream_obj.is_connected() else '🟡 BUFFER'} — {stream_fps_val:.1f} FPS | ⏱️ {pos_str}{dur_str} | ⚡ {active_match_speed:.1f}x{pause_tag})",
+                                    caption=f"🌐 Transmissão ({live_m_tag} — {stream_fps_val:.1f} FPS | ⏱️ {pos_str}{dur_str} | ⚡ {active_match_speed:.1f}x{pause_tag})",
                                     channels="RGB",
                                     width="stretch"
                                 )
@@ -5331,11 +6448,11 @@ elif nav_page in ["match", "training", "analysis"]:
                     streams.append(stream)
 
                 with st.spinner("📡 Estabelecendo conexão com as fontes de vídeo de treino (Webcam / RTSP)..."):
-                    deadline = time.time() + 5.0
+                    deadline = time.time() + 4.5
                     while time.time() < deadline:
-                        if any(s.is_connected() for s in streams):
+                        if all(s.is_connected() for s in streams):
                             break
-                        time.sleep(0.1)
+                        time.sleep(0.05)
 
                 open_indices = [i for i, s in enumerate(streams) if s.is_connected()]
                 if not open_indices:
@@ -5360,13 +6477,25 @@ elif nav_page in ["match", "training", "analysis"]:
                     live_pose_histories = [[] for _ in range(num_cameras)]
                     latest_drawn_frames: list[Optional[np.ndarray]] = [None for _ in range(num_cameras)]
 
-                    # Calibrador Automático de Atraso Temporal: Ancoragem na Webcam Local (Referência Zero 0ms)
-                    ref_train_cam_idx = 0
-                    for idx_c, st_c in enumerate(streams):
-                        if not getattr(st_c, "is_network", False):
-                            ref_train_cam_idx = idx_c
-                            break
-                    sync_train_tracker = StreamSyncTracker(reference_index=ref_train_cam_idx, fps=30.0)
+                    # Calibrador Automático de Atraso Temporal: Ancoragem em TODAS as Webcams Locais (Ground Truth)
+                    local_train_cam_indices = [
+                        idx_c for idx_c, st_c in enumerate(streams)
+                        if not getattr(st_c, "is_network", False)
+                    ]
+                    if not local_train_cam_indices:
+                        local_train_cam_indices = [0]
+                    ref_train_cam_idx = local_train_cam_indices[0]
+
+                    sync_train_tracker = StreamSyncTracker(
+                        reference_index=ref_train_cam_idx,
+                        local_indices=local_train_cam_indices,
+                        fps=30.0
+                    )
+
+                    # Drena qualquer atraso acumulado durante a inicialização para iniciar no tempo real mínimo
+                    for s in streams:
+                        if hasattr(s, "flush_buffer"):
+                            s.flush_buffer()
 
                     frame_count = 0
                     start_time = time.time()
@@ -5663,7 +6792,11 @@ elif nav_page in ["match", "training", "analysis"]:
                         else:
                             st.error(f"❌ {diag['message']}")
                     except Exception as ex:
-                        st.error(f"❌ Erro ao conectar ao streaming de treino: {ex}")
+                        time_rem = parse_upcoming_stream_error(str(ex))
+                        if time_rem is not None:
+                            render_live_stream_not_started_warning(time_rem)
+                        else:
+                            st.error(f"❌ Erro ao conectar ao streaming de treino: {ex}")
 
         st.markdown("---")
         run_streaming_train = st.checkbox("▶️ Iniciar Análise de Treinamento em Tempo Real", value=False, key="run_train_streaming_checkbox")
@@ -5711,7 +6844,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     # Barra de Controle de Velocidade e Navegação do Vídeo de Treino
                     train_stream_ctrl_card = st.container()
                     with train_stream_ctrl_card:
-                        ct_speed, ct_nav = st.columns([5, 7])
+                        ct_speed, ct_nav = st.columns([4, 8])
                         with ct_speed:
                             train_speed_choice = st.radio(
                                 "⚡ Velocidade:",
@@ -5723,7 +6856,7 @@ elif nav_page in ["match", "training", "analysis"]:
                             )
                         with ct_nav:
                             st.markdown("<div style='font-size: 0.78rem; font-weight: 600; color: #94A3B8; margin-bottom: 2px;'>Navegação no Vídeo:</div>", unsafe_allow_html=True)
-                            tr_col1, tr_col2, tr_col3, tr_col4, tr_col5 = st.columns(5)
+                            tr_col1, tr_col2, tr_col3, tr_col4, tr_col5, tr_col6 = st.columns(6)
                             with tr_col1:
                                 train_btn_r10 = st.button("⏪ -10s", key="train_btn_r10", help="Retroceder 10 segundos")
                             with tr_col2:
@@ -5734,6 +6867,8 @@ elif nav_page in ["match", "training", "analysis"]:
                                 train_btn_f5 = st.button("⏩ +5s", key="train_btn_f5", help="Avançar 5 segundos")
                             with tr_col5:
                                 train_btn_f10 = st.button("⏩ +10s", key="train_btn_f10", help="Avançar 10 segundos")
+                            with tr_col6:
+                                train_btn_live = st.button("🔴 Ao Vivo", key="train_btn_live", help="Sincronizar imediatamente com o ponto ao vivo da transmissão")
 
                     speed_map_train: dict[str, float] = {"0.5x": 0.5, "1.0x": 1.0, "1.5x": 1.5, "2.0x": 2.0}
                     active_train_speed: float = speed_map_train.get(train_speed_choice or "1.0x", 1.0)
@@ -5755,7 +6890,11 @@ elif nav_page in ["match", "training", "analysis"]:
                             st.session_state["train_stream_meta"] = meta
                             st.session_state["train_streaming_url"] = effective_train_url
                         except Exception as e:
-                            st.error(f"❌ Falha ao resolver URL do streaming de treino: {e}")
+                            time_rem = parse_upcoming_stream_error(str(e))
+                            if time_rem is not None:
+                                render_live_stream_not_started_warning(time_rem)
+                            else:
+                                st.error(f"❌ Falha ao resolver URL do streaming de treino: {e}")
                             resolved_train_src = None
 
                 if resolved_train_src:
@@ -5768,13 +6907,16 @@ elif nav_page in ["match", "training", "analysis"]:
                                 active_train_stream_inst.stop()
                             except Exception:
                                 pass
+                        train_stream_meta = st.session_state.get("train_stream_meta") or {}
                         train_stream_obj = ThreadedVideoStream(
                             src=resolved_train_src,
                             name="TrainStreaming",
                             playback_speed=active_train_speed,
                             max_reconnect_attempts=5,
                             reconnect_delay=1.5,
-                            auto_start=True
+                            auto_start=True,
+                            target_fps=float(train_stream_meta.get("fps") or 30.0),
+                            is_live=bool(train_stream_meta.get("is_live", False))
                         )
                         st.session_state["train_active_stream_obj"] = train_stream_obj
 
@@ -5801,6 +6943,9 @@ elif nav_page in ["match", "training", "analysis"]:
                         elif train_btn_f10:
                             train_stream_obj.seek(10.0)
                             st.toast("⏩ Avançando 10 segundos no treino...", icon="⏩")
+                        elif train_btn_live:
+                            train_stream_obj.go_to_live()
+                            st.toast("🔴 Sincronizado com o ponto Ao Vivo!", icon="🔴")
 
                         if train_btn_pause:
                             is_p = train_stream_obj.toggle_pause()
@@ -5891,9 +7036,11 @@ elif nav_page in ["match", "training", "analysis"]:
                                 dur_sec = train_stream_obj.get_duration_seconds()
                                 dur_str = f" / {format_stream_time(dur_sec)}" if dur_sec > 0 else ""
                                 pause_label = " [PAUSADO]" if train_stream_obj.is_paused else ""
+                                is_live_tr = train_stream_obj.is_at_live()
+                                live_tr_tag = "🔴 AO VIVO" if is_live_tr else f"⏪ REPLAY (-{train_stream_obj.get_live_delay_seconds():.0f}s)"
                                 train_stream_frame_ph.image(
                                     frame_rgb,
-                                    caption=f"🌐 Transmissão de Treino ({'🟢 ATIVO' if train_stream_obj.is_connected() else '🟡 BUFFER'} — {stream_fps_val:.1f} FPS | ⏱️ {pos_str}{dur_str} | ⚡ {active_train_speed:.1f}x{pause_label})",
+                                    caption=f"🌐 Transmissão de Treino ({live_tr_tag} — {stream_fps_val:.1f} FPS | ⏱️ {pos_str}{dur_str} | ⚡ {active_train_speed:.1f}x{pause_label})",
                                     channels="RGB",
                                     width="stretch"
                                 )
@@ -6021,11 +7168,18 @@ elif nav_page in ["match", "training", "analysis"]:
                     or is_web_server_environment()
                     or st.session_state.get("is_web_server", False)
                 )
-                recorded_source_options = (
-                    ["📁 Fazer Upload de Arquivo"]
-                    if is_web_server
-                    else ["📁 Fazer Upload de Arquivo", "🌐 Link do YouTube / Streaming Web"]
-                )
+                if app_mode == "training":
+                    recorded_source_options = (
+                        ["📁 Fazer Upload de Arquivo", "📦 Importar Análise Salva (.zip)"]
+                        if is_web_server
+                        else ["📁 Fazer Upload de Arquivo", "🌐 Link do YouTube / Streaming Web", "📦 Importar Análise Salva (.zip)"]
+                    )
+                else:
+                    recorded_source_options = (
+                        ["📁 Fazer Upload de Arquivo"]
+                        if is_web_server
+                        else ["📁 Fazer Upload de Arquivo", "🌐 Link do YouTube / Streaming Web"]
+                    )
 
                 if "recorded_source_choice" in st.session_state and st.session_state["recorded_source_choice"] not in recorded_source_options:
                     st.session_state.pop("recorded_source_choice", None)
@@ -6045,8 +7199,8 @@ elif nav_page in ["match", "training", "analysis"]:
                     key="recorded_source_choice"
                 )
 
-                # Se o usuário alternar entre Upload e YouTube, limpar a análise e dados do vídeo anterior da tela
-                source_type_selected = "upload" if (source_choice and "Upload" in source_choice) else "youtube"
+                # Se o usuário alternar entre Upload, YouTube ou Importar Pacote, limpar a análise e dados do vídeo anterior da tela
+                source_type_selected = "import_pkg" if (source_choice and "Importar" in source_choice) else ("upload" if (source_choice and "Upload" in source_choice) else "youtube")
                 prev_source_type = st.session_state.get("last_recorded_source_choice")
                 if prev_source_type is not None and prev_source_type != source_type_selected:
                     clear_analysis_results_only()
@@ -6055,13 +7209,30 @@ elif nav_page in ["match", "training", "analysis"]:
 
                 if source_choice == "📁 Fazer Upload de Arquivo":
                     st.markdown("Selecione o arquivo de vídeo local do treinamento de Kendo a ser analisado:" if app_mode == "training" else "Selecione o arquivo de vídeo local da luta de Kendo a ser analisado:")
+                    max_upload_mb = get_max_upload_size_mb()
+                    help_msg = (
+                        "Limite de até 1 GB no servidor Web / Nuvem. Suporta arquivos de vídeo nos formatos .mp4, .avi ou .mov."
+                        if is_web_server
+                        else "Limite de até 50 GB em execução local. Suporta arquivos de vídeo nos formatos .mp4, .avi ou .mov."
+                    )
                     uploaded_file = st.file_uploader(
                         "Vídeo de Treinamento (.mp4, .avi, .mov)" if app_mode == "training" else "Vídeo da Luta (.mp4, .avi, .mov)",
                         type=["mp4", "avi", "mov"],
-                        help="Suporta arquivos de vídeo nos formatos .mp4, .avi ou .mov.",
+                        max_upload_size=max_upload_mb,
+                        help=help_msg,
                         key="recorded_local_file_uploader"
                     )
                     if uploaded_file is not None:
+                        max_allowed_bytes = max_upload_mb * 1024 * 1024
+                        if getattr(uploaded_file, "size", 0) > max_allowed_bytes:
+                            limit_label = f"{max_upload_mb // 1024} GB" if max_upload_mb >= 1024 else f"{max_upload_mb} MB"
+                            st.error(
+                                f"❌ **Tamanho do Arquivo Excedido**: O arquivo selecionado possui "
+                                f"`{uploaded_file.size / (1024 * 1024 * 1024):.2f} GB`, ultrapassando o limite "
+                                f"máximo permitido de {limit_label} no modo {'Web / Nuvem' if is_web_server else 'Local'}."
+                            )
+                            st.stop()
+
                         cached_file_name = st.session_state.get("uploaded_file_name")
                         cached_file_size = st.session_state.get("uploaded_file_size")
                         cached_file_path = st.session_state.get("video_file_path")
@@ -6084,16 +7255,10 @@ elif nav_page in ["match", "training", "analysis"]:
                             uploads_dir = get_senpai_uploads_dir()
                             os.makedirs(uploads_dir, exist_ok=True)
                             
-                            # Limpar arquivos temporários obsoletos (mais de 7 dias) preservando lutas ativas em curadoria
+                            # Limpeza preventiva de temporários obsoletos (mais de 12 horas) preservando a luta ativa
                             try:
-                                now = time.time()
-                                for old_f in os.listdir(uploads_dir):
-                                    f_p = os.path.join(uploads_dir, old_f)
-                                    if os.path.isfile(f_p) and (now - os.path.getmtime(f_p) > 7 * 86400):
-                                        try:
-                                            os.remove(f_p)
-                                        except Exception:
-                                            pass
+                                from src.utils.strike_clip_manager import cleanup_senpai_uploads
+                                cleanup_senpai_uploads(max_age_hours=12.0, keep_paths=[video_file_path, cached_file_path])
                             except Exception:
                                 pass
 
@@ -6146,6 +7311,78 @@ elif nav_page in ["match", "training", "analysis"]:
                             if st.session_state.get("video_source_type") == "upload" and st.session_state.get("uploaded_file_name"):
                                 clear_previous_analysis()
                             video_file_path = None
+
+                elif source_choice and "Importar" in source_choice:
+                    st.markdown("Selecione um pacote de análise de treinamento salvo anteriormente (`.zip`) contendo o vídeo analisado e os dados do relatório:")
+                    max_upload_mb = get_max_upload_size_mb()
+                    pkg_uploaded_file = st.file_uploader(
+                        "📦 Pacote de Sessão de Treinamento (.zip)",
+                        type=["zip"],
+                        max_upload_size=max_upload_mb,
+                        help="Importa o pacote .zip exportado pelo SenpAI para restaurar o vídeo analisado e dar continuidade à análise.",
+                        key="training_package_file_uploader"
+                    )
+                    if pkg_uploaded_file is not None:
+                        max_allowed_bytes = max_upload_mb * 1024 * 1024
+                        if getattr(pkg_uploaded_file, "size", 0) > max_allowed_bytes:
+                            limit_label = f"{max_upload_mb // 1024} GB" if max_upload_mb >= 1024 else f"{max_upload_mb} MB"
+                            st.error(
+                                f"❌ **Tamanho do Pacote Excedido**: O arquivo selecionado ultrapassa o limite "
+                                f"máximo permitido de {limit_label} no modo {'Web / Nuvem' if is_web_server else 'Local'}."
+                            )
+                            st.stop()
+
+                        last_pkg_name = st.session_state.get("last_imported_pkg_name")
+                        last_pkg_size = st.session_state.get("last_imported_pkg_size")
+                        if last_pkg_name == pkg_uploaded_file.name and last_pkg_size == pkg_uploaded_file.size and st.session_state.get("analysis_result"):
+                            video_file_path = st.session_state.get("video_file_path")
+                            st.success(f"📦 Pacote `{pkg_uploaded_file.name}` importado e ativo para continuidade da análise!")
+                        else:
+                            pkg_bytes = pkg_uploaded_file.getvalue()
+                            valid_pkg, valid_msg = is_valid_training_package(pkg_bytes)
+                            if not valid_pkg:
+                                st.error(f"❌ Pacote inválido: {valid_msg}")
+                                video_file_path = None
+                            else:
+                                try:
+                                    from src.utils.strike_clip_manager import get_senpai_uploads_dir
+                                    pkg_extract_base = os.path.join(get_senpai_uploads_dir(), f"imported_pkg_{int(time.time())}")
+                                    imported_data = import_training_session_package(
+                                        package_source=pkg_bytes,
+                                        extract_dir=pkg_extract_base
+                                    )
+                                    clear_analysis_results_only()
+                                    st.session_state["analysis_result"] = imported_data["analysis_result"]
+                                    st.session_state["video_file_path"] = imported_data["video_file_path"]
+                                    if imported_data.get("annotated_output"):
+                                        st.session_state["annotated_output"] = imported_data["annotated_output"]
+                                    st.session_state["training_kendoka_names"] = imported_data.get("training_kendoka_names", {})
+                                    st.session_state["invert_aka_shiro"] = imported_data.get("invert_aka_shiro", False)
+                                    st.session_state["session_reviews"] = imported_data.get("session_reviews", {})
+                                    st.session_state["last_processing_time"] = imported_data.get("processing_time_seconds", 0.0)
+                                    st.session_state["last_processing_fps"] = imported_data.get("processing_fps", 0.0)
+                                    st.session_state["video_source_type"] = "import_pkg"
+                                    st.session_state["last_imported_pkg_name"] = pkg_uploaded_file.name
+                                    st.session_state["last_imported_pkg_size"] = pkg_uploaded_file.size
+                                    for k_id_imp, k_name_imp in st.session_state["training_kendoka_names"].items():
+                                        st.session_state[f"train_name_in_{k_id_imp}"] = k_name_imp
+                                    video_file_path = imported_data["video_file_path"]
+                                    st.toast("📦 Análise de treinamento importada com sucesso!", icon="✅")
+                                    st.rerun()
+                                except Exception as e_imp:
+                                    st.error(f"❌ Erro ao importar pacote de treinamento: {e_imp}")
+                                    video_file_path = None
+                    else:
+                        if st.session_state.get("video_source_type") == "import_pkg" and st.session_state.get("analysis_result"):
+                            video_file_path = st.session_state.get("video_file_path")
+                        else:
+                            video_file_path = None
+
+
+
+
+
+
 
                 elif not is_web_server:
                     # Origem: Link do YouTube / Streaming Web
@@ -6217,10 +7454,14 @@ elif nav_page in ["match", "training", "analysis"]:
                             
                             try:
                                 with st.spinner(f"⏳ Conectando e baixando vídeo ({QUALITY_LABELS.get(selected_quality, selected_quality)})..."):
+                                    # Para processamento local em Treinamento e Aprendizado, remove o limite de duração (permite vídeos longos de treino/seminário)
+                                    is_local_training = (operation_mode == "training" or app_mode == "training") and not is_web_server
+                                    max_dur = None if is_local_training else 1800
                                     dl_path, extracted_info = download_video_stream(
                                         url=yt_url_input,
                                         quality=selected_quality,
-                                        progress_callback=_ui_progress
+                                        progress_callback=_ui_progress,
+                                        max_duration_seconds=max_dur
                                     )
                                 # Limpar novamente para garantir estado 100% novo do vídeo recém-carregado
                                 clear_analysis_results_only()
@@ -6233,10 +7474,20 @@ elif nav_page in ["match", "training", "analysis"]:
                                 st.session_state.pop("uploaded_file_size", None)
                                 st.toast(f"✅ Vídeo '{extracted_info.get('title', 'Kendo')}' carregado com sucesso!", icon="🎥")
                                 st.rerun()
+                            except LiveStreamNotStartedError as e:
+                                render_live_stream_not_started_warning(e.time_remaining)
                             except VideoDownloadError as e:
-                                st.error(f"❌ {str(e)}")
+                                time_rem = parse_upcoming_stream_error(str(e))
+                                if time_rem is not None:
+                                    render_live_stream_not_started_warning(time_rem)
+                                else:
+                                    st.error(f"❌ {str(e)}")
                             except Exception as e:
-                                st.error(f"❌ Erro ao carregar vídeo do YouTube: {str(e)}")
+                                time_rem = parse_upcoming_stream_error(str(e))
+                                if time_rem is not None:
+                                    render_live_stream_not_started_warning(time_rem)
+                                else:
+                                    st.error(f"❌ Erro ao carregar vídeo do YouTube: {str(e)}")
 
                     # Exibir card informativo se o vídeo do YouTube estiver carregado
                     if yt_loaded_path and yt_info and os.path.exists(yt_loaded_path):
@@ -6309,7 +7560,7 @@ elif nav_page in ["match", "training", "analysis"]:
                     selected_mod_key_raw = st.selectbox(
                         "Tipo de Treinamento:",
                         options=mod_keys,
-                        format_func=lambda k: "🔍 Detecção Inteligente Automática pela IA" if k == "auto" else f"{TRAINING_MODALITIES_METADATA[k]['name']} — {TRAINING_MODALITIES_METADATA[k]['category']}",
+                        format_func=lambda k: "🔍 Detecção Inteligente Automática pela IA (Identifica Sessões na Sequência)" if k == "auto" else f"{TRAINING_MODALITIES_METADATA[k]['name']} — {TRAINING_MODALITIES_METADATA[k]['category']}",
                         index=0,
                         key="training_modality_select_pre"
                     )
@@ -6319,6 +7570,65 @@ elif nav_page in ["match", "training", "analysis"]:
                         m_desc = TRAINING_MODALITIES_METADATA[selected_mod_key]
                         st.caption(f"ℹ️ **{m_desc['category']}:** {m_desc['description']}")
 
+                    with st.expander("⏱️ Opcional: Pré-definir Sessões na Sequência (Ex: 00:00–03:00 Kirikaeshi, 03:00–05:00 Waza-geiko)", expanded=False):
+                        use_pre_segs = st.checkbox(
+                            "Especificar manualmente os intervalos das sessões antes de iniciar",
+                            value=st.session_state.get("enable_pre_training_segments", False),
+                            key="chk_enable_pre_training_segments"
+                        )
+                        st.session_state["enable_pre_training_segments"] = use_pre_segs
+                        if use_pre_segs:
+                            if "pre_training_segments_override" not in st.session_state or not st.session_state["pre_training_segments_override"]:
+                                st.session_state["pre_training_segments_override"] = [
+                                    {"start_time": "00:00", "end_time": "03:00", "modality_key": "kirikaeshi"},
+                                    {"start_time": "03:00", "end_time": "05:00", "modality_key": "waza_geiko"},
+                                ]
+                            pre_segs = st.session_state["pre_training_segments_override"]
+                            all_pre_mods = list(TRAINING_MODALITIES_METADATA.keys())
+                            new_pre_segs = []
+                            del_pre_idx = None
+                            for p_i, p_seg in enumerate(pre_segs):
+                                pc1, pc2, pc3, pc4 = st.columns([1.0, 1.0, 2.3, 0.5])
+                                with pc1:
+                                    ps_val = st.text_input(f"Início #{p_i+1}", value=p_seg.get("start_time", "00:00"), key=f"pre_seg_s_{p_i}")
+                                with pc2:
+                                    pe_val = st.text_input(f"Fim #{p_i+1}", value=p_seg.get("end_time", "03:00"), key=f"pre_seg_e_{p_i}")
+                                with pc3:
+                                    pm_cur = p_seg.get("modality_key", "kirikaeshi")
+                                    pm_idx = all_pre_mods.index(pm_cur) if pm_cur in all_pre_mods else 0
+                                    pm_val = st.selectbox(
+                                        f"Modalidade #{p_i+1}",
+                                        options=all_pre_mods,
+                                        index=pm_idx,
+                                        format_func=lambda k: TRAINING_MODALITIES_METADATA[k]["name"],
+                                        key=f"pre_seg_m_{p_i}"
+                                    )
+                                with pc4:
+                                    st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+                                    if st.button("🗑️", key=f"btn_del_pre_seg_{p_i}", disabled=(len(pre_segs) <= 1)):
+                                        del_pre_idx = p_i
+                                new_pre_segs.append({
+                                    "start_time": ps_val.strip() or "00:00",
+                                    "end_time": pe_val.strip() or "03:00",
+                                    "modality_key": pm_val
+                                })
+                            if del_pre_idx is not None:
+                                new_pre_segs.pop(del_pre_idx)
+                                st.session_state["pre_training_segments_override"] = new_pre_segs
+                                st.rerun()
+                            else:
+                                st.session_state["pre_training_segments_override"] = new_pre_segs
+                            if st.button("➕ Adicionar Sessão", key="btn_add_pre_seg"):
+                                prev_end = new_pre_segs[-1]["end_time"] if new_pre_segs else "00:00"
+                                prev_sec = parse_training_mmss(prev_end, 0.0)
+                                new_pre_segs.append({
+                                    "start_time": format_training_mmss(prev_sec),
+                                    "end_time": format_training_mmss(prev_sec + 120.0),
+                                    "modality_key": "waza_geiko"
+                                })
+                                st.session_state["pre_training_segments_override"] = new_pre_segs
+                                st.rerun()
+
                 active_worker = st.session_state.get("analysis_worker", None)
                 is_running = (active_worker is not None and not active_worker.is_done)
 
@@ -6326,6 +7636,24 @@ elif nav_page in ["match", "training", "analysis"]:
                 if st.session_state.get("processing_cancelled", False) and not is_running:
                     st.warning("⚠️ O processamento foi interrompido pelo usuário.")
                     st.session_state["processing_cancelled"] = False
+
+                with st.expander("⚡ Opções de Desempenho & Otimização do Processamento", expanded=False):
+                    opt_c1, opt_c2 = st.columns([1.1, 0.9])
+                    with opt_c1:
+                        st.radio(
+                            "Cadência de Análise dos Quadros:",
+                            ["🎯 Completa (100% dos quadros • Alta precisão)", "⚡ Turbo 2x (Quadros alternados • Dobra a velocidade)"],
+                            index=0,
+                            key="perf_cadence_choice",
+                            help="O Modo Turbo analisa 1 a cada 2 quadros com interpolação contínua, reduzindo pela metade o tempo de IA sem comprometer a contagem e avaliação dos golpes."
+                        )
+                    with opt_c2:
+                        st.checkbox(
+                            "🎬 Gerar Vídeo Anotado Completo (.mp4)",
+                            value=True,
+                            key="opt_render_annotated_video_on_finish",
+                            help="Se desmarcado, o SenpAI conclui a análise biomecânica e exibe os relatórios imediatamente. O vídeo anotado poderá ser gerado sob demanda a qualquer momento."
+                        )
 
                 col_btn1, col_btn2 = st.columns([1, 1])
                 with col_btn1:
@@ -6383,16 +7711,25 @@ elif nav_page in ["match", "training", "analysis"]:
                             weight_zanshin=w_zanshin
                         )
 
-                    annotated_output = os.path.abspath("annotated_match.mp4")
+                    chosen_step = 2 if "Turbo" in st.session_state.get("perf_cadence_choice", "") else 1
+                    should_render_video = st.session_state.get("opt_render_annotated_video_on_finish", True)
+                    annotated_output = os.path.abspath("annotated_match.mp4") if should_render_video else None
                     target_analysis_mode = "training" if app_mode == "training" else "match"
+                    pre_segments_arg = (
+                        st.session_state.get("pre_training_segments_override")
+                        if (app_mode == "training" and st.session_state.get("enable_pre_training_segments"))
+                        else None
+                    )
                     worker = AnalysisWorker(
                         pipeline=pipeline,
                         video_path=video_file_path,
                         output_video_path=annotated_output,
                         invert_combatants=st.session_state.get("invert_aka_shiro", False),
                         training_modality_override=st.session_state.get("training_modality_selected"),
+                        training_segments_override=pre_segments_arg,
                         custom_kendoka_names=st.session_state.get("training_kendoka_names", {}),
-                        analysis_mode=target_analysis_mode
+                        analysis_mode=target_analysis_mode,
+                        frame_step=chosen_step
                     )
                     worker.start()
                     st.session_state["analysis_worker"] = worker
@@ -6434,11 +7771,26 @@ elif nav_page in ["match", "training", "analysis"]:
                     elif active_worker.error:
                         err_msg = active_worker.error
                         st.session_state.pop("analysis_worker", None)
-                        st.error(f"❌ Erro durante o processamento de vídeo: {err_msg}")
+                        st.session_state.pop("analysis_result", None)
+                        st.session_state.pop("annotated_output", None)
+                        st.error(f"❌ **Falha na Análise de Vídeo**: {err_msg}\n\n*Nenhuma pontuação (0-0) foi gerada e nenhuma sessão foi registrada nos perfis dos praticantes.*")
                     else:
                         res = active_worker.result
+                        if not res or res.get("total_frames", 0) <= 0:
+                            st.session_state.pop("analysis_worker", None)
+                            st.session_state.pop("analysis_result", None)
+                            st.session_state.pop("annotated_output", None)
+                            st.error("❌ **Vídeo Corrompido ou Sem Quadros Legíveis**: O arquivo não pôde ser decodificado (0 frames processados). Nenhuma pontuação (0-0) foi gerada e nenhuma sessão foi registrada nos perfis.")
+                            st.rerun()
                         st.session_state["analysis_result"] = res
-                        st.session_state["annotated_output"] = os.path.abspath(active_worker.output_video_path)
+                        if active_worker.output_video_path and os.path.exists(active_worker.output_video_path):
+                            st.session_state["annotated_output"] = os.path.abspath(active_worker.output_video_path)
+                        else:
+                            st.session_state.pop("annotated_output", None)
+                        tracker_inst = getattr(getattr(active_worker, "pipeline", None), "training_multi_tracker", None)
+                        if tracker_inst is not None:
+                            st.session_state["training_multi_tracker_cache"] = tracker_inst
+                        st.session_state["training_video_names_dirty"] = False
                         if getattr(active_worker, "video_path", None) and os.path.exists(active_worker.video_path):
                             st.session_state["video_file_path"] = os.path.abspath(active_worker.video_path)
                         # Define por padrão o vídeo original como selecionado após a conclusão do processamento
@@ -6887,6 +8239,9 @@ elif nav_page in ["match", "training", "analysis"]:
                         st.session_state["video_file_path"] = video_file_path
                         has_original = True
 
+                video_type: Optional[str] = None
+                if "pending_video_display_type" in st.session_state:
+                    st.session_state["video_display_type_selector"] = st.session_state.pop("pending_video_display_type")
                 if has_annotated and has_original:
                     video_type = st.radio(
                         "Exibição do Vídeo:",
@@ -6897,9 +8252,11 @@ elif nav_page in ["match", "training", "analysis"]:
                     )
                     selected_video = annotated_path if (video_type and "Anotado" in video_type) else video_file_path
                 elif has_annotated:
+                    video_type = "annotated"
                     selected_video = annotated_path
                     st.caption("🎥 **Exibindo Vídeo Anotado (Pose, Tracking & Golpes)**")
                 elif has_original:
+                    video_type = "original"
                     selected_video = video_file_path
                     st.caption("📹 **Exibindo Vídeo Original**")
                 else:
@@ -6916,6 +8273,10 @@ elif nav_page in ["match", "training", "analysis"]:
                         selected_video = None
 
                 if selected_video and os.path.exists(selected_video):
+                    try:
+                        ensure_browser_compatible_video(selected_video)
+                    except Exception:
+                        pass
                     # Banner indicativo se o vídeo foi posicionado em um evento específico
                     if "video_seek_label" in st.session_state:
                         seek_lbl = st.session_state["video_seek_label"]
@@ -8175,8 +9536,4 @@ else:
 # RODAPÉ GLOBAL DO SISTEMA (DIREITOS DE USO E CÓPIA RESERVADOS)
 # ==============================================================================
 render_global_footer()
-
-
-
-
 

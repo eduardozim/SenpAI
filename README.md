@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) ⚔️
 
 > **Sistema Avançado de Avaliação e Análise Biomecânica de Kendo com Inteligência Artificial**  
-> **Versão Oficial**: `v 0.3.7.2` • **Python**: `3.11` • **Licença**: Todos os Direitos Reservados
+> **Versão Oficial**: `v 0.3.8.0` • **Python**: `3.11` • **Licença**: Todos os Direitos Reservados
 
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B.svg)](https://streamlit.io/)
@@ -109,12 +109,15 @@ pytest tests/
 
 ---
 
-## 🌟 Novidades da Versão `v 0.3.7.2`
+## 🌟 Novidades da Versão `v 0.3.8.0`
 
-- **Arquitetura de Uploads no Workspace (`data/tmp/senpai_uploads`) & Suporte Multi-Servidor**: Resolução de caminhos agnóstica de SO (Windows/Linux/Docker), armazenamento de uploads dentro do workspace do projeto com retenção de 7 dias (evitando problemas de permissão em `/tmp` e consumo de RAM `tmpfs`), com fallback resiliente para a pasta temporária do sistema operacional.
-- **Opção de Descarte na Curadoria Ativa (`🗑️ Descartar`)**: Descarte seguro de lances com corte truncado ou ruidosos sem afetar o retreinamento adaptativo.
-- **Pacotes ZIP de Treinamento**: Exportação e importação integral de dados e clipes físicos de vídeo em arquivo `.zip`.
-- **Suíte de Testes Expandida**: 100% de aprovação nos testes automatizados.
+- **Identificação de Múltiplas Sessões & Agrupamento por Bloco de Modalidade**: Reconhecimento inteligente (automático ou manual) de diferentes sessões de treino dentro de uma mesma gravação contínua (ex.: 00:00 a 03:00 Kirikaeshi, 03:00 a 05:00 Waza-geiko). Os relatórios do painel, Markdown (.md) e PDF passam a agrupar e concentrar as sessões em blocos consolidados por modalidade, exibindo duração acumulada, repetições totais e notas individuais dos 3 Pilares por praticante.
+- **Nitidez Aprimorada nas Etiquetas dos Kenshis & Codificação de Alta Fidelidade**: Implementação de etiquetas com tipografia TrueType Bold de alto contraste, linhas-guia verticais anticolisão para atletas próximos, upscaling automático para HD (720p) e gravação de vídeo em passo único via FFmpeg (`libx264 -crf 17`), eliminando a perda e desfoque causados pela compressão intermediária do OpenCV.
+- **Re-renderização Dinâmica do Vídeo Anotado com Pop-up de Acompanhamento ao Vivo**: Possibilidade de renomear os Kenshis e aplicar os novos nomes diretamente sobre o Vídeo Anotado através de um pop-up modal (`@st.dialog`) com barra de progresso em tempo real (0% a 100%), contagem de quadros e taxa de FPS. Utiliza cache de poses (`annotated_tracks_cache.pkl`) para re-renderização ultra-rápida sem repetir a inferência de IA.
+- **Gestão de Identidade e Mesclagem de Perfis de Kendocas**: Suporte aprimorado para fusão ou diferenciação nominal de praticantes (`(1)` e `(2)`), com sincronização imediata dos nomes nos relatórios, na linha do tempo de eventos do player e no vídeo anotado.
+
+
+
 
 Para especificações detalhadas, formulação matemática e guia completo dos regulamentos FIK, consulte o arquivo [manual.md](file:///d:/Projetos/SenpAI/Dev/manual.md).
 

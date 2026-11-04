@@ -332,9 +332,127 @@ class TestStreamCapture(unittest.TestCase):
         t_frame, _, _ = tracker.get_synced_data(cam_idx=1, current_frame=f_target)
         self.assertEqual(int(t_frame[0, 0, 0]), 99)
 
+    def test_stream_sync_tracker_multiple_local_webcams(self):
+        """Valida que TODAS as webcams locais são compensadas para sincronizar com as câmeras RTSP."""
+        from src.utils.stream_capture import StreamSyncTracker
+        # Câmeras 0 e 1 são Webcams Locais; Câmera 2 é RTSP
+        tracker = StreamSyncTracker(
+            reference_index=0,
+            local_indices=[0, 1],
+            fps=30.0
+        )
+        self.assertIn(0, tracker.local_indices)
+        self.assertIn(1, tracker.local_indices)
+
+        # Simula medição de 120ms de atraso na câmera RTSP 2
+        tracker._measured_delays_ms[2] = 120.0
+
+        # Ambas as webcams locais (0 e 1) devem exibir o badge de compensação
+        self.assertIn("Compensado -120ms", tracker.get_sync_badge(0))
+        self.assertIn("Compensado -120ms", tracker.get_sync_badge(1))
+        # A câmera RTSP 2 exibe seu status de atraso real
+        self.assertIn("Atraso Real: +120ms", tracker.get_sync_badge(2))
+
+        # Enfileira frames em ambas as webcams
+        t_base = time.time()
+        for i in range(10):
+            t_f = t_base - (9 - i) * 0.033
+            f0 = np.full((50, 50, 3), i * 10, dtype=np.uint8)
+            f1 = np.full((50, 50, 3), i * 10 + 1, dtype=np.uint8)
+            tracker.register_processed_frame(
+                cam_idx=0,
+                frame=f0,
+                drawn_frame=f0,
+                landmarks={"cam": 0, "frame_id": i},
+                timestamp=t_f
+            )
+            tracker.register_processed_frame(
+                cam_idx=1,
+                frame=f1,
+                drawn_frame=f1,
+                landmarks={"cam": 1, "frame_id": i},
+                timestamp=t_f
+            )
+
+        # Solicita dados sincronizados para Câmera 0 (Webcam 1) e Câmera 1 (Webcam 2)
+        cur0 = np.full((50, 50, 3), 90, dtype=np.uint8)
+        cur1 = np.full((50, 50, 3), 91, dtype=np.uint8)
+        _, _, s_lm0 = tracker.get_synced_data(cam_idx=0, current_frame=cur0, current_landmarks={"cam": 0, "frame_id": 9})
+        _, _, s_lm1 = tracker.get_synced_data(cam_idx=1, current_frame=cur1, current_landmarks={"cam": 1, "frame_id": 9})
+
+        # Ambas as webcams devem ter sido compensadas no tempo (alvo ~3-4 frames atrás)
+        self.assertIsNotNone(s_lm0)
+        self.assertIsNotNone(s_lm1)
+        self.assertIn(s_lm0["frame_id"], [5, 6, 7])
+        self.assertIn(s_lm1["frame_id"], [5, 6, 7])
+
+        # Se o atraso das câmeras RTSP for próximo de zero (< 15ms), exibe 0ms sincronizada
+        tracker._measured_delays_ms[2] = 5.0
+        self.assertIn("Ref. Local 0ms", tracker.get_sync_badge(0))
+        self.assertIn("Ref. Local 0ms", tracker.get_sync_badge(1))
+
+    def test_threaded_video_stream_flush_buffer(self):
+        """Valida método flush_buffer na classe ThreadedVideoStream."""
+        from src.utils.stream_capture import ThreadedVideoStream
+        stream = ThreadedVideoStream(src=0, auto_start=False)
+        self.assertTrue(hasattr(stream, "flush_buffer"))
+        self.assertFalse(stream._flush_requested)
+        stream.flush_buffer()
+        self.assertTrue(stream._flush_requested)
+
+    def test_threaded_video_stream_live_point_controls(self):
+        """Valida controles de ponto ao vivo (go_to_live, is_at_live, delay)."""
+        from src.utils.stream_capture import ThreadedVideoStream
+        stream = ThreadedVideoStream(src=0, auto_start=False, target_fps=30.0, is_live=True)
+        self.assertTrue(stream.is_at_live())
+        self.assertEqual(stream.get_live_delay_seconds(), 0.0)
+
+        # Simula DVR rewind
+        stream._live_head_sec = 25.0
+        stream.seek(-10.0)
+        stream._is_dvr_mode = True
+        self.assertFalse(stream.is_at_live())
+
+        # Aciona retorno ao vivo
+        stream.go_to_live()
+        self.assertTrue(stream._seek_live_requested)
+        self.assertFalse(stream._is_dvr_mode)
+        self.assertFalse(stream.is_paused)
+
+    def test_threaded_video_stream_stats_include_live_fields(self):
+        """Valida se get_stats inclui campos de sincronização ao vivo e taxa de 30 FPS."""
+        from src.utils.stream_capture import ThreadedVideoStream
+        stream = ThreadedVideoStream(src=0, auto_start=False, target_fps=30.0)
+        stats = stream.get_stats()
+        self.assertIn("is_at_live", stats)
+        self.assertIn("live_delay_seconds", stats)
+        self.assertEqual(stats["fps"], 30.0)
+
+    def test_live_stream_not_started_error_and_parser(self):
+        """Valida detecção e tradução de mensagens de eventos ao vivo agendados do YouTube."""
+        from src.utils.stream_capture import LiveStreamNotStartedError, parse_upcoming_stream_error
+
+        # Erro real citado pelo usuário
+        err_user = "ERROR: [youtube] UKfdixiGqz0: This live event will begin in 23 minutes."
+        time_rem = parse_upcoming_stream_error(err_user)
+        self.assertEqual(time_rem, "23 minutos")
+
+        # Variações em horas e instantes
+        self.assertEqual(parse_upcoming_stream_error("Premieres in 2 hours."), "2 horas")
+        self.assertEqual(parse_upcoming_stream_error("This live event will begin in a few moments."), "a qualquer momento (em instantes)")
+        self.assertEqual(parse_upcoming_stream_error("This live event will begin in 1 day."), "1 dia")
+        self.assertEqual(parse_upcoming_stream_error("Live stream has not started"), "")
+        self.assertIsNone(parse_upcoming_stream_error("HTTP Error 404: Not Found"))
+
+        # Exceção personalizada
+        ex = LiveStreamNotStartedError("Evento agendado", time_remaining="23 minutos")
+        self.assertEqual(ex.time_remaining, "23 minutos")
+        self.assertIn("Evento agendado", str(ex))
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 
 

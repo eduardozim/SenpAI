@@ -435,6 +435,21 @@ def extract_video_info(url: str, timeout: int = 15, cookie_file: Optional[str] =
             last_error_msg = str(e)
             continue
 
+    # Detecta se é transmissão ao vivo agendada que ainda não iniciou
+    try:
+        from src.utils.stream_capture import parse_upcoming_stream_error, LiveStreamNotStartedError
+        time_upcoming = parse_upcoming_stream_error(last_error_msg)
+        if time_upcoming is not None:
+            time_msg = f" Previsão de início: {time_upcoming}." if time_upcoming else ""
+            raise LiveStreamNotStartedError(
+                f"Transmissão ao vivo agendada no YouTube, mas ainda não iniciada.{time_msg}",
+                time_remaining=time_upcoming or None
+            )
+    except LiveStreamNotStartedError:
+        raise
+    except Exception:
+        pass
+
     if any(token in last_error_msg.lower() for token in [
         "requested format is not available", "only images are available",
         "sign in to confirm", "bot", "403", "forbidden"
@@ -507,7 +522,7 @@ def download_video_stream(
     output_dir: Optional[str] = None,
     progress_callback: Optional[Callable[[float, str], None]] = None,
     quality: str = "media",
-    max_duration_seconds: int = 1800, # 30 minutos máx para proteção
+    max_duration_seconds: Optional[int] = 1800, # 30 minutos máx para proteção (None ou <= 0 desativa o limite)
     cookie_file: Optional[str] = None
 ) -> Tuple[str, Dict[str, Any]]:
     """
@@ -519,7 +534,7 @@ def download_video_stream(
     - output_dir: Diretório para armazenamento do vídeo baixado.
     - progress_callback: Função para atualização de progresso na interface.
     - quality: Nível de qualidade desejado ('baixa', 'media', 'alta'). Padrão: 'media'.
-    - max_duration_seconds: Duração máxima permitida para o vídeo.
+    - max_duration_seconds: Duração máxima permitida para o vídeo (None ou <= 0 desativa verificação).
     - cookie_file: Caminho opcional para arquivo de cookies (caso configurado).
     
     Retorna:
@@ -547,7 +562,7 @@ def download_video_stream(
         raise VideoDownloadError("Transmissões ao vivo não finalizadas não são suportadas para análise pré-gravada.")
         
     duration = info.get("duration_seconds", 0.0)
-    if duration > max_duration_seconds:
+    if max_duration_seconds is not None and max_duration_seconds > 0 and duration > max_duration_seconds:
         raise VideoDownloadError(
             f"O vídeo possui {format_video_duration(duration)}, excedendo o limite máximo recomendado de {format_video_duration(max_duration_seconds)} para análise gravada."
         )

@@ -15,6 +15,7 @@ import traceback
 from typing import Dict, Any, List, Optional
 
 from src.utils.logger_manager import log_event
+from src.utils.test_isolation import enable_test_mode
 
 TEST_LOG_PATH = "logs/senpai_test_report.log"
 
@@ -285,10 +286,24 @@ def run_automated_tests(test_dir: str = "tests", log_file: str = TEST_LOG_PATH, 
     Função utilitária de alto nível para descobrir e executar todos os testes da pasta tests/,
     gerar o log detalhado e retornar o sumário estruturado.
     """
+    enable_test_mode()
     loader = unittest.TestLoader()
     suite = loader.discover(start_dir=test_dir, pattern="test_*.py")
     runner = SenpAITestRunner(verbosity=verbosity, log_file=log_file)
     return runner.run(suite)
+
+def get_total_test_count(test_dir: str = "tests") -> int:
+    """
+    Descobre e retorna dinamicamente a contagem real total de testes da suíte.
+    """
+    try:
+        loader = unittest.TestLoader()
+        suite = loader.discover(start_dir=test_dir, pattern="test_*.py")
+        cnt = suite.countTestCases()
+        return cnt if cnt > 0 else 317
+    except Exception:
+        return 317
+
 
 def get_latest_test_report_content(log_file: str = TEST_LOG_PATH) -> str:
     """

@@ -1,3 +1,4 @@
+from src.utils.test_isolation import get_safe_data_path, assert_not_production_write
 """
 Módulo de Conversão de Pesquisa e Referências em Parâmetros Físicos Acionáveis (Eixo 2).
 Implementa:
@@ -438,7 +439,7 @@ class EmpiricalDistributionLearner:
     DISTRIBUTIONS_STORAGE_PATH = "data/empirical_reference_distributions.json"
 
     def __init__(self, storage_path: str = DISTRIBUTIONS_STORAGE_PATH):
-        self.storage_path = storage_path
+        self.storage_path = get_safe_data_path(storage_path, 'test_empirical_reference_distributions.json')
 
     def compute_distribution(self, values: List[float]) -> Dict[str, float]:
         """

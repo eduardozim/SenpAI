@@ -62,6 +62,90 @@ def get_senpai_uploads_dir(ensure_exists: bool = True) -> str:
     return fallback_dir
 
 
+def cleanup_senpai_uploads(
+    max_age_hours: float = 24.0,
+    keep_paths: Optional[list] = None
+) -> Dict[str, Any]:
+    """
+    Remove arquivos e diretórios temporários obsoletos de 'data/tmp/senpai_uploads'
+    (upload_*, yt_*, imported_pkg_*, training_session_*), liberando espaço em disco.
+
+    Preserva:
+      1. Arquivos com última modificação inferior a max_age_hours (default 24h).
+      2. Arquivos informados explicitamente em keep_paths (ex: vídeo da sessão ativa).
+      3. Arquivos de curadoria ativa/marcação de clipes.
+
+    Retorna estatísticas com total de arquivos removidos, pastas removidas e bytes liberados.
+    """
+    import shutil
+    import time
+
+    stats = {"files_deleted": 0, "dirs_deleted": 0, "bytes_freed": 0, "errors": 0}
+    uploads_dir = get_senpai_uploads_dir(ensure_exists=False)
+    if not uploads_dir or not os.path.exists(uploads_dir):
+        return stats
+
+    now = time.time()
+    cutoff_time = now - (max_age_hours * 3600.0)
+
+    # Normalizar caminhos protegidos
+    normalized_keep = set()
+    if keep_paths:
+        for p in keep_paths:
+            if p and isinstance(p, str):
+                normalized_keep.add(os.path.abspath(p).replace("\\", "/").lower())
+                normalized_keep.add(os.path.basename(p).lower())
+
+    try:
+        entries = os.listdir(uploads_dir)
+    except Exception as ex:
+        log_event("WARNING", f"Não foi possível listar diretório de uploads para limpeza: {ex}", "strike_clip_manager")
+        return stats
+
+    for item_name in entries:
+        item_path = os.path.join(uploads_dir, item_name)
+        norm_item_abs = os.path.abspath(item_path).replace("\\", "/").lower()
+        norm_item_base = item_name.lower()
+
+        # Checa proteção
+        if norm_item_abs in normalized_keep or norm_item_base in normalized_keep:
+            continue
+
+        try:
+            mtime = os.path.getmtime(item_path)
+            if mtime > cutoff_time and max_age_hours > 0:
+                continue
+
+            if os.path.isfile(item_path):
+                file_size = os.path.getsize(item_path)
+                os.remove(item_path)
+                stats["files_deleted"] += 1
+                stats["bytes_freed"] += file_size
+            elif os.path.isdir(item_path):
+                dir_size = 0
+                for root, _, files in os.walk(item_path):
+                    for f in files:
+                        try:
+                            dir_size += os.path.getsize(os.path.join(root, f))
+                        except Exception:
+                            pass
+                shutil.rmtree(item_path, ignore_errors=True)
+                stats["dirs_deleted"] += 1
+                stats["bytes_freed"] += dir_size
+        except Exception as ex:
+            stats["errors"] += 1
+
+    if stats["files_deleted"] > 0 or stats["dirs_deleted"] > 0:
+        mb_freed = stats["bytes_freed"] / (1024 * 1024)
+        log_event(
+            "INFO",
+            f"Limpeza de temporários concluída: {stats['files_deleted']} arquivo(s) e {stats['dirs_deleted']} pasta(s) removidos ({mb_freed:.1f} MB liberados).",
+            "strike_clip_manager"
+        )
+
+    return stats
+
+
 def get_cross_platform_basename(path_str: str) -> str:
     """
     Extrai o nome do arquivo preservando compatibilidade entre Windows e Linux

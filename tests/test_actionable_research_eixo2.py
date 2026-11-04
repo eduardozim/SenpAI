@@ -34,10 +34,11 @@ class TestActionableResearchEixo2(unittest.TestCase):
         self.test_emp_path = "tests/test_data_empirical_distributions.json"
         self.emp_learner = EmpiricalDistributionLearner(storage_path=self.test_emp_path)
         self.test_kb_path = "tests/test_ai_knowledge_base_eixo2.json"
+        self.test_profiles_path = "tests/test_calibration_profiles_eixo2.json"
         self.prior_injector = BayesianPriorInjector(knowledge_base_path=self.test_kb_path)
 
     def tearDown(self):
-        for path in [self.test_emp_path, self.test_kb_path]:
+        for path in [self.test_emp_path, self.test_kb_path, self.test_profiles_path]:
             if os.path.exists(path):
                 try:
                     os.remove(path)
@@ -297,7 +298,7 @@ class TestActionableResearchEixo2(unittest.TestCase):
 
     def test_auto_trainer_integration_eixo2(self):
         """Verifica a integração completa dos métodos do Eixo 2 no AutoTrainer."""
-        trainer = AutoTrainer(knowledge_base_path=self.test_kb_path)
+        trainer = AutoTrainer(knowledge_base_path=self.test_kb_path, profiles_path=self.test_profiles_path)
 
         constraints = trainer.get_physical_constraints()
         self.assertIsInstance(constraints, dict)

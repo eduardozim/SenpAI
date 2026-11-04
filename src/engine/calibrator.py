@@ -1,3 +1,4 @@
+from src.utils.test_isolation import get_safe_data_path, assert_not_production_write
 """
 Motor de Calibração de Sensibilidade e Avaliação Técnica.
 Gerencia perfis de calibração (Rígido, Normal, Permissivo, Shiai),
@@ -19,7 +20,7 @@ from src.engine.mathematical_calibrator import (
 
 class CalibrationEngine:
     def __init__(self, config_path: str = "config/calibration_profiles.json", profile_name: str = "normal"):
-        self.config_path = config_path
+        self.config_path = get_safe_data_path(config_path, 'test_calibration_profiles.json')
         self.drift_detector = ConceptDriftDetector()
         self.profiles = self._load_profiles()
         self.set_profile(profile_name)

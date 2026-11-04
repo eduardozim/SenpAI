@@ -20,6 +20,7 @@ from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA
 from src.engine.feedback_manager import FeedbackManager, DEFAULT_CALIBRATION_PROFILES
 from src.engine.calibrator import CalibrationEngine
 from src.utils.logger_manager import log_event
+from src.utils.test_isolation import get_safe_data_path, assert_not_production_write
 from src.engine.actionable_research import (
     SourceHierarchyResolver,
     SourceAuthorityTier,
@@ -358,11 +359,11 @@ class AutoTrainingEngine:
         feedback_path: str = "data/feedback_dataset.json",
         checkpoint_path: str = "data/auto_training_checkpoint.json"
     ):
-        self.knowledge_base_path = knowledge_base_path
-        self.profiles_path = profiles_path
-        self.history_path = history_path
-        self.feedback_path = feedback_path
-        self.checkpoint_path = checkpoint_path
+        self.knowledge_base_path = get_safe_data_path(knowledge_base_path, 'test_ai_knowledge_base.json')
+        self.profiles_path = get_safe_data_path(profiles_path, 'test_calibration_profiles.json')
+        self.history_path = get_safe_data_path(history_path, 'test_training_history.json')
+        self.feedback_path = get_safe_data_path(feedback_path, 'test_feedback_dataset.json')
+        self.checkpoint_path = get_safe_data_path(checkpoint_path, 'test_auto_training_checkpoint.json')
         self._feedback_mgr = None
         try:
             self._feedback_mgr = FeedbackManager(dataset_path=feedback_path, history_path=history_path, profiles_path=profiles_path)

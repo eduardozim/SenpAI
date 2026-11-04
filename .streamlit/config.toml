@@ -1,9 +1,12 @@
 [server]
-# Remoção da restrição de tamanho de arquivo de upload no SenpAI (permite vídeos de alta resolução de até 50 GB)
-maxUploadSize = 51200
-maxMessageSize = 51200
+# Compatibilidade com proxies reversos do Streamlit Community Cloud (evita travamento no WebSocket/spinner infinito)
 enableCORS = false
 enableXsrfProtection = false
+
+# Limite padrão para servidor Web / Nuvem (1 GB = 1024 MB)
+# Em execução local (Desktop / Dojo), o limite é elevado dinamicamente para 50 GB no app.py
+maxUploadSize = 1024
+maxMessageSize = 1024
 
 [browser]
 gatherUsageStats = false

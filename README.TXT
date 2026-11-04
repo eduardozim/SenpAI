@@ -4,7 +4,7 @@
 
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
 
-                              Versão: v 0.3.7.2
+                              Versão: v 0.3.8.0
 
 ===============================================================================
 
@@ -719,7 +719,42 @@ mudanças, consulte o arquivo manual.md.
 
 -------------------------------------------------------------------------------
 
-8. NOVIDADES DA VERSÃO (v 0.3.7.2)
+8. NOVIDADES DA VERSÃO (v 0.3.8.0)
+
+-------------------------------------------------------------------------------
+
+- Identificação de Múltiplas Sessões e Blocos por Modalidade:
+  • Detecção cronológica inteligente e suporte a pré-definição de intervalos
+    temporais dentro de um mesmo vídeo gravado contínuo.
+  • Agrupamento dos relatórios por Blocos de Modalidade (modality_blocks),
+    integrando tempos acumulados, repetições totais e notas dos 3 Pilares por atleta.
+  • Relatórios aprofundados no Dashboard, Markdown (.md) e PDF consolidado.
+
+- Nitidez HD e Anti-Colisão Visual nas Etiquetas dos Kenshis:
+  • Badges TrueType Bold de alto contraste via PIL/Pillow com fundo escuro e
+    contorno protetor contra compressão YUV420p.
+  • Algoritmo de anti-colisão vertical com linhas guia dinâmicas quando atletas
+    estão muito próximos no enquadramento.
+  • Upscaling automático para HD 720p em vídeos com resolução inferior a 1280px e
+    gravação em passo único via FFmpeg (libx264 -crf 17 -preset fast).
+
+- Re-renderização Dinâmica do Vídeo Anotado com Pop-up ao Vivo:
+  • Atualização direta dos nomes dos praticantes gravados nas etiquetas do vídeo.
+  • Pop-up modal com barra de progresso (0% a 100%), contagem de quadros, tempo
+    decorrido e velocidade (FPS) em tempo real.
+  • Cache rápido de poses (annotated_tracks_cache.pkl) para re-renderização em
+    poucos segundos sem recalcular poses ou modelos neurais.
+  • Transição segura de visualização no player sem conflitos de ciclo de vida Streamlit.
+
+- Gestão de Identidade, Mesclagem de Perfis e Sincronização:
+  • Modal interativo de mesclagem e unificação de Kendocas com proteção anti-loop.
+  • Diferenciação automática nominal (1) e (2) e sincronização imediata dos nomes
+    nos eventos de golpes e linha do tempo.
+
+
+-------------------------------------------------------------------------------
+
+9. HISTÓRICO DE VERSÕES ANTERIORES (v 0.3.7.2)
 
 -------------------------------------------------------------------------------
 
@@ -760,7 +795,7 @@ mudanças, consulte o arquivo manual.md.
 
 -------------------------------------------------------------------------------
 
-9. DIREITOS DE USO, CÓPIA E PROPRIEDADE INTELECTUAL
+10. DIREITOS DE USO, CÓPIA E PROPRIEDADE INTELECTUAL
 
 -------------------------------------------------------------------------------
 

@@ -16,7 +16,8 @@ from typing import Dict, List, Any, Optional, Tuple, Sequence
 from src.analytics.training_analyzer import (
     TrainingAnalyzer,
     TRAINING_MODALITIES_METADATA,
-    TrainingPillarMetrics
+    TrainingPillarMetrics,
+    format_training_mmss
 )
 
 
@@ -46,6 +47,16 @@ class LiveTrainingSessionManager:
         self.current_modality_key = self.modality_override or "suburi"
         self.modality_detection_conf = 0.90 if self.modality_override else 0.50
         self.is_auto_detected = (self.modality_override is None)
+        self.modality_timeline_segments: List[Dict[str, Any]] = [
+            {
+                "modality_key": self.current_modality_key,
+                "start_seconds": 0.0,
+                "end_seconds": 0.0,
+                "confidence": self.modality_detection_conf,
+                "rep_count": 0,
+                "pillar_records": []
+            }
+        ]
 
         # Pilares
         self.movement_score = 75.0
@@ -95,10 +106,24 @@ class LiveTrainingSessionManager:
                     secondary_history=sec_history[-90:] if sec_history else [],
                     fps=fps
                 )
+                prev_key = self.current_modality_key
                 self.current_modality_key = m_key
                 self.modality_detection_conf = m_conf
+                if self.modality_timeline_segments:
+                    self.modality_timeline_segments[-1]["end_seconds"] = round(elapsed, 2)
+                if m_key != prev_key:
+                    self.modality_timeline_segments.append({
+                        "modality_key": m_key,
+                        "start_seconds": round(elapsed, 2),
+                        "end_seconds": round(elapsed, 2),
+                        "confidence": m_conf,
+                        "rep_count": 0,
+                        "pillar_records": []
+                    })
             except Exception:
                 pass
+        elif self.modality_timeline_segments:
+            self.modality_timeline_segments[-1]["end_seconds"] = round(elapsed, 2)
 
         # 2. Avaliação biomecânica do frame ativo e transições de corte/repetição
         new_rep_detected = False
@@ -148,6 +173,8 @@ class LiveTrainingSessionManager:
                 elif self._strike_phase == "FURIKABURI" and wrist_y >= (shoulder_y - 0.02):
                     if time_since_last_strike >= 0.35:
                         self.rep_count += 1
+                        if self.modality_timeline_segments:
+                            self.modality_timeline_segments[-1]["rep_count"] = int(self.modality_timeline_segments[-1].get("rep_count", 0)) + 1
                         self._last_strike_timestamp = now_sec
                         self._strike_phase = "RECOVERY"
                         new_rep_detected = True
@@ -221,6 +248,10 @@ class LiveTrainingSessionManager:
                     1
                 )
                 self.pillar_records.append((self.movement_score, self.precision_score, self.constancy_score))
+                if self.modality_timeline_segments:
+                    self.modality_timeline_segments[-1]["pillar_records"].append(
+                        (self.movement_score, self.precision_score, self.constancy_score)
+                    )
             except Exception:
                 pass
 
@@ -375,6 +406,8 @@ class LiveTrainingSessionManager:
     def generate_final_session_report(self) -> Dict[str, Any]:
         """Consolida as métricas finais e gera os relatórios em Markdown e JSON."""
         elapsed = max(1.0, time.time() - self.start_time)
+        if self.modality_timeline_segments:
+            self.modality_timeline_segments[-1]["end_seconds"] = round(elapsed, 2)
         meta = TRAINING_MODALITIES_METADATA.get(self.current_modality_key, TRAINING_MODALITIES_METADATA["suburi"])
 
         avg_mov = float(sum(p[0] for p in self.pillar_records) / max(1, len(self.pillar_records))) if self.pillar_records else self.movement_score
@@ -383,6 +416,101 @@ class LiveTrainingSessionManager:
         avg_overall = round((avg_mov * 0.40) + (avg_prec * 0.35) + (avg_const * 0.25), 1)
 
         cpm_final = round(self.rep_count / (elapsed / 60.0), 1)
+
+        # Construir sub_sessions e modality_blocks concentrados para a sessão ao vivo
+        sub_sessions: List[Dict[str, Any]] = []
+        grouped_blocks: Dict[str, Dict[str, Any]] = {}
+        block_order: List[str] = []
+
+        for idx_seg, seg in enumerate(self.modality_timeline_segments):
+            s_sec = float(seg.get("start_seconds", 0.0))
+            e_sec = max(s_sec + 0.1, float(seg.get("end_seconds", elapsed)))
+            dur_seg = round(e_sec - s_sec, 2)
+            m_key = str(seg.get("modality_key") or self.current_modality_key)
+            s_meta = TRAINING_MODALITIES_METADATA.get(m_key, meta)
+            s_recs = seg.get("pillar_records", [])
+            s_mov = float(sum(r[0] for r in s_recs) / len(s_recs)) if s_recs else avg_mov
+            s_prec = float(sum(r[1] for r in s_recs) / len(s_recs)) if s_recs else avg_prec
+            s_const = float(sum(r[2] for r in s_recs) / len(s_recs)) if s_recs else avg_const
+            s_ov = round((s_mov * 0.40) + (s_prec * 0.35) + (s_const * 0.25), 1)
+            s_reps = int(seg.get("rep_count", 0))
+            s_start_ts = format_training_mmss(s_sec)
+            s_end_ts = format_training_mmss(e_sec)
+
+            sub_sessions.append({
+                "segment_index": idx_seg + 1,
+                "start_seconds": round(s_sec, 2),
+                "end_seconds": round(e_sec, 2),
+                "start_timestamp": s_start_ts,
+                "end_timestamp": s_end_ts,
+                "duration_seconds": dur_seg,
+                "modality_key": m_key,
+                "modality_name": s_meta.get("name", m_key),
+                "modality_category": s_meta.get("category", "Treino"),
+                "detection_confidence": float(seg.get("confidence", self.modality_detection_conf)),
+                "detection_method": "AUTO_DETECTED" if self.is_auto_detected else "MANUAL_OVERRIDE",
+                "total_repetitions": s_reps,
+                "average_movement": round(s_mov, 1),
+                "average_precision": round(s_prec, 1),
+                "average_constancy": round(s_const, 1),
+                "overall_score": s_ov
+            })
+
+            if m_key not in grouped_blocks:
+                block_order.append(m_key)
+                grouped_blocks[m_key] = {
+                    "modality_key": m_key,
+                    "modality_name": s_meta.get("name", m_key),
+                    "modality_category": s_meta.get("category", "Treino"),
+                    "intervals": [],
+                    "total_duration_seconds": 0.0,
+                    "total_repetitions": 0,
+                    "weighted_mov": 0.0,
+                    "weighted_prec": 0.0,
+                    "weighted_const": 0.0
+                }
+            gb = grouped_blocks[m_key]
+            gb["intervals"].append({
+                "segment_index": idx_seg + 1,
+                "start_timestamp": s_start_ts,
+                "end_timestamp": s_end_ts,
+                "start_seconds": round(s_sec, 2),
+                "end_seconds": round(e_sec, 2),
+                "duration_seconds": dur_seg,
+                "repetitions": s_reps
+            })
+            gb["total_duration_seconds"] = round(gb["total_duration_seconds"] + dur_seg, 2)
+            gb["total_repetitions"] += s_reps
+            gb["weighted_mov"] += s_mov * dur_seg
+            gb["weighted_prec"] += s_prec * dur_seg
+            gb["weighted_const"] += s_const * dur_seg
+
+        modality_blocks: List[Dict[str, Any]] = []
+        for b_idx, m_key in enumerate(block_order):
+            gb = grouped_blocks[m_key]
+            tot_d = max(0.1, float(gb["total_duration_seconds"]))
+            b_mov = round(gb["weighted_mov"] / tot_d, 1)
+            b_prec = round(gb["weighted_prec"] / tot_d, 1)
+            b_const = round(gb["weighted_const"] / tot_d, 1)
+            b_ov = round((b_mov * 0.40) + (b_prec * 0.35) + (b_const * 0.25), 1)
+            int_label = " + ".join(
+                f"{iv['start_timestamp']} a {iv['end_timestamp']}" for iv in gb["intervals"]
+            )
+            modality_blocks.append({
+                "block_index": b_idx + 1,
+                "modality_key": m_key,
+                "modality_name": gb["modality_name"],
+                "modality_category": gb["modality_category"],
+                "intervals": gb["intervals"],
+                "intervals_label": int_label,
+                "session_count": len(gb["intervals"]),
+                "total_duration_seconds": gb["total_duration_seconds"],
+                "total_repetitions": gb["total_repetitions"],
+                "average_movement": b_mov,
+                "average_precision": b_prec,
+                "average_constancy": b_const,
+                "overall_score": b_ov
+            })
 
         # Diagnósticos pedagógicos
         strengths = []
@@ -407,13 +535,26 @@ class LiveTrainingSessionManager:
             improvements.append("Irregularidade no ritmo de repetição entre os golpes com desaceleração prematura.")
             drills.append("Exercício de Kakari-geiko e Suburi com metrônomo para condicionamento da constância respiratória.")
 
+        blocks_md_lines = []
+        for mb in modality_blocks:
+            blocks_md_lines.append(
+                f"- **Bloco #{mb['block_index']} — {mb['modality_name']}** ({mb['intervals_label']} | {mb['total_duration_seconds']:.1f}s | {mb['total_repetitions']} reps): "
+                f"Geral **{mb['overall_score']:.1f}/100** (Mov: {mb['average_movement']:.1f} | Prec: {mb['average_precision']:.1f} | Const: {mb['average_constancy']:.1f})"
+            )
+        blocks_md_section = "\n".join(blocks_md_lines) if blocks_md_lines else "- Sessão única consolidada."
+
         markdown_report = f"""# 🥋 SenpAI - Relatório de Treinamento em Tempo Real
 **Data:** {time.strftime('%Y-%m-%d %H:%M:%S')}  
 **Kendoka:** {self.kendoka_name}  
-**Modalidade:** {meta.get('name', 'Suburi')} ({meta.get('category', 'Treino')})  
+**Modalidade Principal:** {meta.get('name', 'Suburi')} ({meta.get('category', 'Treino')})  
 **Duração da Sessão:** {elapsed:.1f} segundos ({elapsed/60.0:.1f} min)  
 **Total de Repetições Detectadas:** {self.rep_count}  
 **Cadência Média:** {cpm_final} CPM (Cortes por Minuto)  
+
+---
+
+## 🗂️ Blocos Concentrados por Modalidade de Treinamento
+{blocks_md_section}
 
 ---
 
@@ -455,5 +596,7 @@ class LiveTrainingSessionManager:
             "improvements": improvements,
             "prescribed_drills": drills,
             "rep_history": self.rep_history,
+            "sub_sessions": sub_sessions,
+            "modality_blocks": modality_blocks,
             "markdown_report": markdown_report
         }

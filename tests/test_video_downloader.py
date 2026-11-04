@@ -158,7 +158,7 @@ class TestVideoDownloader(unittest.TestCase):
 
     @patch("src.utils.video_downloader.extract_video_info")
     def test_download_video_stream_rejects_excessive_duration(self, mock_info):
-        """Verifica se vídeos com duração excessiva são rejeitados."""
+        """Verifica se vídeos com duração excessiva são rejeitados quando max_duration_seconds está ativo."""
         mock_info.return_value = {
             "id": "long123",
             "title": "10 Hours of Kendo",
@@ -168,6 +168,35 @@ class TestVideoDownloader(unittest.TestCase):
         with self.assertRaises(VideoDownloadError) as ctx:
             download_video_stream("https://www.youtube.com/watch?v=long123", output_dir=self.temp_dir.name, max_duration_seconds=1800)
         self.assertIn("limite máximo", str(ctx.exception).lower())
+
+    @patch("src.utils.video_downloader.extract_video_info")
+    def test_download_video_stream_allows_unlimited_duration_when_disabled(self, mock_info):
+        """Verifica se vídeos longos (ex: treino de 01:05:49) são aceitos quando max_duration_seconds=None."""
+        output_dir = self.temp_dir.name
+        cached_file = os.path.join(output_dir, "yt_train_long_media_Kendo_Dojo_Keiko.mp4")
+        generate_demo_kendo_video(cached_file, duration_sec=4, fps=30)
+
+        mock_info.return_value = {
+            "id": "train_long",
+            "title": "Kendo Dojo Keiko",
+            "duration_seconds": 3949.0, # 01:05:49
+            "duration_formatted": "01:05:49",
+            "uploader": "Dojo Channel",
+            "thumbnail": "",
+            "resolution": "1280x720",
+            "fps": 30.0,
+            "webpage_url": "https://www.youtube.com/watch?v=train_long",
+            "is_live": False,
+        }
+
+        # Com max_duration_seconds=None, não deve lançar exceção
+        path, info = download_video_stream(
+            "https://www.youtube.com/watch?v=train_long",
+            output_dir=output_dir,
+            max_duration_seconds=None
+        )
+        self.assertEqual(path, cached_file)
+        self.assertEqual(info["id"], "train_long")
 
     def test_pipeline_integration_with_downloaded_video(self):
         """Verifica se o vídeo preparado pelo downloader é compatível com o pipeline completo do SenpAI."""

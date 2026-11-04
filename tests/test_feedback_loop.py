@@ -11,13 +11,23 @@ from src.engine.calibrator import CalibrationEngine
 class TestFeedbackLoop(unittest.TestCase):
     def setUp(self):
         self.test_dataset_path = "data/test_feedback_dataset.json"
-        if os.path.exists(self.test_dataset_path):
-            os.remove(self.test_dataset_path)
-        self.feedback_mgr = FeedbackManager(dataset_path=self.test_dataset_path)
+        self.test_history_path = "data/test_training_history.json"
+        self.test_profiles_path = "config/test_calibration_profiles.json"
+        self.test_shinpan_path = "data/test_shinpan_reviewed_videos.json"
+        for p in [self.test_dataset_path, self.test_history_path, self.test_profiles_path, self.test_shinpan_path]:
+            if os.path.exists(p):
+                os.remove(p)
+        self.feedback_mgr = FeedbackManager(
+            dataset_path=self.test_dataset_path,
+            history_path=self.test_history_path,
+            profiles_path=self.test_profiles_path,
+            shinpan_registry_path=self.test_shinpan_path
+        )
 
     def tearDown(self):
-        if os.path.exists(self.test_dataset_path):
-            os.remove(self.test_dataset_path)
+        for p in [self.test_dataset_path, self.test_history_path, self.test_profiles_path, self.test_shinpan_path]:
+            if os.path.exists(p):
+                os.remove(p)
 
     def test_save_and_load_feedback(self):
         """Valida o registro de feedback (True Positive), persistência em JSON e cálculo de precisão."""
