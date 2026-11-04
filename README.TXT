@@ -4,7 +4,7 @@
 
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
 
-                              Versão: v 0.3.8.0
+                              Versão: v 0.4.0.0
 
 ===============================================================================
 
@@ -719,7 +719,30 @@ mudanças, consulte o arquivo manual.md.
 
 -------------------------------------------------------------------------------
 
-8. NOVIDADES DA VERSÃO (v 0.3.8.0)
+8. NOVIDADES DA VERSÃO (v 0.4.0.0)
+
+-------------------------------------------------------------------------------
+
+- Limpeza Automática e Otimização de Espaço em Disco:
+  • Rotina de expurgo de temporários em 'data/tmp/senpai_uploads' ativada na
+    inicialização, após uploads e pós-análises.
+  • Botão sob demanda no Menu de Configurações para liberar gigabytes de vídeos obsoletos.
+
+- Compatibilidade Universal de Vídeo Web HTML5:
+  • Garantia de contêiner MP4 com codecs H.264 e AAC (áudio), pixel format yuv420p
+    e atom +faststart em vídeos originais e anotados, eliminando 'Video source error'.
+
+- Auditoria Dinâmica da Suíte de Testes:
+  • Contagem e reflexão automática dos 317 testes unitários e de integração no botão
+    da interface de depuração.
+
+- Mensagens Humanizadas em Conexões de Streaming:
+  • Feedback descritivo e amigável em português para URLs inválidas ou offline.
+
+
+-------------------------------------------------------------------------------
+
+9. HISTÓRICO DE VERSÕES ANTERIORES (v 0.3.8.0)
 
 -------------------------------------------------------------------------------
 

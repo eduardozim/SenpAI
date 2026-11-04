@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.3.8.0`
+> **Versão Oficial do Sistema**: `v 0.4.0.0`
 
 ---
 
@@ -810,7 +810,22 @@ Total de **246 testes automatizados** distribuídos em 26 módulos, executados e
 
 ---
 
-### `[v 0.3.8.0]` — 2026-10-29 *(Versão Atual)*
+### `[v 0.4.0.0]` — 2026-11-04 *(Versão Atual)*
+
+- **Limpeza Preventiva e Automática de Uploads & Temporários ([strike_clip_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/strike_clip_manager.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - Implementação de rotina inteligente de expurgo `cleanup_senpai_uploads()` atuando na inicialização do app, após novos uploads e ao término de análises (removendo arquivos com mais de 12h/24h e liberando dezenas de gigabytes de espaço em disco).
+  - Adição do botão de limpeza manual sob demanda `🗑️ Limpar Vídeos Temporários` na aba de Configurações, preservando estritamente arquivos ativos na sessão e recortes de curadoria.
+- **Compatibilidade Universal de Vídeos Web HTML5 ([hardware.py](file:///d:/Projetos/SenpAI/Dev/src/utils/hardware.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - Eliminação definitiva de falhas do tipo `Video source error` em navegadores: validação estrita de contêiner `.mp4`, transcodificação com codec de áudio AAC (`-c:a aac -b:a 128k`), pixel format `yuv420p` e atom `+faststart`.
+  - Validação estendida tanto para o Vídeo Anotado quanto para o Vídeo Original antes da entrega ao componente `st.video()`.
+- **Auditoria Dinâmica da Suíte de Testes ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - Função `get_total_test_count()` para contagem reflexiva e em tempo de execução da suíte completa de testes (317 testes unitários e de integração), mantendo o rótulo do botão sempre sincronizado: `🔬 Rodar Testes (317)`.
+- **Comunicação Amigável em Transmissões e Streaming ([stream_capture.py](file:///d:/Projetos/SenpAI/Dev/src/utils/stream_capture.py))**:
+  - Tratamento aprimorado de erros de sinal de rede, com mensagens em português claro para links offline/inválidos e concordância gramatical correta no contador de tentativas de reconexão.
+
+---
+
+### `[v 0.3.8.0]` — 2026-10-29
 
 - **Identificação Multi-Sessões na Mesma Sequência & Blocos por Modalidade ([training_analyzer.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_analyzer.py), [pipeline.py](file:///d:/Projetos/SenpAI/Dev/src/pipeline.py), [app.py](file:///d:/Projetos/SenpAI/Dev/app.py) & [training_pdf_generator.py](file:///d:/Projetos/SenpAI/Dev/src/utils/training_pdf_generator.py))**:
   - **Segmentação Cronológica na Sequência**: Capacidade de reconhecer e separar múltiplas sessões temporais dentro do mesmo vídeo gravado (ex.: 00:00 a 03:00 Kirikaeshi, 03:00 a 05:00 Waza-geiko), com suporte tanto à detecção inteligente automática pela IA quanto à pré-definição/edição manual de intervalos (`session_segments_override`).
@@ -1762,7 +1777,7 @@ Total de **246 testes automatizados** distribuídos em 26 módulos, executados e
 > [!IMPORTANT]
 > **AVISO LEGAL E TERMOS DE PROTEÇÃO INTELECTUAL**
 > 
-> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.3.8.0`.**  
+> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.4.0.0`.**  
 > **TODOS OS DIREITOS DE USO E CÓPIA RESERVADOS.**
 > 
 > 1. **Titularidade**: Todo o código-fonte, arquitetura de visão computacional, algoritmos biomecânicos de *Ki-Ken-Tai-Ichi*, modelos de detecção postural, pesos de rede neural, perfis de calibração heurística, identidade visual, interfaces e documentações pertencem exclusivamente aos desenvolvedores e detentores do projeto SenpAI.

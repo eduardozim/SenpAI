@@ -200,7 +200,7 @@ def render_live_stream_not_started_warning(time_remaining: Optional[str] = None)
         )
 
 # Versão Oficial do Sistema
-SYSTEM_VERSION = "v 0.3.8.0"
+SYSTEM_VERSION = "v 0.4.0.0"
 
 st.set_page_config(
     page_title=f"SenpAI ({SYSTEM_VERSION}) - AI Kendo Referee & Analysis System",
