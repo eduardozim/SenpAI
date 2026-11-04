@@ -88,3 +88,9 @@ scratch/
 # Documentação interna de referência e melhorias
 REFERENCIA_MOTOR_CALIBRACAO_E_APRENDIZADO.md
 Melhorias_Issues.md
+
+
+# Arquivos do sistema operacional (Windows / macOS)
+desktop.ini
+Thumbs.db
+.DS_Store
