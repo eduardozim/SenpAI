@@ -2064,6 +2064,35 @@ st.html("""
 </style>
 """)
 
+# Script de auto-recuperação defensiva para dessincronia de módulos dinâmicos do frontend (chunks JS durante hot-reload)
+st.html(
+    """
+    <script>
+    (function() {
+        function handleChunkError(errStr) {
+            if (errStr && (errStr.includes('Failed to fetch dynamically imported module') || errStr.includes('error loading dynamically imported module'))) {
+                var key = '_senpai_last_chunk_reload';
+                var now = Date.now();
+                var last = sessionStorage.getItem(key);
+                if (!last || (now - parseInt(last)) > 8000) {
+                    sessionStorage.setItem(key, now.toString());
+                    console.warn('[SenpAI] Módulo dinâmico em dessincronia durante atualização do servidor. Recarregando página para sincronizar...');
+                    window.location.reload();
+                }
+            }
+        }
+        window.addEventListener('error', function(e) {
+            handleChunkError(e && (e.message || (e.error && e.error.message)));
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            handleChunkError(e && e.reason && (e.reason.message || String(e.reason)));
+        });
+    })();
+    </script>
+    """,
+    unsafe_allow_javascript=True
+)
+
 
 #st.markdown('<div class="main-title">⚔️ SenpAI (先輩 AI)</div>', unsafe_allow_html=True)
 #st.markdown('<div class="sub-title">Sistema de Visão Computacional para Análise de Lutas de Kendo, Detecção de Golpes e Avaliação de Yuko-Datotsu</div>', unsafe_allow_html=True)
