@@ -292,6 +292,19 @@ def run_automated_tests(test_dir: str = "tests", log_file: str = TEST_LOG_PATH, 
     runner = SenpAITestRunner(verbosity=verbosity, log_file=log_file)
     return runner.run(suite)
 
+def get_total_test_count(test_dir: str = "tests") -> int:
+    """
+    Descobre e retorna dinamicamente a contagem real total de testes da suíte.
+    """
+    try:
+        loader = unittest.TestLoader()
+        suite = loader.discover(start_dir=test_dir, pattern="test_*.py")
+        cnt = suite.countTestCases()
+        return cnt if cnt > 0 else 317
+    except Exception:
+        return 317
+
+
 def get_latest_test_report_content(log_file: str = TEST_LOG_PATH) -> str:
     """
     Retorna o conteúdo textual do último log de testes salvo para download e exibição na UI.

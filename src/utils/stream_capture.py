@@ -259,7 +259,13 @@ class ThreadedVideoStream:
 
             if not self.cap or not self.cap.isOpened():
                 self.status = "ERROR"
-                self.error_message = f"Não foi possível abrir a fonte: {self.src}"
+                if getattr(self, "is_network", False):
+                    self.error_message = (
+                        "O endereço de streaming informado é inválido, inexistente ou o sinal está offline. "
+                        "Por favor, verifique o link informado e sua conexão de rede."
+                    )
+                else:
+                    self.error_message = f"Não foi possível abrir a câmera ou dispositivo de vídeo: {self.src}"
                 return False
 
             # Limitar tamanho de buffer para evitar atraso (latência) acumulada
@@ -348,7 +354,18 @@ class ThreadedVideoStream:
             if not opened or self.cap is None or not self.cap.isOpened():
                 if reconnect_count >= self.max_reconnect_attempts:
                     self.status = "DISCONNECTED"
-                    self.error_message = f"Desconectado após {self.max_reconnect_attempts} tentativas de reconexão."
+                    if getattr(self, "frame_count", 0) == 0:
+                        self.error_message = (
+                            "O endereço de streaming informado é inválido, inexistente ou o sinal está offline. "
+                            "Por favor, verifique o link informado e sua conexão de rede."
+                        )
+                    else:
+                        attempts_str = (
+                            f"{self.max_reconnect_attempts} tentativa"
+                            if self.max_reconnect_attempts == 1
+                            else f"{self.max_reconnect_attempts} tentativas"
+                        )
+                        self.error_message = f"Sinal de transmissão interrompido após {attempts_str} de reconexão."
                     break
 
                 self.status = "RECONNECTING"

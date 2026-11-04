@@ -664,17 +664,20 @@ def ensure_browser_compatible_video(video_path: str) -> bool:
     if not video_path or not os.path.exists(video_path) or os.path.getsize(video_path) == 0:
         return False
 
-    # 1. Verifica se já está codificado em H.264 para evitar reprocessamento desnecessário
-    try:
-        import cv2
-        cap = cv2.VideoCapture(video_path)
-        fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
-        fourcc_str = "".join([chr((fourcc >> 8 * i) & 0xFF) for i in range(4)]).lower()
-        cap.release()
-        if fourcc_str in ("h264", "x264", "avc1"):
-            return True
-    except Exception:
-        pass
+    # 1. Verifica se já é MP4 nativo codificado em H.264 para evitar reprocessamento desnecessário
+    # Arquivos que não terminam com .mp4 (ex: .avi, .mov) NUNCA devem ser ignorados,
+    # pois navegadores web exigem container MP4 estrito para reprodução HTML5.
+    if video_path.lower().endswith(".mp4"):
+        try:
+            import cv2
+            cap = cv2.VideoCapture(video_path)
+            fourcc = int(cap.get(cv2.CAP_PROP_FOURCC))
+            fourcc_str = "".join([chr((fourcc >> 8 * i) & 0xFF) for i in range(4)]).lower()
+            cap.release()
+            if fourcc_str in ("h264", "x264", "avc1"):
+                return True
+        except Exception:
+            pass
 
     # 2. Localiza o executável FFmpeg no sistema ou pacote imageio-ffmpeg
     try:
@@ -706,6 +709,8 @@ def ensure_browser_compatible_video(video_path: str) -> bool:
             "-vcodec", enc,
             "-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2",  # Garante largura e altura pares obrigatórias no yuv420p
             "-pix_fmt", "yuv420p",
+            "-c:a", "aac",
+            "-b:a", "128k",
             "-movflags", "+faststart",
         ]
         if enc == "libx264":

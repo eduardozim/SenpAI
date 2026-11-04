@@ -1569,6 +1569,23 @@ def clear_analysis_results_only() -> None:
         except Exception:
             pass
 
+    # Limpeza de arquivos temporários de análises anteriores
+    try:
+        from src.utils.strike_clip_manager import cleanup_senpai_uploads
+        keep_v = [st.session_state.get("video_file_path")]
+        cleanup_senpai_uploads(max_age_hours=12.0, keep_paths=keep_v)
+    except Exception:
+        pass
+
+# Limpeza automática de arquivos temporários obsoletos na inicialização do app
+if "_senpai_startup_cleanup" not in st.session_state:
+    st.session_state["_senpai_startup_cleanup"] = True
+    try:
+        from src.utils.strike_clip_manager import cleanup_senpai_uploads
+        cleanup_senpai_uploads(max_age_hours=24.0)
+    except Exception:
+        pass
+
 # Estilização CSS Moderna, Equilibrada (Escala 90%) e sem Cortes na Interface
 st.markdown("""
 <style>
@@ -4528,7 +4545,9 @@ elif nav_page == "settings":
         with dbg_col3:
             st.markdown("**🔬 Testes Automatizados**")
             st.caption("Executa toda a suíte de testes automatizados e salva o log detalhado.")
-            if st.button("🔬 Rodar Testes (79)", type="primary", width="stretch", key="btn_run_tests_tab"):
+            from src.utils.test_runner import get_total_test_count
+            total_tests_num = get_total_test_count()
+            if st.button(f"🔬 Rodar Testes ({total_tests_num})", type="primary", width="stretch", key="btn_run_tests_tab"):
                 with st.spinner("Executando suíte de testes automatizados..."):
                     t_res = run_automated_tests(test_dir="tests", log_file=TEST_LOG_PATH, verbosity=1)
                     if t_res["success"]:
@@ -4550,12 +4569,21 @@ elif nav_page == "settings":
                 key="btn_dl_test_rep_tab"
             )
 
-        col_clean, _ = st.columns([1, 3])
+        col_clean, col_clean_uploads, _ = st.columns([1, 1, 2])
         with col_clean:
             if st.button("🧹 Limpar Logs de Debug", type="secondary", width="stretch", key="btn_clear_logs_tab"):
                 clear_debug_logs()
                 st.success("✅ Histórico de logs de debug zerado com sucesso!")
                 st.rerun()
+
+        with col_clean_uploads:
+            if st.button("🗑️ Limpar Vídeos Temporários", type="secondary", width="stretch", key="btn_clear_tmp_uploads_tab"):
+                with st.spinner("Limpando arquivos temporários obsoletos..."):
+                    from src.utils.strike_clip_manager import cleanup_senpai_uploads
+                    c_res = cleanup_senpai_uploads(max_age_hours=0.0, keep_paths=[st.session_state.get("video_file_path")])
+                    mb_fr = c_res["bytes_freed"] / (1024 * 1024)
+                    st.success(f"✅ {c_res['files_deleted']} arquivo(s) e {c_res['dirs_deleted']} pasta(s) removidos ({mb_fr:.1f} MB liberados)!")
+                    st.rerun()
 
         st.markdown("#### 📜 Alertas e Registros de Debug em Tempo Real:")
         filter_col1, filter_col2 = st.columns([1, 2])
@@ -7227,16 +7255,10 @@ elif nav_page in ["match", "training", "analysis"]:
                             uploads_dir = get_senpai_uploads_dir()
                             os.makedirs(uploads_dir, exist_ok=True)
                             
-                            # Limpar arquivos temporários obsoletos (mais de 7 dias) preservando lutas ativas em curadoria
+                            # Limpeza preventiva de temporários obsoletos (mais de 12 horas) preservando a luta ativa
                             try:
-                                now = time.time()
-                                for old_f in os.listdir(uploads_dir):
-                                    f_p = os.path.join(uploads_dir, old_f)
-                                    if os.path.isfile(f_p) and (now - os.path.getmtime(f_p) > 7 * 86400):
-                                        try:
-                                            os.remove(f_p)
-                                        except Exception:
-                                            pass
+                                from src.utils.strike_clip_manager import cleanup_senpai_uploads
+                                cleanup_senpai_uploads(max_age_hours=12.0, keep_paths=[video_file_path, cached_file_path])
                             except Exception:
                                 pass
 
@@ -8251,6 +8273,10 @@ elif nav_page in ["match", "training", "analysis"]:
                         selected_video = None
 
                 if selected_video and os.path.exists(selected_video):
+                    try:
+                        ensure_browser_compatible_video(selected_video)
+                    except Exception:
+                        pass
                     # Banner indicativo se o vídeo foi posicionado em um evento específico
                     if "video_seek_label" in st.session_state:
                         seek_lbl = st.session_state["video_seek_label"]
