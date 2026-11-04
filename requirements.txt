@@ -5,6 +5,7 @@ numpy>=1.24.0
 scipy>=1.10.0
 fastdtw>=0.3.4
 streamlit==1.60.0
+starlette==1.7.0
 pillow>=10.0.0
 protobuf>=4.25.0
 yt-dlp>=2024.0.0
