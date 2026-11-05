@@ -1,15 +1,15 @@
 {
-  "ativa": true,
-  "etapa": "aguardando a próxima rodada (15 min)",
-  "encerrada_por": null,
-  "inicio": "2026-11-05T16:06:12",
-  "fim_previsto": "2026-11-05T21:06:12",
+  "ativa": false,
+  "etapa": null,
+  "encerrada_por": "prazo encerrado",
+  "inicio": "2026-11-05T17:11:43",
+  "fim_previsto": "2026-11-05T17:26:43",
   "baixar": true,
   "rodadas": 1,
-  "novos": 8,
+  "novos": 6,
   "baixados": [],
   "rotulos": 0,
   "duvidas": 0,
-  "encerrada_em": null,
+  "encerrada_em": "2026-11-05T17:26:43",
   "erro": null
 }

@@ -320,10 +320,33 @@ def _move_to_trash(root: str) -> Tuple[str, List[Tuple[str, str]], int]:
 
 
 def _remove_tree(path: str, attempts: int = 5) -> None:
-    """No Windows, uma pasta pode ficar presa por um instante (antivírus, observador de arquivos): tenta de novo."""
+    """No Windows, uma pasta pode ficar presa por um instante ou conter arquivos somente leitura: tenta de novo."""
     import time
+    import stat
+
+    def _onerror(func, p, exc_info):
+        try:
+            os.chmod(p, stat.S_IWRITE | stat.S_IREAD)
+            func(p)
+        except Exception:
+            pass
+
     for i in range(attempts):
-        shutil.rmtree(path, ignore_errors=True)
+        try:
+            shutil.rmtree(path, onerror=_onerror)
+        except TypeError:
+            def _onexc(func, p, exc):
+                try:
+                    os.chmod(p, stat.S_IWRITE | stat.S_IREAD)
+                    func(p)
+                except Exception:
+                    pass
+            try:
+                shutil.rmtree(path, onexc=_onexc)
+            except Exception:
+                shutil.rmtree(path, ignore_errors=True)
+        except Exception:
+            shutil.rmtree(path, ignore_errors=True)
         if not os.path.exists(path):
             return
         time.sleep(0.2 * (i + 1))

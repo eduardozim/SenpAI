@@ -595,6 +595,69 @@ def _now() -> datetime.datetime:
     return datetime.datetime.now()
 
 
+def format_seconds_hms(seconds: float) -> str:
+    s = int(max(0, seconds))
+    h = s // 3600
+    m = (s % 3600) // 60
+    sec = s % 60
+    if h > 0:
+        return f"{h:02d}h {m:02d}m {sec:02d}s"
+    return f"{m:02d}m {sec:02d}s"
+
+
+def compute_session_progress(sess: Dict[str, Any]) -> Dict[str, Any]:
+    inicio_str = sess.get("inicio")
+    fim_str = sess.get("fim_previsto")
+    now = _now()
+
+    if not inicio_str:
+        return {
+            "tempo_decorrido_segundos": 0.0,
+            "tempo_restante_segundos": 0.0,
+            "duracao_total_segundos": 0.0,
+            "percentual_avanco": 0.0,
+            "tempo_decorrido_fmt": "00m 00s",
+            "tempo_restante_fmt": "00m 00s",
+            "hora_termino_fmt": str(fim_str or "")[11:16] or "—",
+        }
+
+    try:
+        inicio_dt = datetime.datetime.fromisoformat(inicio_str)
+    except Exception:
+        inicio_dt = now
+
+    if fim_str:
+        try:
+            fim_dt = datetime.datetime.fromisoformat(fim_str)
+        except Exception:
+            fim_dt = inicio_dt + datetime.timedelta(hours=float(sess.get("horas_planejadas", 2.0)))
+    else:
+        fim_dt = inicio_dt + datetime.timedelta(hours=float(sess.get("horas_planejadas", 2.0)))
+
+    if not sess.get("ativa") and sess.get("encerrada_em"):
+        try:
+            fim_efetivo = datetime.datetime.fromisoformat(sess["encerrada_em"])
+        except Exception:
+            fim_efetivo = now
+        elapsed_sec = max(0.0, (fim_efetivo - inicio_dt).total_seconds())
+    else:
+        elapsed_sec = max(0.0, (now - inicio_dt).total_seconds())
+
+    total_sec = max(1.0, (fim_dt - inicio_dt).total_seconds())
+    remaining_sec = max(0.0, (fim_dt - now).total_seconds()) if sess.get("ativa") else 0.0
+    pct = min(100.0, max(0.0, (elapsed_sec / total_sec) * 100.0))
+
+    return {
+        "tempo_decorrido_segundos": elapsed_sec,
+        "tempo_restante_segundos": remaining_sec,
+        "duracao_total_segundos": total_sec,
+        "percentual_avanco": round(pct, 1),
+        "tempo_decorrido_fmt": format_seconds_hms(elapsed_sec),
+        "tempo_restante_fmt": format_seconds_hms(remaining_sec),
+        "hora_termino_fmt": str(fim_str or "")[11:16] or "—",
+    }
+
+
 def get_session() -> Dict[str, Any]:
     """Estado da sessão (persistido em sessao.json). Sessão marcada ativa sem thread viva = interrompida."""
     with _session_lock:
@@ -604,6 +667,8 @@ def get_session() -> Dict[str, Any]:
             sess.update(ativa=False, etapa=None, encerrada_em=sess.get("encerrada_em") or _now().isoformat(timespec="seconds"),
                         encerrada_por="interrompida (o app foi reiniciado)")
             _save_json("sessao.json", sess)
+        telemetry = compute_session_progress(sess)
+        sess.update(telemetry)
         return sess
 
 
@@ -669,8 +734,12 @@ def start_collection_session(hours: float, allow_download: bool, **kwargs) -> bo
         if _session_thread is not None and _session_thread.is_alive():
             return False
         _session_stop.clear()
-        # Marca como ativa já aqui, para a tela mostrar "ligada" no mesmo instante
-        _update_session(ativa=True, etapa="iniciando", encerrada_por=None)
+        now_dt = _now()
+        end_dt = now_dt + datetime.timedelta(hours=float(hours))
+        # Marca como ativa já aqui, para a tela mostrar "ligada" no mesmo instante com prazos calculados
+        _update_session(ativa=True, inicio=now_dt.isoformat(timespec="seconds"),
+                        fim_previsto=end_dt.isoformat(timespec="seconds"), horas_planejadas=float(hours),
+                        baixar=bool(allow_download), etapa="iniciando", encerrada_por=None)
         _session_thread = threading.Thread(
             target=run_collection_session, args=(hours, allow_download),
             kwargs=dict(kwargs, stop_event=_session_stop), name="senpai-internet-session", daemon=True)

@@ -8,6 +8,7 @@ import os
 import shutil
 import tempfile
 import unittest
+import datetime
 
 from src.engine import internet_collector as ic
 from src.engine.label_bank import LabelBank
@@ -260,6 +261,35 @@ class TestCollectionSession(_Base):
     def test_invalid_duration(self):
         with self.assertRaises(ValueError):
             ic.start_collection_session(0, False)
+
+    def test_session_progress_telemetry(self):
+        now = datetime.datetime.now()
+        start = (now - datetime.timedelta(minutes=30)).isoformat(timespec="seconds")
+        end = (now + datetime.timedelta(minutes=30)).isoformat(timespec="seconds")
+        sess_mock = {
+            "ativa": True,
+            "inicio": start,
+            "fim_previsto": end,
+            "horas_planejadas": 1.0,
+        }
+        telemetry = ic.compute_session_progress(sess_mock)
+        self.assertAlmostEqual(telemetry["percentual_avanco"], 50.0, delta=2.0)
+        self.assertIn("30m", telemetry["tempo_decorrido_fmt"])
+        self.assertEqual(telemetry["hora_termino_fmt"], str(end)[11:16])
+        self.assertGreater(telemetry["tempo_decorrido_segundos"], 1700)
+        self.assertGreater(telemetry["tempo_restante_segundos"], 1700)
+
+        # Sessão encerrada mantém o tempo decorrido até o encerramento
+        encerrada = (now - datetime.timedelta(minutes=10)).isoformat(timespec="seconds")
+        sess_mock_closed = {
+            "ativa": False,
+            "inicio": start,
+            "fim_previsto": end,
+            "encerrada_em": encerrada,
+        }
+        telem_closed = ic.compute_session_progress(sess_mock_closed)
+        self.assertIn("20m", telem_closed["tempo_decorrido_fmt"])
+        self.assertEqual(telem_closed["tempo_restante_segundos"], 0.0)
 
 
 if __name__ == "__main__":

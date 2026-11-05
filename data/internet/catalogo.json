@@ -778,5 +778,83 @@
     "status": "rejeitado",
     "encontrado_em": "2026-11-05T16:06:28",
     "motivo": "mais longo que 20 min"
+  },
+  "m1DmeDCq1pk": {
+    "id": "m1DmeDCq1pk",
+    "url": "https://www.youtube.com/watch?v=m1DmeDCq1pk",
+    "titulo": "66th All Japan Kendo Championship - FINAL —  Kendo World",
+    "canal": "KendoWorld",
+    "duracao_s": 160,
+    "licenca": "não informada",
+    "consulta": "kendo shiai all japan championship",
+    "modalidade_titulo": "luta",
+    "status": "rejeitado",
+    "encontrado_em": "2026-11-05T17:11:46",
+    "motivo": "licença não é Creative Commons"
+  },
+  "KPlNkFDLSv4": {
+    "id": "KPlNkFDLSv4",
+    "url": "https://www.youtube.com/watch?v=KPlNkFDLSv4",
+    "titulo": "Uchikomi keikoa Markus & Joni",
+    "canal": "Kendo Seinäjoki",
+    "duracao_s": 40,
+    "licenca": "não informada",
+    "consulta": "kendo uchikomi geiko",
+    "modalidade_titulo": "uchikomi_geiko",
+    "status": "rejeitado",
+    "encontrado_em": "2026-11-05T17:11:51",
+    "motivo": "licença não é Creative Commons"
+  },
+  "iw3sgykBOyw": {
+    "id": "iw3sgykBOyw",
+    "url": "https://www.youtube.com/watch?v=iw3sgykBOyw",
+    "titulo": "【Kendo：Ji-geiko】 Ni-tō VS Ni-tō",
+    "canal": "【Kendo Teacher】Ryosuke Nakatake",
+    "duracao_s": 265,
+    "licenca": "não informada",
+    "consulta": "kendo ji geiko",
+    "modalidade_titulo": "ji_geiko",
+    "status": "rejeitado",
+    "encontrado_em": "2026-11-05T17:11:53",
+    "motivo": "licença não é Creative Commons"
+  },
+  "YwmAdRs3tZ8": {
+    "id": "YwmAdRs3tZ8",
+    "url": "https://www.youtube.com/watch?v=YwmAdRs3tZ8",
+    "titulo": "【Kendo：Ji-geiko】The Road to the 7th DAN examinationⅥ",
+    "canal": "【Kendo Teacher】Ryosuke Nakatake",
+    "duracao_s": 151,
+    "licenca": "não informada",
+    "consulta": "kendo ji geiko",
+    "modalidade_titulo": "ji_geiko",
+    "status": "rejeitado",
+    "encontrado_em": "2026-11-05T17:11:53",
+    "motivo": "licença não é Creative Commons"
+  },
+  "B-tu4jGY09Y": {
+    "id": "B-tu4jGY09Y",
+    "url": "https://www.youtube.com/watch?v=B-tu4jGY09Y",
+    "titulo": "剣道 [Kendo] Miyazaki. Harai kote",
+    "canal": "Kendo is fun",
+    "duracao_s": 12,
+    "licenca": null,
+    "consulta": "kendo oji waza",
+    "modalidade_titulo": null,
+    "status": "rejeitado",
+    "encontrado_em": "2026-11-05T17:11:57",
+    "motivo": "título sem modalidade reconhecível"
+  },
+  "zSWNZL0xGTg": {
+    "id": "zSWNZL0xGTg",
+    "url": "https://www.youtube.com/watch?v=zSWNZL0xGTg",
+    "titulo": "5. Dan examination at the 32. EKC 2023 in Beauvais",
+    "canal": "danceyokoo",
+    "duracao_s": 715,
+    "licenca": "não informada",
+    "consulta": "kendo shinsa exam",
+    "modalidade_titulo": "shinsa",
+    "status": "rejeitado",
+    "encontrado_em": "2026-11-05T17:11:58",
+    "motivo": "licença não é Creative Commons"
   }
 }

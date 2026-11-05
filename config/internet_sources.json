@@ -34,7 +34,8 @@
     "max_duracao_min": 20,
     "limite_disco_gb": 10.0,
     "max_downloads_por_ciclo": 3,
-    "baixar": false,
-    "somente_creative_commons": true
+    "baixar": true,
+    "somente_creative_commons": false,
+    "intervalo_sessao_min": 15
   }
 }
