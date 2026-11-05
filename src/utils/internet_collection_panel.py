@@ -13,50 +13,63 @@ def _fmt_time(iso) -> str:
     return str(iso or "")[11:16] or "—"
 
 
+@st.fragment(run_every=3)
+def _render_active_session_card(cfg) -> None:
+    """Card de sessão ativa atualizado automaticamente a cada 3 segundos via fragment isolado."""
+    sess = ic.get_session()
+    if not sess.get("ativa"):
+        st.rerun()
+        return
+
+    hora_fim = sess.get("hora_termino_fmt") or _fmt_time(sess.get("fim_previsto"))
+    elapsed_fmt = sess.get("tempo_decorrido_fmt", "00m 00s")
+    prog_pct = float(sess.get("percentual_avanco", 0.0))
+    remaining_fmt = sess.get("tempo_restante_fmt", "—")
+    etapa = sess.get("etapa") or "—"
+
+    st.info(
+        f"🟢 **Procura ligada** (download {'ligado' if sess.get('baixar') else 'desligado'}).  \n"
+        f"⏱️ **Tempo decorrido:** `{elapsed_fmt}` &nbsp;|&nbsp; "
+        f"📊 **Avanço:** `{prog_pct:.1f}%` (restam ~`{remaining_fmt}`) &nbsp;|&nbsp; "
+        f"🏁 **Término previsto:** `{hora_fim}`  \n"
+        f"🔍 **Agora:** {etapa}"
+    )
+
+    # Barra visual de progresso da sessão
+    st.progress(
+        min(1.0, max(0.0, prog_pct / 100.0)),
+        text=f"Avanço do Prazo: {prog_pct:.1f}% ({elapsed_fmt} decorridos • Término previsto às {hora_fim})"
+    )
+
+    # Métricas em destaque: tempo decorrido, percentual e hora de término
+    c1, c2, c3 = st.columns(3)
+    c1.metric("⏱️ Tempo Decorrido", elapsed_fmt)
+    c2.metric("📊 Avanço do Prazo", f"{prog_pct:.1f}%", help=f"Restam aproximadamente {remaining_fmt}")
+    c3.metric("🏁 Hora de Término", hora_fim)
+
+    # Métricas operacionais da busca e downloads
+    a, b, c = st.columns(3)
+    a.metric("Rodadas", sess.get("rodadas", 0))
+    b.metric("Novos no catálogo", sess.get("novos", 0))
+    c.metric("Baixados", len(sess.get("baixados", [])))
+
+    st.caption("⚡ *Atualização automática ativa (a cada 3s). Sem necessidade de recarregar a tela.*")
+
+    d1, d2 = st.columns(2)
+    if d1.button("⏹️ Desligar procura", type="primary", key="i15_stop"):
+        ic.stop_collection_session()
+        st.toast("Procura desligada. Um download em andamento termina antes de parar.", icon="⏹️")
+        st.rerun()
+    if d2.button("🔄 Atualizar agora", key="i15_refresh"):
+        st.rerun()
+
+
 def _render_session_controls(cfg) -> None:
     """Procura de vídeos por tempo determinado: ligar por X horas e desligar quando quiser."""
     sess = ic.get_session()
     with st.container(border=True):
         if sess.get("ativa"):
-            hora_fim = sess.get("hora_termino_fmt") or _fmt_time(sess.get("fim_previsto"))
-            elapsed_fmt = sess.get("tempo_decorrido_fmt", "00m 00s")
-            prog_pct = float(sess.get("percentual_avanco", 0.0))
-            remaining_fmt = sess.get("tempo_restante_fmt", "—")
-            etapa = sess.get("etapa") or "—"
-
-            st.info(
-                f"🟢 **Procura ligada** (download {'ligado' if sess.get('baixar') else 'desligado'}).  \n"
-                f"⏱️ **Tempo decorrido:** `{elapsed_fmt}` &nbsp;|&nbsp; "
-                f"📊 **Avanço:** `{prog_pct:.1f}%` (restam ~`{remaining_fmt}`) &nbsp;|&nbsp; "
-                f"🏁 **Término previsto:** `{hora_fim}`  \n"
-                f"🔍 **Agora:** {etapa}"
-            )
-
-            # Barra visual de progresso da sessão
-            st.progress(
-                min(1.0, max(0.0, prog_pct / 100.0)),
-                text=f"Avanço do Prazo: {prog_pct:.1f}% ({elapsed_fmt} decorridos • Término previsto às {hora_fim})"
-            )
-
-            # Métricas em destaque: tempo decorrido, percentual e hora de término
-            c1, c2, c3 = st.columns(3)
-            c1.metric("⏱️ Tempo Decorrido", elapsed_fmt)
-            c2.metric("📊 Avanço do Prazo", f"{prog_pct:.1f}%", help=f"Restam aproximadamente {remaining_fmt}")
-            c3.metric("🏁 Hora de Término", hora_fim)
-
-            # Métricas operacionais da busca e downloads
-            a, b, c = st.columns(3)
-            a.metric("Rodadas", sess.get("rodadas", 0))
-            b.metric("Novos no catálogo", sess.get("novos", 0))
-            c.metric("Baixados", len(sess.get("baixados", [])))
-
-            d1, d2 = st.columns(2)
-            if d1.button("⏹️ Desligar procura", type="primary", key="i15_stop"):
-                ic.stop_collection_session()
-                st.toast("Procura desligada. Um download em andamento termina antes de parar.", icon="⏹️")
-                st.rerun()
-            if d2.button("🔄 Atualizar", key="i15_refresh"):
-                st.rerun()
+            _render_active_session_card(cfg)
             return
 
         st.markdown("🔴 **Procura desligada**")
