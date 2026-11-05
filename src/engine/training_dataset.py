@@ -59,7 +59,11 @@ TRAINING_STORES: List[Tuple[str, str]] = [
 ]
 
 # Fora do .zip (cache, derivado ou grande e recuperável). O apagar remove mesmo assim.
-EXPORT_EXCLUDES = ("data/internet/videos/", "data/internet/regras_texto/", "/runs/")
+EXPORT_EXCLUDES = ("data/internet/regras_texto/", "data/internet/baixando/", "/runs/")
+# Vídeos baixados pela coleta: ficam na pasta única de vídeos (data/videos/internet_*.mp4). O apagar os
+# remove; o exportar não os leva (o catálogo guarda os links). Os demais vídeos da pasta são do usuário.
+INTERNET_VIDEOS_DIR = "data/videos"
+INTERNET_PREFIX = "internet_"
 
 
 def get_root(root: Optional[str] = None) -> str:
@@ -293,6 +297,16 @@ def _move_to_trash(root: str) -> Tuple[str, List[Tuple[str, str]], int]:
             os.makedirs(trash, exist_ok=True)
             os.replace(src, dst)
             moved.append((src, dst))
+        vdir = _abs(root, INTERNET_VIDEOS_DIR)
+        if os.path.isdir(vdir):
+            for name in sorted(os.listdir(vdir)):
+                src = os.path.join(vdir, name)
+                if name.startswith(INTERNET_PREFIX) and os.path.isfile(src):
+                    count += 1
+                    dst = os.path.join(trash, "videos", name)
+                    os.makedirs(os.path.dirname(dst), exist_ok=True)
+                    os.replace(src, dst)
+                    moved.append((src, dst))
     except Exception:
         for src, dst in reversed(moved):
             try:
@@ -553,7 +567,21 @@ def storage_report(root: Optional[str] = None) -> Dict[str, Any]:
         g = _group_of(rel)
         groups[g] += size
         items.append({"caminho": rel, "descricao": desc, "grupo": g, "arquivos": n, "bytes": size})
-    support = []
+    # Pasta única de vídeos: os da coleta contam como dataset; os do usuário são apoio
+    vdir = _abs(root, INTERNET_VIDEOS_DIR)
+    inet, user = (0, 0), (0, 0)
+    if os.path.isdir(vdir):
+        for dirpath, _, files in os.walk(vdir):
+            for name in files:
+                sz = os.path.getsize(os.path.join(dirpath, name))
+                if dirpath == vdir and name.startswith(INTERNET_PREFIX):
+                    inet = (inet[0] + sz, inet[1] + 1)
+                else:
+                    user = (user[0] + sz, user[1] + 1)
+    groups["dataset"] += inet[0]
+    items.append({"caminho": f"{INTERNET_VIDEOS_DIR}/{INTERNET_PREFIX}*", "descricao": "Vídeos baixados pela coleta na internet",
+                  "grupo": "dataset", "arquivos": inet[1], "bytes": inet[0]})
+    support = [{"caminho": INTERNET_VIDEOS_DIR, "descricao": "Seus vídeos de lutas e treinos", "arquivos": user[1], "bytes": user[0]}]
     labeled = set(_labeled_crops(root))
     for rel, desc in SUPPORT_ITEMS:
         size, n = _size_and_count(_abs(root, rel))

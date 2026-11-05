@@ -19,7 +19,7 @@ import streamlit as st
 from src.engine import weak_labels as wl
 from src.utils.feature_cache import list_videos
 
-DEFAULT_VIDEOS_DIR = os.path.join("..", "QA", "Videos Teste")
+from src.utils.video_library import DEFAULT_VIDEOS_DIR  # pasta única: Dev/data/videos
 KENSHI_OPTIONS = ["AKA", "SHIRO"]
 TECHNIQUE_OPTIONS = ["MEN", "KOTE", "DO", "TSUKI", "HANSOKU", "FUSEN", "HANTEI"]
 POINT_COLUMNS = ["kenshi", "tecnica", "tempo"]

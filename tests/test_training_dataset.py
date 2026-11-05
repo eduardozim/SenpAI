@@ -42,7 +42,7 @@ def _populate(root):
     _w(root, "data/models/strike_filter/m.json", {"w": [1, 2]})
     _w(root, "data/models/flag_detector/runs/r1/weights.bin", b"big")
     _w(root, "data/internet/catalogo.json", {"v1": {}})
-    _w(root, "data/internet/videos/internet_v1.mp4", b"video")
+    _w(root, "data/videos/internet_v1.mp4", b"video")
     _w(root, "config/calibration_profiles.json", {"normal": {"custom": True}})
     _w(root, "config/ai_knowledge_base.json", {"custom": True})
     # Não é treinamento: não pode ser tocado
@@ -84,7 +84,7 @@ class TestTrainingDataset(unittest.TestCase):
                     "data/active_learning_clips/c1_corte.mp4", "data/models/strike_filter/m.json", "data/flag_dataset/labels.json",
                     "data/flag_dataset/crops/a.jpg", "data/internet/catalogo.json", "config/calibration_profiles.json"):
             self.assertIn(rel, names)
-        for rel in ("data/flag_dataset/crops/b.jpg", "data/internet/videos/internet_v1.mp4",
+        for rel in ("data/flag_dataset/crops/b.jpg", "data/videos/internet_v1.mp4",
                     "data/models/flag_detector/runs/r1/weights.bin", "data/feature_cache/k.pkl.gz", "config/settings.json"):
             self.assertNotIn(rel, names)
         self.assertEqual(manifest["resumo"]["rotulos_no_banco"], 3)
@@ -242,6 +242,20 @@ class TestTrainingDataset(unittest.TestCase):
         self.assertEqual(td.training_progress(self.root)["ultima_medicao_golden"]["total"]["f1"], 0.5)
         td.reset_training(self.root, backup=False)
         self.assertEqual(td.storage_report(self.root)["grupos"]["modelos"], 0)
+
+    def test_internet_videos_live_in_videos_folder(self):
+        _w(self.root, "data/videos/internet_abc.mp4", b"baixado")
+        _w(self.root, "data/videos/Minha luta.mp4", b"meu video")
+        with zipfile.ZipFile(io.BytesIO(td.export_training_zip(self.root))) as zf:
+            self.assertFalse([n for n in zf.namelist() if n.startswith("data/videos/")])
+        rep = td.storage_report(self.root)
+        item = [i for i in rep["itens"] if i["caminho"].startswith("data/videos")][0]
+        self.assertEqual((item["arquivos"], item["bytes"]), (2, len(b"baixado") + len(b"video")))  # + internet_v1 do _populate
+        user = [a for a in rep["apoio"] if a["caminho"] == "data/videos"][0]
+        self.assertEqual((user["arquivos"], user["bytes"]), (1, len(b"meu video")))
+        td.reset_training(self.root, backup=False)
+        self.assertFalse(self._exists("data/videos/internet_abc.mp4"))
+        self.assertTrue(self._exists("data/videos/Minha luta.mp4"))
 
     def test_default_root_is_sandbox_in_tests(self):
         self.assertNotEqual(os.path.abspath(td.get_root()), os.path.abspath(os.getcwd()))

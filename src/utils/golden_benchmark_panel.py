@@ -14,7 +14,7 @@ import streamlit as st
 
 from src.engine import weak_labels as wl
 
-DEFAULT_VIDEOS_DIR = os.path.join("..", "QA", "Videos Teste")
+from src.utils.video_library import DEFAULT_VIDEOS_DIR  # pasta única: Dev/data/videos
 
 
 def _pct(v: Optional[float]) -> str:

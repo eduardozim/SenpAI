@@ -13,7 +13,7 @@ import streamlit as st
 from src.engine import training_cycle as tc
 
 STATUS_ICON = {"ok": "✅", "pulado": "⏭️", "falhou": "❌"}
-DEFAULT_VIDEOS_DIR = os.path.join("..", "QA", "Videos Teste")
+from src.utils.video_library import DEFAULT_VIDEOS_DIR  # pasta única: Dev/data/videos
 
 
 def cycles_table(history: List[Dict[str, Any]]) -> pd.DataFrame:

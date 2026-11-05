@@ -83,9 +83,15 @@ def get_root_dir() -> str:
 
 
 def get_videos_dir() -> str:
-    d = os.path.join(get_root_dir(), "videos")
-    os.makedirs(d, exist_ok=True)
-    return d
+    """Os vídeos baixados vão para a pasta única de vídeos (Dev/data/videos), com o prefixo internet_."""
+    from src.utils.video_library import get_videos_dir as _library_dir
+    return _library_dir()
+
+
+def _internet_bytes() -> int:
+    """Disco ocupado só pelos vídeos baixados pela coleta (os seus vídeos não contam no limite)."""
+    from src.utils.video_library import internet_videos
+    return sum(os.path.getsize(p) for p in internet_videos(get_videos_dir()))
 
 
 def _config_path(path: Optional[str] = None) -> str:
@@ -146,7 +152,7 @@ def _use_system_certs() -> None:
 
 
 def resolve_video_path(videos_dir: str, name: str) -> str:
-    """Vídeo da pasta do usuário ou, se não estiver lá, da pasta de vídeos coletados da internet."""
+    """Vídeo da pasta escolhida ou, se não estiver lá, da pasta única de vídeos (Dev/data/videos)."""
     p = os.path.join(videos_dir, name)
     if os.path.isfile(p):
         return p
@@ -505,7 +511,7 @@ def collect_videos(config: Optional[Dict[str, Any]] = None, searcher=None, downl
             if not _license_ok(item, only_cc):
                 item.update(status="rejeitado", motivo="licença não é Creative Commons")
                 continue
-            if _dir_size_gb(get_videos_dir()) >= budget:
+            if _internet_bytes() / 1e9 >= budget:
                 log_event("INFO", f"Limite de disco da coleta atingido ({budget} GB).", "internet_collector")
                 break
             if progress:
@@ -534,10 +540,12 @@ def _download(item: Dict[str, Any], downloader=None) -> str:
     from src.utils.video_downloader import download_video_stream
     _use_system_certs()
     max_s = None
-    path, _info = download_video_stream(item["url"], output_dir=get_videos_dir(), quality="media", max_duration_seconds=max_s)
+    # Baixa numa pasta temporária e só então move para a pasta de vídeos, já com o nome final
+    staging = os.path.join(get_root_dir(), "baixando")
+    os.makedirs(staging, exist_ok=True)
+    path, _info = download_video_stream(item["url"], output_dir=staging, quality="media", max_duration_seconds=max_s)
     target = os.path.join(get_videos_dir(), f"internet_{item['id']}.mp4")
-    if os.path.abspath(path) != os.path.abspath(target):
-        os.replace(path, target)
+    os.replace(path, target)
     return target
 
 
@@ -686,7 +694,7 @@ def status() -> Dict[str, Any]:
     for it in cat.values():
         counts[it["status"]] = counts.get(it["status"], 0) + 1
     rules = load_rules()
-    return {"catalogo": counts, "disco_gb": round(_dir_size_gb(get_videos_dir()), 2), "bandeiras": flag_gate(),
+    return {"catalogo": counts, "disco_gb": round(_internet_bytes() / 1e9, 2), "bandeiras": flag_gate(),
             "fontes_regras": {s["titulo"]: {"fatos": len(s.get("fatos", {})), "regras": len(s.get("regras", {}))}
                               for s in rules.get("fontes", {}).values()}}
 

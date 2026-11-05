@@ -99,3 +99,8 @@ Melhorias_Issues.md
 desktop.ini
 Thumbs.db
 .DS_Store
+
+# Pasta única de vídeos (lutas, treinos e vídeos baixados pela coleta)
+data/videos/
+data/internet/baixando/
+data/backups/
