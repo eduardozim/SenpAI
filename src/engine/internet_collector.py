@@ -400,7 +400,7 @@ def search_videos(query: str, limit: int, searcher: Optional[Callable[[str, int]
         return searcher(query, limit)
     import yt_dlp
     _use_system_certs()
-    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "extract_flat": "in_playlist", "noplaylist": True}) as ydl:
+    with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True, "extract_flat": "in_playlist", "noplaylist": True}) as ydl:
         info = ydl.extract_info(f"ytsearch{int(limit)}:{query}", download=False)
     out = []
     for e in (info or {}).get("entries", []) or []:
@@ -443,7 +443,7 @@ def fetch_license(url: str) -> Optional[str]:
     """Licença declarada do vídeo (a busca rápida não traz); None se não informada."""
     import yt_dlp
     _use_system_certs()
-    with yt_dlp.YoutubeDL({"quiet": True, "skip_download": True, "noplaylist": True}) as ydl:
+    with yt_dlp.YoutubeDL({"quiet": True, "no_warnings": True, "skip_download": True, "noplaylist": True}) as ydl:
         info = ydl.extract_info(url, download=False)
     return (info or {}).get("license")
 
