@@ -72,9 +72,13 @@ class TestFeedbackLoop(unittest.TestCase):
         new_config, summary = self.feedback_mgr.optimize_profile_config("normal", base_config)
 
         self.assertEqual(summary["status"], "success")
-        # O min_total_score deve ter sido elevado acima de 68% (0.68 + 0.02 = 0.70)
-        self.assertGreater(new_config["min_total_score"], 0.65)
-        self.assertGreaterEqual(new_config["min_total_score"], 0.70)
+        # Com a decisão de produção (pesos do KOTE), o FP tem que ficar rejeitado pela nova calibração —
+        # sem a antiga regra "pior FP + 0,02", que empurrava o limiar por cima de uma nota informada (68%)
+        # diferente da nota que a análise de fato calcula.
+        from src.engine.calibrator import decide_strike
+        decision = decide_strike(0.62, 0.50, 0.50, 0.45, config=new_config, strike_type="KOTE")
+        self.assertFalse(decision["is_valid"])
+        self.assertLessEqual(new_config["min_total_score"], 0.80)  # sem salto arbitrário do limiar
 
 if __name__ == "__main__":
     unittest.main()

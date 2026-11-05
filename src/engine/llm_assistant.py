@@ -374,6 +374,23 @@ class KendoLLMAssistant:
     # --------------------------------------------------------------------------
     # 4. EXTRAÇÃO DE RESTRIÇÕES BIOMECÂNICAS EM JSON SCHEMA (EIXO 2.1)
     # --------------------------------------------------------------------------
+    def extract_rule_facts(self, text: str, source_title: str) -> Optional[Dict[str, Any]]:
+        """
+        Coleta na internet (I15): propõe fatos de regra com a citação literal. Só funciona online;
+        o coletor aceita apenas os fatos cuja citação existe no texto (nada inventado entra).
+        """
+        if not self.is_online:
+            return None
+        prompt = (
+            "Do regulamento de kendo abaixo, extraia apenas fatos numéricos escritos explicitamente. "
+            "Para cada fato devolva a frase EXATA do texto que o contém (copie sem alterar).\n"
+            f"Fonte: {source_title}\nTexto:\n{text}\n\n"
+            'Responda só JSON: {"fatos": {"tempo_luta_min": {"rotulo": "...", "valor": 5, "unidade": "min", '
+            '"evidencia": "frase exata"}}}. Chaves possíveis: tempo_luta_min, encho_min, shiaijo_lado_m, '
+            "pontos_para_vencer, spine_tilt_max_deg, fumikomi_hand_foot_window_ms. Omita o que não estiver no texto."
+        )
+        return self._call_remote_llm(prompt)
+
     def extract_physical_constraints(
         self,
         source_text_or_metadata: Union[str, Dict[str, Any]],

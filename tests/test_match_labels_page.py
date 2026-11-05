@@ -89,6 +89,49 @@ class TestMatchLabelsPageRender(unittest.TestCase):
             self.assertEqual(saved["aka"], "Fulano")
             self.assertTrue(any("Gabarito salvo" in s.value for s in at.success))
             self.assertTrue(any("Rotular agora" in b.label for b in at.button))
+            # O golden tem um único local na interface (painel do Eixo 4), não nesta tela
+            self.assertFalse(any("golden" in b.label.lower() for b in at.button))
+
+
+def _golden_panel_app(labels_path: str):
+    from src.utils.golden_benchmark_panel import render_golden_benchmark_panel, render_golden_matches_manager
+    render_golden_benchmark_panel()
+    render_golden_matches_manager(device_preference="cpu", labels_path=labels_path)
+
+
+class TestGoldenBenchmarkPanel(unittest.TestCase):
+    def test_freeze_and_unfreeze_from_the_single_panel(self):
+        from streamlit.testing.v1 import AppTest
+        from src.engine.active_learning import GoldenBenchmark
+
+        gb = GoldenBenchmark()
+        with tempfile.TemporaryDirectory() as tmp:
+            labels_path = os.path.join(tmp, "gabarito.json")
+            wl.save_match_labels({"versao": 1, "videos": {
+                "luta_a.mp4": {"pontos_completos": True, "pontos": [{"kenshi": "AKA", "tecnica": "MEN", "tempo": "00:10"}]},
+                "luta_b.mp4": {"pontos_completos": False, "pontos": []},
+            }}, labels_path)
+            try:
+                at = AppTest.from_function(_golden_panel_app, args=(labels_path,), default_timeout=60)
+                at.run()
+                self.assertFalse(at.exception, [e.value for e in at.exception])
+                # Sem rodada real do benchmark, nenhum número de desempenho aparece
+                if not gb.load_history():
+                    self.assertEqual(len(at.metric), 0)
+                    self.assertTrue(any("Ainda não há medição real" in i.value for i in at.info))
+                self.assertEqual(at.multiselect[0].options, ["luta_a.mp4"])  # só lutas completas
+
+                at.multiselect[0].select("luta_a.mp4")
+                next(b for b in at.button if "Congelar selecionadas" in b.label).click().run()
+                self.assertFalse(at.exception, [e.value for e in at.exception])
+                self.assertTrue(gb.is_golden_video("luta_a.mp4"))
+                self.assertTrue(any("Rodar benchmark por luta" in b.label for b in at.button))
+
+                at.multiselect[1].select("luta_a.mp4")
+                next(b for b in at.button if "Tirar do golden" in b.label).click().run()
+                self.assertFalse(gb.is_golden_video("luta_a.mp4"))
+            finally:
+                gb.unfreeze_match("luta_a.mp4")
 
 
 if __name__ == "__main__":

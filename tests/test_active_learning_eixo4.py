@@ -111,7 +111,7 @@ class TestActiveLearningEixo4(unittest.TestCase):
 
         # Perfil válido ligeiramente ajustado -> Deve passar
         valid_profile = dict(current_profile)
-        valid_profile["min_total_score"] = 0.64
+        valid_profile["min_total_score"] = round(current_profile["min_total_score"] - 0.01, 2)
         passed_ok, report_ok = gb.validate_no_regression(valid_profile, current_profile, tolerance=0.03)
         self.assertTrue(passed_ok)
 

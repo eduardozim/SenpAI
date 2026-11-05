@@ -69,9 +69,13 @@ def build_cache_key(
     vision_model: str,
     frame_step: int = 1,
     invert_combatants: bool = False,
-    shiaijo_polygon: Optional[List[Tuple[float, float]]] = None
+    shiaijo_polygon: Optional[List[Tuple[float, float]]] = None,
+    mode: str = "match"
 ) -> str:
-    """Chave única combinando o conteúdo do vídeo e todos os parâmetros que alteram a extração."""
+    """
+    Chave única combinando o conteúdo do vídeo e todos os parâmetros que alteram a extração.
+    mode="training" separa o cache do Modo Treinamento (I13); o modo luta mantém as chaves de sempre.
+    """
     params = {
         "schema": FEATURE_CACHE_SCHEMA_VERSION,
         "video": compute_video_fingerprint(video_path),
@@ -80,6 +84,8 @@ def build_cache_key(
         "invert_combatants": bool(invert_combatants),
         "shiaijo_polygon": [[round(float(x), 4), round(float(y), 4)] for x, y in (shiaijo_polygon or [])]
     }
+    if mode and mode != "match":
+        params["mode"] = mode
     raw = json.dumps(params, sort_keys=True).encode("utf-8")
     return hashlib.sha1(raw).hexdigest()[:20]
 
@@ -88,7 +94,15 @@ def _cache_file_path(cache_key: str) -> str:
     return os.path.join(get_feature_cache_dir(), f"{cache_key}.pkl.gz")
 
 
-def load_match_features(cache_key: str) -> Optional[Dict[str, Any]]:
+TRAINING_REQUIRED_KEYS = ("tracks", "summary", "total_reidentifications", "fps", "total_frames")
+
+
+def load_training_features(cache_key: str) -> Optional[Dict[str, Any]]:
+    """Carrega o rastreamento do Modo Treinamento (I13); None se ausente, corrompido ou de outro schema."""
+    return load_match_features(cache_key, required=TRAINING_REQUIRED_KEYS)
+
+
+def load_match_features(cache_key: str, required: Optional[Tuple[str, ...]] = None) -> Optional[Dict[str, Any]]:
     """Carrega as features de um vídeo de luta; retorna None se ausente, corrompido ou de outro schema."""
     path = _cache_file_path(cache_key)
     if not os.path.isfile(path):
@@ -98,7 +112,7 @@ def load_match_features(cache_key: str) -> Optional[Dict[str, Any]]:
             data = pickle.load(f)
         if not isinstance(data, dict) or data.get("schema") != FEATURE_CACHE_SCHEMA_VERSION:
             return None
-        required = ("aka_history", "shiro_history", "discarded_per_frame", "fps", "total_frames", "tracker_summary")
+        required = required or ("aka_history", "shiro_history", "discarded_per_frame", "fps", "total_frames", "tracker_summary")
         if not all(k in data for k in required):
             return None
         return data

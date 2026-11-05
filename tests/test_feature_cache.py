@@ -73,6 +73,24 @@ class TestFeatureCache(unittest.TestCase):
         self.assertEqual(first["sonkyo_analysis"]["match_start_frame"], second["sonkyo_analysis"]["match_start_frame"])
         self.assertEqual(first["plane_filtering"]["flag_decision"], second["plane_filtering"]["flag_decision"])
 
+    def test_training_mode_reuses_cache(self):
+        """Modo Treinamento (I13): a 2ª análise reaproveita pose e re-identificação, com o mesmo resultado."""
+        pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
+        first = pipeline.process_video(self.test_video, analysis_mode="training", use_feature_cache=True)
+        self.assertFalse(first["feature_cache_hit"])
+        first_tracks = sorted(pipeline.training_multi_tracker.tracks)
+        key = feature_cache.build_cache_key(self.test_video, pipeline.vision_model, mode="training")
+        self.assertNotEqual(key, feature_cache.build_cache_key(self.test_video, pipeline.vision_model))
+        self.assertIsNotNone(feature_cache.load_training_features(key))
+        with mock.patch.object(pipeline.pose_detector, "process_frame_candidates_batch") as mocked_infer:
+            second = pipeline.process_video(self.test_video, analysis_mode="training", use_feature_cache=True)
+            mocked_infer.assert_not_called()
+        self.assertTrue(second["feature_cache_hit"])
+        self.assertEqual(first["events_detected_count"], second["events_detected_count"])
+        self.assertEqual(first["training_analysis"]["modality_key"], second["training_analysis"]["modality_key"])
+        self.assertEqual(len(first["training_analysis"]["sub_sessions"]), len(second["training_analysis"]["sub_sessions"]))
+        self.assertEqual(sorted(pipeline.training_multi_tracker.tracks), first_tracks)
+
     def test_corrupted_cache_file_is_regenerated(self):
         """Um arquivo de cache corrompido é ignorado e a extração completa é refeita."""
         pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")

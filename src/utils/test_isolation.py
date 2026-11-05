@@ -22,6 +22,9 @@ PROTECTED_FILES = {
     "data/kenshi_baselines.json": "test_kenshi_baselines.json",
     "data/active_learning_queue.json": "test_active_learning_queue.json",
     "data/empirical_reference_distributions.json": "test_empirical_reference_distributions.json",
+    "data/benchmark_golden/golden_dataset.json": "test_golden_dataset.json",
+    "data/reviewer_trust_registry.json": "test_reviewer_trust_registry.json",
+    "data/match_labels/gabarito_lutas.json": "test_gabarito_lutas.json",
 }
 
 def is_test_mode() -> bool:

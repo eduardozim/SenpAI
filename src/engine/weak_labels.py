@@ -14,6 +14,8 @@ features (I1), o SenpAI reanalisa o vídeo em segundos e rotula automaticamente 
 - DESCONHECIDO          gabarito incompleto e sem ponto perto; não vira rótulo
 
 Pontos oficiais que nenhuma detecção encontrou são registrados como "perdidos" (recall do detector).
+As métricas (precision_recall_f1, match_metrics, aggregate_match_metrics) são a fonte única usada
+também pelo GoldenBenchmark (src/engine/active_learning.py).
 
 Rótulos gerados em dois níveis:
 - candidatos: todos os disparos brutos do EventSpotter (sem corte do sonkyō), base do filtro da I3;
@@ -22,6 +24,7 @@ Rótulos gerados em dois níveis:
 Uso via linha de comando (a partir da pasta Dev/):
     python -m src.engine.weak_labels template "<pasta de vídeos>"     # cria/completa o gabarito
     python -m src.engine.weak_labels run "<pasta de vídeos>" [--save-feedback] [--enqueue-ambiguous]
+    python -m src.engine.weak_labels golden list | freeze "<vídeo>" | unfreeze "<vídeo>" | run "<pasta de vídeos>"
 """
 
 import os
@@ -49,7 +52,8 @@ NEG_TSUBAZERIAI = "NEGATIVO_TSUBAZERIAI"
 NEG_NO_POINT = "NEGATIVO_SEM_PONTO"
 AMBIGUOUS = "AMBIGUO"
 UNKNOWN = "DESCONHECIDO"
-NEGATIVE_LABELS = {NEG_OUTSIDE, NEG_TSUBAZERIAI, NEG_NO_POINT}
+NEG_CORRECTION = "NEGATIVO_CORRECAO"   # um revisor/curador disse que não é ponto (banco de rótulos, I11)
+NEGATIVE_LABELS = {NEG_OUTSIDE, NEG_TSUBAZERIAI, NEG_NO_POINT, NEG_CORRECTION}
 
 
 # ------------------------------------------------------------------------------
@@ -100,8 +104,15 @@ def _empty_entry() -> Dict[str, Any]:
     }
 
 
+def _labels_file(path: str) -> str:
+    """Em modo de teste, o gabarito padrão vai para a sandbox (nunca o gabarito real do usuário)."""
+    from src.utils.test_isolation import get_safe_data_path
+    return get_safe_data_path(path, "test_gabarito_lutas.json")
+
+
 def load_match_labels(path: str = DEFAULT_LABELS_PATH) -> Dict[str, Any]:
     """Carrega o gabarito ({"videos": {nome_do_arquivo: entrada}}); retorna estrutura vazia se não existir."""
+    path = _labels_file(path)
     if not os.path.isfile(path):
         return {"versao": 1, "videos": {}}
     with open(path, "r", encoding="utf-8") as f:
@@ -111,6 +122,7 @@ def load_match_labels(path: str = DEFAULT_LABELS_PATH) -> Dict[str, Any]:
 
 
 def save_match_labels(data: Dict[str, Any], path: str = DEFAULT_LABELS_PATH) -> str:
+    path = _labels_file(path)
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
     tmp = f"{path}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
@@ -150,8 +162,15 @@ def parse_official_points(entry: Dict[str, Any]) -> List[Dict[str, Any]]:
     return points
 
 
+def is_entry_ignored(entry: Optional[Dict[str, Any]]) -> bool:
+    """Vídeo marcado como "não é luta" (ex.: gravação de treino): fica fora do gabarito, do cache e do treino."""
+    return bool((entry or {}).get("ignorar"))
+
+
 def is_entry_filled(entry: Dict[str, Any]) -> bool:
-    """Uma luta só é rotulável se tiver pontos ou se o gabarito disser que acabou sem pontos."""
+    """Uma luta só é rotulável se tiver pontos ou se o gabarito disser que acabou sem pontos (e não for ignorada)."""
+    if is_entry_ignored(entry):
+        return False
     return bool(entry.get("pontos")) or bool(entry.get("pontos_completos"))
 
 
@@ -223,16 +242,140 @@ def label_detections(
     counts: Dict[str, int] = {}
     for item in labeled:
         counts[item["weak_label"]] = counts.get(item["weak_label"], 0) + 1
-    tp = counts.get(POSITIVE, 0)
-    known_neg = sum(counts.get(k, 0) for k in NEGATIVE_LABELS)
     return {
         "items": labeled,
         "missed_points": missed,
         "counts": counts,
-        "official_strike_points": len(strike_points),
-        "recall": round(tp / len(strike_points), 4) if strike_points else None,
-        "precision": round(tp / (tp + known_neg), 4) if points_complete and (tp + known_neg) else None
+        "official_strike_points": len(strike_points)
     }
+
+
+# ------------------------------------------------------------------------------
+# Métricas (fonte única: rotulagem, golden benchmark e trava do otimizador usam estas funções)
+# ------------------------------------------------------------------------------
+
+def precision_recall_f1(tp: int, fp: int, fn: int) -> Dict[str, Optional[float]]:
+    """Fórmula única de precisão, recall e F1 do SenpAI. None quando a métrica é indefinida (0/0)."""
+    precision = tp / (tp + fp) if (tp + fp) else None
+    recall = tp / (tp + fn) if (tp + fn) else None
+    if precision is None or recall is None:
+        f1 = None
+    elif precision + recall == 0:
+        f1 = 0.0
+    else:
+        f1 = 2 * precision * recall / (precision + recall)
+    rnd = lambda v: None if v is None else round(v, 4)
+    return {"precisao": rnd(precision), "recall": rnd(recall), "f1": rnd(f1)}
+
+
+def is_false_point(item: Dict[str, Any], points_complete: bool) -> bool:
+    """
+    Ponto dado pelo SenpAI que não é oficial. Com gabarito completo, ambíguo também conta
+    (é ponto duplicado ou atribuído ao kenshi errado); com gabarito incompleto, só os negativos certos.
+    """
+    if not item.get("predicted_valid") or item["weak_label"] == POSITIVE:
+        return False
+    return item["weak_label"] in NEGATIVE_LABELS or (points_complete and item["weak_label"] == AMBIGUOUS)
+
+
+def decision_is_known(item: Dict[str, Any], points_complete: bool) -> bool:
+    """O rótulo diz com certeza se o golpe deveria virar ponto?"""
+    label = item["weak_label"]
+    return label == POSITIVE or label in NEGATIVE_LABELS or (points_complete and label == AMBIGUOUS)
+
+
+def decision_is_correct(item: Dict[str, Any]) -> bool:
+    """Acertou a decisão: deu ponto num golpe oficial, ou não deu ponto num golpe que não era ponto."""
+    return bool(item.get("predicted_valid")) == (item["weak_label"] == POSITIVE)
+
+
+def normalize_technique(value: Any) -> Optional[str]:
+    text = str(value or "").strip().upper()
+    for t in ("MEN", "KOTE", "DO", "TSUKI"):
+        if text == t or text.startswith(t + " ") or text.startswith(t + "_"):
+            return t
+    return None
+
+
+def technique_agreement(events: List[Dict[str, Any]], points: List[Dict[str, Any]]) -> Tuple[int, int]:
+    """Nos golpes que acertaram um ponto oficial: quantos têm técnica oficial conhecida e quantos acertaram a técnica."""
+    by_index = {p["index"]: normalize_technique(p.get("technique")) for p in points}
+    judged = correct = 0
+    for e in events:
+        if not e.get("predicted_valid") or e["weak_label"] != POSITIVE or e.get("matched_point") is None:
+            continue
+        official = by_index.get(e["matched_point"])
+        if official is None:
+            continue
+        judged += 1
+        correct += int(normalize_technique(e.get("strike_type")) == official)
+    return judged, correct
+
+
+def match_metrics(report: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Métrica única por luta.
+    - Pontos do placar: acertos, falsos pontos, perdidos → precisão, recall e F1.
+    - Decisões: cada golpe avaliado com rótulo conhecido → acurácia (ponto/não-ponto correto).
+    """
+    points = report["official_points"]
+    complete = bool(report["pontos_completos"])
+    events = report["events"]["items"]
+    official = {k: sum(1 for p in points if p["kenshi_id"] == k) for k in KENSHI_IDS.values()}
+    predicted = {k: sum(1 for e in events if e["attacker_id"] == k and e.get("predicted_valid")) for k in KENSHI_IDS.values()}
+    hits = sum(1 for e in events if e.get("predicted_valid") and e["weak_label"] == POSITIVE)
+    false_points = sum(1 for e in events if is_false_point(e, complete))
+    strike_points = report["events"]["official_strike_points"]
+    missed = strike_points - hits
+    prf = precision_recall_f1(hits, false_points, missed)
+    if not complete:
+        prf["precisao"] = prf["f1"] = None  # falsos pontos desconhecidos sem gabarito completo
+    score_error = sum(abs(official[k] - predicted[k]) for k in KENSHI_IDS.values())
+    judged = [e for e in events if decision_is_known(e, complete)]
+    correct = sum(1 for e in judged if decision_is_correct(e))
+    tech_judged, tech_correct = technique_agreement(events, points)
+    return {
+        "video_name": report["video_name"],
+        "pontos_completos": complete,
+        "placar_oficial": {"aka": official["KENSHI_AKA"], "shiro": official["KENSHI_SHIRO"]},
+        "placar_senpai": {"aka": predicted["KENSHI_AKA"], "shiro": predicted["KENSHI_SHIRO"]},
+        "placar_exato": complete and score_error == 0,
+        "erro_placar": score_error,
+        "pontos_oficiais": strike_points,
+        "acertos": hits,
+        "falsos_pontos": false_points,
+        "perdidos": missed,
+        "candidatos": len(report["candidates"]["items"]),
+        "candidatos_que_acham_ponto": report["candidates"]["counts"].get(POSITIVE, 0),
+        "decisoes_avaliadas": len(judged),
+        "decisoes_corretas": correct,
+        "acuracia": round(correct / len(judged), 4) if judged and complete else None,
+        "tecnica_avaliada": tech_judged,
+        "tecnica_correta": tech_correct,
+        "acuracia_tecnica": round(tech_correct / tech_judged, 4) if tech_judged else None,
+        **prf,
+    }
+
+
+def aggregate_match_metrics(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Soma das lutas. Recall usa todas; acurácia, precisão e F1 só as lutas com gabarito completo."""
+    keys = ("pontos_oficiais", "acertos", "falsos_pontos", "perdidos", "candidatos", "candidatos_que_acham_ponto", "erro_placar")
+    tot: Dict[str, Any] = {k: sum(r[k] for r in rows) for k in keys}
+    complete = [r for r in rows if r["pontos_completos"]]
+    tot["lutas"] = len(rows)
+    tot["lutas_completas"] = len(complete)
+    tot["placares_exatos"] = sum(1 for r in rows if r["placar_exato"])
+    full = precision_recall_f1(sum(r["acertos"] for r in complete), sum(r["falsos_pontos"] for r in complete), sum(r["perdidos"] for r in complete))
+    tot["precisao"], tot["f1"] = full["precisao"], full["f1"]
+    tot["recall"] = precision_recall_f1(tot["acertos"], 0, tot["perdidos"])["recall"]
+    tech = sum(r.get("tecnica_avaliada", 0) for r in rows)
+    tot["tecnica_avaliada"] = tech
+    tot["acuracia_tecnica"] = round(sum(r.get("tecnica_correta", 0) for r in rows) / tech, 4) if tech else None
+    judged = sum(r.get("decisoes_avaliadas", 0) for r in complete)
+    tot["decisoes_avaliadas"] = judged
+    tot["acuracia"] = round(sum(r.get("decisoes_corretas", 0) for r in complete) / judged, 4) if judged else None
+    tot["recall_candidatos"] = round(tot["candidatos_que_acham_ponto"] / tot["pontos_oficiais"], 4) if tot["pontos_oficiais"] else None
+    return tot
 
 
 # ------------------------------------------------------------------------------
@@ -282,24 +425,6 @@ def _analyzed_events(result: Dict[str, Any]) -> List[Dict[str, Any]]:
     return events
 
 
-def _system_metrics(events: List[Dict[str, Any]], points: List[Dict[str, Any]], points_complete: bool) -> Dict[str, Any]:
-    """Placar previsto × oficial e precisão/recall de quem o SenpAI deu como ponto."""
-    official = {k: sum(1 for p in points if p["kenshi_id"] == k) for k in KENSHI_IDS.values()}
-    predicted = {k: sum(1 for e in events if e["attacker_id"] == k and e["predicted_valid"]) for k in KENSHI_IDS.values()}
-    valid = [e for e in events if e["predicted_valid"]]
-    tp = sum(1 for e in valid if e["weak_label"] == POSITIVE)
-    fp = sum(1 for e in valid if e["weak_label"] in NEGATIVE_LABELS)
-    strike_points = sum(1 for p in points if p["is_strike"])
-    return {
-        "placar_oficial": {"aka": official["KENSHI_AKA"], "shiro": official["KENSHI_SHIRO"]},
-        "placar_senpai": {"aka": predicted["KENSHI_AKA"], "shiro": predicted["KENSHI_SHIRO"]},
-        "pontos_dados_pelo_senpai": len(valid),
-        "acertos": tp,
-        "precisao": round(tp / (tp + fp), 4) if points_complete and (tp + fp) else None,
-        "recall": round(tp / strike_points, 4) if strike_points else None
-    }
-
-
 def weak_label_video(
     pipeline,
     video_path: str,
@@ -329,7 +454,7 @@ def weak_label_video(
     candidates = label_detections(_raw_candidates(pipeline, features), points, fps, start_f, end_f, points_complete, tolerance_sec)
     events = label_detections(_analyzed_events(result), points, fps, start_f, end_f, points_complete, tolerance_sec)
 
-    return {
+    report = {
         "video_name": os.path.basename(video_path),
         "video_path": video_path,
         "generated_at": datetime.datetime.now().isoformat(timespec="seconds"),
@@ -341,8 +466,9 @@ def weak_label_video(
         "official_points": points,
         "candidates": candidates,
         "events": events,
-        "system": _system_metrics(events["items"], points, points_complete)
     }
+    report["metricas"] = match_metrics(report)
+    return report
 
 
 def save_report(report: Dict[str, Any]) -> str:
@@ -360,6 +486,10 @@ def export_to_feedback(report: Dict[str, Any], feedback_manager=None, profile_ke
     Ambíguos e desconhecidos ficam de fora. Pontos perdidos (FN) não são gravados até a I4,
     porque hoje o otimizador inventa sub-notas para FN sem sub_scores (P5.3).
     """
+    from src.engine.active_learning import is_golden_video
+    if is_golden_video(report["video_name"]):
+        log_event("WARNING", f"Luta do golden benchmark não vai para o feedback: {report['video_name']}", "weak_labels")
+        return {"TP": 0, "FP": 0, "golden": True}
     if feedback_manager is None:
         from src.engine.feedback_manager import FeedbackManager
         feedback_manager = FeedbackManager()
@@ -390,9 +520,10 @@ def export_to_feedback(report: Dict[str, Any], feedback_manager=None, profile_ke
 
 def enqueue_ambiguous(report: Dict[str, Any], sampler=None, profile_key: str = "normal") -> int:
     """Envia os eventos ambíguos para a fila de curadoria ativa, com o corte do vídeo quando possível."""
+    from src.engine.active_learning import is_golden_video
     ambiguous = [e for e in report["events"]["items"] if e["weak_label"] == AMBIGUOUS]
-    if not ambiguous:
-        return 0
+    if not ambiguous or is_golden_video(report["video_name"]):
+        return 0  # luta golden nunca alimenta a curadoria (que vira treino)
     if sampler is None:
         from src.engine.active_learning import UncertaintySampler
         sampler = UncertaintySampler()
@@ -427,29 +558,6 @@ def enqueue_ambiguous(report: Dict[str, Any], sampler=None, profile_key: str = "
     return count
 
 
-def summarize_reports(reports: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """Totais de todas as lutas rotuladas (base para a métrica honesta da I6)."""
-    total = {"lutas": len(reports), "pontos_oficiais": 0, "candidatos": 0, "candidatos_positivos": 0,
-             "eventos": 0, "eventos_positivos": 0, "pontos_dados": 0, "acertos": 0, "falsos_pontos": 0, "ambiguos": 0}
-    for r in reports:
-        total["pontos_oficiais"] += r["candidates"]["official_strike_points"]
-        total["candidatos"] += len(r["candidates"]["items"])
-        total["candidatos_positivos"] += r["candidates"]["counts"].get(POSITIVE, 0)
-        total["eventos"] += len(r["events"]["items"])
-        total["eventos_positivos"] += r["events"]["counts"].get(POSITIVE, 0)
-        total["ambiguos"] += r["events"]["counts"].get(AMBIGUOUS, 0)
-        valid = [e for e in r["events"]["items"] if e["predicted_valid"]]
-        total["pontos_dados"] += len(valid)
-        total["acertos"] += sum(1 for e in valid if e["weak_label"] == POSITIVE)
-        total["falsos_pontos"] += sum(1 for e in valid if e["weak_label"] in NEGATIVE_LABELS)
-    p = total["pontos_oficiais"]
-    total["recall_candidatos"] = round(total["candidatos_positivos"] / p, 4) if p else None
-    total["recall_senpai"] = round(total["acertos"] / p, 4) if p else None
-    judged = total["acertos"] + total["falsos_pontos"]
-    total["precisao_senpai"] = round(total["acertos"] / judged, 4) if judged else None
-    return total
-
-
 # ------------------------------------------------------------------------------
 # Linha de comando
 # ------------------------------------------------------------------------------
@@ -469,7 +577,21 @@ def _main(argv: Optional[List[str]] = None) -> int:
     p_run.add_argument("--device", default="gpu", choices=["gpu", "cpu"])
     p_run.add_argument("--save-feedback", action="store_true", help="Grava TP/FP no feedback_dataset.")
     p_run.add_argument("--enqueue-ambiguous", action="store_true", help="Envia ambíguos à fila de curadoria.")
+    p_gold = sub.add_parser("golden", help="Golden benchmark (GoldenBenchmark): lutas congeladas, fora do treino.")
+    gsub = p_gold.add_subparsers(dest="golden_command", required=True)
+    gsub.add_parser("list", help="Lista as lutas do golden e a fonte das amostras da trava.")
+    g_fr = gsub.add_parser("freeze", help="Congela lutas do gabarito no golden.")
+    g_fr.add_argument("videos", nargs="+", help="Nome do arquivo de vídeo, como no gabarito.")
+    g_un = gsub.add_parser("unfreeze", help="Remove lutas do golden.")
+    g_un.add_argument("videos", nargs="+")
+    g_run = gsub.add_parser("run", help="Roda o benchmark nas lutas golden.")
+    g_run.add_argument("target", help="Pasta dos vídeos.")
+    g_run.add_argument("--tolerance", type=float, default=DEFAULT_TOLERANCE_SEC)
+    g_run.add_argument("--device", default="gpu", choices=["gpu", "cpu"])
     args = parser.parse_args(argv)
+
+    if args.command == "golden":
+        return _golden_cli(args)
 
     videos = list_videos(args.target)
     if args.command == "template":
@@ -495,10 +617,11 @@ def _main(argv: Optional[List[str]] = None) -> int:
             path = save_report(report)
             extra = ""
             if args.save_feedback:
-                extra += f" · feedback {export_to_feedback(report)}"
+                fb = export_to_feedback(report)
+                extra += " · luta do golden: fora do feedback" if fb.get("golden") else f" · feedback {fb}"
             if args.enqueue_ambiguous:
                 extra += f" · {enqueue_ambiguous(report)} na fila"
-            s = report["system"]
+            s = report["metricas"]
             print(f"[{idx}/{len(todo)}] {time.time() - t0:.1f}s — {report['video_name']}\n"
                   f"    placar oficial {s['placar_oficial']} × SenpAI {s['placar_senpai']} · "
                   f"candidatos {report['candidates']['counts']} · eventos {report['events']['counts']}{extra}\n"
@@ -509,8 +632,60 @@ def _main(argv: Optional[List[str]] = None) -> int:
             print(f"[{idx}/{len(todo)}] FALHA — {os.path.basename(video)}: {e}")
 
     if reports:
-        print("Resumo:", json.dumps(summarize_reports(reports), ensure_ascii=False))
+        print("Resumo:", json.dumps(aggregate_match_metrics([r["metricas"] for r in reports]), ensure_ascii=False))
     return 1 if failures else 0
+
+
+def _fmt_pct(v: Optional[float]) -> str:
+    return "—" if v is None else f"{v * 100:.0f}%"
+
+
+def _golden_cli(args) -> int:
+    from src.engine.active_learning import GoldenBenchmark
+    gb = GoldenBenchmark()
+
+    if args.golden_command == "list":
+        matches = gb.load_matches()
+        src_info = gb.samples_source()
+        print(f"{len(matches)} luta(s) no golden · trava usando amostras {src_info['fonte']} "
+              f"({src_info['golpes_reais']} golpes reais; mínimo {src_info['minimo_reais']}).")
+        for name, e in sorted(matches.items()):
+            print(f"  - {name} ({len(e.get('pontos') or [])} pontos, congelada em {e.get('congelado_em')})")
+        return 0
+
+    if args.golden_command == "freeze":
+        labels = load_match_labels(args.labels)["videos"]
+        status = 0
+        for name in args.videos:
+            try:
+                gb.freeze_match(name, labels.get(os.path.basename(name), {}))
+                print(f"Congelada: {name}")
+            except ValueError as e:
+                status = 1
+                print(f"Não congelada: {name}: {e}")
+        return status
+
+    if args.golden_command == "unfreeze":
+        for name in args.videos:
+            print(("Removida: " if gb.unfreeze_match(name) else "Não estava no golden: ") + name)
+        return 0
+
+    from src.pipeline import SenpAIPipeline
+    pipeline = SenpAIPipeline(calibration_profile="normal", device_preference=args.device)
+    res = gb.run_matches(pipeline, args.target, tolerance_sec=args.tolerance,
+                         progress=lambda i, n, name: print(f"[{i}/{n}] {name}"))
+    for r in res["lutas"]:
+        print(f"  {r['video_name']}: oficial {r['placar_oficial']} × SenpAI {r['placar_senpai']} · "
+              f"acertos {r['acertos']} · falsos {r['falsos_pontos']} · perdidos {r['perdidos']}")
+    t = res["total"]
+    print(f"TOTAL {t['lutas']} lutas · placares exatos {t['placares_exatos']} · precisão {_fmt_pct(t['precisao'])} · "
+          f"recall {_fmt_pct(t['recall'])} · F1 {_fmt_pct(t['f1'])} · detector bruto acha {_fmt_pct(t['recall_candidatos'])} · "
+          f"{res['golpes_reais']} golpes reais")
+    for name in res["videos_ausentes"]:
+        print(f"  ausente na pasta: {name}")
+    for f in res["falhas"]:
+        print(f"  FALHA {f['video_name']}: {f['erro']}")
+    return 1 if res["falhas"] else 0
 
 
 if __name__ == "__main__":

@@ -16,6 +16,9 @@ streamlit-webrtc>=0.47.0
 av>=10.0.0
 ultralytics>=8.0.0
 reportlab>=4.0.0
+pypdf>=4.0.0
+requests>=2.31.0
+truststore>=0.9.0
 
 # --- Requisitos Opcionais para Aceleração de Hardware via GPU NVIDIA (CUDA) ---
 # Para ativar aceleração máxima via GPU NVIDIA (ex: RTX 4050/3060/4090):

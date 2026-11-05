@@ -182,7 +182,8 @@ def generate_training_pdf_report(
     mod_desc = meta.get("description", "")
     focus_areas = meta.get("focus_areas", [])
     det_method = train_data.get("detection_method", "AUTO_DETECTED")
-    det_conf = round(float(train_data.get("detection_confidence", 0.95)) * 100, 1)
+    from src.analytics.training_analyzer import modality_confidence_label
+    det_conf_text = modality_confidence_label(det_method, train_data.get("detection_confidence"))
     justification = train_data.get("justification", "")
     learned_principles = train_data.get("learned_principles", [])
     web_sources = train_data.get("web_sources", [])
@@ -324,7 +325,7 @@ def generate_training_pdf_report(
     story.append(Spacer(1, 8))
 
     # Tabela de Metadados da Sessão
-    method_label = f"IA Automática ({det_conf}% Confiança)" if det_method == "AUTO_DETECTED" else "Seleção Manual"
+    method_label = {"AUTO_DETECTED": "Regra fixa", "MODELO": "Classificador de modalidade"}.get(det_method, "Seleção Manual") + f" ({det_conf_text})"
     meta_table_data = [
         [
             Paragraph("<b>Duração da Sessão:</b>", body_style),

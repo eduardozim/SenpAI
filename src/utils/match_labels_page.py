@@ -40,6 +40,8 @@ LABEL_DISPLAY = {
 
 def entry_status(entry: Optional[Dict[str, Any]]) -> str:
     """Rótulo curto do estado de preenchimento de uma luta."""
+    if wl.is_entry_ignored(entry):
+        return "🚫 não é luta"
     if not entry or not wl.is_entry_filled(entry):
         return "⬜ vazio"
     n = len(entry.get("pontos") or [])
@@ -155,6 +157,10 @@ def render_match_labels_page(device_preference: str = "gpu", labels_path: str = 
     video_path = by_name[name]
     entry = data["videos"].get(name) or {}
 
+    if str(entry.get("origem", "")).startswith("automatico"):
+        st.info("🚩 Os pontos desta luta foram lidos automaticamente das bandeiras dos shinpan. "
+                "Ao salvar o formulário, eles passam a valer como gabarito manual.")
+
     col_video, col_form = st.columns([3, 2])
     with col_video:
         st.video(video_path)
@@ -186,6 +192,11 @@ def render_match_labels_page(device_preference: str = "gpu", labels_path: str = 
                 value=bool(entry.get("inverter_aka_shiro")),
                 help="Use se o rastreador inverter as cores; a rotulagem roda com Aka/Shiro trocados."
             )
+            ignore = st.checkbox(
+                "Não é luta (ignorar)",
+                value=wl.is_entry_ignored(entry),
+                help="Para gravações de treino, exame etc.: o vídeo fica fora do gabarito, do cache do ciclo e do treino."
+            )
             notes = st.text_area("Observações", value="" if str(entry.get("observacoes", "")).startswith("Preencha") else entry.get("observacoes", ""), height=68)
             submitted = st.form_submit_button("💾 Salvar gabarito", type="primary", width="stretch")
 
@@ -197,10 +208,12 @@ def render_match_labels_page(device_preference: str = "gpu", labels_path: str = 
             else:
                 data = wl.load_match_labels(labels_path)
                 data["videos"][name] = {
+                    "origem": "manual",
                     "aka": aka_name.strip(),
                     "shiro": shiro_name.strip(),
                     "pontos_completos": bool(complete),
                     "inverter_aka_shiro": bool(invert),
+                    "ignorar": bool(ignore),
                     "pontos": points,
                     "observacoes": notes.strip(),
                 }
@@ -221,6 +234,8 @@ def render_match_labels_page(device_preference: str = "gpu", labels_path: str = 
 
     st.markdown("---")
     _render_labeling_section(name, video_path, entry, device_preference)
+    st.markdown("---")
+    render_flag_detector_section(videos_dir, device_preference)
 
 
 def _render_labeling_section(name: str, video_path: str, entry: Dict[str, Any], device_preference: str) -> None:
@@ -246,7 +261,8 @@ def _render_labeling_section(name: str, video_path: str, entry: Dict[str, Any], 
                 msgs = []
                 if save_fb:
                     saved = wl.export_to_feedback(report)
-                    msgs.append(f"feedback: {saved['TP']} TP e {saved['FP']} FP gravados")
+                    msgs.append("luta do golden benchmark: rótulos não vão para o feedback" if saved.get("golden")
+                                else f"feedback: {saved['TP']} TP e {saved['FP']} FP gravados")
                 if enqueue:
                     msgs.append(f"{wl.enqueue_ambiguous(report)} ambíguo(s) enviados à curadoria")
                 report["actions"] = msgs
@@ -259,7 +275,7 @@ def _render_labeling_section(name: str, video_path: str, entry: Dict[str, Any], 
     if not report:
         return
 
-    s = report["system"]
+    s = report["metricas"]
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Placar oficial (Aka x Shiro)", f"{s['placar_oficial']['aka']} x {s['placar_oficial']['shiro']}")
     m2.metric("Placar SenpAI (Aka x Shiro)", f"{s['placar_senpai']['aka']} x {s['placar_senpai']['shiro']}")
@@ -288,3 +304,102 @@ def _render_labeling_section(name: str, video_path: str, entry: Dict[str, Any], 
         st.warning("Pontos oficiais que o SenpAI não detectou: " + ", ".join(
             f"{'AKA' if p['kenshi_id'] == 'KENSHI_AKA' else 'SHIRO'} {p['technique']} em {wl_format_time(p['time_sec'])}" for p in missed
         ))
+
+
+# ------------------------------------------------------------------------------
+# Detector de bandeiras dos shinpan (Pendência I7)
+# ------------------------------------------------------------------------------
+
+FLAG_OPTIONS = ["vermelha", "branca", "nenhuma", "pular"]
+FLAG_LABELS = {"vermelha": "🔴 Vermelha erguida", "branca": "⚪ Branca erguida", "nenhuma": "Nenhuma", "pular": "Pular"}
+
+
+def render_flag_detector_section(videos_dir: str, device_preference: str = "gpu") -> None:
+    from src.vision import flag_detector as fd
+    from src.utils import model_registry
+
+    st.markdown("### 🚩 Detector de bandeiras dos shinpan")
+    st.caption(
+        "Ensine o SenpAI a reconhecer a bandeira erguida: com ele, os pontos de lutas novas são lidos "
+        "automaticamente das bandeiras (2 de 3 juízes). Marque cada recorte abaixo."
+    )
+    stats = fd.dataset_stats()
+    active = model_registry.get_active_info(fd.MODEL_FAMILY)
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("🔴 Vermelha", f"{stats['vermelha']}/{fd.MIN_LABELS['vermelha']}")
+    c2.metric("⚪ Branca", f"{stats['branca']}/{fd.MIN_LABELS['branca']}")
+    c3.metric("Nenhuma", f"{stats['nenhuma']}/{fd.MIN_LABELS['nenhuma']}")
+    c4.metric("Sem rótulo", stats["sem_rotulo"])
+    st.caption("Modelo ativo: " + (os.path.basename(active["model_path"]) if active else "nenhum"))
+
+    with st.expander("1. Minerar recortes dos vídeos", expanded=stats["total"] == 0):
+        st.caption(f"Amostra 1 quadro/s de cada vídeo da pasta `{videos_dir}` e recorta a região acima dos ombros de cada pessoa. "
+                   "Leva alguns minutos na GPU; também dá para rodar: `python -m src.vision.flag_detector mine \"<pasta>\"`.")
+        if st.button("⛏️ Minerar recortes", key="flag_mine"):
+            with st.spinner("Minerando recortes..."):
+                added = fd.mine_crops(list_videos(videos_dir), device="cpu" if device_preference == "cpu" else "0")
+            st.success(f"{sum(added.values())} recortes novos em {len(added)} vídeos.")
+            st.rerun()
+
+    queue = fd.next_to_label(limit=12)
+    with st.expander(f"2. Rotular recortes ({stats['sem_rotulo']} na fila)", expanded=bool(queue)):
+        if not queue:
+            st.info("Nenhum recorte esperando rótulo.")
+        else:
+            st.caption("Marque a bandeira **erguida** (acima do ombro). Bandeira abaixada, camiseta, papel ou parede = Nenhuma.")
+            with st.form("flag_label_form"):
+                choices = {}
+                for row_start in range(0, len(queue), 4):
+                    cols = st.columns(4)
+                    for col, item in zip(cols, queue[row_start:row_start + 4]):
+                        with col:
+                            if os.path.isfile(item["arquivo"]):
+                                st.image(item["arquivo"], width="stretch")
+                            st.caption(f"{item['video_name'][:28]} · {item['tempo_s']:.0f}s")
+                            choices[item["id"]] = st.radio("Rótulo", FLAG_OPTIONS, index=None, key=f"flag_{item['id']}",
+                                                           format_func=lambda o: FLAG_LABELS[o], label_visibility="collapsed")
+                if st.form_submit_button("💾 Salvar rótulos", type="primary"):
+                    n = fd.set_labels({k: v for k, v in choices.items() if v})
+                    st.session_state["flag_flash"] = f"{n} recorte(s) rotulado(s)."
+                    st.rerun()
+        flash = st.session_state.pop("flag_flash", None)
+        if flash:
+            st.success(flash)
+
+    with st.expander("3. Treinar e medir", expanded=False):
+        problem = fd.check_enough_labels(stats)
+        if problem:
+            st.info(problem)
+        if st.button("🧠 Treinar detector", disabled=bool(problem), key="flag_train"):
+            with st.spinner("Treinando na GPU (alguns minutos)..."):
+                try:
+                    st.session_state["flag_train_meta"] = fd.train_flag_classifier(device="cpu" if device_preference == "cpu" else "0")
+                except ValueError as e:
+                    st.error(str(e))
+        meta = st.session_state.get("flag_train_meta")
+        if meta:
+            v = meta["validacao"]
+            st.write(f"Validação em vídeos não vistos ({', '.join(meta['videos_validacao'])}): "
+                     f"vermelha F1 {_pct(v['vermelha']['f1'])} · branca F1 {_pct(v['branca']['f1'])} · acurácia {_pct(v['acuracia'])}")
+            if st.button("✅ Ativar este modelo", key="flag_activate"):
+                model_registry.set_active_model(fd.MODEL_FAMILY, meta["modelo"], "Ativado pela tela do Gabarito.")
+                st.rerun()
+        if active:
+            st.caption("Medir o detector ativo contra os seus gabaritos manuais completos. Os pontos automáticos só podem ser gravados "
+                       f"com F1 ≥ {fd.MIN_F1_TO_APPLY:.0%} em pelo menos {fd.MIN_VIDEOS_TO_APPLY} lutas.")
+            if st.button("📏 Medir contra o gabarito", key="flag_eval"):
+                with st.spinner("Lendo as bandeiras das lutas com gabarito..."):
+                    st.session_state["flag_eval"] = fd.evaluate_against_gabarito(videos_dir)
+            ev = st.session_state.get("flag_eval")
+            if ev:
+                t = ev["total"]
+                st.write(f"{t['videos']} luta(s): precisão {_pct(t['precisao'])} · recall {_pct(t['recall'])} · F1 {_pct(t['f1'])}")
+                ok = t["videos"] >= fd.MIN_VIDEOS_TO_APPLY and (t.get("f1") or 0) >= fd.MIN_F1_TO_APPLY
+                if st.button("🚩 Gravar pontos automáticos nas lutas sem gabarito", disabled=not ok, key="flag_apply"):
+                    with st.spinner("Lendo as bandeiras das lutas sem gabarito..."):
+                        res = fd.apply_to_gabarito(videos_dir, ev)
+                    st.success(res.get("motivo") or f"Gabarito automático gravado em {len(res['lutas'])} luta(s).")
+
+
+def _pct(v: Optional[float]) -> str:
+    return "—" if v is None else f"{v * 100:.0f}%"

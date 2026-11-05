@@ -1,0 +1,40 @@
+{
+  "regras": [
+    {
+      "url": "https://kendo.rs/files/202107-Regulations-of-Kendo-Shiai-and-Shinpan.pdf",
+      "titulo": "FIK — Regulations of Kendo Shiai and Shinpan (jul/2021, texto completo; cópia da federação sérvia)",
+      "autoridade": "FIK"
+    },
+    {
+      "url": "https://www.kendo.or.jp/wp/wp-content/uploads/2025/01/RevisionE-Regulations-of-Kendo-Shiai-and-Shinpan-20230726.pdf",
+      "titulo": "FIK — Regulations of Kendo Shiai and Shinpan (revisão 26/07/2023)",
+      "autoridade": "FIK"
+    },
+    {
+      "url": "https://www.kendo-fik.org/wp-content/uploads/2026/01/FIK-Handbook-for-Kendo-Shiai-and-Shinpan-Management-20250707.pdf",
+      "titulo": "FIK — Handbook for Kendo Shiai and Shinpan Management (07/07/2025)",
+      "autoridade": "FIK"
+    }
+  ],
+  "videos": {
+    "consultas": [
+      "kendo world championship final",
+      "kendo shiai all japan championship",
+      "kendo kirikaeshi",
+      "kendo suburi",
+      "kendo kakari geiko",
+      "kendo uchikomi geiko",
+      "kendo ji geiko",
+      "kendo nihon kendo kata",
+      "kendo ashi sabaki",
+      "kendo oji waza",
+      "kendo shinsa exam"
+    ],
+    "max_por_consulta": 5,
+    "max_duracao_min": 20,
+    "limite_disco_gb": 10.0,
+    "max_downloads_por_ciclo": 3,
+    "baixar": false,
+    "somente_creative_commons": true
+  }
+}

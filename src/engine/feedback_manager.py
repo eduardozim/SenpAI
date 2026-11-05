@@ -141,6 +141,20 @@ DEFAULT_CALIBRATION_PROFILES: Dict[str, Any] = {
     }
 }
 
+def _strike_time_text(item: Dict[str, Any]) -> str:
+    """Instante do golpe no vídeo ('mm:ss.mmm') a partir de um item da fila de curadoria."""
+    t = item.get("tempo_golpe_s")
+    sd = item.get("strike_data") or {}
+    if t is None:
+        t = sd.get("timestamp_seconds")
+    if t is None and isinstance(sd.get("timestamp"), str) and ":" in sd["timestamp"] and "T" not in sd["timestamp"]:
+        return sd["timestamp"]
+    if t is None:
+        return ""
+    t = float(t)
+    return f"{int(t // 60):02d}:{t % 60:06.3f}"
+
+
 class FeedbackManager:
     def __init__(
         self,
@@ -1261,17 +1275,19 @@ class FeedbackManager:
 
         # Baselines e Trust Registry
         kenshi_baselines = None
-        if os.path.isfile("data/kenshi_baselines.json"):
+        baselines_path = get_safe_data_path("data/kenshi_baselines.json", "test_kenshi_baselines.json")
+        if os.path.isfile(baselines_path):
             try:
-                with open("data/kenshi_baselines.json", "r", encoding="utf-8") as f:
+                with open(baselines_path, "r", encoding="utf-8") as f:
                     kenshi_baselines = json.load(f)
             except Exception:
                 pass
 
         trust_registry = None
-        if os.path.isfile("data/reviewer_trust_registry.json"):
+        trust_path = get_safe_data_path("data/reviewer_trust_registry.json", "test_reviewer_trust_registry.json")
+        if os.path.isfile(trust_path):
             try:
-                with open("data/reviewer_trust_registry.json", "r", encoding="utf-8") as f:
+                with open(trust_path, "r", encoding="utf-8") as f:
                     trust_registry = json.load(f)
             except Exception:
                 pass
@@ -1669,8 +1685,9 @@ class FeedbackManager:
             k_base = package_data.get("kenshi_baselines")
             if k_base and isinstance(k_base, dict):
                 try:
-                    os.makedirs("data", exist_ok=True)
-                    with open("data/kenshi_baselines.json", "w", encoding="utf-8") as f:
+                    baselines_path = get_safe_data_path("data/kenshi_baselines.json", "test_kenshi_baselines.json")
+                    os.makedirs(os.path.dirname(baselines_path) or ".", exist_ok=True)
+                    with open(baselines_path, "w", encoding="utf-8") as f:
                         json.dump(k_base, f, indent=2, ensure_ascii=False)
                 except Exception:
                     pass
@@ -1802,15 +1819,18 @@ class FeedbackManager:
 
         raise ValueError("Formato de pacote de treinamento inválido.")
 
-    def optimize_profile_config(self, profile_key: str, current_config: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def optimize_profile_config(self, profile_key: str, current_config: Dict[str, Any],
+                                feedback_list: Optional[List[Dict[str, Any]]] = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Aplica otimização formal bayesiana/numérica dos pesos (Eixo 1).
         Substitui saltos heurísticos manuais (+0.05 / -0.04) por otimização formal
-        de hiperparâmetros (Optuna TPE / Scipy SLSQP), ponderação Dan, decaimento
+        de hiperparâmetros (scipy differential_evolution sobre a decisão de produção), ponderação Dan, decaimento
         temporal exponencial e penalização assimétrica (FP = 3x FN).
         Recalibra min_total_score, sub_thresholds, weights globais e weights_by_strike_type.
         """
-        feedback_list = [d for d in self.load_feedback() if d.get("profile_key") == profile_key or not d.get("profile_key")]
+        # feedback_list explícito = amostras do Banco Único de Rótulos (I11), usado pelo ciclo de treino
+        if feedback_list is None:
+            feedback_list = [d for d in self.load_feedback() if d.get("profile_key") == profile_key or not d.get("profile_key")]
 
         fps = [d for d in feedback_list if d.get("label") == "FP"]
         tps = [d for d in feedback_list if d.get("label") in ["TP", "CONFIRMED"]]
@@ -1822,7 +1842,8 @@ class FeedbackManager:
                 "message": "Nenhum feedback registrado para otimizar este perfil."
             }
 
-        # Executa Otimizador Bayesiano / SLSQP com custo assimétrico (FP=3.0, FN=1.0) e decaimento temporal
+        # Otimizador com a mesma decisão da análise de luta, custo assimétrico (FP=3.0, FN=1.0), decaimento temporal
+        # e validação separada por vídeo (Pendência I4)
         new_config, opt_summary = self.bayesian_optimizer.optimize(
             current_config=current_config,
             feedbacks=feedback_list
@@ -1874,8 +1895,13 @@ class FeedbackManager:
         except Exception as e:
             log_event("WARNING", f"Falha ao validar contra Golden Benchmark: {e}", "feedback_manager")
 
+        if opt_summary.get("status") in ("rejected_validation", "skipped"):
+            changes_summary = [opt_summary.get("message", "Calibração mantida.")] + changes_summary
+        if opt_summary.get("descartados_sem_notas"):
+            changes_summary.append(f"{opt_summary['descartados_sem_notas']} feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas).")
+
         opt_stats = {
-            "status": "success",
+            "status": "success" if opt_summary.get("status") not in ("rejected_validation", "skipped") else opt_summary["status"],
             "profile_key": profile_key,
             "fps_analyzed": len(fps),
             "tps_analyzed": len(tps),
@@ -1884,6 +1910,8 @@ class FeedbackManager:
             "f1_score": opt_summary.get("final_f1"),
             "accuracy": opt_summary.get("accuracy"),
             "loss_reduction_pct": opt_summary.get("loss_reduction_pct"),
+            "validacao_por_video": opt_summary.get("validacao"),
+            "descartados_sem_notas": opt_summary.get("descartados_sem_notas", 0),
             "changes": changes_summary if changes_summary else ["Parâmetros já matematicamente ótimos para o conjunto atual."]
         }
 
@@ -1931,6 +1959,32 @@ class FeedbackManager:
         elif hasattr(self.uncertainty_sampler, "clear_queue"):
             return self.uncertainty_sampler.clear_queue(delete_clips=delete_clips)
         return {"cleared_items": 0, "clips_deleted": 0}
+
+    def resolve_technique_doubt(self, item_id: str, technique: str, reviewer_dan: Any = 5, notes: str = "") -> bool:
+        """
+        Decide uma dúvida de técnica da curadoria (I12): grava "técnica = X" no Banco Único de Rótulos (I11),
+        de onde o classificador de técnica (I9) aprende no próximo ciclo, e resolve o item na fila.
+        """
+        from src.engine.label_bank import LabelBank
+        from src.engine.weak_labels import normalize_technique
+        from src.engine.mathematical_calibrator import BayesianCalibrationOptimizer
+        tech = normalize_technique(technique)
+        if tech is None:
+            raise ValueError(f"Técnica inválida: {technique}")
+        item = next((it for it in self.uncertainty_sampler.get_queue() if str(it.get("id")) == str(item_id)), None)
+        if item is None:
+            return False
+        time_sec = item.get("tempo_golpe_s")
+        if time_sec is None:
+            time_sec = (item.get("strike_data") or {}).get("timestamp_seconds")
+        LabelBank().add_label(
+            origin="curadoria", video_name=str(item.get("video_source", "")), claim="tecnica", value=tech,
+            time_sec=time_sec, kenshi=item.get("kenshi"), ref=str(item_id),
+            reviewer_weight=BayesianCalibrationOptimizer.get_reviewer_weight({"reviewer_dan": reviewer_dan}),
+            notes=notes or f"Técnica decidida na curadoria: {tech}",
+        )
+        return self.uncertainty_sampler.resolve_item(item_id=item_id, label_approved=True, reviewer_dan=reviewer_dan,
+                                                     notes=notes or f"Técnica: {tech}", decision=f"TECNICA_{tech}")
 
     def resolve_active_learning_item(
         self,
@@ -2009,12 +2063,13 @@ class FeedbackManager:
                 label=fb_label,
                 decision_category=decision_cat,
                 strike_type=target_item.get("strike_type", "MEN"),
-                timestamp=str(target_item.get("timestamp", "")),
+                # Instante do GOLPE no vídeo (o "timestamp" do item é a hora em que ele entrou na fila)
+                timestamp=_strike_time_text(target_item),
                 notes=notes or default_notes,
                 reviewer_dan=reviewer_dan,
                 is_included=eff_approved,
-                sub_scores=strike_data.get("sub_scores", strike_data.get("scores", {})),
-                total_score=float(target_item.get("confidence", 0.50)) * 100.0,
+                sub_scores=strike_data.get("sub_scores") or strike_data.get("scores") or {},
+                total_score=float(strike_data.get("total_score") or float(target_item.get("confidence") or 0.50) * 100.0),
                 enqueue_uncertain=False
             )
 

@@ -71,14 +71,12 @@ class TestLabelDetections(unittest.TestCase):
         res = self._run([_det(290), _det(300), _det(900)], [_point(0, "KENSHI_AKA", 10.0)])
         labels = [i["weak_label"] for i in res["items"]]
         self.assertEqual(labels, [wl.AMBIGUOUS, wl.POSITIVE, wl.NEG_NO_POINT])
-        self.assertEqual(res["recall"], 1.0)
-        self.assertEqual(res["precision"], 0.5)
 
     def test_kenshi_must_match(self):
         res = self._run([_det(300, "KENSHI_SHIRO")], [_point(0, "KENSHI_AKA", 10.0)])
         self.assertEqual(res["items"][0]["weak_label"], wl.AMBIGUOUS)
         self.assertEqual(len(res["missed_points"]), 1)
-        self.assertEqual(res["recall"], 0.0)
+        self.assertEqual(res["official_strike_points"], 1)
 
     def test_outside_match_window_is_negative(self):
         res = self._run([_det(30), _det(3000)], [], start=100, end=2000)
@@ -87,7 +85,7 @@ class TestLabelDetections(unittest.TestCase):
     def test_tsubazeriai_negative_even_with_incomplete_points(self):
         res = self._run([_det(600, action_class="TSUBAZERIAI"), _det(900)], [_point(0, "KENSHI_AKA", 10.0)], complete=False)
         self.assertEqual([i["weak_label"] for i in res["items"]], [wl.NEG_TSUBAZERIAI, wl.UNKNOWN])
-        self.assertIsNone(res["precision"])
+        self.assertEqual(res["counts"], {wl.NEG_TSUBAZERIAI: 1, wl.UNKNOWN: 1})
 
     def test_point_near_tsubazeriai_still_positive(self):
         """Hiki-waza saindo do tsubazeriai: se há ponto oficial, o casamento vence."""
@@ -136,7 +134,7 @@ class TestWeakLabelVideo(unittest.TestCase):
 
         self.assertGreaterEqual(report["candidates"]["counts"].get(wl.POSITIVE, 0), 1)
         self.assertEqual(report["events"]["counts"].get(wl.POSITIVE, 0), 1)
-        self.assertEqual(report["system"]["placar_oficial"], {"aka": 1, "shiro": 0})
+        self.assertEqual(report["metricas"]["placar_oficial"], {"aka": 1, "shiro": 0})
         self.assertEqual(report["candidates"]["official_strike_points"], 1)
 
         path = wl.save_report(report)
@@ -144,7 +142,7 @@ class TestWeakLabelVideo(unittest.TestCase):
         with open(path, encoding="utf-8") as f:
             self.assertEqual(json.load(f)["video_name"], "demo_weak_labels.mp4")
 
-        summary = wl.summarize_reports([report])
+        summary = wl.aggregate_match_metrics([report["metricas"]])
         self.assertEqual(summary["lutas"], 1)
         self.assertEqual(summary["recall_candidatos"], 1.0)
 
