@@ -885,7 +885,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
         curr_reviews = st.session_state.get("session_reviews", {})
         try:
             def _get_training_pkg_bytes() -> bytes:
-                return export_training_session_package(
+                pkg_data = export_training_session_package(
                     analysis_result=res,
                     video_path=curr_v_path,
                     annotated_video_path=curr_ann_path,
@@ -893,6 +893,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     invert_aka_shiro=is_inverted,
                     session_reviews=curr_reviews
                 )
+                return pkg_data if isinstance(pkg_data, bytes) else b""
             st.download_button(
                 label="📦 Salvar Análise (.zip)",
                 data=_get_training_pkg_bytes,
