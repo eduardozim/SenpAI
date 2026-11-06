@@ -120,12 +120,17 @@ def _get_pipeline(device_preference: str):
     return st.session_state[key]
 
 
-def render_match_labels_page(device_preference: str = "gpu", labels_path: str = wl.DEFAULT_LABELS_PATH) -> None:
-    st.markdown("## 🏷️ Gabarito de Lutas")
-    st.caption(
-        "Informe só os pontos oficiais de cada luta. O SenpAI rotula sozinho todas as detecções "
-        "(positivo, negativo ou ambíguo) e mede a precisão real do placar."
-    )
+def render_match_labels_page(
+    device_preference: str = "gpu",
+    labels_path: str = wl.DEFAULT_LABELS_PATH,
+    show_header: bool = True
+) -> None:
+    if show_header:
+        st.markdown("## 🏷️ Gabarito de Lutas")
+        st.caption(
+            "Informe só os pontos oficiais de cada luta. O SenpAI rotula sozinho todas as detecções "
+            "(positivo, negativo ou ambíguo) e mede a precisão real do placar."
+        )
 
     st.session_state.setdefault("labels_videos_dir", DEFAULT_VIDEOS_DIR)
     videos_dir = st.text_input("Pasta dos vídeos", key="labels_videos_dir")

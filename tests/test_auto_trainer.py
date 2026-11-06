@@ -76,7 +76,8 @@ class TestAutoTrainer(unittest.TestCase):
         self.assertEqual(len(ref), len(TRAINING_MODALITIES_METADATA))
         for m in ref:
             self.assertEqual(set(m), {"key", "name", "japanese", "category", "pillar_movement_pct",
-                                      "pillar_precision_pct", "pillar_constancy_pct", "cadence_optimal"})
+                                      "pillar_precision_pct", "pillar_constancy_pct", "cadence_optimal",
+                                      "accuracy_pct", "accuracy_display", "accuracy_status"})
         info = self.engine.get_modality_learned_knowledge("suburi")
         for field in ("current_accuracy", "mastery_level", "training_sessions_count", "samples_estimated"):
             self.assertNotIn(field, info)

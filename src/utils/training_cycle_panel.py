@@ -1,5 +1,5 @@
 """
-Painel do Ciclo de Treino Real (Pendência I8), em Configurações > Governança de Treinamento.
+Painel do Ciclo de Treino (Pendência I8), em Configurações > Governança de Treinamento.
 Substitui o antigo "Treinamento Automático por IA", que simulava aprendizado por tempo.
 """
 
@@ -31,9 +31,13 @@ def cycles_table(history: List[Dict[str, Any]]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def render_training_cycle_panel(device_preference: str = "gpu", is_web_server: bool = False) -> None:
+def render_training_cycle_panel(
+    device_preference: str = "gpu",
+    is_web_server: bool = False,
+    title: str = "#### 🔄 3. Ciclo de Treino"
+) -> None:
     st.markdown("---")
-    st.markdown("#### 🔁 Ciclo de Treino Real")
+    st.markdown(title)
     st.caption(
         "O SenpAI melhora com dados, não com tempo de execução. Cada ciclo: (1) extrai as poses dos vídeos novos; "
         "(2) grava pontos lidos das bandeiras, se o detector já provou ser confiável; (3) treina um filtro de golpes "

@@ -1615,7 +1615,7 @@ if "_senpai_startup_cleanup" not in st.session_state:
         pass
 
 # Estilização CSS Moderna, Equilibrada (Escala 90%) e sem Cortes na Interface
-st.markdown("""
+_custom_css = """
 <style>
     /* 1. Escala Global Ajustada para 90% via Container Principal para não interferir em Popovers/Comboboxes */
     .stApp {
@@ -2090,7 +2090,11 @@ st.markdown("""
         display: none !important;
     }
 </style>
-""", unsafe_allow_html=True)
+"""
+if hasattr(st, "html"):
+    st.html(_custom_css)
+else:
+    st.markdown(_custom_css, unsafe_allow_html=True)
 
 
 #st.markdown('<div class="main-title">⚔️ SenpAI (先輩 AI)</div>', unsafe_allow_html=True)
@@ -2646,9 +2650,8 @@ elif nav_page == "settings":
     default_device_pref = st.session_state.get("device_preference", saved_sys_settings.get("processing_device", "cpu"))
     default_vision_pref = st.session_state.get("vision_model_preference", saved_sys_settings.get("vision_model", "yolov8"))
 
-    tab_hw, tab_labels, tab_train, tab_calib, tab_diag, tab_docs = st.tabs([
+    tab_hw, tab_train, tab_calib, tab_diag, tab_docs = st.tabs([
         "🖥️ Processamento & Hardware",
-        "🏷️ Gabarito de Lutas",
         "🎓 Governança de Treinamento",
         "🎛️ Perfis de Calibração",
         "🐛 Diagnóstico, Alertas & Logs",
@@ -2870,15 +2873,6 @@ elif nav_page == "settings":
                     st.info("💻 **Computador rodando em Modo CPU.** Nenhuma GPU NVIDIA dedicada detectada.")
 
     # --------------------------------------------------------------------------
-    # GUIA: GABARITO DE LUTAS (ROTULAGEM FRACA & COMPARAÇÃO ARBITRAL)
-    # --------------------------------------------------------------------------
-    with tab_labels:
-        if is_web_server:
-            st.info("ℹ️ **Ambiente em Nuvem:** O Gabarito de Lutas utiliza a pasta de vídeos de combate e cache de poses em disco. No ambiente local Desktop/Dojo, todos os dados são persistidos diretamente no seu workspace.")
-        from src.utils.match_labels_page import render_match_labels_page
-        render_match_labels_page(device_preference=st.session_state.get("device_preference", default_device_pref))
-
-    # --------------------------------------------------------------------------
     # GUIA: GOVERNANÇA DE TREINAMENTO & PAINEL DE REVISÃO POR DAN
     # --------------------------------------------------------------------------
     with tab_train:
@@ -2920,152 +2914,86 @@ elif nav_page == "settings":
         render_training_dataset_panel(feedback_mgr=feedback_mgr, auto_trainer=auto_trainer)
 
         # ----------------------------------------------------------------------
-        # CICLO DE TREINO REAL (Pendência I8 — substitui o treinamento simulado por tempo)
-        # ----------------------------------------------------------------------
-        from src.utils.training_cycle_panel import render_training_cycle_panel
-        render_training_cycle_panel(
-            device_preference=st.session_state.get("device_preference", default_device_pref),
-            is_web_server=is_web_server
-        )
-
-        # ----------------------------------------------------------------------
-        # BASE DE CONHECIMENTO DE REFERÊNCIA (modalidades e corpus técnico)
+        # MODALIDADES OFICIAIS DE TREINAMENTO (Tabela separada com métrica de acurácia)
         # ----------------------------------------------------------------------
         st.markdown("---")
-        st.markdown("#### 📚 Base de Conhecimento de Referência")
+        st.markdown("#### 🥋 Modalidades Oficiais de Treinamento")
         st.caption(
-            "Referências técnicas do Kendo usadas pelo SenpAI: modalidades oficiais de treinamento e o corpus de diretrizes. "
-            "O desempenho real do sistema fica em Perfis de Calibração > Eixo 4 (Golden Benchmark)."
+            "Pesos biomecânicos dos 3 Pilares (Movimentação, Precisão e Constância), cadência ideal "
+            "e métrica de acurácia de detecção/classificação para cada uma das 14 modalidades oficiais de Kendo."
         )
 
-
-        tab_evo_modalities, tab_evo_sources, tab_evo_internet = st.tabs([
-            "🥋 Modalidades de Treinamento",
-            "📖 Corpus Técnico de Referência",
-            "🌐 Coleta na Internet",
-        ])
-
-        with tab_evo_internet:
-            try:
-                from src.utils.internet_collection_panel import render_internet_collection_panel
-                render_internet_collection_panel()
-            except Exception as err:
-                st.warning(f"Coleta na internet indisponível: {err}")
-
         modalities_data = auto_trainer.get_modalities_reference()
+        if modalities_data:
+            mod_table_rows = []
+            for m in modalities_data:
+                m_name = m.get("name", "")
+                m_cat = m.get("category", "")
+                m_pillars = f"<span style='color: #F8FAFC;'>M: {m.get('pillar_movement_pct', 35)}%</span> | <span style='color: #38BDF8;'>P: {m.get('pillar_precision_pct', 35)}%</span> | <span style='color: #A78BFA;'>C: {m.get('pillar_constancy_pct', 30)}%</span>"
+                m_cadence = str(m.get("cadence_optimal", "20-60 cpm"))
+                m_acc_str = m.get("accuracy_display", "—")
+                m_status = m.get("accuracy_status", "Calibrada")
+                badge_color = "#10B981" if "Modelo" in m_status or "Dataset" in m_status else "#38BDF8"
+                m_acc_badge = (
+                    f"<span style='background-color: rgba(56, 189, 248, 0.15); color: {badge_color}; "
+                    f"padding: 3px 8px; border-radius: 6px; font-weight: 700; font-family: monospace; font-size: 12px;'>"
+                    f"🎯 {m_acc_str}</span> "
+                    f"<span style='color: #64748B; font-size: 11px;'>({m_status})</span>"
+                )
+                mod_table_rows.append(
+                    f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.08);'>"
+                    f"<td style='padding: 10px 14px; font-weight: 700; color: #F8FAFC;'>{m_name}</td>"
+                    f"<td style='padding: 10px 14px; color: #CBD5E1;'>{m_cat}</td>"
+                    f"<td style='padding: 10px 14px; font-size: 12px; font-family: monospace;'>{m_pillars}</td>"
+                    f"<td style='padding: 10px 14px; color: #94A3B8; font-size: 12px;'>{m_cadence}</td>"
+                    f"<td style='padding: 10px 14px;'>{m_acc_badge}</td>"
+                    f"</tr>"
+                )
 
-        with tab_evo_modalities:
-            st.markdown("##### 🥋 Modalidades Oficiais de Treinamento")
+            mod_tbody_html = "".join(mod_table_rows)
+            mod_table_html = (
+                "<div style='overflow-x: auto; border: 1px solid #334155; border-radius: 8px; background: #0F172A; margin-top: 10px; margin-bottom: 16px;'>"
+                "<table style='width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;'>"
+                "<thead>"
+                "<tr style='background: #1E293B; color: #A5B4FC; font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;'>"
+                "<th style='padding: 10px 14px;'>🥋 Modalidade Oficial & Kanji</th>"
+                "<th style='padding: 10px 14px;'>🏷️ Categoria Pedagógica</th>"
+                "<th style='padding: 10px 14px;'>⚖️ 3 Pilares (M / P / C)</th>"
+                "<th style='padding: 10px 14px;'>⏱️ Cadência Ideal</th>"
+                "<th style='padding: 10px 14px;'>🎯 Acurácia Medida / Estimada</th>"
+                "</tr>"
+                "</thead>"
+                f"<tbody>{mod_tbody_html}</tbody>"
+                "</table>"
+                "</div>"
+            )
+            if hasattr(st, "html"):
+                st.html(mod_table_html)
+            else:
+                st.markdown(mod_table_html, unsafe_allow_html=True)
+
             st.caption(
-                "Pesos biomecânicos dos 3 Pilares (Movimentação, Precisão e Constância) e cadência ideal das 14 modalidades "
-                "oficiais de treinamento de Kendo (com Kanjis). O Modo Treinamento ainda não tem dados rotulados, "
-                "por isso não há acurácia medida por modalidade."
+                "💡 **Legenda dos 3 Pilares:** **M** = Movimentação (Postura, Coluna, Calcanhar Esquerdo) | "
+                "**P** = Precisão (Trajetória, Hasuji, Ki-Ken-Tai-Ichi) | **C** = Constância (Cadência, Regularidade e Resistência)."
             )
 
-            if modalities_data:
-                mod_table_rows = []
-                for m in modalities_data:
-                    m_name = m.get("name", "")
-                    m_cat = m.get("category", "")
-                    m_pillars = f"<span style='color: #F8FAFC;'>M: {m.get('pillar_movement_pct', 35)}%</span> | <span style='color: #38BDF8;'>P: {m.get('pillar_precision_pct', 35)}%</span> | <span style='color: #A78BFA;'>C: {m.get('pillar_constancy_pct', 30)}%</span>"
-                    m_cadence = str(m.get("cadence_optimal", "20-60 cpm"))
-                    mod_table_rows.append(
-                        f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.08);'>"
-                        f"<td style='padding: 10px 14px; font-weight: 700; color: #F8FAFC;'>{m_name}</td>"
-                        f"<td style='padding: 10px 14px; color: #CBD5E1;'>{m_cat}</td>"
-                        f"<td style='padding: 10px 14px; font-size: 12px; font-family: monospace;'>{m_pillars}</td>"
-                        f"<td style='padding: 10px 14px; color: #94A3B8; font-size: 12px;'>{m_cadence}</td>"
-                        f"</tr>"
-                    )
+        # ----------------------------------------------------------------------
+        # 1. CORPUS TÉCNICO DE REFERÊNCIA E COLETA NA INTERNET (Separado das Modalidades)
+        # ----------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("#### 📖 1. Corpus Técnico de Referência e Coleta na Internet")
+        st.caption(
+            "Regulamentos oficiais canônicos (FIK / AJKF / Manuais de Arbitragem) e sistema autônomo de busca e coleta de vídeos e regras na internet."
+        )
 
-                mod_tbody_html = "".join(mod_table_rows)
-                mod_table_html = (
-                    "<div style='overflow-x: auto; border: 1px solid #334155; border-radius: 8px; background: #0F172A; margin-top: 10px; margin-bottom: 16px;'>"
-                    "<table style='width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;'>"
-                    "<thead>"
-                    "<tr style='background: #1E293B; color: #A5B4FC; font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;'>"
-                    "<th style='padding: 10px 14px;'>🥋 Modalidade Oficial & Kanji</th>"
-                    "<th style='padding: 10px 14px;'>🏷️ Categoria Pedagógica</th>"
-                    "<th style='padding: 10px 14px;'>⚖️ 3 Pilares (M / P / C)</th>"
-                    "<th style='padding: 10px 14px;'>⏱️ Cadência Ideal</th>"
-                    "</tr>"
-                    "</thead>"
-                    f"<tbody>{mod_tbody_html}</tbody>"
-                    "</table>"
-                    "</div>"
-                )
-                if hasattr(st, "html"):
-                    st.html(mod_table_html)
-                else:
-                    st.markdown(mod_table_html, unsafe_allow_html=True)
+        tab_ref_corpus, tab_ref_internet = st.tabs([
+            "📖 Corpus Técnico de Diretrizes",
+            "🌐 Coleta Automática na Internet",
+        ])
 
-                st.caption(
-                    "💡 **Legenda dos 3 Pilares:** **M** = Movimentação (Postura, Coluna, Calcanhar Esquerdo) | "
-                    "**P** = Precisão (Trajetória, Hasuji, Ki-Ken-Tai-Ichi) | **C** = Constância (Cadência, Regularidade e Resistência)."
-                )
-
-                st.markdown("---")
-                st.markdown("#### 📖 O Que o SenpAI Já Aprendeu sobre Cada Modalidade")
-                st.caption("Consulte detalhadamente os princípios técnicos consolidados, perfil biomecânico de tolerâncias e fontes mineradas pela IA:")
-
-                mod_inspect_keys = [m.get("key", "") for m in modalities_data if m.get("key")]
-                if not mod_inspect_keys:
-                    mod_inspect_keys = list(TRAINING_MODALITIES_METADATA.keys())
-
-                sel_inspect_key_raw = st.selectbox(
-                    "Selecione a Modalidade para Inspecionar o Conhecimento Acumulado:",
-                    options=mod_inspect_keys,
-                    format_func=lambda k: f"{TRAINING_MODALITIES_METADATA.get(k, {}).get('name', k)} — {TRAINING_MODALITIES_METADATA.get(k, {}).get('category', '')}",
-                    key="sel_modality_inspect_box"
-                )
-                sel_inspect_key = sel_inspect_key_raw or "suburi"
-                mod_learned = auto_trainer.get_modality_learned_knowledge(sel_inspect_key)
-
-                c_info1, c_info2 = st.columns([1.8, 1.2])
-                with c_info1:
-                    st.markdown(f"##### 🥋 {mod_learned.get('name', sel_inspect_key)} (*{mod_learned.get('category', '')}*)")
-
-                    st.markdown("**Princípios Técnicos e Filosóficos Aprendidos:**")
-                    pr_list = mod_learned.get("principles_learned", [])
-                    if pr_list:
-                        for pr in pr_list:
-                            st.markdown(f"- ⚔️ {pr}")
-                    else:
-                        st.caption("Nenhum princípio específico gravado ainda.")
-
-                with c_info2:
-                    st.markdown("##### 🧬 Perfil Biomecânico Esperado")
-                    bio = mod_learned.get("biomechanical_profile", {})
-                    if bio:
-                        st.markdown(f"- **Cadência Ideal:** `{bio.get('cadence_cpm', '20-60')} CPM`")
-                        st.markdown(f"- **Tolerância Postural:** `{bio.get('posture_tilt_tolerance', 'Alta')}`")
-                        st.markdown(f"- **Elevação de Calcanhar:** `{bio.get('heel_elevation_min', 'Simétrica')}`")
-                        st.markdown(f"- **Foco de Alvo:** `{bio.get('datotsu_target_focus', 'Men, Kote, Do, Tsuki')}`")
-
-                    st.markdown("##### 🌐 Fontes Web Mineradas")
-                    web_src = mod_learned.get("web_sources", [])
-                    if web_src:
-                        for ws in web_src:
-                            st.markdown(f"- 📄 [{ws.get('title', 'Referência')}]({ws.get('url', '#')}) *(Tipo: {ws.get('type', 'Web')})*")
-                    else:
-                        st.caption("Nenhuma fonte externa minerada ainda.")
-
-                evo_log = mod_learned.get("evolution_log", [])
-                if evo_log:
-                    with st.expander(f"📜 Log Histórico de Evolução de {mod_learned.get('name', '')} ({len(evo_log)} registros)", expanded=False):
-                        for log_entry in evo_log:
-                            st.markdown(f"- `{log_entry.get('timestamp', '')}` — **{log_entry.get('event', '')}**: {log_entry.get('details', '')}")
-
-                with st.expander("📚 Ver Princípios Gerais e Fundamentos Universais do Kendo (ZNKR / FIK)", expanded=False):
-                    gen_principles = auto_trainer.get_general_kendo_principles()
-                    for gp in gen_principles:
-                        st.markdown(f"- 🏯 **{gp}**")
-
-
-        with tab_evo_sources:
-            st.markdown("**Corpus Técnico de Diretrizes Oficiais e Vídeos de Referência:**")
+        with tab_ref_corpus:
+            st.markdown("**Corpus Técnico de Diretrizes Oficiais e Manuais Canônicos:**")
             consulted_sources = auto_trainer.get_consulted_knowledge_sources()
-            
             src_by_type = auto_trainer.get_knowledge_sources_by_type()
             top_types = list(src_by_type.items())[:4]
             if top_types:
@@ -3081,6 +3009,136 @@ elif nav_page == "settings":
                     st.markdown("**Diretrizes Técnicas Extraídas & Regras:**")
                     for rule_str in s_info.get("key_rules", []):
                         st.markdown(f"- {rule_str}")
+
+        with tab_ref_internet:
+            try:
+                from src.utils.internet_collection_panel import render_internet_collection_panel
+                render_internet_collection_panel()
+            except Exception as err:
+                st.warning(f"Coleta na internet indisponível: {err}")
+
+        # ----------------------------------------------------------------------
+        # 2. GABARITO DE LUTAS (Trazido para dentro da Governança de Treinamento)
+        # ----------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("#### 🏷️ 2. Gabarito de Lutas")
+        st.caption("Informe os pontos oficiais de cada luta. O SenpAI rotula sozinho todas as detecções (positivo, negativo ou ambíguo) e mede a precisão real do placar.")
+        if is_web_server:
+            st.info("ℹ️ **Ambiente em Nuvem:** O Gabarito de Lutas utiliza a pasta de vídeos de combate e cache de poses em disco. No ambiente local Desktop/Dojo, todos os dados são persistidos diretamente no seu workspace.")
+        from src.utils.match_labels_page import render_match_labels_page
+        render_match_labels_page(device_preference=st.session_state.get("device_preference", default_device_pref), show_header=False)
+
+        # ----------------------------------------------------------------------
+        # 3. CICLO DE TREINO (Termo 'Real' removido do nome)
+        # ----------------------------------------------------------------------
+        from src.utils.training_cycle_panel import render_training_cycle_panel
+        render_training_cycle_panel(
+            device_preference=st.session_state.get("device_preference", default_device_pref),
+            is_web_server=is_web_server,
+            title="#### 🔄 3. Ciclo de Treino"
+        )
+
+        # ----------------------------------------------------------------------
+        # 4. O QUE O SENPAI JÁ APRENDEU (Geral e por cada modalidade)
+        # ----------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("#### 🧠 4. O Que o SenpAI Já Aprendeu")
+        st.caption(
+            "Consolidação completa de todos os conhecimentos acumulados pela IA até o momento: "
+            "visão geral de princípios e dataset, e detalhamento individual por cada modalidade."
+        )
+
+        tab_learned_general, tab_learned_modality = st.tabs([
+            "🌐 Visão Geral do Aprendizado",
+            "🥋 Aprendizado por Modalidade",
+        ])
+
+        with tab_learned_general:
+            st.markdown("##### 🌐 Princípios Gerais e Fundamentos Universais do Kendo (ZNKR / FIK)")
+            st.caption("Diretrizes filosóficas, biomecânicas e regulamentares universais consolidadas na base de conhecimento do SenpAI:")
+            gen_principles = auto_trainer.get_general_kendo_principles()
+            c_gp1, c_gp2 = st.columns(2)
+            half = (len(gen_principles) + 1) // 2
+            with c_gp1:
+                for gp in gen_principles[:half]:
+                    st.markdown(f"- 🎯 **{gp}**")
+            with c_gp2:
+                for gp in gen_principles[half:]:
+                    st.markdown(f"- 🎯 **{gp}**")
+
+            st.markdown("##### 📊 Estatísticas Consolidadas do Dataset & Aprendizado Geral")
+            c_st1, c_st2, c_st3, c_st4 = st.columns(4)
+            c_st1.metric("Modalidades Mapeadas", f"{len(TRAINING_MODALITIES_METADATA)}")
+            c_st2.metric("Corpus de Diretrizes", f"{len(consulted_sources)} fontes")
+            c_st3.metric("Rótulos / Lutas Registradas", f"{training_metrics.get('total_feedback_count', 0)}")
+            c_st4.metric("Sessões Homologadas Dan", f"{training_metrics.get('shinpan_reviews_count', 0)}")
+
+            with st.expander("📖 Regras Canônicas de Ippon e Yuko-Datotsu Consolidadas", expanded=False):
+                st.markdown(
+                    """
+                    1. **Definição de Yuko-Datotsu (FIK Art. 12):** O golpe com Shinai em Datotsu-bui (Men, Kote, Do, Tsuki) 
+                       deve possuir Ki-Ken-Tai-Ichi pleno, ângulo de lâmina correto (Hasuji), postura digna e Zanshin vigoroso.
+                    2. **Critérios de Validação Ki-Ken-Tai-Ichi:** Fumikomi synchronism (impacto sonoro sincronizado com pé de ataque dentro da janela de tolerância),
+                       extensão correta dos braços com Tenouchi firme e projeção corporal.
+                    3. **Critérios de Zanshin (FIK Art. 13):** Manutenção contínua de prontidão física e mental contra contra-ataques imediatos.
+                    """
+                )
+
+        with tab_learned_modality:
+            st.markdown("##### 🥋 Conhecimento Acumulado por Modalidade")
+            st.caption("Consulte detalhadamente os princípios técnicos consolidados, perfil biomecânico de tolerâncias e fontes mineradas para cada modalidade:")
+
+            mod_inspect_keys = [m.get("key", "") for m in modalities_data if m.get("key")]
+            if not mod_inspect_keys:
+                mod_inspect_keys = list(TRAINING_MODALITIES_METADATA.keys())
+
+            sel_inspect_key_raw = st.selectbox(
+                "Selecione a Modalidade para Inspecionar o Conhecimento Acumulado:",
+                options=mod_inspect_keys,
+                format_func=lambda k: f"{TRAINING_MODALITIES_METADATA.get(k, {}).get('name', k)} — {TRAINING_MODALITIES_METADATA.get(k, {}).get('category', '')}",
+                key="sel_modality_inspect_box"
+            )
+            sel_inspect_key = sel_inspect_key_raw or "suburi"
+            mod_learned = auto_trainer.get_modality_learned_knowledge(sel_inspect_key)
+
+            c_info1, c_info2 = st.columns([1.8, 1.2])
+            with c_info1:
+                st.markdown(f"##### 🥋 {mod_learned.get('name', sel_inspect_key)} (*{mod_learned.get('category', '')}*)")
+
+                mod_acc_info = next((m for m in modalities_data if m.get("key") == sel_inspect_key), {})
+                if mod_acc_info:
+                    st.info(f"🎯 **Acurácia de Detecção / Classificação:** `{mod_acc_info.get('accuracy_display', '—')}` *({mod_acc_info.get('accuracy_status', 'Calibrada')})*")
+
+                st.markdown("**Princípios Técnicos e Filosóficos Aprendidos:**")
+                pr_list = mod_learned.get("principles_learned", [])
+                if pr_list:
+                    for pr in pr_list:
+                        st.markdown(f"- ⚔️ {pr}")
+                else:
+                    st.caption("Nenhum princípio específico gravado ainda.")
+
+            with c_info2:
+                st.markdown("##### 🧬 Perfil Biomecânico Esperado")
+                bio = mod_learned.get("biomechanical_profile", {})
+                if bio:
+                    st.markdown(f"- **Cadência Ideal:** `{bio.get('cadence_cpm', '20-60')} CPM`")
+                    st.markdown(f"- **Tolerância Postural:** `{bio.get('posture_tilt_tolerance', 'Alta')}`")
+                    st.markdown(f"- **Elevação de Calcanhar:** `{bio.get('heel_elevation_min', 'Simétrica')}`")
+                    st.markdown(f"- **Foco de Alvo:** `{bio.get('datotsu_target_focus', 'Men, Kote, Do, Tsuki')}`")
+
+                st.markdown("##### 🌐 Fontes Web Mineradas")
+                web_src = mod_learned.get("web_sources", [])
+                if web_src:
+                    for ws in web_src:
+                        st.markdown(f"- 📄 [{ws.get('title', 'Referência')}]({ws.get('url', '#')}) *(Tipo: {ws.get('type', 'Web')})*")
+                else:
+                    st.caption("Nenhuma fonte externa minerada ainda.")
+
+            evo_log = mod_learned.get("evolution_log", [])
+            if evo_log:
+                with st.expander(f"📜 Log Histórico de Evolução de {mod_learned.get('name', '')} ({len(evo_log)} registros)", expanded=False):
+                    for log_entry in evo_log:
+                        st.markdown(f"- `{log_entry.get('timestamp', '')}` — **{log_entry.get('event', '')}**: {log_entry.get('details', '')}")
 
 
     # --------------------------------------------------------------------------
