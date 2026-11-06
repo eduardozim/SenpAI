@@ -807,7 +807,10 @@ class AutoTrainingEngine:
                 "type": s.get("type", "Referência Técnica"),
                 "focus": s.get("focus", "Geral"),
                 "key_rules": s.get("key_rules", []),
-                "summary": " | ".join(s.get("key_rules", [])) if isinstance(s.get("key_rules"), list) else str(s.get("key_rules", ""))
+                "summary": " | ".join(s.get("key_rules", [])) if isinstance(s.get("key_rules"), list) else str(s.get("key_rules", "")),
+                "url": s.get("url"),
+                "coletado_em": s.get("coletado_em"),
+                "resumo": s.get("summary") if s.get("origem") == "coleta_internet" else None,
             })
         return sources_list
 

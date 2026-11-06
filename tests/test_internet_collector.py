@@ -212,6 +212,7 @@ class TestCollectionSession(_Base):
     def _cfg(self):
         cfg = json.loads(json.dumps(ic.DEFAULT_CONFIG))
         cfg["videos"].update({"consultas": ["kendo"], "max_por_consulta": 2})
+        cfg["textos"]["ativar"] = False   # sem rede nos testes de sessão
         return cfg
 
     def test_session_ends_at_deadline_and_goes_deeper(self):
@@ -290,6 +291,137 @@ class TestCollectionSession(_Base):
         telem_closed = ic.compute_session_progress(sess_mock_closed)
         self.assertIn("20m", telem_closed["tempo_decorrido_fmt"])
         self.assertEqual(telem_closed["tempo_restante_segundos"], 0.0)
+
+
+KENDO_PAGE = ("<html><body><h1>Kendo rules</h1><p>In kendo, a yuko-datotsu is defined as an accurate strike with the shinai "
+              "onto the datotsu-bui. The shinpan judge men, kote, do and tsuki. Zanshin must be shown after the strike. "
+              "The standard duration for shiai shall be five minutes, and encho shall be three minutes.</p></body></html>")
+OTHER_PAGE = "<html><body><p>Recipe for bread: flour, water and salt. Bake for forty minutes.</p></body></html>"
+
+
+class _FakeLLM:
+    is_online = True
+    provider = "teste"
+
+    def __init__(self, response):
+        self.response = response
+        self.prompts = []
+
+    def _call_remote_llm(self, prompt):
+        self.prompts.append(prompt)
+        return self.response(prompt) if callable(self.response) else self.response
+
+
+class TestTextCollection(_Base):
+    def _cfg(self, **textos):
+        cfg = json.loads(json.dumps(ic.DEFAULT_CONFIG))
+        cfg["textos"].update({"consultas": ["kendo rules"], "consultas_por_rodada": 1, "paginas_por_consulta": 3}, **textos)
+        return cfg
+
+    def _searcher(self, q, n):
+        return [{"titulo": "Kendo rules", "url": "https://example.org/kendo", "trecho": "", "fonte": "web"},
+                {"titulo": "Bread", "url": "https://example.org/bread", "trecho": "", "fonte": "web"}]
+
+    def _fetcher(self, url):
+        return (KENDO_PAGE if "kendo" in url else OTHER_PAGE).encode(), "text/html"
+
+    def test_relevant_pages_go_to_corpus_and_others_are_discarded(self):
+        res = ic.collect_texts(self._cfg(), searcher=self._searcher, fetcher=self._fetcher, llm=None)
+        self.assertEqual((res["lidas"], res["carregadas"], res["descartadas"]), (2, 1, 1))
+        src = ic.load_rules()["fontes"]["https://example.org/kendo"]
+        self.assertEqual(src["fatos"]["tempo_luta_min"]["valor"], 5.0)
+        self.assertEqual(src["modo"], "regras")
+        from src.utils.test_isolation import get_safe_data_path
+        with open(get_safe_data_path("config/ai_knowledge_base.json"), encoding="utf-8") as f:
+            kb_sources = json.load(f)["sources"]
+        web = [v for v in kb_sources.values() if v.get("origem") == "coleta_internet"]
+        self.assertIn("https://example.org/kendo", [v["url"] for v in web])
+        self.assertNotIn("https://example.org/bread", [v["url"] for v in web])
+        kinds = [a["tipo"] for a in ic.load_activity(20)]
+        for k in ("busca", "pagina", "carregado", "descartado"):
+            self.assertIn(k, kinds)
+        again = ic.collect_texts(self._cfg(), searcher=self._searcher, fetcher=self._fetcher, llm=None)
+        self.assertEqual(again["lidas"], 0)   # já vistas
+
+    def test_ai_queries_and_only_literal_quotes_are_kept(self):
+        def respond(prompt):
+            if "Proponha" in prompt:
+                return {"consultas": ["kendo zanshin criteria"]}
+            return {"relevante": True, "resumo": "Regras de kendo.",
+                    "fatos": {"encho_min": {"rotulo": "Encho", "valor": 3, "unidade": "min",
+                                            "evidencia": "encho shall be three minutes"},
+                              "inventado": {"rotulo": "X", "valor": 9, "unidade": "s",
+                                            "evidencia": "this sentence is not in the page at all"}},
+                    "trechos": [{"tema": "zanshin", "trecho": "Zanshin must be shown after the strike"},
+                                {"tema": "falso", "trecho": "a frase que a IA inventou sobre kendo"}]}
+        llm = _FakeLLM(respond)
+        queries = []
+
+        def searcher(q, n):
+            queries.append(q)
+            return self._searcher(q, n)
+        res = ic.collect_texts(self._cfg(), searcher=searcher, fetcher=self._fetcher, llm=llm)
+        self.assertEqual(queries, ["kendo zanshin criteria"])
+        self.assertEqual(res["carregadas"], 1)
+        src = ic.load_rules()["fontes"]["https://example.org/kendo"]
+        self.assertEqual(src["modo"], "ia")
+        self.assertNotIn("inventado", src["fatos"])
+        self.assertIn("Zanshin must be shown after the strike", src["regras"]["zanshin"]["trechos"])
+        self.assertNotIn("falso", src["regras"])
+        self.assertIn("ia", [a["tipo"] for a in ic.load_activity(30)])
+
+    def test_texts_can_be_disabled(self):
+        res = ic.collect_texts(self._cfg(ativar=False), searcher=self._searcher, fetcher=self._fetcher, llm=None)
+        self.assertEqual(res["consultas"], 0)
+
+    def test_session_runs_texts_and_videos(self):
+        cfg = self._cfg()
+        cfg["videos"].update({"consultas": ["kendo"], "max_por_consulta": 1})
+        sess = ic.run_collection_session(hours=0.2 / 3600, allow_download=False, config=cfg, interval_min=0.05 / 60,
+                                         text_searcher=self._searcher, fetcher=self._fetcher, llm=None,
+                                         searcher=lambda q, n: [_item("v1", "Kendo Suburi")], history_path=self.hist)
+        self.assertEqual(sess["textos_carregados"], 1)
+        self.assertEqual(sess["novos"], 1)
+        kinds = [a["tipo"] for a in ic.load_activity(50)]
+        self.assertIn("video_busca", kinds)
+        self.assertIn("video_novo", kinds)
+
+    def test_activity_log_is_trimmed(self):
+        for i in range(ic.ACTIVITY_KEEP * 3):
+            ic.log_activity("busca", "x" * 400 + str(i))
+        self.assertLessEqual(len(ic.load_activity(10_000)), ic.ACTIVITY_KEEP * 2)
+        self.assertTrue(ic.load_activity(1)[0]["msg"].endswith(str(ic.ACTIVITY_KEEP * 3 - 1)))
+
+
+class TestApiKeys(unittest.TestCase):
+    def setUp(self):
+        from src.utils import api_keys as ak
+        self.ak = ak
+        ak.save_keys({k: None for k in ak.KNOWN_KEYS})
+        self._env = {k: os.environ.pop(k, None) for k in ak.KNOWN_KEYS}
+
+    def tearDown(self):
+        self.ak.save_keys({k: None for k in self.ak.KNOWN_KEYS})
+        for k, v in self._env.items():
+            os.environ.pop(k, None)
+            if v is not None:
+                os.environ[k] = v
+
+    def test_save_load_and_google_status(self):
+        from src.engine import web_research as wr
+        self.assertFalse(wr.google_status()["ativo"])
+        self.assertEqual(wr.search_google("kendo"), [])
+        self.ak.save_keys({"SERPAPI_KEY": "abc123", "GEMINI_API_KEY": ""})
+        self.assertEqual(self.ak.key_source("SERPAPI_KEY"), "arquivo")
+        self.assertIsNone(self.ak.key_source("GEMINI_API_KEY"))
+        self.assertTrue(wr.google_status()["ativo"])
+        self.ak.save_keys({"SERPAPI_KEY": ""})                 # em branco mantém
+        self.assertEqual(self.ak.get_key("SERPAPI_KEY"), "abc123")
+        self.ak.save_keys({"SERPAPI_KEY": None})               # None apaga
+        self.assertIsNone(self.ak.load_file_keys().get("SERPAPI_KEY"))
+
+    def test_keys_file_is_in_sandbox(self):
+        self.assertNotEqual(os.path.abspath(self.ak._path()), os.path.abspath(self.ak.KEYS_FILE))
 
 
 if __name__ == "__main__":

@@ -103,4 +103,10 @@ Thumbs.db
 # Pasta única de vídeos (lutas, treinos e vídeos baixados pela coleta)
 data/videos/
 data/internet/baixando/
+data/internet/atividade.jsonl
+data/internet/regras_texto/
+data/internet/textos.json
 data/backups/
+
+# Chaves de API da coleta (só neste computador)
+config/api_keys.local.json

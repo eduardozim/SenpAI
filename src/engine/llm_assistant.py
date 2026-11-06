@@ -27,7 +27,7 @@ class KendoLLMAssistant:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_name: str = "gemini-1.5-flash",
+        model_name: Optional[str] = None,
         provider: str = "auto"
     ):
         """
@@ -36,7 +36,8 @@ class KendoLLMAssistant:
         garantindo funcionamento contínuo, seguro e sem falhas em qualquer ambiente.
         """
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or os.environ.get("OPENAI_API_KEY")
-        self.model_name = model_name
+        # gemini-1.5 foi descontinuado; o modelo pode ser trocado em "Chaves de API" (GEMINI_MODEL)
+        self.model_name = model_name or os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash"
         self.provider = provider
 
         # Se provider for auto, detecta pela chave ou convenção
@@ -189,7 +190,7 @@ class KendoLLMAssistant:
                         "responseMimeType": "application/json"
                     }
                 }
-                resp = requests.post(url, json=payload, timeout=8)
+                resp = requests.post(url, json=payload, timeout=45)
                 if resp.status_code == 200:
                     data = resp.json()
                     candidates = data.get("candidates", [])
@@ -212,7 +213,7 @@ class KendoLLMAssistant:
                     "temperature": 0.2,
                     "response_format": {"type": "json_object"}
                 }
-                resp = requests.post(url, headers=headers, json=payload, timeout=8)
+                resp = requests.post(url, headers=headers, json=payload, timeout=45)
                 if resp.status_code == 200:
                     data = resp.json()
                     text = data.get("choices", [{}])[0].get("message", {}).get("content", "")

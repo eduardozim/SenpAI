@@ -1,7 +1,7 @@
 {
   "version": "2.0.0",
-  "last_updated": "2026-11-05T16:04:25.657422",
-  "total_web_sources_indexed": 3,
+  "last_updated": "2026-11-06T10:08:15.238268",
+  "total_web_sources_indexed": 8,
   "sources": {
     "fik_regulations": {
       "title": "FIK - The Regulations of Kendo Shiai and Shinpan (International Kendo Federation)",
@@ -75,6 +75,89 @@
         ],
         "stamina_retention_ratio_target": 0.88
       }
+    },
+    "web_e8bc544e9163": {
+      "title": "Yuko-datotsu - kenshi 24/7",
+      "type": "web_article",
+      "url": "https://kenshi247.net/blog/2010/09/21/yuko-datotsu/",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "datotsu_bui, yuko_datotsu, conteudo",
+      "key_rules": [
+        "Alvos válidos (datotsu-bui): “According to the rules, a waza is complete when the following conditions are met: showing a fullness of spirit and appropriate posture, striking a datotsu-bui (striking zone) of the opponent with the striking region of o”",
+        "Definição de yuko-datotsu: “But then I’m reminded by other kendoka, what is written above… namely that if the strike is on target (lets say kote to a jodan player) and the aggressor finishes with all the other elements of yuko-datotsu is this a poi”",
+        "Conteúdo: “According to the rules, a waza is complete when the following conditions are met: showing a fullness of spirit and appropriate posture, striking a datotsu-bui (striking zone) of the opponent with the striking region of o”",
+        "Conteúdo: “If the necessary conditions are met, ippon is also given in the following cases: when ones strikes the opponent as soon as the opponent drops his/her shinai, steps out of court, or falls down, and when one strikes the op”"
+      ],
+      "summary": "According to the rules, a waza is complete when the following conditions are met: showing a fullness of spirit and appropriate posture, striking a datotsu-bui (striking zone) of the opponent with the striking region of one’s own shinai while using correct ha-suji, and expressing zan-shin.",
+      "coletado_em": "2026-11-06T10:18:48",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_dc356c5ea9a7": {
+      "title": "Iwatate Saburo Kendo Lecture Secrets of Shofukan 7: Yuko Datotsu (valid ...",
+      "type": "web_article",
+      "url": "https://kendojidai.com/2020/02/03/iwatate-saburo-vol7/",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "zanshin, conteudo",
+      "key_rules": [
+        "Zanshin: “Regarding Yuko Datotsu, Article 12 of the Kendo Shiai and Referee Rules states, “A Yuko Datotsu has a fulfilled spirit and proper posture, strikes the target area with the accurate part of the Shinai with the correct bla”",
+        "Conteúdo: “Yuko Datotsu (valid strikes) | Kendo Jidai International INFO News Mail About Contact Data Erasure Request 私たちについて Login | Join Forgot Your Password? Join Login NEWS NEWS MAIL Announcements Events ARTICLES INTERVIEW TECH”",
+        "Conteúdo: “Are you doing Keiko in search of Kikentai-Icchi? In Kendo Shiai you confront your opponent, apply mutual Seme during a clash of Shinai and compete for Yuko Datotsu.”"
+      ],
+      "summary": "Yuko Datotsu (valid strikes) | Kendo Jidai International INFO News Mail About Contact Data Erasure Request 私たちについて Login | Join Forgot Your Password? Join Login NEWS NEWS MAIL Announcements Events ARTICLES INTERVIEW TECHNIQUE TRAINING REPORTS WKC Japan Europe VIDEOS SHOP DOJO BLOG Event 8th Dan Kend",
+      "coletado_em": "2026-11-06T10:18:48",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_97308187b729": {
+      "title": "Kirikaeshi - Wikipedia",
+      "type": "wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Kirikaeshi",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “Kirikaeshi is a drill done with a partner that involves a succession of strikes to the head ( 面, men ).”",
+        "Conteúdo: “At some kendo dōjō, the practice of kirikaeshi is performed at the start and end of kendo practice sessions.”"
+      ],
+      "summary": "Kirikaeshi is a drill done with a partner that involves a succession of strikes to the head ( 面, men ).",
+      "coletado_em": "2026-11-06T10:18:48",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_ee78e0fce8c4": {
+      "title": "PDF Kirikaeshi - Gaku Shi Juku Kendo Kai",
+      "type": "web_article",
+      "url": "https://leicesterkendo.com/wp-content/uploads/2020/06/kirikaeshi.pdf",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “Kirikaeshi • Strike correctly with the cutting edge, avoiding hirauchi (a strike with the flat of the shinai). • As shown in the illustrations ➃ and ➄, even if the teacher re ceives the strike with the shinai, the pl aye”",
+        "Conteúdo: “Kirikaeshi The Beneficial Effects of Kirikaeshi tenouchi to shield against you partner’s shinai.”"
+      ],
+      "summary": "Kirikaeshi • Strike correctly with the cutting edge, avoiding hirauchi (a strike with the flat of the shinai). • As shown in the illustrations ➃ and ➄, even if the teacher re ceives the strike with the shinai, the pl ayer should strike left and right men correctly with monouchi (see illustrations ➅ ",
+      "coletado_em": "2026-11-06T10:18:48",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_47a8e4d50f60": {
+      "title": "Kendo",
+      "type": "wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Kendo",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "datotsu_bui, tsubazeriai, zanshin",
+      "key_rules": [
+        "Alvos válidos (datotsu-bui): “Strikes are only made towards specified target areas ( 打突-部位 , datotsu-bui ) on the wrists, head, or body, all of which are protected by armor.”",
+        "Alvos válidos (datotsu-bui): “Two kendōka in tsuba zeriai Kendo target areas, or datotsu-bui Two kendōka , one (left) is playing in nitō (two sword style) and the other (right) is playing in ittō (one sword style).”",
+        "Tsubazeriai: “Two kendōka in tsuba zeriai Kendo target areas, or datotsu-bui Two kendōka , one (left) is playing in nitō (two sword style) and the other (right) is playing in ittō (one sword style).”",
+        "Zanshin: “A scorable point ( 有効打突 , yūkō-datotsu ) in a kendo competition ( tai-kai ) is defined as an accurate strike or thrust made onto a datotsu-bui of the opponent's kendo-gu with the shinai making contact at its datotsu-bu ,”",
+        "Zanshin: “Datotsu-bu of the shinai is the forward, or blade side ( jin-bu ) of the top third ( monouchi ) of the shinai . [ 38 ] Zanshin ( 残心 ) , or continuation of awareness, must be present and shown throughout the execution of ”",
+        "Conteúdo: “An appropriate venue has a clean and wooden sprung floor , suitable for fumikomi-ashi . [ 28 ] Kendo techniques comprise both strikes and thrusts.”",
+        "Conteúdo: “This can be to any part of the opponent's body, with valid strikes being: debana-men , debana-kote , and debana-Tsuki . Ōji-waza [ edit ] These counter-attack techniques are performed by executing a strike after respondi”"
+      ],
+      "summary": "An appropriate venue has a clean and wooden sprung floor , suitable for fumikomi-ashi . [ 28 ] Kendo techniques comprise both strikes and thrusts.",
+      "coletado_em": "2026-11-06T10:18:48",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
     }
   },
   "learned_parameters": {
@@ -132,7 +215,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -171,7 +254,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -209,7 +292,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -247,7 +330,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -285,7 +368,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -322,7 +405,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -359,7 +442,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -396,7 +479,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -433,7 +516,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -471,7 +554,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -509,7 +592,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -547,7 +630,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -584,7 +667,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]
@@ -621,7 +704,7 @@
         ],
         "evolution_log": [
           {
-            "date": "05/11/2026",
+            "date": "06/11/2026",
             "note": "Inicialização da matriz biomecânica e princípios fundamentais."
           }
         ]

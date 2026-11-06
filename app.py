@@ -2650,10 +2650,11 @@ elif nav_page == "settings":
     default_device_pref = st.session_state.get("device_preference", saved_sys_settings.get("processing_device", "cpu"))
     default_vision_pref = st.session_state.get("vision_model_preference", saved_sys_settings.get("vision_model", "yolov8"))
 
-    tab_hw, tab_train, tab_calib, tab_diag, tab_docs = st.tabs([
+    tab_hw, tab_train, tab_calib, tab_vars, tab_diag, tab_docs = st.tabs([
         "🖥️ Processamento & Hardware",
         "🎓 Governança de Treinamento",
         "🎛️ Perfis de Calibração",
+        "⚙️ Variáveis do Sistema",
         "🐛 Diagnóstico, Alertas & Logs",
         "📚 Documentação & Manuais"
     ])
@@ -2986,9 +2987,16 @@ elif nav_page == "settings":
             "Regulamentos oficiais canônicos (FIK / AJKF / Manuais de Arbitragem) e sistema autônomo de busca e coleta de vídeos e regras na internet."
         )
 
+        # Coleta ao vivo (textos na web + vídeos no YouTube): sempre visível enquanto roda
+        try:
+            from src.utils.internet_collection_panel import render_live_collection
+            render_live_collection()
+        except Exception as err:
+            st.warning(f"Coleta na internet indisponível: {err}")
+
         tab_ref_corpus, tab_ref_internet = st.tabs([
             "📖 Corpus Técnico de Diretrizes",
-            "🌐 Coleta Automática na Internet",
+            "🌐 Catálogo e Configuração da Coleta",
         ])
 
         with tab_ref_corpus:
@@ -3006,6 +3014,11 @@ elif nav_page == "settings":
                     st.markdown(f"**Identificador:** `{s_info.get('id', '')}`")
                     st.markdown(f"**Categoria / Tipo:** {s_info.get('type', '')}")
                     st.markdown(f"**Foco Principal:** {s_info.get('focus', '')}")
+                    if s_info.get("url"):
+                        st.markdown(f"**Fonte:** [{s_info['url']}]({s_info['url']})"
+                                    + (f" · coletada em {str(s_info.get('coletado_em'))[:16].replace('T', ' ')}" if s_info.get("coletado_em") else ""))
+                    if s_info.get("resumo"):
+                        st.caption(s_info["resumo"])
                     st.markdown("**Diretrizes Técnicas Extraídas & Regras:**")
                     for rule_str in s_info.get("key_rules", []):
                         st.markdown(f"- {rule_str}")
@@ -3959,7 +3972,14 @@ elif nav_page == "settings":
                             st.error(f"Erro ao derivar perfil: {err}")
 
     # --------------------------------------------------------------------------
-    # GUIA 4: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA
+    # GUIA 4: VARIÁVEIS DO SISTEMA & CHAVES DE API
+    # --------------------------------------------------------------------------
+    with tab_vars:
+        from src.utils.system_variables_panel import render_system_variables_panel
+        render_system_variables_panel()
+
+    # --------------------------------------------------------------------------
+    # GUIA 5: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA
     # --------------------------------------------------------------------------
     with tab_diag:
         st.markdown("### 🐛 Diagnóstico do Sistema, Alertas & Registros de Debug")

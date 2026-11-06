@@ -47,6 +47,7 @@ FLAG_GATE_VIDEOS = 3
 MAX_SEARCH_DEPTH = 100           # resultados por consulta, no máximo
 
 DEFAULT_CONFIG: Dict[str, Any] = {
+    "textos": {"ativar": True, "consultas": [], "consultas_por_rodada": 4, "paginas_por_consulta": 3},
     "regras": [
         {"url": "https://kendo.rs/files/202107-Regulations-of-Kendo-Shiai-and-Shinpan.pdf",
          "titulo": "FIK — Regulations of Kendo Shiai and Shinpan (jul/2021, texto completo; cópia da federação sérvia)", "autoridade": "FIK"},
@@ -113,6 +114,7 @@ def load_config(path: Optional[str] = None) -> Dict[str, Any]:
     merged = json.loads(json.dumps(DEFAULT_CONFIG))
     merged["regras"] = cfg.get("regras", merged["regras"])
     merged["videos"].update(cfg.get("videos", {}))
+    merged["textos"].update(cfg.get("textos", {}))
     return merged
 
 
@@ -198,7 +200,7 @@ def fetch_source_text(url_or_path: str, fetcher: Optional[Callable[[str], Tuple[
     else:
         import requests
         _use_system_certs()
-        resp = requests.get(url_or_path, timeout=60, headers={"User-Agent": "SenpAI-kendo-research/1.0"})
+        resp = requests.get(url_or_path, timeout=60, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 SenpAI-kendo-research/1.0"})
         resp.raise_for_status()
         data, ctype = resp.content, resp.headers.get("Content-Type", "")
     if "pdf" in ctype.lower() or data[:5] == b"%PDF-":
@@ -323,6 +325,8 @@ def collect_rules(config: Optional[Dict[str, Any]] = None, fetcher=None, llm=Non
         store["fontes"][url] = {"titulo": title, "autoridade": tier.display_name, "nivel": tier.priority,
                                 "coletado_em": datetime.datetime.now().isoformat(timespec="seconds"),
                                 "caracteres": len(text), **extracted}
+        add_to_corpus(url, title, extracted, tier.display_name, tier.priority)
+        log_activity("carregado", f"📜 Regulamento lido: {title} — {len(extracted['fatos'])} fato(s)", url)
         report.append({"fonte": title, "status": "ok" if text.strip() else "vazio",
                        "fatos": len(extracted["fatos"]), "regras": len(extracted["regras"]), "cache": fetched["cache"]})
     _save_json("regras.json", store)
@@ -464,13 +468,19 @@ def collect_videos(config: Optional[Dict[str, Any]] = None, searcher=None, downl
     stop = should_stop or (lambda: False)
     cfg = (config or load_config())["videos"]
     catalog = load_catalog()
+    try:
+        from src.engine.web_research import get_llm
+        video_llm = get_llm()
+    except Exception:
+        video_llm = None
     new = 0
     per_query = min(MAX_SEARCH_DEPTH, int(cfg.get("max_por_consulta", 5)) * max(1, int(depth)))
     for q in cfg.get("consultas", []):
         if stop():
             break
         if progress:
-            progress(f"Buscando: {q}")
+            progress(f"Buscando no YouTube: {q}")
+        log_activity("video_busca", f"🎬 Pesquisando no YouTube: “{q}”")
         try:
             results = search_videos(q, per_query, searcher=searcher)
         except Exception as e:
@@ -479,7 +489,15 @@ def collect_videos(config: Optional[Dict[str, Any]] = None, searcher=None, downl
         for r in results:
             if r["id"] in catalog:
                 continue
-            catalog[r["id"]] = dict(r, consulta=q, modalidade_titulo=title_modality(r.get("titulo", "")), status="candidato",
+            mod = title_modality(r.get("titulo", ""))
+            if mod is None and video_llm is not None:
+                try:
+                    from src.engine.web_research import ai_classify_video
+                    mod = ai_classify_video(video_llm, r.get("titulo", ""))
+                except Exception:
+                    mod = None
+            log_activity("video_novo", f"🎞️ Novo vídeo: {r.get('titulo', '')} → {mod or 'sem modalidade reconhecida'}", r.get("url"))
+            catalog[r["id"]] = dict(r, consulta=q, modalidade_titulo=mod, status="candidato",
                                     encontrado_em=datetime.datetime.now().isoformat(timespec="seconds"))
             new += 1
     _save_json("catalogo.json", catalog)
@@ -522,6 +540,7 @@ def collect_videos(config: Optional[Dict[str, Any]] = None, searcher=None, downl
                 item.update(status="falhou", motivo=f"{type(e).__name__}: {e}")
                 continue
             item.update(status="baixado", arquivo=os.path.basename(path), baixado_em=datetime.datetime.now().isoformat(timespec="seconds"))
+            log_activity("download", f"⬇️ Baixado: {item['titulo']} → data/videos/{item['arquivo']}", item.get("url"))
             downloaded.append(item["arquivo"])
             n_lab, n_doubt = label_video(item, path, gate, flag_reader=flag_reader)
             labels += n_lab
@@ -578,6 +597,176 @@ def label_video(item: Dict[str, Any], path: str, gate: Dict[str, Any], flag_read
                 log_event("WARNING", f"Não foi possível criar a dúvida de bandeira: {e}", "internet_collector")
     LabelBank().add_labels(labels)
     return len(labels), doubts
+
+
+# ------------------------------------------------------------------------------
+# 2b. Registro de atividade (o que está sendo pesquisado e carregado, para a tela)
+# ------------------------------------------------------------------------------
+
+ACTIVITY_FILE = "atividade.jsonl"
+ACTIVITY_KEEP = 400
+
+
+def log_activity(tipo: str, msg: str, url: Optional[str] = None) -> None:
+    """Uma linha do que a coleta está fazendo agora (busca, leitura, carregado, descartado, vídeo, erro)."""
+    p = os.path.join(get_root_dir(), ACTIVITY_FILE)
+    entry = {"em": datetime.datetime.now().isoformat(timespec="seconds"), "tipo": tipo, "msg": msg}
+    if url:
+        entry["url"] = url
+    try:
+        with open(p, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        if os.path.getsize(p) > 400_000:
+            with open(p, "r", encoding="utf-8") as f:
+                lines = f.readlines()[-ACTIVITY_KEEP:]
+            with open(p, "w", encoding="utf-8") as f:
+                f.writelines(lines)
+    except OSError:
+        pass
+
+
+def load_activity(limit: int = 30) -> List[Dict[str, Any]]:
+    """Últimas atividades, da mais recente para a mais antiga."""
+    p = os.path.join(get_root_dir(), ACTIVITY_FILE)
+    if not os.path.isfile(p):
+        return []
+    with open(p, "r", encoding="utf-8") as f:
+        lines = f.readlines()[-limit:]
+    out = []
+    for line in reversed(lines):
+        try:
+            out.append(json.loads(line))
+        except Exception:
+            pass
+    return out
+
+
+# ------------------------------------------------------------------------------
+# 2c. Textos da internet → Corpus Técnico
+# ------------------------------------------------------------------------------
+
+def add_to_corpus(url: str, title: str, analysis: Dict[str, Any], tier_name: str, tier_level: int) -> Optional[str]:
+    """Fonte coletada vira item do Corpus Técnico (base de conhecimento), com os fatos e trechos citados."""
+    from src.utils.test_isolation import get_safe_data_path
+    kb_path = get_safe_data_path("config/ai_knowledge_base.json")
+    if not os.path.isfile(kb_path):
+        try:
+            from src.engine.auto_trainer import AutoTrainingEngine
+            AutoTrainingEngine()  # cria a base com o conteúdo de referência
+        except Exception:
+            return None
+    try:
+        with open(kb_path, "r", encoding="utf-8") as f:
+            kb = json.load(f)
+    except Exception:
+        return None
+    rules = []
+    for fct in analysis.get("fatos", {}).values():
+        v = fct["valor"]
+        val = f"{v['min']:g} a {v['max']:g}" if isinstance(v, dict) else f"{v:g}"
+        rules.append(f"{fct['rotulo']}: {val} {fct['unidade']} — “{fct['evidencia'][:220]}”")
+    for r in analysis.get("regras", {}).values():
+        for t in r.get("trechos", [])[:2]:
+            rules.append(f"{r['rotulo']}: “{t[:220]}”")
+    kind = "official_manual" if tier_level <= 2 else ("wikipedia" if "wikipedia.org" in url else "web_article")
+    key = "web_" + hashlib.sha1(url.encode("utf-8")).hexdigest()[:12]
+    kb.setdefault("sources", {})[key] = {
+        "title": title, "type": kind, "url": url, "authority": tier_name,
+        "focus": ", ".join(list(analysis.get("regras", {}))[:3]) or "Geral",
+        "key_rules": rules[:10], "summary": analysis.get("resumo", ""),
+        "coletado_em": datetime.datetime.now().isoformat(timespec="seconds"), "origem": "coleta_internet",
+        "modo_extracao": analysis.get("modo", "regras"),
+    }
+    kb["total_web_sources_indexed"] = len(kb["sources"])
+    tmp = kb_path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(kb, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, kb_path)
+    return key
+
+
+def collect_texts(config: Optional[Dict[str, Any]] = None, depth: int = 1, searcher=None, fetcher=None, llm="auto",
+                  should_stop: Optional[Callable[[], bool]] = None, progress: Optional[Callable[[str], None]] = None) -> Dict[str, Any]:
+    """
+    Pesquisa textos de kendo na web, lê as páginas e leva ao Corpus só o que é sobre kendo, com fatos e
+    trechos citados. Com IA, ela cria as consultas e filtra; sem IA, consultas da configuração e regras.
+    """
+    from src.engine import web_research as wr
+    from src.engine.actionable_research import SourceHierarchyResolver
+    stop = should_stop or (lambda: False)
+    cfg = (config or load_config()).get("textos", {})
+    if not cfg.get("ativar", True):
+        return {"consultas": 0, "lidas": 0, "carregadas": 0, "descartadas": 0}
+    if llm == "auto":
+        llm = wr.get_llm()
+    seen = _load_json("textos.json", {})
+    store = _load_json("regras.json", {"fontes": {}})
+    resolver = SourceHierarchyResolver()
+    per_round = int(cfg.get("consultas_por_rodada", 4))
+    queries: List[str] = []
+    if llm is not None:
+        covered = [s.get("titulo", "") for s in store.get("fontes", {}).values()]
+        try:
+            queries = wr.ai_queries(llm, covered, per_round)
+            if queries:
+                log_activity("ia", "IA propôs as buscas: " + " · ".join(queries))
+        except Exception as e:
+            log_activity("erro", f"IA não respondeu ({e}); usando as consultas da configuração.")
+    if not queries:
+        base = cfg.get("consultas") or wr.DEFAULT_TEXT_QUERIES
+        start = ((max(1, depth) - 1) * per_round) % len(base)
+        queries = [base[(start + i) % len(base)] for i in range(min(per_round, len(base)))]
+    counts = {"consultas": 0, "lidas": 0, "carregadas": 0, "descartadas": 0}
+    for q in queries:
+        if stop():
+            break
+        counts["consultas"] += 1
+        if progress:
+            progress(f"Pesquisando textos: {q}")
+        log_activity("busca", f"🔎 Pesquisando na web: “{q}”")
+        try:
+            results = (searcher or wr.search_web)(q, int(cfg.get("paginas_por_consulta", 3)))
+        except Exception as e:
+            log_activity("erro", f"Busca falhou: {e}")
+            continue
+        for r in results:
+            if stop():
+                break
+            url = r["url"]
+            if url in seen:
+                continue
+            if progress:
+                progress(f"Lendo: {r['titulo']}")
+            log_activity("pagina", f"📄 Lendo ({r.get('fonte', 'web')}): {r['titulo']}", url)
+            try:
+                text = fetch_source_text(url, fetcher=fetcher)["texto"]
+            except Exception as e:
+                seen[url] = {"status": "falhou", "titulo": r["titulo"], "motivo": str(e)[:200]}
+                log_activity("erro", f"Não foi possível ler: {r['titulo']} ({type(e).__name__})", url)
+                continue
+            counts["lidas"] += 1
+            analysis = wr.analyze_page(text, r["titulo"], llm=llm)
+            if not analysis["relevante"]:
+                seen[url] = {"status": "descartado", "titulo": r["titulo"], "termos_kendo": analysis["termos_kendo"]}
+                counts["descartadas"] += 1
+                log_activity("descartado", f"🚫 Fora do tema: {r['titulo']} ({analysis['termos_kendo']} termos de kendo)", url)
+                continue
+            tier = resolver.classify_source({"title": r["titulo"], "url": url})
+            store.setdefault("fontes", {})[url] = {
+                "titulo": r["titulo"], "autoridade": tier.display_name, "nivel": tier.priority, "origem": r.get("fonte", "web"),
+                "coletado_em": datetime.datetime.now().isoformat(timespec="seconds"), "caracteres": len(text),
+                "consulta": q, "resumo": analysis["resumo"], "modo": analysis["modo"],
+                "fatos": analysis["fatos"], "regras": analysis["regras"]}
+            add_to_corpus(url, r["titulo"], analysis, tier.display_name, tier.priority)
+            seen[url] = {"status": "carregado", "titulo": r["titulo"]}
+            counts["carregadas"] += 1
+            n_quotes = sum(len(x.get("trechos", [])) for x in analysis["regras"].values())
+            log_activity("carregado", f"✅ Adicionado ao Corpus: {r['titulo']} — {len(analysis['fatos'])} fato(s), "
+                                      f"{n_quotes} trecho(s) de regra ({'IA' if analysis['modo'] == 'ia' else 'regras'})", url)
+        _save_json("textos.json", seen)
+        _save_json("regras.json", store)
+    inject_biomechanical_facts(store)
+    return counts
 
 
 # ------------------------------------------------------------------------------
@@ -693,6 +882,7 @@ def run_collection_session(hours: float, allow_download: bool, config: Optional[
     end = _now() + datetime.timedelta(hours=float(hours))
     _update_session(ativa=True, inicio=_now().isoformat(timespec="seconds"), fim_previsto=end.isoformat(timespec="seconds"),
                     baixar=bool(allow_download), rodadas=0, novos=0, baixados=[], rotulos=0, duvidas=0,
+                    textos_lidos=0, textos_carregados=0,
                     etapa="iniciando", encerrada_em=None, encerrada_por=None, erro=None)
     log_event("INFO", f"Procura de vídeos ligada por {hours} h (download {'ligado' if allow_download else 'desligado'}).",
               "internet_collector")
@@ -701,9 +891,20 @@ def run_collection_session(hours: float, allow_download: bool, config: Optional[
     try:
         while not stop_event.is_set() and _now() < end:
             rounds += 1
+            log_activity("rodada", f"▶️ Rodada {rounds} iniciada")
+            texts = collect_texts(cfg, depth=rounds, should_stop=lambda: stop_event.is_set() or _now() >= end,
+                                  progress=lambda msg: _update_session(etapa=msg),
+                                  **{k: v for k, v in collect_kwargs.items() if k in ("fetcher", "llm")},
+                                  **({"searcher": collect_kwargs["text_searcher"]} if "text_searcher" in collect_kwargs else {}))
+            sess = _load_json("sessao.json", {})
+            _update_session(textos_lidos=sess.get("textos_lidos", 0) + texts["lidas"],
+                            textos_carregados=sess.get("textos_carregados", 0) + texts["carregadas"])
+            if stop_event.is_set():
+                break
+            video_kwargs = {k: v for k, v in collect_kwargs.items() if k not in ("fetcher", "llm", "text_searcher")}
             res = collect_videos(cfg, allow_download=allow_download, depth=rounds,
                                  should_stop=lambda: stop_event.is_set() or _now() >= end,
-                                 progress=lambda msg: _update_session(etapa=msg), **collect_kwargs)
+                                 progress=lambda msg: _update_session(etapa=msg), **video_kwargs)
             sess = _load_json("sessao.json", {})
             _update_session(rodadas=rounds, novos=sess.get("novos", 0) + res["novos_no_catalogo"],
                             baixados=sess.get("baixados", []) + res["baixados"],
