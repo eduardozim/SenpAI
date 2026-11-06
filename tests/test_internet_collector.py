@@ -11,6 +11,7 @@ import unittest
 import datetime
 
 from src.engine import internet_collector as ic
+from src.engine import web_research as wr
 from src.engine.label_bank import LabelBank
 
 REG_TEXT = (
@@ -294,7 +295,7 @@ class TestCollectionSession(_Base):
 
 
 KENDO_PAGE = ("<html><body><h1>Kendo rules</h1><p>In kendo, a yuko-datotsu is defined as an accurate strike with the shinai "
-              "onto the datotsu-bui. The shinpan judge men, kote, do and tsuki. Zanshin must be shown after the strike. "
+              "onto the datotsu-bui. The kendo shinpan judge men, kote, do and tsuki. Zanshin must be shown after the strike. "
               "The standard duration for shiai shall be five minutes, and encho shall be three minutes.</p></body></html>")
 OTHER_PAGE = "<html><body><p>Recipe for bread: flour, water and salt. Bake for forty minutes.</p></body></html>"
 
@@ -369,6 +370,31 @@ class TestTextCollection(_Base):
         self.assertIn("Zanshin must be shown after the strike", src["regras"]["zanshin"]["trechos"])
         self.assertNotIn("falso", src["regras"])
         self.assertIn("ia", [a["tipo"] for a in ic.load_activity(30)])
+
+    def test_other_martial_arts_are_discarded_even_with_kendo_terms(self):
+        karate = ("Karate is a martial art. In karate the karateka trains kata in the dojo with a sensei. Zanshin, kiai "
+                  "and maai matter in karate kumite; karate ippon is scored with zanshin. Kendo and judo are other "
+                  "budo. Karate seme and ashi work. ") * 3
+        mixed = ("Budo overview. Judo, karate and aikido are taught. Judo uses kata, the dojo, the sensei, kiai, zanshin, "
+                 "ippon and seme. Judo shiai. Kendo uses a shinai and men, kote. ") * 3
+
+        def searcher(q, n):
+            return [{"titulo": "Karate", "url": "https://example.org/karate", "trecho": "", "fonte": "wikipedia"},
+                    {"titulo": "Budo", "url": "https://example.org/budo", "trecho": "", "fonte": "web"},
+                    {"titulo": "Kendo rules", "url": "https://example.org/kendo", "trecho": "", "fonte": "web"}]
+
+        def fetcher(url):
+            page = {"karate": karate, "budo": mixed}.get(url.rsplit("/", 1)[-1], KENDO_PAGE)
+            return page.encode(), "text/html"
+        llm = _FakeLLM(lambda p: {"relevante": True, "resumo": "", "fatos": {}, "trechos": []})
+        res = ic.collect_texts(self._cfg(), searcher=searcher, fetcher=fetcher, llm=llm)
+        self.assertEqual((res["lidas"], res["carregadas"], res["descartadas"]), (2, 1, 2))
+        fontes = ic.load_rules()["fontes"]
+        self.assertEqual(list(fontes), ["https://example.org/kendo"])
+        self.assertEqual(sum(1 for p in llm.prompts if "Página:" in p), 1)   # IA só vê a página de kendo
+        self.assertFalse(wr.kendo_focus(karate, "Karate")["ok"])
+        self.assertFalse(wr.kendo_focus(mixed, "Budo")["ok"])
+        self.assertTrue(wr.kendo_focus(KENDO_PAGE, "Kendo rules")["ok"])
 
     def test_texts_can_be_disabled(self):
         res = ic.collect_texts(self._cfg(ativar=False), searcher=self._searcher, fetcher=self._fetcher, llm=None)

@@ -81,7 +81,9 @@ def ai_analyze_page(llm, text: str, title: str) -> Optional[Dict[str, Any]]:
     """Relevância, resumo, fatos e trechos — só fica o que tem citação literal na página."""
     prompt = (
         f"Página: {title}\nTexto (trecho):\n{text[:6000]}\n\n"
-        "1) A página é sobre kendo (regras, arbitragem, técnica ou treino)? 2) Extraia fatos numéricos e trechos de "
+        "1) A página é sobre KENDO (regras, arbitragem, técnica ou treino de kendo)? Responda relevante=false se "
+        "ela for sobre outra arte marcial (karatê, judô, aikidô, iaidô, kenjutsu, esgrima etc.), mesmo que use "
+        "termos como zanshin, kiai, kata ou dojo. 2) Extraia fatos numéricos e trechos de "
         "regra, copiando a frase EXATA do texto como evidência. Responda só JSON: "
         '{"relevante": true, "resumo": "1 frase", "fatos": {"chave": {"rotulo": "...", "valor": 5, "unidade": "min", '
         '"evidencia": "frase exata"}}, "trechos": [{"tema": "zanshin", "trecho": "frase exata"}]}'
@@ -184,6 +186,48 @@ def kendo_relevance(text: str) -> int:
     return sum(1 for t in KENDO_TERMS if re.search(rf"\b{re.escape(t)}\b", low) or (not t.isascii() and t in low))
 
 
+KENDO_NAMES = ("kendo", "kendoka", "剣道")
+# Outras artes marciais: termos como zanshin, kiai, kata, dojo e sensei também aparecem nelas, então a página
+# só conta como kendo se falar de kendo bem mais do que de qualquer uma delas.
+OTHER_ARTS = ("karate", "karatê", "karateka", "judo", "judô", "judoka", "aikido", "aikidô", "taekwondo", "jujutsu",
+              "jujitsu", "jiu-jitsu", "kung fu", "wushu", "boxing", "boxe", "muay thai", "kickboxing", "sumo", "kyudo",
+              "iaido", "iaijutsu", "kenjutsu", "naginata", "jodo", "kobudo", "hapkido", "sambo", "capoeira", "fencing",
+              "esgrima", "mma", "wrestling", "ninjutsu", "kenpo", "kempo", "battodo", "空手", "柔道", "合気道", "居合")
+MIN_KENDO_MENTIONS = 3
+
+
+def _count(term: str, low: str) -> int:
+    if not term.isascii():
+        return low.count(term)
+    return len(re.findall(rf"(?<![a-z]){re.escape(term)}(?![a-z])", low))
+
+
+def kendo_focus(text: str, title: str = "") -> Dict[str, Any]:
+    """A página é sobre KENDO (e não sobre outra arte marcial que usa os mesmos termos)?"""
+    low, tlow = text.lower(), title.lower()
+    kendo = sum(_count(t, low) for t in KENDO_NAMES)
+    others = {a: _count(a, low) for a in OTHER_ARTS}
+    top_art, top_n = max(others.items(), key=lambda kv: kv[1])
+    title_kendo = any(_count(t, tlow) for t in KENDO_NAMES)
+    title_other = next((a for a in OTHER_ARTS if _count(a, tlow)), None)
+    if title_other and not title_kendo:
+        return {"ok": False, "motivo": f"página sobre {title_other}, não kendo", "mencoes_kendo": kendo}
+    if kendo < MIN_KENDO_MENTIONS:
+        return {"ok": False, "motivo": f"kendo citado só {kendo} vez(es)", "mencoes_kendo": kendo}
+    if top_n and kendo < 2 * top_n:
+        return {"ok": False, "motivo": f"fala de {top_art} ({top_n}×) quase tanto quanto de kendo ({kendo}×)",
+                "mencoes_kendo": kendo}
+    return {"ok": True, "motivo": "", "mencoes_kendo": kendo}
+
+
+def title_is_other_art(title: str) -> Optional[str]:
+    """Nome da outra arte marcial se o título for dela e não de kendo (descarta antes de baixar a página)."""
+    tlow = title.lower()
+    if any(_count(t, tlow) for t in KENDO_NAMES):
+        return None
+    return next((a for a in OTHER_ARTS if _count(a, tlow)), None)
+
+
 def key_sentences(text: str, n: int = 3) -> List[str]:
     """As frases do próprio texto com mais termos de kendo (resumo extrativo, sem inventar nada)."""
     from src.engine.internet_collector import split_sentences
@@ -203,8 +247,12 @@ def analyze_page(text: str, title: str, llm=None) -> Dict[str, Any]:
     from src.engine.internet_collector import extract_rule_facts
     base = extract_rule_facts(text)
     relevance = kendo_relevance(text)
-    out = {"relevante": relevance >= MIN_KENDO_TERMS, "termos_kendo": relevance, "resumo": "", "fatos": base["fatos"],
+    focus = kendo_focus(text, title)
+    motivo = focus["motivo"] or ("" if relevance >= MIN_KENDO_TERMS else f"só {relevance} termos de kendo")
+    out = {"relevante": not motivo, "motivo": motivo, "termos_kendo": relevance, "resumo": "", "fatos": base["fatos"],
            "regras": base["regras"], "modo": "regras"}
+    if motivo:
+        return out   # fora do tema: nem chama a IA
     sentences = key_sentences(text)
     if sentences:
         out["resumo"] = sentences[0][:300]
@@ -212,7 +260,9 @@ def analyze_page(text: str, title: str, llm=None) -> Dict[str, Any]:
     if llm is not None:
         ai = ai_analyze_page(llm, text, title)
         if ai is not None:
-            out.update(relevante=ai["relevante"] and relevance >= 2, resumo=ai["resumo"], modo="ia")
+            out.update(relevante=ai["relevante"], resumo=ai["resumo"], modo="ia")
+            if not ai["relevante"]:
+                out["motivo"] = "a IA julgou que não é sobre kendo"
             for k, f in ai["fatos"].items():
                 out["fatos"].setdefault(k, f)
             for t in ai["trechos"]:

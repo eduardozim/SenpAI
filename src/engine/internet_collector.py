@@ -31,8 +31,11 @@ Uso via linha de comando (a partir da pasta Dev/):
 import os
 import re
 import json
+import time
+import shutil
 import hashlib
 import datetime
+import threading
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from src.utils.logger_manager import log_event
@@ -125,23 +128,67 @@ def save_config(cfg: Dict[str, Any], path: Optional[str] = None) -> None:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 
+_file_io_lock = threading.RLock()
+
+
+def _safe_replace(src: str, dst: str, max_retries: int = 15, delay: float = 0.05) -> None:
+    """
+    Substitui src por dst de forma segura e atômica no Windows, com retentativas e backoff para contornar
+    locks temporários de leitura mantidos por outras threads ou pelo antivírus do sistema.
+    """
+    for i in range(max_retries):
+        try:
+            os.replace(src, dst)
+            return
+        except (PermissionError, OSError) as e:
+            if i == max_retries - 1:
+                # Fallback: tentar sobrescrever diretamente se a renomeação/deleção atômica estiver bloqueada
+                try:
+                    shutil.copyfile(src, dst)
+                    try:
+                        os.remove(src)
+                    except Exception:
+                        pass
+                    return
+                except Exception:
+                    raise e
+            time.sleep(delay * (1.15 ** i))
+
+
 def _load_json(name: str, default):
     p = os.path.join(get_root_dir(), name)
     if not os.path.isfile(p):
         return default
-    try:
-        with open(p, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
+    with _file_io_lock:
+        for retry in range(5):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, PermissionError):
+                if retry == 4:
+                    tmp = p + ".tmp"
+                    if os.path.isfile(tmp):
+                        try:
+                            with open(tmp, "r", encoding="utf-8") as f_tmp:
+                                return json.load(f_tmp)
+                        except Exception:
+                            pass
+                    return default
+                time.sleep(0.02 * (retry + 1))
+            except Exception:
+                return default
         return default
 
 
 def _save_json(name: str, data) -> None:
-    p = os.path.join(get_root_dir(), name)
+    root = get_root_dir()
+    os.makedirs(root, exist_ok=True)
+    p = os.path.join(root, name)
     tmp = p + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    os.replace(tmp, p)
+    with _file_io_lock:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        _safe_replace(tmp, p)
 
 
 def _use_system_certs() -> None:
@@ -679,9 +726,10 @@ def add_to_corpus(url: str, title: str, analysis: Dict[str, Any], tier_name: str
     }
     kb["total_web_sources_indexed"] = len(kb["sources"])
     tmp = kb_path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(kb, f, indent=2, ensure_ascii=False)
-    os.replace(tmp, kb_path)
+    with _file_io_lock:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(kb, f, indent=2, ensure_ascii=False)
+        _safe_replace(tmp, kb_path)
     return key
 
 
@@ -735,6 +783,12 @@ def collect_texts(config: Optional[Dict[str, Any]] = None, depth: int = 1, searc
             url = r["url"]
             if url in seen:
                 continue
+            other = wr.title_is_other_art(r["titulo"])
+            if other:
+                seen[url] = {"status": "descartado", "titulo": r["titulo"], "motivo": f"página sobre {other}"}
+                counts["descartadas"] += 1
+                log_activity("descartado", f"🚫 Não é kendo ({other}): {r['titulo']}", url)
+                continue
             if progress:
                 progress(f"Lendo: {r['titulo']}")
             log_activity("pagina", f"📄 Lendo ({r.get('fonte', 'web')}): {r['titulo']}", url)
@@ -747,9 +801,10 @@ def collect_texts(config: Optional[Dict[str, Any]] = None, depth: int = 1, searc
             counts["lidas"] += 1
             analysis = wr.analyze_page(text, r["titulo"], llm=llm)
             if not analysis["relevante"]:
-                seen[url] = {"status": "descartado", "titulo": r["titulo"], "termos_kendo": analysis["termos_kendo"]}
+                seen[url] = {"status": "descartado", "titulo": r["titulo"], "termos_kendo": analysis["termos_kendo"],
+                             "motivo": analysis.get("motivo", "")}
                 counts["descartadas"] += 1
-                log_activity("descartado", f"🚫 Fora do tema: {r['titulo']} ({analysis['termos_kendo']} termos de kendo)", url)
+                log_activity("descartado", f"🚫 Não é kendo: {r['titulo']} ({analysis.get('motivo') or 'fora do tema'})", url)
                 continue
             tier = resolver.classify_source({"title": r["titulo"], "url": url})
             store.setdefault("fontes", {})[url] = {
@@ -896,20 +951,22 @@ def run_collection_session(hours: float, allow_download: bool, config: Optional[
                                   progress=lambda msg: _update_session(etapa=msg),
                                   **{k: v for k, v in collect_kwargs.items() if k in ("fetcher", "llm")},
                                   **({"searcher": collect_kwargs["text_searcher"]} if "text_searcher" in collect_kwargs else {}))
-            sess = _load_json("sessao.json", {})
-            _update_session(textos_lidos=sess.get("textos_lidos", 0) + texts["lidas"],
-                            textos_carregados=sess.get("textos_carregados", 0) + texts["carregadas"])
+            with _session_lock:
+                sess = _load_json("sessao.json", {})
+                _update_session(textos_lidos=sess.get("textos_lidos", 0) + texts["lidas"],
+                                textos_carregados=sess.get("textos_carregados", 0) + texts["carregadas"])
             if stop_event.is_set():
                 break
             video_kwargs = {k: v for k, v in collect_kwargs.items() if k not in ("fetcher", "llm", "text_searcher")}
             res = collect_videos(cfg, allow_download=allow_download, depth=rounds,
                                  should_stop=lambda: stop_event.is_set() or _now() >= end,
                                  progress=lambda msg: _update_session(etapa=msg), **video_kwargs)
-            sess = _load_json("sessao.json", {})
-            _update_session(rodadas=rounds, novos=sess.get("novos", 0) + res["novos_no_catalogo"],
-                            baixados=sess.get("baixados", []) + res["baixados"],
-                            rotulos=sess.get("rotulos", 0) + res["rotulos"], duvidas=sess.get("duvidas", 0) + res["duvidas"],
-                            etapa=f"aguardando a próxima rodada ({interval:g} min)")
+            with _session_lock:
+                sess = _load_json("sessao.json", {})
+                _update_session(rodadas=rounds, novos=sess.get("novos", 0) + res["novos_no_catalogo"],
+                                baixados=sess.get("baixados", []) + res["baixados"],
+                                rotulos=sess.get("rotulos", 0) + res["rotulos"], duvidas=sess.get("duvidas", 0) + res["duvidas"],
+                                etapa=f"aguardando a próxima rodada ({interval:g} min)")
             remaining = (end - _now()).total_seconds()
             if stop_event.is_set() or remaining <= 0:
                 break
