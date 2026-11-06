@@ -3000,19 +3000,27 @@ elif nav_page == "settings":
         ])
 
         with tab_ref_corpus:
-            st.markdown("**Corpus Técnico de Diretrizes Oficiais e Manuais Canônicos:**")
+            st.markdown("##### 📖 Corpus Técnico de Diretrizes Oficiais e Manuais")
             consulted_sources = auto_trainer.get_consulted_knowledge_sources()
-            src_by_type = auto_trainer.get_knowledge_sources_by_type()
-            top_types = list(src_by_type.items())[:4]
-            if top_types:
-                for col, (src_type, src_count) in zip(st.columns(len(top_types)), top_types):
-                    col.metric(src_type, src_count)
-            st.caption(f"{len(consulted_sources)} fonte(s) no corpus, de {len(src_by_type)} tipo(s).")
+            canonical_sources = [s for s in consulted_sources if s.get("is_canonical", True)]
+            web_sources = [s for s in consulted_sources if not s.get("is_canonical", True)]
+
+            c_src1, c_src2 = st.columns(2)
+            c_src1.metric("📜 Manuais Canônicos (Padrão de Fábrica)", f"{len(canonical_sources)}")
+            c_src2.metric("🌐 Fontes Coletadas pela Internet", f"{len(web_sources)}")
+            st.caption(
+                "💡 **Transparência do Sistema:** Os 3 manuais canônicos (FIK, AJKF e Estudo Biomecânico) são as regras "
+                "fundamentais de Kendo embarcadas de fábrica no SenpAI. Elas não são 'dados consultados' de treinamentos anteriores, "
+                "mas sim as diretrizes oficiais do esporte. As fontes mineradas dinamicamente na internet começam em 0 e são "
+                "completamente apagadas ao reiniciar o treinamento."
+            )
 
             for s_info in consulted_sources:
-                with st.expander(f"📌 [{s_info.get('type', 'Referência')}] {s_info.get('title', '')} — {s_info.get('focus', '')}", expanded=False):
+                origem_badge = "📜 [Padrão de Fábrica]" if s_info.get("is_canonical") else "🌐 [Coleta Internet]"
+                with st.expander(f"{origem_badge} {s_info.get('title', '')} — {s_info.get('focus', '')}", expanded=False):
                     st.markdown(f"**Identificador:** `{s_info.get('id', '')}`")
                     st.markdown(f"**Categoria / Tipo:** {s_info.get('type', '')}")
+                    st.markdown(f"**Origem:** {'Regulamento Canônico Embarcado de Fábrica' if s_info.get('is_canonical') else 'Coletado via Internet'}")
                     st.markdown(f"**Foco Principal:** {s_info.get('focus', '')}")
                     if s_info.get("url"):
                         st.markdown(f"**Fonte:** [{s_info['url']}]({s_info['url']})"
@@ -3082,9 +3090,13 @@ elif nav_page == "settings":
             st.markdown("##### 📊 Estatísticas Consolidadas do Dataset & Aprendizado Geral")
             c_st1, c_st2, c_st3, c_st4 = st.columns(4)
             c_st1.metric("Modalidades Mapeadas", f"{len(TRAINING_MODALITIES_METADATA)}")
-            c_st2.metric("Corpus de Diretrizes", f"{len(consulted_sources)} fontes")
-            c_st3.metric("Rótulos / Lutas Registradas", f"{training_metrics.get('total_feedback_count', 0)}")
-            c_st4.metric("Sessões Homologadas Dan", f"{training_metrics.get('shinpan_reviews_count', 0)}")
+            c_st2.metric("Regulamentos de Fábrica", f"{len(canonical_sources)} manuais")
+            c_st3.metric("Fontes Web Coletadas", f"{len(web_sources)}")
+            c_st4.metric("Rótulos / Lutas Registradas", f"{training_metrics.get('total_feedback_count', 0)}")
+            st.caption(
+                "💡 **Transparência:** Os 3 manuais canônicos correspondem às regras oficiais de arbitragem (FIK/AJKF/Biomecânica) "
+                "embutidas no sistema para avaliação de Yuko-Datotsu. Fontes mineradas na web e rótulos de treino iniciam em 0 e são zerados ao limpar o treinamento."
+            )
 
             with st.expander("📖 Regras Canônicas de Ippon e Yuko-Datotsu Consolidadas", expanded=False):
                 st.markdown(
@@ -3139,19 +3151,26 @@ elif nav_page == "settings":
                     st.markdown(f"- **Elevação de Calcanhar:** `{bio.get('heel_elevation_min', 'Simétrica')}`")
                     st.markdown(f"- **Foco de Alvo:** `{bio.get('datotsu_target_focus', 'Men, Kote, Do, Tsuki')}`")
 
+                canon_ref = mod_learned.get("canonical_reference")
+                if canon_ref:
+                    st.markdown("##### 📜 Manual de Referência Canônico")
+                    st.markdown(f"- 📖 [{canon_ref.get('title', 'Manual AJKF')}]({canon_ref.get('url', '#')}) *(Padrão de Fábrica)*")
+
                 st.markdown("##### 🌐 Fontes Web Mineradas")
                 web_src = mod_learned.get("web_sources", [])
                 if web_src:
                     for ws in web_src:
                         st.markdown(f"- 📄 [{ws.get('title', 'Referência')}]({ws.get('url', '#')}) *(Tipo: {ws.get('type', 'Web')})*")
                 else:
-                    st.caption("Nenhuma fonte externa minerada ainda.")
+                    st.caption("⚪ Nenhuma fonte externa minerada na web ainda (utilizando manuais de fábrica).")
 
             evo_log = mod_learned.get("evolution_log", [])
             if evo_log:
                 with st.expander(f"📜 Log Histórico de Evolução de {mod_learned.get('name', '')} ({len(evo_log)} registros)", expanded=False):
                     for log_entry in evo_log:
-                        st.markdown(f"- `{log_entry.get('timestamp', '')}` — **{log_entry.get('event', '')}**: {log_entry.get('details', '')}")
+                        st.markdown(f"- `{log_entry.get('timestamp', log_entry.get('date', ''))}` — **{log_entry.get('event', log_entry.get('note', ''))}**: {log_entry.get('details', '')}")
+            else:
+                st.caption(f"ℹ️ **Histórico de Evolução:** Nenhum ciclo de treino registrado para {mod_learned.get('name', '')} ainda (histórico limpo).")
 
 
     # --------------------------------------------------------------------------

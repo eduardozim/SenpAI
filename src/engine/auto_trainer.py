@@ -394,19 +394,8 @@ class AutoTrainingEngine:
                         "cadence_optimal": mod_kb.get("biomechanical_thresholds", {}).get("cadence_cpm", (20, 60)),
                         "focus_areas": mod_meta.get("focus_areas", [])
                     },
-                    "web_sources": [
-                        {
-                            "title": mod_kb.get("primary_source", f"Diretriz AJKF / FIK - {mod_meta['name']}"),
-                            "type": "Manual Oficial AJKF",
-                            "url": f"https://www.kendo.or.jp/knowledge/{mod_k}"
-                        }
-                    ],
-                    "evolution_log": [
-                        {
-                            "date": datetime.datetime.now().strftime("%d/%m/%Y"),
-                            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
-                        }
-                    ],
+                    "web_sources": [],
+                    "evolution_log": [],
                 }
             else:
                 # Assegurar campos evolutivos em modalidades existentes
@@ -414,13 +403,15 @@ class AutoTrainingEngine:
                 if "principles_learned" not in m or not m["principles_learned"]:
                     m["principles_learned"] = initial_principles
                 if "web_sources" not in m:
-                    m["web_sources"] = [{
-                        "title": mod_kb.get("primary_source", f"Diretriz Oficial - {mod_meta['name']}"),
-                        "type": "Manual AJKF",
-                        "url": f"https://www.kendo.or.jp/knowledge/{mod_k}"
-                    }]
+                    m["web_sources"] = []
+                else:
+                    # Remove entradas estáticas padrão para não parecerem mineradas dinamicamente
+                    m["web_sources"] = [w for w in m.get("web_sources", []) if not (w.get("type") in ("Manual Oficial AJKF", "Manual AJKF") and "knowledge" in str(w.get("url", "")))]
                 if "evolution_log" not in m:
                     m["evolution_log"] = []
+                else:
+                    # Remove logs genéricos de inicialização para não parecer que há treinos não apagados
+                    m["evolution_log"] = [e for e in m.get("evolution_log", []) if e.get("event") != "Consolidação Inicial" and "Inicialização" not in str(e.get("note", ""))]
                 # Remove métricas da antiga simulação (acurácia por fórmula, maestria, sessões simuladas)
                 for legacy in ("initial_accuracy", "current_accuracy", "mastery_level", "sessions_count"):
                     m.pop(legacy, None)
@@ -450,8 +441,8 @@ class AutoTrainingEngine:
             initial_kb = {
                 "version": "2.0.0",
                 "last_updated": datetime.datetime.now().isoformat(),
-                "total_web_sources_indexed": len(KENDO_KNOWLEDGE_RESOURCES),
-                "sources": KENDO_KNOWLEDGE_RESOURCES,
+                "total_web_sources_indexed": 0,
+                "sources": dict(KENDO_KNOWLEDGE_RESOURCES),
                 "learned_parameters": {
                     "auto_learning_sequence_step": 0,
                     "general_kendo_principles": list(KENDO_GENERAL_PRINCIPLES),
@@ -476,19 +467,8 @@ class AutoTrainingEngine:
                                 "cadence_optimal": KENDO_MODALITY_KNOWLEDGE_BASE.get(mod_k, {}).get("biomechanical_thresholds", {}).get("cadence_cpm", (20, 60)),
                                 "focus_areas": TRAINING_MODALITIES_METADATA.get(mod_k, {}).get("focus_areas", [])
                             },
-                            "web_sources": [
-                                {
-                                    "title": KENDO_MODALITY_KNOWLEDGE_BASE.get(mod_k, {}).get("primary_source", f"Diretriz AJKF / FIK - {TRAINING_MODALITIES_METADATA.get(mod_k, {}).get('name', mod_k)}"),
-                                    "type": "Manual Oficial AJKF",
-                                    "url": f"https://www.kendo.or.jp/knowledge/{mod_k}"
-                                }
-                            ],
-                            "evolution_log": [
-                                {
-                                    "date": datetime.datetime.now().strftime("%d/%m/%Y"),
-                                            "note": "Inicialização da matriz biomecânica e princípios fundamentais."
-                                }
-                            ],
+                            "web_sources": [],
+                            "evolution_log": [],
                         }
                         for mod_k in TRAINING_MODALITIES_METADATA.keys()
                     }
@@ -795,12 +775,15 @@ class AutoTrainingEngine:
 
     def get_consulted_knowledge_sources(self) -> List[Dict[str, Any]]:
         """
-        Retorna a lista estruturada de todas as fontes técnicas e vídeos minerados pela IA.
+        Retorna a lista estruturada das fontes do corpus:
+        - Regulamentos canônicos de base (FIK/AJKF/Biomecânica de fábrica)
+        - Fontes dinâmicas coletadas na internet.
         """
         kb = self.load_knowledge_base()
         raw_sources = kb.get("sources", KENDO_KNOWLEDGE_RESOURCES)
         sources_list = []
         for key, s in raw_sources.items():
+            is_canonical = key in KENDO_KNOWLEDGE_RESOURCES or s.get("origem") != "coleta_internet"
             sources_list.append({
                 "id": key,
                 "title": s.get("title", key),
@@ -811,6 +794,8 @@ class AutoTrainingEngine:
                 "url": s.get("url"),
                 "coletado_em": s.get("coletado_em"),
                 "resumo": s.get("summary") if s.get("origem") == "coleta_internet" else None,
+                "origem": "canonico" if is_canonical else "coleta_internet",
+                "is_canonical": is_canonical,
             })
         return sources_list
 
@@ -846,23 +831,20 @@ class AutoTrainingEngine:
                 "datotsu_target_focus": ", ".join(meta.get("focus_areas", ["Men", "Kote", "Do", "Tsuki"]))
             }
 
-        # Fontes Web mineradas
-        web_sources = list(mod_data.get("web_sources", []))
-        if not web_sources and mod_kb.get("primary_source"):
-            web_sources.append({
+        # Manual canônico de referência de fábrica (AJKF)
+        canonical_ref = None
+        if mod_kb.get("primary_source"):
+            canonical_ref = {
                 "title": mod_kb["primary_source"],
-                "type": "Manual Oficial AJKF",
+                "type": "Manual Oficial AJKF (Padrão de Fábrica)",
                 "url": f"https://www.kendo.or.jp/knowledge/{modality_key}"
-            })
+            }
 
-        # Log de evolução
-        evo_log = list(mod_data.get("evolution_log", []))
-        if not evo_log:
-            evo_log.append({
-                "timestamp": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
-                "event": "Consolidação Inicial",
-                "details": f"Princípios de {meta.get('name', modality_key)} integrados à base de conhecimento."
-            })
+        # Fontes Web dinâmicas mineradas pela IA (filtradas sem fake entries)
+        web_sources = [w for w in mod_data.get("web_sources", []) if not (w.get("type") in ("Manual Oficial AJKF", "Manual AJKF") and "knowledge" in str(w.get("url", "")))]
+
+        # Log de evolução (filtrado sem fake entries)
+        evo_log = [e for e in mod_data.get("evolution_log", []) if e.get("event") != "Consolidação Inicial" and "Inicialização" not in str(e.get("note", ""))]
 
         return {
             "key": modality_key,
@@ -873,6 +855,7 @@ class AutoTrainingEngine:
             "focus_areas": meta.get("focus_areas", []),
             "principles_learned": principles,
             "biomechanical_profile": bio_profile,
+            "canonical_reference": canonical_ref,
             "web_sources": web_sources,
             "evolution_log": evo_log
         }
