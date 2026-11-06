@@ -126,10 +126,8 @@ def load_dataset(dataset_dir: Optional[str] = None) -> Dict[str, Dict[str, Any]]
 
 def save_dataset(items: Dict[str, Dict[str, Any]], dataset_dir: Optional[str] = None) -> None:
     path = _labels_path(dataset_dir)
-    tmp = f"{path}.tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump({"versao": 1, "classes": CLASSES, "recortes": items}, f, indent=1, ensure_ascii=False)
-    os.replace(tmp, path)
+    from src.utils.file_utils import safe_write_json
+    safe_write_json(path, {"versao": 1, "classes": CLASSES, "recortes": items}, indent=1)
 
 
 def set_labels(labels: Dict[str, str], dataset_dir: Optional[str] = None) -> int:

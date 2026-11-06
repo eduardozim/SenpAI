@@ -36,6 +36,7 @@ from typing import Dict, Any, List, Optional, Tuple
 
 from src.utils.logger_manager import log_event
 from src.utils.test_isolation import is_test_mode, get_test_sandbox_dir
+from src.utils.file_utils import safe_write_json, safe_load_json
 
 DEFAULT_LABELS_PATH = os.path.join("data", "match_labels", "gabarito_lutas.json")
 DEFAULT_REPORTS_DIR = os.path.join("data", "weak_labels")
@@ -113,21 +114,16 @@ def _labels_file(path: str) -> str:
 def load_match_labels(path: str = DEFAULT_LABELS_PATH) -> Dict[str, Any]:
     """Carrega o gabarito ({"videos": {nome_do_arquivo: entrada}}); retorna estrutura vazia se não existir."""
     path = _labels_file(path)
-    if not os.path.isfile(path):
+    data = safe_load_json(path, default={"versao": 1, "videos": {}})
+    if not isinstance(data, dict):
         return {"versao": 1, "videos": {}}
-    with open(path, "r", encoding="utf-8") as f:
-        data = json.load(f)
     data.setdefault("videos", {})
     return data
 
 
 def save_match_labels(data: Dict[str, Any], path: str = DEFAULT_LABELS_PATH) -> str:
     path = _labels_file(path)
-    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
-    tmp = f"{path}.tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    os.replace(tmp, path)
+    safe_write_json(path, data, indent=2)
     return path
 
 

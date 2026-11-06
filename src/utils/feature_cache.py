@@ -131,7 +131,8 @@ def save_match_features(cache_key: str, payload: Dict[str, Any]) -> Optional[str
         data["created_at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
         with gzip.open(tmp_path, "wb", compresslevel=5) as f:
             pickle.dump(data, f, protocol=pickle.HIGHEST_PROTOCOL)
-        os.replace(tmp_path, path)
+        from src.utils.file_utils import safe_replace
+        safe_replace(tmp_path, path)
         return path
     except Exception as e:
         log_event("WARNING", f"Falha ao gravar cache de features: {e}", "feature_cache")

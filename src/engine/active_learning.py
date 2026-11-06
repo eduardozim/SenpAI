@@ -613,10 +613,8 @@ class GoldenBenchmark:
 
     @staticmethod
     def _write_json(path: str, data: Any) -> None:
-        tmp = f"{path}.tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, path)
+        from src.utils.file_utils import safe_write_json
+        safe_write_json(path, data, indent=2)
 
     # --------------------------------------------------------------------------
     # Amostras

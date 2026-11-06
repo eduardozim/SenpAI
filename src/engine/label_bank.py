@@ -32,6 +32,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from src.utils.logger_manager import log_event
 from src.utils.test_isolation import is_test_mode, get_test_sandbox_dir
+from src.utils.file_utils import safe_write_json, safe_load_json, _GLOBAL_FILE_IO_LOCK
 
 DEFAULT_BANK_PATH = os.path.join("data", "label_bank.json")
 CLAIMS = ("ponto", "golpe", "tecnica", "modalidade", "regra")
@@ -84,21 +85,13 @@ class LabelBank:
     # Armazenamento
     # ------------------------------------------------------------------
     def load(self) -> Dict[str, Dict[str, Any]]:
-        if not os.path.isfile(self.path):
-            return {}
-        try:
-            with open(self.path, "r", encoding="utf-8") as f:
-                return json.load(f).get("rotulos", {})
-        except Exception as e:
-            log_event("WARNING", f"Banco de rótulos ilegível: {e}", "label_bank")
-            return {}
+        data = safe_load_json(self.path, default={})
+        if isinstance(data, dict):
+            return data.get("rotulos", {})
+        return {}
 
     def _save(self, labels: Dict[str, Dict[str, Any]]) -> None:
-        os.makedirs(os.path.dirname(os.path.abspath(self.path)), exist_ok=True)
-        tmp = f"{self.path}.tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump({"versao": 1, "rotulos": labels}, f, indent=1, ensure_ascii=False)
-        os.replace(tmp, self.path)
+        safe_write_json(self.path, {"versao": 1, "rotulos": labels}, indent=1)
 
     @staticmethod
     def make_id(origin: str, video: str, claim: str, time_sec: Optional[float], kenshi: Optional[str], ref: str = "") -> str:
@@ -107,24 +100,25 @@ class LabelBank:
 
     def add_labels(self, labels: Iterable[Dict[str, Any]]) -> int:
         """Grava (ou atualiza) rótulos. Cada um precisa de origin, video_name e claim."""
-        bank = self.load()
-        now = datetime.datetime.now().isoformat(timespec="seconds")
-        n = 0
-        for lb in labels:
-            if lb.get("origin") not in ORIGINS or lb.get("claim") not in CLAIMS:
-                raise ValueError(f"Rótulo inválido: origem {lb.get('origin')!r}, afirmação {lb.get('claim')!r}")
-            item = dict(lb)
-            item["video_name"] = canonical_video_name(item["video_name"])
-            item.setdefault("confidence", 1.0)
-            item.setdefault("reviewer_weight", 1.0)
-            item["id"] = item.get("id") or self.make_id(item["origin"], item["video_name"], item["claim"],
-                                                          item.get("time_sec"), item.get("kenshi"), item.get("ref", ""))
-            item.setdefault("created_at", bank.get(item["id"], {}).get("created_at", now))
-            item["updated_at"] = now
-            bank[item["id"]] = item
-            n += 1
-        self._save(bank)
-        return n
+        with _GLOBAL_FILE_IO_LOCK:
+            bank = self.load()
+            now = datetime.datetime.now().isoformat(timespec="seconds")
+            n = 0
+            for lb in labels:
+                if lb.get("origin") not in ORIGINS or lb.get("claim") not in CLAIMS:
+                    raise ValueError(f"Rótulo inválido: origem {lb.get('origin')!r}, afirmação {lb.get('claim')!r}")
+                item = dict(lb)
+                item["video_name"] = canonical_video_name(item["video_name"])
+                item.setdefault("confidence", 1.0)
+                item.setdefault("reviewer_weight", 1.0)
+                item["id"] = item.get("id") or self.make_id(item["origin"], item["video_name"], item["claim"],
+                                                              item.get("time_sec"), item.get("kenshi"), item.get("ref", ""))
+                item.setdefault("created_at", bank.get(item["id"], {}).get("created_at", now))
+                item["updated_at"] = now
+                bank[item["id"]] = item
+                n += 1
+            self._save(bank)
+            return n
 
     def add_label(self, **label) -> str:
         self.add_labels([label])

@@ -40,6 +40,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from src.utils.logger_manager import log_event
 from src.utils.test_isolation import is_test_mode, get_test_sandbox_dir
+from src.utils.file_utils import safe_replace, safe_write_json, safe_load_json, _GLOBAL_FILE_IO_LOCK
 
 DEFAULT_CONFIG_PATH = os.path.join("config", "internet_sources.json")
 INTERNET_ORIGIN = "internet"
@@ -128,67 +129,12 @@ def save_config(cfg: Dict[str, Any], path: Optional[str] = None) -> None:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 
-_file_io_lock = threading.RLock()
-
-
-def _safe_replace(src: str, dst: str, max_retries: int = 15, delay: float = 0.05) -> None:
-    """
-    Substitui src por dst de forma segura e atômica no Windows, com retentativas e backoff para contornar
-    locks temporários de leitura mantidos por outras threads ou pelo antivírus do sistema.
-    """
-    for i in range(max_retries):
-        try:
-            os.replace(src, dst)
-            return
-        except (PermissionError, OSError) as e:
-            if i == max_retries - 1:
-                # Fallback: tentar sobrescrever diretamente se a renomeação/deleção atômica estiver bloqueada
-                try:
-                    shutil.copyfile(src, dst)
-                    try:
-                        os.remove(src)
-                    except Exception:
-                        pass
-                    return
-                except Exception:
-                    raise e
-            time.sleep(delay * (1.15 ** i))
-
-
 def _load_json(name: str, default):
-    p = os.path.join(get_root_dir(), name)
-    if not os.path.isfile(p):
-        return default
-    with _file_io_lock:
-        for retry in range(5):
-            try:
-                with open(p, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, PermissionError):
-                if retry == 4:
-                    tmp = p + ".tmp"
-                    if os.path.isfile(tmp):
-                        try:
-                            with open(tmp, "r", encoding="utf-8") as f_tmp:
-                                return json.load(f_tmp)
-                        except Exception:
-                            pass
-                    return default
-                time.sleep(0.02 * (retry + 1))
-            except Exception:
-                return default
-        return default
+    return safe_load_json(os.path.join(get_root_dir(), name), default)
 
 
 def _save_json(name: str, data) -> None:
-    root = get_root_dir()
-    os.makedirs(root, exist_ok=True)
-    p = os.path.join(root, name)
-    tmp = p + ".tmp"
-    with _file_io_lock:
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        _safe_replace(tmp, p)
+    safe_write_json(os.path.join(get_root_dir(), name), data, indent=2)
 
 
 def _use_system_certs() -> None:
@@ -604,6 +550,7 @@ def _download(item: Dict[str, Any], downloader=None) -> str:
     if downloader is not None:
         return downloader(item, get_videos_dir())
     from src.utils.video_downloader import download_video_stream
+    from src.utils.file_utils import safe_replace
     _use_system_certs()
     max_s = None
     # Baixa numa pasta temporária e só então move para a pasta de vídeos, já com o nome final
@@ -611,7 +558,7 @@ def _download(item: Dict[str, Any], downloader=None) -> str:
     os.makedirs(staging, exist_ok=True)
     path, _info = download_video_stream(item["url"], output_dir=staging, quality="media", max_duration_seconds=max_s)
     target = os.path.join(get_videos_dir(), f"internet_{item['id']}.mp4")
-    os.replace(path, target)
+    safe_replace(path, target)
     return target
 
 
@@ -725,11 +672,7 @@ def add_to_corpus(url: str, title: str, analysis: Dict[str, Any], tier_name: str
         "modo_extracao": analysis.get("modo", "regras"),
     }
     kb["total_web_sources_indexed"] = len(kb["sources"])
-    tmp = kb_path + ".tmp"
-    with _file_io_lock:
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(kb, f, indent=2, ensure_ascii=False)
-        _safe_replace(tmp, kb_path)
+    safe_write_json(kb_path, kb, indent=2)
     return key
 
 
@@ -997,7 +940,7 @@ def start_collection_session(hours: float, allow_download: bool, **kwargs) -> bo
         # Marca como ativa já aqui, para a tela mostrar "ligada" no mesmo instante com prazos calculados
         _update_session(ativa=True, inicio=now_dt.isoformat(timespec="seconds"),
                         fim_previsto=end_dt.isoformat(timespec="seconds"), horas_planejadas=float(hours),
-                        baixar=bool(allow_download), etapa="iniciando", encerrada_por=None)
+                        baixar=bool(allow_download), etapa="iniciando", encerrada_por=None, erro=None)
         _session_thread = threading.Thread(
             target=run_collection_session, args=(hours, allow_download),
             kwargs=dict(kwargs, stop_event=_session_stop), name="senpai-internet-session", daemon=True)
