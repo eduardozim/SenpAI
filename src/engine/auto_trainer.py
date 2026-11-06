@@ -442,7 +442,7 @@ class AutoTrainingEngine:
                 "version": "2.0.0",
                 "last_updated": datetime.datetime.now().isoformat(),
                 "total_web_sources_indexed": 0,
-                "sources": dict(KENDO_KNOWLEDGE_RESOURCES),
+                "sources": {},
                 "learned_parameters": {
                     "auto_learning_sequence_step": 0,
                     "general_kendo_principles": list(KENDO_GENERAL_PRINCIPLES),
@@ -776,11 +776,11 @@ class AutoTrainingEngine:
     def get_consulted_knowledge_sources(self) -> List[Dict[str, Any]]:
         """
         Retorna a lista estruturada das fontes do corpus:
-        - Regulamentos canônicos de base (FIK/AJKF/Biomecânica de fábrica)
-        - Fontes dinâmicas coletadas na internet.
+        - Regulamentos e fontes ativas presentes na base de conhecimento.
+        Se a base estiver zerada, retorna lista vazia.
         """
         kb = self.load_knowledge_base()
-        raw_sources = kb.get("sources", KENDO_KNOWLEDGE_RESOURCES)
+        raw_sources = kb.get("sources") or {}
         sources_list = []
         for key, s in raw_sources.items():
             is_canonical = key in KENDO_KNOWLEDGE_RESOURCES or s.get("origem") != "coleta_internet"
@@ -831,12 +831,13 @@ class AutoTrainingEngine:
                 "datotsu_target_focus": ", ".join(meta.get("focus_areas", ["Men", "Kote", "Do", "Tsuki"]))
             }
 
-        # Manual canônico de referência de fábrica (AJKF)
+        # Manual de referência: apenas exibido se houver fontes ativas no corpus
         canonical_ref = None
-        if mod_kb.get("primary_source"):
+        active_sources = kb.get("sources") or {}
+        if mod_kb.get("primary_source") and (modality_key in active_sources or any(k in active_sources for k in KENDO_KNOWLEDGE_RESOURCES)):
             canonical_ref = {
                 "title": mod_kb["primary_source"],
-                "type": "Manual Oficial AJKF (Padrão de Fábrica)",
+                "type": "Manual Oficial AJKF",
                 "url": f"https://www.kendo.or.jp/knowledge/{modality_key}"
             }
 

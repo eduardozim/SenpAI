@@ -3003,34 +3003,33 @@ elif nav_page == "settings":
         with tab_ref_corpus:
             st.markdown("##### 📖 Corpus Técnico de Diretrizes Oficiais e Manuais")
             consulted_sources = auto_trainer.get_consulted_knowledge_sources()
-            canonical_sources = [s for s in consulted_sources if s.get("is_canonical", True)]
-            web_sources = [s for s in consulted_sources if not s.get("is_canonical", True)]
 
-            c_src1, c_src2 = st.columns(2)
-            c_src1.metric("📜 Manuais Canônicos (Padrão de Fábrica)", f"{len(canonical_sources)}")
-            c_src2.metric("🌐 Fontes Coletadas pela Internet", f"{len(web_sources)}")
-            st.caption(
-                "💡 **Transparência do Sistema:** Os 3 manuais canônicos (FIK, AJKF e Estudo Biomecânico) são as regras "
-                "fundamentais de Kendo embarcadas de fábrica no SenpAI. Elas não são 'dados consultados' de treinamentos anteriores, "
-                "mas sim as diretrizes oficiais do esporte. As fontes mineradas dinamicamente na internet começam em 0 e são "
-                "completamente apagadas ao reiniciar o treinamento."
-            )
+            if not consulted_sources:
+                st.metric("Fontes no Corpus Técnico", "0 fontes")
+                st.info(
+                    "ℹ️ **Corpus Técnico Zerado:** Nenhuma fonte, manual ou regulamento foi consultado pelo sistema no momento. "
+                    "O treinamento está completamente zerado no estado inicial limpo.\n\n"
+                    "Para alimentar o corpus técnico com regulamentos oficiais e fontes da internet, utilize a aba ao lado **'🌐 Catálogo e Configuração da Coleta'** ou importe um pacote de treinamento."
+                )
+            else:
+                src_by_type = auto_trainer.get_knowledge_sources_by_type()
+                c_src1, c_src2 = st.columns(2)
+                c_src1.metric("Total de Fontes no Corpus", f"{len(consulted_sources)}")
+                c_src2.metric("Categorias / Tipos", f"{len(src_by_type)}")
 
-            for s_info in consulted_sources:
-                origem_badge = "📜 [Padrão de Fábrica]" if s_info.get("is_canonical") else "🌐 [Coleta Internet]"
-                with st.expander(f"{origem_badge} {s_info.get('title', '')} — {s_info.get('focus', '')}", expanded=False):
-                    st.markdown(f"**Identificador:** `{s_info.get('id', '')}`")
-                    st.markdown(f"**Categoria / Tipo:** {s_info.get('type', '')}")
-                    st.markdown(f"**Origem:** {'Regulamento Canônico Embarcado de Fábrica' if s_info.get('is_canonical') else 'Coletado via Internet'}")
-                    st.markdown(f"**Foco Principal:** {s_info.get('focus', '')}")
-                    if s_info.get("url"):
-                        st.markdown(f"**Fonte:** [{s_info['url']}]({s_info['url']})"
-                                    + (f" · coletada em {str(s_info.get('coletado_em'))[:16].replace('T', ' ')}" if s_info.get("coletado_em") else ""))
-                    if s_info.get("resumo"):
-                        st.caption(s_info["resumo"])
-                    st.markdown("**Diretrizes Técnicas Extraídas & Regras:**")
-                    for rule_str in s_info.get("key_rules", []):
-                        st.markdown(f"- {rule_str}")
+                for s_info in consulted_sources:
+                    with st.expander(f"📌 [{s_info.get('type', 'Referência')}] {s_info.get('title', '')} — {s_info.get('focus', '')}", expanded=False):
+                        st.markdown(f"**Identificador:** `{s_info.get('id', '')}`")
+                        st.markdown(f"**Categoria / Tipo:** {s_info.get('type', '')}")
+                        st.markdown(f"**Foco Principal:** {s_info.get('focus', '')}")
+                        if s_info.get("url"):
+                            st.markdown(f"**Fonte:** [{s_info['url']}]({s_info['url']})"
+                                        + (f" · coletada em {str(s_info.get('coletado_em'))[:16].replace('T', ' ')}" if s_info.get("coletado_em") else ""))
+                        if s_info.get("resumo"):
+                            st.caption(s_info["resumo"])
+                        st.markdown("**Diretrizes Técnicas Extraídas & Regras:**")
+                        for rule_str in s_info.get("key_rules", []):
+                            st.markdown(f"- {rule_str}")
 
         with tab_ref_internet:
             try:
@@ -3091,13 +3090,11 @@ elif nav_page == "settings":
             st.markdown("##### 📊 Estatísticas Consolidadas do Dataset & Aprendizado Geral")
             c_st1, c_st2, c_st3, c_st4 = st.columns(4)
             c_st1.metric("Modalidades Mapeadas", f"{len(TRAINING_MODALITIES_METADATA)}")
-            c_st2.metric("Regulamentos de Fábrica", f"{len(canonical_sources)} manuais")
-            c_st3.metric("Fontes Web Coletadas", f"{len(web_sources)}")
-            c_st4.metric("Rótulos / Lutas Registradas", f"{training_metrics.get('total_feedback_count', 0)}")
-            st.caption(
-                "💡 **Transparência:** Os 3 manuais canônicos correspondem às regras oficiais de arbitragem (FIK/AJKF/Biomecânica) "
-                "embutidas no sistema para avaliação de Yuko-Datotsu. Fontes mineradas na web e rótulos de treino iniciam em 0 e são zerados ao limpar o treinamento."
-            )
+            c_st2.metric("Corpus de Diretrizes", f"{len(consulted_sources)} fontes")
+            c_st3.metric("Rótulos / Lutas Registradas", f"{training_metrics.get('total_feedback_count', 0)}")
+            c_st4.metric("Sessões Homologadas Dan", f"{training_metrics.get('shinpan_reviews_count', 0)}")
+            if not consulted_sources and not training_metrics.get("total_feedback_count"):
+                st.caption("ℹ️ O sistema está no estado inicial limpo (zerado). Nenhuma fonte foi consultada e nenhum dado de treinamento foi acumulado ainda.")
 
             with st.expander("📖 Regras Canônicas de Ippon e Yuko-Datotsu Consolidadas", expanded=False):
                 st.markdown(

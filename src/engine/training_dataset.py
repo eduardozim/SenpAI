@@ -228,7 +228,11 @@ def _write_defaults(root: str) -> None:
     os.makedirs(os.path.dirname(p), exist_ok=True)
     with open(p, "w", encoding="utf-8") as f:
         json.dump(DEFAULT_CALIBRATION_PROFILES, f, indent=2, ensure_ascii=False)
-    # A base de conhecimento é recriada com o conteúdo de referência pelo AutoTrainingEngine ao abrir.
+    try:
+        from src.engine.auto_trainer import AutoTrainingEngine
+        AutoTrainingEngine(root=root).reset_knowledge_base()
+    except Exception:
+        pass
 
 
 class TrainingBusyError(RuntimeError):

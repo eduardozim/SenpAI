@@ -50,7 +50,8 @@ class TestAutoTrainer(unittest.TestCase):
     def test_knowledge_base_initialization_without_fake_metrics(self):
         kb = self.engine.load_knowledge_base()
         self.assertIn("sources", kb)
-        self.assertIn("fik_regulations", kb["sources"])
+        self.assertEqual(kb["sources"], {})
+        self.assertEqual(kb.get("total_web_sources_indexed", 0), 0)
         mods = kb["learned_parameters"]["training_modalities"]
         self.assertEqual(set(mods), set(TRAINING_MODALITIES_METADATA))
         for m in mods.values():
@@ -84,6 +85,15 @@ class TestAutoTrainer(unittest.TestCase):
         self.assertTrue(info["principles_learned"])
 
     def test_knowledge_sources_by_type(self):
+        # Quando a base está zerada
+        self.assertEqual(self.engine.get_knowledge_sources_by_type(), {})
+        self.assertEqual(self.engine.get_consulted_knowledge_sources(), [])
+
+        # Adicionando uma fonte ao corpus
+        kb = self.engine.load_knowledge_base()
+        kb.setdefault("sources", {})["fik_regulations"] = dict(KENDO_KNOWLEDGE_RESOURCES["fik_regulations"])
+        self.engine.save_knowledge_base(kb)
+
         counts = self.engine.get_knowledge_sources_by_type()
         self.assertEqual(sum(counts.values()), len(self.engine.get_consulted_knowledge_sources()))
         self.assertEqual(list(counts.values()), sorted(counts.values(), reverse=True))
