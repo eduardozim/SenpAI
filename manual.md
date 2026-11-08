@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.4.0.0`
+> **Versão Oficial do Sistema**: `v 0.4.1.0`
 
 ---
 
@@ -172,14 +172,21 @@ Dev/
 │   └── config.toml                 # Configurações do servidor Streamlit (remoção de limite de upload de vídeo)
 ├── config/
 │   ├── ai_knowledge_base.json      # Base de conhecimento persistida e auto-treinamento de IA
+│   ├── api_keys.local.json         # Chaves de API de IA e busca (Gemini, OpenAI, SerpApi) — fora do git
 │   ├── calibration_profiles.json   # Configurações e pesos dos perfis de calibração
+│   ├── internet_sources.json       # Configuração de catálogo e filtros para coleta na internet
 │   ├── settings.json               # Configurações globais do sistema (CPU/GPU)
 │   └── sonkyo_learned_profile.json # Perfil adaptativo aprendido de postura de Sonkyō
 ├── data/
 │   ├── auto_training_checkpoint.json # Checkpoint persistente de tolerância a falhas do auto-treinador
 │   ├── benchmark_golden/
 │   │   └── golden_dataset.json       # Dataset canônico imutável de benchmark padrão-ouro (Eixo 4)
+│   ├── empirical_reference_distributions.json # Distribuições estatísticas empíricas de referência por modalidade
 │   ├── feedback_dataset.json       # Base de dados de anotações (TP/FP/FN/Dan) para RL
+│   ├── internet/                   # Catálogo, sessões e vídeos coletados na internet
+│   ├── label_bank.json             # Banco Único de Rótulos unificado (humano, web, bandeiras, gabarito)
+│   ├── match_labels/               # Gabaritos de luta canônicos (anotações de Shiai)
+│   ├── models/                     # Modelos de rede neural locais (pesos YOLOv8-Pose / YOLO11n-pose)
 │   └── training_history.json       # Histórico de sessões de treinamento e revisões por Dan
 ├── logs/
 │   ├── senpai_debug.log            # Arquivo consolidado de logs, erros e alertas do sistema
@@ -190,56 +197,52 @@ Dev/
 │   │   ├── camera_invariance.py    # Invariância de câmera, compensação de perspectiva e Maai 3D (Eixo 5)
 │   │   ├── kenshi_style_model.py   # Modelagem de baseline cinestésico individual e warm start de perfis (Eixo 6)
 │   │   ├── event_spotter.py        # Detecção temporal de picos cinemáticos, debounce e NMS de golpes
+│   │   ├── modality_classifier.py  # Classificador de modalidades de treino e cálculo de acurácia
 │   │   ├── multi_camera_fusion.py  # Fusão de consenso multi-câmeras e avaliação Yuko-Datotsu
+│   │   ├── multimodal_yuko_datotsu.py # Avaliação multimodal avançada de Yuko-Datotsu (Eixo 3)
 │   │   ├── sonkyo_detector.py      # Identificação de Sonkyō, delimitação da luta e aprendizado
-│   │   └── training_analyzer.py    # Análise das 14 modalidades de dojo e avaliação dos 3 Pilares
+│   │   ├── strike_classifier.py    # Classificador de golpes e detecção de Ippon
+│   │   ├── technique_classifier.py # Classificador de técnicas específicas de Kendo
+│   │   ├── training_analyzer.py    # Análise das 14 modalidades de dojo e avaliação dos 3 Pilares
+│   │   └── training_live_manager.py # Orquestrador de sessões de treino ao vivo com telemetria
 │   ├── engine/
 │   │   ├── active_learning.py      # Motor de Aprendizado Ativo (Uncertainty, Golden Benchmark, Consenso e Trust)
 │   │   ├── auto_trainer.py         # Motor de auto-treinamento por IA, persistência e baselines
 │   │   ├── calibrator.py           # Motor de pontuação e validação de limiares
 │   │   ├── feedback_manager.py     # Motor de Aprendizagem por Reforço, Governança por Dan e Otimização
+│   │   ├── internet_collector.py   # Motor de coleta contínua na internet (YouTube, web, diretrizes)
+│   │   ├── label_bank.py           # Gestor do Banco Único de Rótulos (LabelBank)
 │   │   ├── llm_assistant.py        # Assistente LLM Especialista FIK (Gemini/OpenAI + fallback determinístico)
-│   │   └── reporter.py             # Gerador de relatórios diagnósticos textuais
+│   │   ├── mathematical_calibrator.py # Calibração matemática e otimização por gradiente
+│   │   ├── reporter.py             # Gerador de relatórios diagnósticos textuais
+│   │   ├── training_dataset.py     # Gestão e ciclo de vida do dataset (apagar, exportar, restaurar com hash)
+│   │   └── weak_labels.py          # Parser e sincronização de rótulos fracos de lutas
 │   ├── utils/
 │   │   ├── demo_generator.py       # Gerador sintético de vídeos de teste de Kendo
 │   │   ├── environment.py          # Detecção e status de isolamento de ambiente virtual (.venv)
 │   │   ├── excel_strikes_manager.py # Exportação e importação de golpes via planilha Excel (.xlsx)
+│   │   ├── feature_cache.py        # Caching resiliente de features e poses extraídas
+│   │   ├── file_utils.py           # I/O atômico thread-safe e resiliente a bloqueios do Windows (safe_replace)
 │   │   ├── hardware.py             # Detecção de GPU NVIDIA CUDA e resolução de fallback CPU
+│   │   ├── internet_collection_panel.py # Painel de telemetria da coleta na web com fragment auto-refresh (3s)
 │   │   ├── logger_manager.py       # Gerenciador central de logs, alertas e diagnósticos de debug
 │   │   ├── settings_manager.py     # Gerenciamento e persistência das configurações do sistema
 │   │   ├── stream_capture.py       # Captura assíncrona otimizada para câmeras IP / RTSP / Webcams
 │   │   ├── test_runner.py          # Runner de testes automatizados com emissão de log descritivo
+│   │   ├── training_cycle_panel.py # Painel de acompanhamento do ciclo contínuo de treino
 │   │   ├── video_downloader.py     # Download, extração de metadados e streaming do YouTube/Web
 │   │   └── video_player_controls.py # Controles interativos de reprodução e VAR via HTML/JS injetado
 │   ├── vision/
 │   │   ├── combatant_tracker.py    # Rastreamento dos 2 Kenshi (Aka/Shiro), flag dorsal e planos
+│   │   ├── flag_detector.py        # Detecção visual de bandeiras de árbitros (Shinpans)
 │   │   ├── pose_detector.py        # Rastreamento de esqueleto 3D via YOLOv8-Pose / MediaPipe
+│   │   ├── pose_encoder.py         # Codificação e extração de embeddings posturais
 │   │   └── shinai_tracker.py       # Estimação do Kensen e zonas anatômicas de alvo
 │   └── pipeline.py                 # Pipeline orquestrador end-to-end de vídeo e validação de Maai
-├── tests/
-│   ├── test_active_learning_eixo4.py # Testes de aprendizado ativo, golden benchmark e assistente LLM
-│   ├── test_camera_invariance_eixo5.py # Testes de invariância de câmera, perspectiva e Maai 3D (Eixo 5)
-│   ├── test_kenshi_style_model_eixo6.py # Testes de baseline cinestésico e warm start de perfis (Eixo 6)
-│   ├── test_auto_trainer.py        # Testes de auto-treinamento, baselines < 50% e tolerância a falhas
-│   ├── test_dan_training_governance.py # Testes da governança por Dan, pacotes e retreinamento
-│   ├── test_environment.py         # Testes de detecção de ambiente virtual
-│   ├── test_excel_strikes_io.py    # Testes de exportação/importação Excel e retreinamento
-│   ├── test_feedback_loop.py       # Testes unitários para a malha de feedback e RL
-│   ├── test_hardware_settings.py   # Testes automatizados de hardware e configurações
-│   ├── test_logger_manager.py      # Testes automatizados do sistema de logs e diagnóstico
-│   ├── test_multi_camera_fusion.py # Testes de fusão multi-câmeras, quórum e consenso
-│   ├── test_pipeline_cancellation.py # Testes automatizados de cancelamento e interrupção do pipeline
-│   ├── test_pose_batch_processing.py # Testes de processamento em batch de poses
-│   ├── test_scoreboard_and_flag_detection.py # Testes do placar oficial e detecção de flag dorsal
-│   ├── test_sonkyo_and_plane_filtering.py # Testes de Sonkyō, limites da luta e filtragem de planos
-│   ├── test_stream_capture.py      # Testes de captura e normalização de streams
-│   ├── test_training_modes.py      # Testes das 14 modalidades de treino e 3 pilares
-│   ├── test_video_downloader.py    # Testes unitários e de integração do downloader de YouTube
-│   └── test_video_player_controls.py # Testes dos controles interativos de vídeo e seek DOM
+├── tests/                          # 50 módulos de testes automatizados (490 testes com 100% de aprovação)
 ├── app.py                          # Dashboard Web Interativo Streamlit (Home, Análise e Configurações)
 ├── main.py                         # Interface de Linha de Comando (CLI com flags completas)
 ├── run_tests.py                    # Script raiz para execução descritiva dos testes automatizados
-├── Melhorias_Issues.md             # Registro de pendências, issues e histórico de versões
 ├── README.TXT                      # Manual simplificado de uso rápido
 └── manual.md                       # Manual técnico completo e log de mudanças (este arquivo)
 ```
@@ -753,6 +756,65 @@ O módulo de captura assíncrona foi expandido para fornecer o **Formato de Entr
 
 ---
 
+### 4.16. Coleta Contínua na Internet, Mineração de Diretrizes e Atualização Reativa ([internet_collector.py](file:///d:/Projetos/SenpAI/Dev/src/engine/internet_collector.py) & [internet_collection_panel.py](file:///d:/Projetos/SenpAI/Dev/src/utils/internet_collection_panel.py))
+
+- **Varredura Periódica Autônoma em Segundo Plano**:
+  - A execução de coleta é gerenciada por uma thread desacoplada (`senpai-internet-session`), configurada para operar por períodos definidos (ex: 2 a 72 horas).
+  - Em intervalos programados (padrão de 15 minutos), cada rodada aprofunda a pesquisa combinando duas frentes:
+    1. **Mineração de Diretrizes e Manuais Oficiais**: Extração estruturada de normas e textos biomecânicos em enciclopédias e manuais online (Wikipedia, DuckDuckGo, manuais oficiais da FIK/AJKF).
+    2. **Busca e Download de Vídeos de Luta / Treino**: Consulta a canais e vídeos no YouTube via `yt-dlp` com rotação inteligente de palavras-chave, respeitando limites estritos de disco, duração e parâmetros de licença.
+- **Detecção Computadorizada de Bandeiras de Árbitros ([flag_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/flag_detector.py))**:
+  - Durante o processamento de vídeos de combate coletados, o detector analisa a movimentação e elevação de bandeiras dos três Shinpans em quadra.
+  - Eventos confirmados por quórum arbitral ($\ge 2$ bandeiras) são automaticamente rotulados como Ippon no banco de dados e adicionados ao pipeline de aprendizado ativo.
+- **Atualização Reativa Automática via Streamlit Fragment (`@st.fragment(run_every=3)`)**:
+  - O painel de telemetria da sessão ativa ([`_render_active_session_card`](file:///d:/Projetos/SenpAI/Dev/src/utils/internet_collection_panel.py)) utiliza fragmentação nativa do Streamlit com reexecução a cada 3 segundos.
+  - Atualiza automaticamente métricas em tempo real: tempo decorrido, percentual de avanço do prazo (%) com barra de progresso visual, estimativa de horário de término, contadores de rodadas, novos no catálogo e vídeos baixados, sem necessidade de cliques em botões de recarga manual.
+- **Silenciamento Inteligente de Alertas de Runtime JS**:
+  - Prevenção de ruído no log através da supressão de mensagens repetitivas de ausência de runtime JavaScript no `yt-dlp` (`--js-runtimes`), assegurando que apenas diagnósticos de real relevância sejam registrados.
+
+---
+
+### 4.17. Governança do Dataset de Treinamento, Ciclo de Treino e Conhecimento Acumulado ([training_dataset.py](file:///d:/Projetos/SenpAI/Dev/src/engine/training_dataset.py), [label_bank.py](file:///d:/Projetos/SenpAI/Dev/src/engine/label_bank.py), [weak_labels.py](file:///d:/Projetos/SenpAI/Dev/src/engine/weak_labels.py) & [training_cycle_panel.py](file:///d:/Projetos/SenpAI/Dev/src/utils/training_cycle_panel.py))
+
+- **Fonte Canônica de Treinamento (`TRAINING_STORES`)**:
+  - Mapeamento centralizado de todos os 18 componentes que constituem o estado de treinamento do SenpAI (revisões de Dan, histórico, banco único de rótulos, gabarito de lutas, golden benchmark, filas de curadoria, baselines de kenshi, distribuições empíricas, modelos treinados e base de conhecimento).
+- **Ciclo de Vida do Dataset (Apagar, Exportar, Restaurar)**:
+  - **Exportação Canônica (.zip)**: Gera pacote de treinamento padronizado com `manifest.json` contendo lista de arquivos, tamanhos e hash SHA-256 para validação estrita de integridade contra corrupção.
+  - **Restauração Segura**: Validação prévia de versão e integridade do manifest com backup automático (`data/backups/`) do estado vigente antes da extração, permitindo reversão atômica em caso de falha.
+  - **Reset Total com Padrões de Fábrica**: A rotina `reset_training()` apaga com segurança todos os dados aprendidos e limpa integralmente o corpus coletado na internet, restaurando os padrões de fábrica: os 3 Manuais Canônicos imutáveis (FIK, AJKF/ZNKR e Estudo Biomecânico de Elite) e as distribuições estatísticas de referência.
+- **Tabela de Modalidades de Treinamento com Acurácia**:
+  - Apresentação desacoplada das 14 modalidades oficiais de Kendo com métricas de acurácia individual de detecção e classificação calculadas por heurística e modelos calibrados.
+- **Gabarito de Lutas Integrado (`data/match_labels`)**:
+  - Estrutura integrada à governança para registro de anotações oficiais de lutas (Shiai) e sincronização bidirecional com o Banco Único de Rótulos.
+- **Painel Interativo "O que o SenpAI já aprendeu"**:
+  - **Visão Geral**: Consolidação dos princípios universais do Kendo (*Ki-Ken-Tai-Ichi*, *Maai*, *Zanshin*, *Shisei*, *Hasuji & Tenouchi*, *Sonkyō*, *Chushin-sen*), regras canônicas de Yūko-Datotsu e métricas globais do dataset.
+  - **Visão por Modalidade**: Inspeção granular dos conceitos técnicos aprendidos, perfis biomecânicos de tolerância e cadência ideal (CPM), fontes web mineradas e log de evolução cronológica.
+
+---
+
+### 4.18. Resiliência de I/O e Escrita Atômica no Windows com Prevenção de Concorrência ([file_utils.py](file:///d:/Projetos/SenpAI/Dev/src/utils/file_utils.py))
+
+- **Diagnóstico da Causa Raiz do Bloqueio de Arquivo (`[WinError 5] Acesso negado`)**:
+  - No Windows, a substituição atômica de arquivos via `os.replace(tmp, dst)` falha com erro de acesso negado quando outro processo ou thread (como o polling de arquivos do Streamlit ou o antivírus do sistema operacional) mantém o arquivo de destino aberto para leitura sem a flag `FILE_SHARE_DELETE`.
+- **Camada de I/O Segura e Multi-Nível**:
+  - `safe_replace(src, dst, max_retries=25, delay=0.05)`: Executa tentativas progressivas com espera exponencial (backoff). Caso o bloqueio do Windows persista, aciona fallback emergencial seguro via `shutil.copyfile(src, dst)` e posterior remoção do arquivo temporário.
+  - `safe_write_json(path, data, indent=2)`: Escrita atômica em arquivo temporário `.tmp` com proteção de lock reentrante global (`_GLOBAL_FILE_IO_LOCK`) e aplicação de `safe_replace`.
+  - `safe_load_json(path, default=None)`: Leitura thread-safe protegida por lock com suporte a retry e recuperação a partir de `.tmp` caso o arquivo principal esteja no meio de uma gravação.
+  - Adoção uniforme em todos os módulos que realizam persistência concorrente de dados (`label_bank`, `weak_labels`, `active_learning`, `flag_detector`, `feature_cache`, `hardware`, `internet_collector`).
+
+---
+
+### 4.19. Aba Dedicada "Variáveis do Sistema" e Isolamento Seguro de Credenciais ([api_keys.local.json](file:///d:/Projetos/SenpAI/Dev/config/api_keys.local.json))
+
+- **Isolamento de Credenciais de IA e Busca**:
+  - Centralização de todas as chaves de API externas (Google Gemini AI Studio, OpenAI e SerpApi) em uma nova aba dedicada nas Configurações do Sistema: **Variáveis do Sistema**.
+  - Persistência exclusiva no arquivo `config/api_keys.local.json`.
+- **Proteção Contra Vazamento e Versionamento**:
+  - O arquivo `config/api_keys.local.json` é estritamente ignorado no Git (`.gitignore`) e excluído dos pacotes ZIP de treinamento gerados para exportação, garantindo que as credenciais do usuário permaneçam exclusivamente em seu computador local.
+  - Monitoramento visual de status com indicadores em tempo real (configurada / não configurada), inputs protegidos para digitação de chaves e links de acesso rápido para obtenção de cotas gratuitas.
+
+---
+
 ## 5. Suíte de Testes Automatizados e Relatório de Execução
 
 O projeto inclui suíte completa de testes automatizados em `unittest` com runner customizado ([test_runner.py](file:///d:/Projetos/SenpAI/Dev/src/utils/test_runner.py)) e script de execução dedicado ([run_tests.py](file:///d:/Projetos/SenpAI/Dev/run_tests.py)).
@@ -778,31 +840,61 @@ Também é possível disparar os testes diretamente no **Web Dashboard** acessan
 - **Política de Retenção Única**:
   - A pasta `logs/` mantém **estritamente apenas o último log de testes executado**, sobrescrevendo ou limpando relatórios anteriores automaticamente a cada nova execução.
 
-### Módulos de Testes Incluídos (240 Testes em 25 Módulos)
+### Módulos de Testes Incluídos (490 Testes em 50 Módulos)
 
-- **`test_active_learning_eixo4.py` (10 testes)**: Valida o cálculo de amostragem por incerteza (faixa 45%-65%), enfileiramento inteligente, avaliação de acurácia contra o dataset padrão-ouro canônico (`GoldenBenchmark`), salvaguarda mandatória contra esquecimento catastrófico (`validate_no_regression`), bloqueio de regressão no retreinamento adaptativo e auto-treinamento, consenso multi-árbitro 2-de-3 ponderado por Dan, detecção de divergência arbitral, decaimento exponencial de autoridade por inatividade (`ReviewerTrustManager`), rotulagem de lances pelo Assistente LLM Especialista FIK e explicação pedagógica de lances controversos.
-- **`test_auto_trainer.py` (14 testes)**: Valida a inicialização da base de conhecimento de Kendo, diagnóstico autônomo de necessidade mais latente, ciclo de auto-treinamento com tempo controlado, baselines preliminares realistas (< 50%), recalibração de perfis de arbitragem e das 14 modalidades pedagógicas, persistência incremental em governança e checkpoints de tolerância a falhas.
-- **`test_dan_training_governance.py` (8 testes)**: Valida salvamento de revisões com Dan, retreinamento do modelo, cálculo das métricas Dan (contador humano vs IA, média de Dan humano pura e tabela por Dan com linha dedicada para IA e Decisão dos Shinpans), ponderação regulamentar com peso balanceado (4.5) para Shinpans, as 5 regras de transição de estado da UI (`test_shinpan_ui_state_transitions`), exportação/importação de pacotes `.json` com data e Dan/Shinpan, e reset do sistema.
-- **`test_environment.py` (9 testes)**: Valida detecção, integridade e isolamento do ambiente virtual Python (`.venv`).
-- **`test_excel_strikes_io.py` (7 testes)**: Valida exportação de golpes detectados para planilha Excel (.xlsx), geração de template vazio, importação com sanitização e validação de schema, suporte a anotações por Dan e Shinpans, integração com a base de governança e acionamento de retreinamento do modelo.
-- **`test_feedback_loop.py` (2 testes)**: Valida persistência, cálculo de precisão/recall e algoritmo de aprendizagem por reforço sobre Falsos Positivos.
-- **`test_hardware_settings.py` (7 testes)**: Valida detecção de GPU NVIDIA CUDA, configurações globais e resolução de fallback transparente para CPU.
-- **`test_logger_manager.py` (5 testes)**: Valida sistema de logs, métricas em tempo real e diagnósticos automatizados.
-- **`test_multi_camera_fusion.py` (10 testes)**: Valida o motor de consenso e fusão multi-câmeras, escalonamento de quórum por quantidade de câmeras ($N=1$ a $4$), rejeição de falsos positivos unilaterais, alinhamento temporal, fusão de scores e a presença da análise completa de Yūko-Datotsu (Ki-Ken-Tai-Ichi) para golpes Ippon e não-Ippon.
-- **`test_pipeline_cancellation.py` (7 testes)**: Valida cancelamento cooperativo, liberação de recursos de streaming e cronômetro em tempo real.
-- **`test_pose_batch_processing.py` (8 testes)**: Valida processamento de poses em lotes paralelos com aceleração.
-- **`test_scoreboard_and_flag_detection.py` (7 testes)**: Valida o placar eletrônico Sanbon-shobu, detecção cromática de flag dorsal (Tasukuki) e inversão Aka ⇄ Shiro.
-- **`test_shinai_tracking.py` (6 testes)**: Valida rastreamento de Shinai, estimação do Kensen, zonas anatômicas de alvo e predição vetorial de impacto.
-- **`test_sonkyo_and_plane_filtering.py` (21 testes)**: Valida a classificação postural de Sonkyō, delimitação temporal da luta, filtragem de planos (fundo/transeuntes/árbitros em primeiro plano), delimitação da quadra de luta (Shiai-jo ROI), travamento K=2, interpolação cinemática de pulsos/pés sob oclusão, supressão de falsos positivos, debounce e NMS de 35 frames do `EventSpotter`, e persistência de aprendizado de Sonkyō.
-- **`test_stream_capture.py` (15 testes)**: Valida a captura assíncrona com threading, reconexão automática e otimizações de rede para câmeras IP / RTSP / Webcams, detecção heurística de URLs web de streaming (`is_web_streaming_url`), resolução de protocolos diretos e fluxos de vídeo em tempo real (YouTube Live/VOD, Twitch, HLS, RTMP) via `yt-dlp` sem download prévio, controle de velocidade de reprodução (0.5x, 1.0x, 1.5x, 2.0x), navegação por seek relativo e absoluto, alternância de pausa/retomada e formatação amigável de tempo (`format_stream_time`).
-- **`test_training_modes.py` (7 testes)**: Valida as 14 modalidades pedagógicas de treino, cálculo dos 3 Pilares (Movimentação, Precisão, Constância) e perfil do Kendoca.
-- **`test_video_downloader.py` (12 testes)**: Valida download, extração de metadados, validação de URLs do YouTube/Web e integração de streams com cache.
-- **`test_video_player_controls.py` (5 testes)**: Valida a geração do HTML do componente de controles de vídeo, presença dos botões de transporte, scripts de seek DOM em `window.parent.document` e injeção do timestamp de busca inicial.
-- **`test_training_live_manager.py` (5 testes)**: Valida a máquina de estados de golpes em tempo real (`LiveStrikeState`), rastreamento biomecânico contínuo da coluna (*Shisei*) e simetria de ombros, contagem de repetições, cadência em Golpes por Minuto (CPM), renderização do HUD em tempo real dos 3 Pilares e geração de relatórios de sessão em Markdown e JSON.
-- **`test_active_learning_curation_clip.py` (3 testes)**: Valida a extração e exibição do corte real da luta para Benchmark arbitral visual na Fila de Curadoria Ativa, o suporte às 3 opções de retorno arbitral (Ippon Válido, Golpe Inválido e Não tem Golpe), o disparo automático do retreinamento adaptativo e a exclusão obrigatória do arquivo de vídeo do golpe em disco, com remoção definitiva do item da fila de pendências ativas e arquivamento no histórico de auditoria.
-- **`test_kenshi_style_model_eixo6.py` (9 testes)**: Valida a atualização online via algoritmo de Welford (MetricDistribution), cálculo de desvios em Z-score e geração de insights humanizados (KinestheticBaselineModel), persistência atômica e gestão multi-praticante em JSON (KinestheticProfileManager), derivação direcional de perfis com Warm Start mais rígido e mais permissivo preservando pesos e linhagem (ProfileWarmStartManager), integração com FeedbackManager e inclusão da Seção 3 no relatório de treino do Kendoca.
+A suíte cobre exaustivamente todos os pilares do sistema, dividida em áreas funcionais:
 
-Total de **246 testes automatizados** distribuídos em 26 módulos, executados e aprovados com 100% de sucesso.
+- **Cinemática, Biomecânica e Invariância Espacial (Eixos 1, 2, 3, 5 e 6)**:
+  - `test_mathematical_calibration_eixo1.py`: Calibração matemática e otimização por gradiente.
+  - `test_actionable_research_eixo2.py`: Injeção de priors bayesianos, fronteiras físicas e resolução hierárquica de autoridade (5 camadas de fontes).
+  - `test_multimodal_yuko_datotsu_eixo3.py`: Reconhecimento multimodal de Yuko-Datotsu, Hasuji, impacto e sincronismo sonoro Datotsu-on.
+  - `test_camera_invariance_eixo5.py`: Invariância de câmera, compensação de perspectiva e cálculo de Maai 3D.
+  - `test_kenshi_style_model_eixo6.py`: Modelagem cinestésica individual, warm start e perfis adaptativos de Kendocas.
+  - `test_shinai_tracking.py`: Rastreamento de Shinai, Kensen e zonas anatômicas de impacto.
+  - `test_sonkyo_and_plane_filtering.py`: Rituais de Sonkyō, gap bridging, filtragem de planos e ROI do Shiaijo.
+- **Governança de Treinamento, Active Learning e Datasets**:
+  - `test_training_dataset.py`: Gestão de ciclo de vida do dataset (apagar com padrões de fábrica, exportar e restaurar com manifest SHA-256).
+  - `test_dan_training_governance.py`: Governança por Dan, ponderação arbitral de Shinpans e retreinamento.
+  - `test_active_learning_eixo4.py`: Amostragem por incerteza, Golden Benchmark, consenso 2-de-3 e decaimento de autoridade.
+  - `test_active_learning_curation_clip.py`: Exibição de cortes de vídeo na curadoria ativa, ciclo de 4 opções e retreinamento.
+  - `test_curation_sub_scores.py` & `test_doubt_curation.py`: Sub-scores cinemáticos e resolução de dúvidas de arbitragem.
+  - `test_golden_benchmark_real.py`: Validação contra o benchmark canônico padrão-ouro.
+  - `test_label_bank.py`: Banco Único de Rótulos unificado e sincronização multi-origem.
+  - `test_weak_labels.py`: Parser e casamento de rótulos fracos de campeonatos.
+  - `test_match_labels_page.py`: Interface e persistência do Gabarito de Lutas.
+  - `test_training_cycle.py`: Histórico e execução do Ciclo de Treino contínuo.
+  - `test_auto_trainer.py`: Motor de auto-treinamento autônomo por IA e checkpoints de tolerância a falhas.
+  - `test_feedback_loop.py`: Malha de feedback e aprendizado por reforço.
+- **Classificação e Visão Computacional**:
+  - `test_flag_detector.py`: Detecção visual de bandeiras de árbitros (Shinpans) e quórum de confirmação.
+  - `test_modality_classifier.py`: Classificador das modalidades pedagógicas e cálculo de acurácia.
+  - `test_technique_classifier.py` & `test_strike_classifier.py`: Classificação de técnicas de Kendo e detecção de Ippon.
+  - `test_pose_encoder.py`: Codificação e extração de embeddings posturais.
+  - `test_pose_batch_processing.py`: Inferência de poses em batch acelerada por GPU.
+  - `test_scoreboard_and_flag_detection.py`: Placar oficial Sanbon-shobu e detecção cromática de Tasuki dorsal.
+  - `test_training_multi_tracker.py` & `test_training_modes.py`: Rastreamento multi-kenshi e cálculo dos 3 Pilares.
+  - `test_training_live_manager.py`: Treinamento ao vivo com contagem de repetições e cadência CPM.
+- **Coleta Contínua na Internet, Streaming e Conectividade**:
+  - `test_internet_collector.py`: Coleta periódica no YouTube e web, catálogo e filtros de disco.
+  - `test_video_downloader.py`: Download otimizado, cache local e clientes InnerTube.
+  - `test_stream_capture.py` & `test_match_streaming_feed.py`: Captura assíncrona com buffer unitário e feeds de streaming.
+  - `test_web_server_options.py`: Modos de operação adaptativos para ambiente local e servidor web.
+  - `test_system_variables_panel.py`: Gestão segura e persistência das chaves de API na nova aba.
+- **Infraestrutura, Resiliência de I/O e Utilitários**:
+  - `test_corrupted_video_safety.py`: Blindagem contra vídeos truncados, vazios ou corrompidos.
+  - `test_isolation_safety.py`: Isolamento seguro de testes para prevenção de poluição de dados reais.
+  - `test_hardware_settings.py`: Resolução multi-nível de GPU NVIDIA CUDA e fallback para CPU.
+  - `test_feature_cache.py`: Cache atômico de poses com persistência acelerada.
+  - `test_environment.py`: Integridade e isolamento de ambiente virtual Python.
+  - `test_logger_manager.py`: Registro consolidado de eventos e diagnósticos de integridade.
+  - `test_pipeline_cancellation.py`: Cancelamento cooperativo e limpeza de streams.
+  - `test_video_player_controls.py`: Controles de reprodução de vídeo e seek DOM.
+  - `test_excel_strikes_io.py`: Gestão de golpes e retreinamento via planilha Excel.
+  - `test_training_pdf_generator.py`: Geração de relatórios técnicos em PDF com diagramas.
+  - `test_analysis_clips.py`: Extração e renderização de clipes de eventos.
+  - `test_optimizer_fixes.py`: Correções e convergência do otimizador matemático.
+
+Total de **490 testes automatizados** distribuídos em 50 módulos, executados e aprovados com 100% de sucesso.
 
 ---
 
@@ -810,7 +902,43 @@ Total de **246 testes automatizados** distribuídos em 26 módulos, executados e
 
 ---
 
-### `[v 0.4.0.0]` — 2026-11-04 *(Versão Atual)*
+### `[v 0.4.1.0]` — 2026-11-07 *(Versão Atual)*
+
+- **Reestruturação Estratégica da Governança de Treinamento ([training_dataset.py](file:///d:/Projetos/SenpAI/Dev/src/engine/training_dataset.py), [label_bank.py](file:///d:/Projetos/SenpAI/Dev/src/engine/label_bank.py), [weak_labels.py](file:///d:/Projetos/SenpAI/Dev/src/engine/weak_labels.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - **Organização Modular das Seções de Governança**:
+    1. *Governança de Treinamento & Painel de Revisão por Dan*: contagem de revisões, média de Dan humano pura e histórico.
+    2. *Espaço em Disco do Treinamento*: telemetria do uso de armazenamento por categoria.
+    3. *Distribuição de Treinamento por Graduação Dan*: percentual de anotações por graduação de faixa (1º ao 8º Dan e IA).
+    4. *Gerenciamento do Dataset de Treinamento*: operações unificadas de Apagar (com restauração estrita de padrões de fábrica), Baixar Treinamento (.zip com manifest e hash SHA-256) e Restaurar Treinamento.
+    5. *Modalidades Oficiais de Treinamento*: tabela desacoplada apresentando as 14 modalidades com métrica individual de acurácia de detecção e classificação calculada por heurística e modelos supervisionados.
+    6. *Corpus Técnico de Referência e Coleta na Internet*: separação visual e lógica definitiva entre os 3 Manuais Canônicos imutáveis (FIK, AJKF/ZNKR e Estudo Biomecânico) e as Fontes Coletadas pela Internet (dinâmicas, catalogadas e resetáveis).
+    7. *Gabarito de Lutas*: integração nativa do painel de anotação de lutas de campeonato diretamente na Governança de Treinamento.
+    8. *Ciclo de Treino*: histórico contínuo de ciclos de treinamento autônomos com telemetria (renomeado de "Ciclo de Treino Real").
+    9. *"O que o SenpAI já aprendeu"*: painel detalhado de transparência do conhecimento assimilado pelo sistema, divido em *Visão Geral do Aprendizado* (princípios regulamentares universais da ZNKR/FIK e regras canônicas de Yūko-Datotsu) e *Aprendizado por Modalidade* (princípios técnicos, perfil biomecânico de cadência em CPM e tolerâncias posturais, fontes mineradas e histórico de evolução).
+  - **Limpeza e Reset Total com Restauração Padrão de Fábrica**:
+    - Ao acionar `🗑️ Apagar Treinamento do Sistema`, tanto os datasets de treino quanto o catálogo/corpus de textos coletados na internet são completamente zerados, reescrevendo estritamente os padrões de fábrica e garantindo que o sistema novo não apresente resquícios visuais de coletas anteriores.
+- **Coleta Contínua na Internet com Atualização em Tempo Real (Fragment 3s) ([internet_collector.py](file:///d:/Projetos/SenpAI/Dev/src/engine/internet_collector.py) & [internet_collection_panel.py](file:///d:/Projetos/SenpAI/Dev/src/utils/internet_collection_panel.py))**:
+  - **Thread Autônoma Desacoplada**: Varredura contínua e programável por período de tempo (ex.: 2h a 72h), alternando a cada 15 minutos rodadas que mineram diretrizes oficiais na web (Wikipedia, DuckDuckGo) e buscam vídeos no YouTube via `yt-dlp`.
+  - **Atualização Automática sem Intervenção Humana (`@st.fragment(run_every=3)`)**:
+    - Acompanhamento da coleta em tempo real atualizado a cada 3 segundos via fragment do Streamlit, apresentando tempo decorrido, percentual de avanço com barra de progresso gráfica, estimativa de horário de término e contadores de rodadas, vídeos novos e baixados.
+  - **Silenciamento de Avisos de Runtime JS**:
+    - Supressão de mensagens repetitivas sobre ausência de JavaScript runtime no `yt-dlp` (`--js-runtimes`), mantendo o console e logs limpos.
+- **Nova Aba Dedicada "Variáveis do Sistema" ([app.py](file:///d:/Projetos/SenpAI/Dev/app.py) & [api_keys.local.json](file:///d:/Projetos/SenpAI/Dev/config/api_keys.local.json))**:
+  - Criação de aba exclusiva nas Configurações Gerais para cadastro e gerenciamento das chaves de API do Google Gemini AI Studio, OpenAI e SerpApi.
+  - Isolamento seguro em `config/api_keys.local.json`, fora do controle de versão Git (`.gitignore`) e fora dos pacotes de exportação de treino, prevenindo vazamentos de cotas pessoais.
+- **Resiliência de I/O e Escrita Atômica no Windows ([file_utils.py](file:///d:/Projetos/SenpAI/Dev/src/utils/file_utils.py))**:
+  - Implementação de `safe_replace`, `safe_write_json` e `safe_load_json` protegidos pelo lock reentrante global `_GLOBAL_FILE_IO_LOCK`.
+  - Resolução definitiva de erros de travamento por leitura concorrente do Streamlit e antivírus (`PermissionError: [WinError 5] Acesso negado: '*.tmp' -> '*'`) através de retries exponenciais e fallback seguro de cópia direta (`shutil.copyfile`).
+  - Padronização em todos os módulos com persistência frequente em disco (`label_bank`, `weak_labels`, `active_learning`, `flag_detector`, `feature_cache`, `hardware`, `internet_collector`).
+- **Banco Único de Rótulos & Classificador de Bandeiras ([label_bank.py](file:///d:/Projetos/SenpAI/Dev/src/engine/label_bank.py) & [flag_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/flag_detector.py))**:
+  - Criação do `LabelBank` consolidando origens humanas, mineradas e automáticas em `data/label_bank.json`.
+  - Detecção computadorizada de bandeiras de árbitros (Shinpans) em vídeos de campeonato para anotação automática de pontos confirmados por maioria e incertezas para curadoria.
+- **Expansão da Suíte de Testes para 490 Testes Automatizados**:
+  - Auditoria completa com **490 testes automatizados** distribuídos em 50 módulos com **100% de aprovação**, garantindo estabilidade e integridade em todo o sistema.
+
+---
+
+### `[v 0.4.0.0]` — 2026-11-04
 
 - **Limpeza Preventiva e Automática de Uploads & Temporários ([strike_clip_manager.py](file:///d:/Projetos/SenpAI/Dev/src/utils/strike_clip_manager.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - Implementação de rotina inteligente de expurgo `cleanup_senpai_uploads()` atuando na inicialização do app, após novos uploads e ao término de análises (removendo arquivos com mais de 12h/24h e liberando dezenas de gigabytes de espaço em disco).
@@ -1777,7 +1905,7 @@ Total de **246 testes automatizados** distribuídos em 26 módulos, executados e
 > [!IMPORTANT]
 > **AVISO LEGAL E TERMOS DE PROTEÇÃO INTELECTUAL**
 > 
-> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.4.0.0`.**  
+> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.4.1.0`.**  
 > **TODOS OS DIREITOS DE USO E CÓPIA RESERVADOS.**
 > 
 > 1. **Titularidade**: Todo o código-fonte, arquitetura de visão computacional, algoritmos biomecânicos de *Ki-Ken-Tai-Ichi*, modelos de detecção postural, pesos de rede neural, perfis de calibração heurística, identidade visual, interfaces e documentações pertencem exclusivamente aos desenvolvedores e detentores do projeto SenpAI.

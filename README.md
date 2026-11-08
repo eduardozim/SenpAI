@@ -1,13 +1,13 @@
 # SenpAI (先輩 AI) ⚔️
 
 > **Sistema Avançado de Avaliação e Análise Biomecânica de Kendo com Inteligência Artificial**  
-> **Versão Oficial**: `v 0.4.0.0` • **Python**: `3.11` • **Licença**: Todos os Direitos Reservados
+> **Versão Oficial**: `v 0.4.1.0` • **Python**: `3.11` • **Licença**: Todos os Direitos Reservados
 
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B.svg)](https://streamlit.io/)
 [![YOLOv8-Pose](https://img.shields.io/badge/YOLOv8-Pose-00FFFF.svg)](https://ultralytics.com/)
 [![MediaPipe](https://img.shields.io/badge/MediaPipe-Holistic-00C7B7.svg)](https://developers.google.com/mediapipe)
-[![Tests](https://img.shields.io/badge/Tests-Passing-success.svg)](file:///d:/Projetos/SenpAI/Dev/tests)
+[![Tests 490 Passing](https://img.shields.io/badge/Tests-490%20Passing-success.svg)](file:///d:/Projetos/SenpAI/Dev/tests)
 
 ---
 
@@ -33,23 +33,29 @@ O sistema analisa o conceito regulamentar de **Yūko-Datotsu** (ponto válido) a
 ### 2. 🥋 Modo de Treinamento Pedagógico & Multi-Kenshi
 - **Rastreador Multi-Kenshi**: Acompanhamento paralelo de múltiplos praticantes simultâneos no Dojo.
 - **Re-identificação Multimodal (KenshiReID)**: Reconhece atletas pelo Tare frontal, Tenugui posterior e proporções anatômicas mesmo após saírem e retornarem à cena.
-- **Métricas Individuais de Rendimento**: Cadência real (CPM por tempo de presença efetivo), estamina e consistência biomecânica.
+- **Métricas Individuais de Rendimento**: Cadência real (CPM por tempo de presença efetivo), estamina e consistência biomecânica nas 14 modalidades oficiais.
 
-### 3. ⚖️ Curadoria Ativa (Active Learning) & Governança por Dan
-- **Fila de Incerteza Arbitral (45% a 65%)**: Amostras controversas são isoladas para decisão de árbitros e Senseis.
-- **Reprodução Visual com Corte Real do Golpe**: Exibição do clipe exato em torno do impacto da luta.
-- **Ciclo Completo com 4 Opções**:
-  - `✅ Ippon (Válido)`: Confirma o ponto e recalibra a sensibilidade.
-  - `❌ Golpe Inválido`: Homologa tentativa sem pontuação.
-  - `🚫 Não tem Golpe`: Remove detecção espúria.
-  - `🗑️ Descartar`: Descarte gracioso de lances ruidosos sem penalizar o modelo adaptativo.
+### 3. 🏛️ Governança de Treinamento & Conhecimento Acumulado
+- **Estrutura Modular de Governança**: Gestão de espaço em disco, distribuição de revisões por graduação Dan e gerenciamento unificado do dataset (apagar, exportar e restaurar via `.zip` com validação de hash SHA-256).
+- **Modalidades de Treinamento & Acurácia**: Tabela desacoplada com métrica de acurácia de detecção/classificação calibrada por modalidade.
+- **Corpus Técnico de Referência**: Separação transparente entre Manuais Canônicos de fábrica (FIK, AJKF e Estudo Biomecânico) e fontes mineradas na web.
+- **Gabarito de Lutas & Ciclos de Treino**: Anotações oficiais integradas na governança e histórico contínuo de ciclos de treinamento.
+- **"O que o SenpAI já aprendeu"**: Painel do conhecimento acumulado (princípios universais ZNKR/FIK, perfis biomecânicos de tolerância e cadência, e fontes catalogadas).
+
+### 4. 🌐 Coleta Contínua na Internet & Mineração de Diretrizes
+- **Varredura Periódica Autônoma**: Busca e catalogação contínua de vídeos no YouTube (via yt-dlp) e diretrizes técnicas na web (Wikipedia, DuckDuckGo).
+- **Atualização Reativa em Tempo Real**: Progresso, tempo decorrido, percentual de avanço e estimativa de término atualizados a cada 3 segundos via fragment do Streamlit (`@st.fragment`), sem necessidade de atualização manual.
+- **Download Inteligente & Filtros de Disco**: Aplicação estrita de limites de armazenamento e verificação de licenças/duração.
+
+### 5. ⚖️ Curadoria Ativa (Active Learning) & Banco Único de Rótulos
+- **Banco Único de Rótulos (`LabelBank`)**: Consolidação estruturada de rótulos humanos, fontes web, gabarito e detecções automáticas.
+- **Fila de Incerteza Arbitral (45% a 65%)**: Amostras controversas isoladas com reprodução visual do corte real do golpe para decisão de Senseis.
+- **Detector de Bandeiras de Árbitros (`FlagDetector`)**: Extração de decisões arbitrais em vídeo para rotulagem automática de pontos e dúvidas.
 - **Salvaguarda do Golden Benchmark**: Bloqueio de qualquer recalibração que cause regressão no conjunto de ouro.
-- **Pacotes ZIP de Governança**: Exportação e importação consolidada de dados de treino e clipes de vídeo.
 
-### 4. 📹 Fontes de Vídeo Flexíveis
-- **Upload Local**: Suporte a arquivos `.mp4`, `.mov` e `.avi`.
-- **Streaming Web**: Download e análise com cache local de transmissões do YouTube.
-- **Tempo Real**: Câmeras USB via OpenCV local ou WebRTC no navegador para servidores web/cloud.
+### 6. 🔐 Configurações Globais & Variáveis do Sistema
+- **Aba "Variáveis do Sistema"**: Gestão isolada de chaves de API (Google Gemini, OpenAI, SerpApi) em `config/api_keys.local.json` (fora do controle de versão e dos pacotes de exportação).
+- **Resiliência Multiplataforma**: Camada de I/O atômica e thread-safe com locks reentrantes e retries exponenciais, eliminando travamentos de acesso negado no Windows.
 
 ---
 
@@ -104,17 +110,41 @@ python main.py --video caminho/da/luta.mp4 --profile normal --output anotado.mp4
 
 ### Executar Testes Automatizados:
 ```bash
-pytest tests/
+python run_tests.py
+# ou: pytest tests/
 ```
 
 ---
 
-## 🌟 Novidades da Versão `v 0.4.0.0`
+## 🌟 Novidades da Versão `v 0.4.1.0`
 
+- **Reestruturação Completa da Governança de Treinamento**:
+  - Painel de Revisão por Dan, métricas de graduação e gestão de espaço em disco consolidados.
+  - Tabela desacoplada de Modalidades de Treinamento com métrica de acurácia individual calibrada.
+  - Separação estrita entre Manuais Canônicos de fábrica e fontes web mineradas dinamicamente.
+  - Integração do Gabarito de Lutas diretamente na Governança de Treinamento.
+  - Renomeação oficial para "Ciclo de Treino" e inclusão do painel *"O que o SenpAI já aprendeu"* com visão geral e por modalidade.
+- **Coleta Contínua na Internet com Atualização Automática (Fragment 3s)**:
+  - Busca e download programado de vídeos e diretrizes na web com barra de progresso, tempo decorrido e término previsto.
+  - Atualização automática da interface a cada 3 segundos via `@st.fragment`, sem intervenção manual.
+  - Silenciamento inteligente de avisos repetitivos de runtime JavaScript do `yt-dlp`.
+- **Aba Dedicada "Variáveis do Sistema"**:
+  - Nova aba no menu de configurações para cadastro de chaves de API do Google Gemini, OpenAI e SerpApi com isolamento em `config/api_keys.local.json`.
+- **Resiliência de I/O e Escrita Atômica no Windows (`file_utils.py`)**:
+  - Eliminação definitiva de erros de colisão de arquivos temporários (`[WinError 5] Acesso negado`) através de `safe_replace` e `safe_write_json` com retries exponenciais, locks de thread e fallback de cópia direta.
+- **Banco Único de Rótulos & Detecção de Bandeiras**:
+  - Implementação do `LabelBank` unificando anotações humanas, mineradas e automáticas.
+  - Detecção computadorizada de bandeiras de árbitros (`FlagDetector`) para rotulagem automática de lutas.
+- **Expansão da Suíte de Testes para 490 Testes Automatizados**:
+  - Auditoria completa com 490 testes em 50 módulos cobrindo todo o ecossistema com 100% de aprovação.
+
+---
+
+### Versão Anterior: `v 0.4.0.0`
 - **Limpeza Automática & Otimização de Armazenamento**: Gerenciamento proativo do diretório de uploads e arquivos temporários (`data/tmp/senpai_uploads`), liberando espaço automaticamente na inicialização e pós-processamento, além de controle manual por botão de 1 clique nas configurações.
 - **Compatibilidade Web Universal de Vídeo HTML5**: Transcodificação otimizada para contêiner MP4 (H.264 / AAC / YUV420p com flag `+faststart`) aplicada de forma transparente para vídeos anotados e originais, prevenindo erros de decodificação (`Video source error`) em navegadores.
-- **Auditoria Contínua & Execução Dinâmica de Testes**: Contador dinâmico em tempo de execução para a suíte de 317 testes automatizados com taxa de 100% de aprovação.
-- **Mensagens Humanizadas de Streaming & Conexão**: Feedback claro e informativo para streams ao vivo e links remotos, distinguindo canais offline de quedas de conexão.
+- **Auditoria Dinâmica de Testes**: Contador dinâmico em tempo de execução para a suíte de testes.
+- **Mensagens Humanizadas de Streaming**: Feedback claro e informativo para streams ao vivo e links remotos.
 
 ---
 
@@ -122,9 +152,6 @@ pytest tests/
 - **Identificação de Múltiplas Sessões & Agrupamento por Bloco de Modalidade**: Reconhecimento inteligente de diferentes sessões de treino dentro de uma mesma gravação contínua.
 - **Nitidez Aprimorada nas Etiquetas & Renderização HD**: Etiquetas TrueType de alto contraste, anti-colisão vertical e codificação de alta definição FFmpeg.
 - **Re-renderização Dinâmica do Vídeo Anotado**: Diálogo interativo de renomeação de atletas sobre o vídeo com cache de poses sem re-inferência.
-
-
-
 
 Para especificações detalhadas, formulação matemática e guia completo dos regulamentos FIK, consulte o arquivo [manual.md](file:///d:/Projetos/SenpAI/Dev/manual.md).
 

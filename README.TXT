@@ -4,7 +4,7 @@
 
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
 
-                              Versão: v 0.4.0.0
+                              Versão: v 0.4.1.0
 
 ===============================================================================
 
@@ -719,7 +719,43 @@ mudanças, consulte o arquivo manual.md.
 
 -------------------------------------------------------------------------------
 
-8. NOVIDADES DA VERSÃO (v 0.4.0.0)
+8. NOVIDADES DA VERSÃO (v 0.4.1.0)
+
+-------------------------------------------------------------------------------
+
+- Reestruturação Completa da Governança de Treinamento:
+  • Painel de Revisão por Dan, métricas de graduação e gestão de espaço em disco consolidados.
+  • Tabela desacoplada de Modalidades de Treinamento com métrica de acurácia individual calibrada.
+  • Separação estrita entre Manuais Canônicos de fábrica e fontes web mineradas dinamicamente.
+  • Integração do Gabarito de Lutas diretamente na Governança de Treinamento.
+  • Renomeação oficial para "Ciclo de Treino" e inclusão do painel "O que o SenpAI já aprendeu"
+    com visão geral dos princípios regulamentares e detalhamento por modalidade.
+
+- Coleta Contínua na Internet com Atualização Automática (Fragment 3s):
+  • Busca e download programado de vídeos e diretrizes na web com barra de progresso, tempo
+    decorrido e término previsto.
+  • Atualização automática da interface a cada 3 segundos via @st.fragment, sem intervenção manual.
+  • Silenciamento inteligente de avisos repetitivos de runtime JavaScript do yt-dlp.
+
+- Aba Dedicada "Variáveis do Sistema":
+  • Nova aba no menu de configurações para cadastro de chaves de API do Google Gemini, OpenAI e
+    SerpApi com isolamento seguro em 'config/api_keys.local.json'.
+
+- Resiliência de I/O e Escrita Atômica no Windows (file_utils.py):
+  • Eliminação definitiva de erros de colisão de arquivos temporários ([WinError 5] Acesso negado)
+    através de safe_replace e safe_write_json com retries exponenciais, locks e fallback de cópia direta.
+
+- Banco Único de Rótulos & Detecção de Bandeiras:
+  • Implementação do LabelBank unificando anotações humanas, mineradas e automáticas.
+  • Detecção computadorizada de bandeiras de árbitros (FlagDetector) para rotulagem automática.
+
+- Expansão da Suíte de Testes para 490 Testes Automatizados:
+  • Auditoria completa com 490 testes em 50 módulos cobrindo todo o ecossistema com 100% de aprovação.
+
+
+-------------------------------------------------------------------------------
+
+9. HISTÓRICO DE VERSÕES ANTERIORES (v 0.4.0.0)
 
 -------------------------------------------------------------------------------
 
@@ -733,8 +769,7 @@ mudanças, consulte o arquivo manual.md.
     e atom +faststart em vídeos originais e anotados, eliminando 'Video source error'.
 
 - Auditoria Dinâmica da Suíte de Testes:
-  • Contagem e reflexão automática dos 317 testes unitários e de integração no botão
-    da interface de depuração.
+  • Contagem e reflexão automática de testes unitários e de integração no botão da interface.
 
 - Mensagens Humanizadas em Conexões de Streaming:
   • Feedback descritivo e amigável em português para URLs inválidas ou offline.
@@ -742,7 +777,7 @@ mudanças, consulte o arquivo manual.md.
 
 -------------------------------------------------------------------------------
 
-9. HISTÓRICO DE VERSÕES ANTERIORES (v 0.3.8.0)
+10. HISTÓRICO DE VERSÕES ANTERIORES (v 0.3.8.0)
 
 -------------------------------------------------------------------------------
 
