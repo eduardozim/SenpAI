@@ -42,6 +42,7 @@ TRAINING_STORES: List[Tuple[str, str]] = [
     ("data/shinpan_reviewed_videos.json", "Vídeos revisados por Shinpan"),
     ("data/reviewer_trust_registry.json", "Confiança dos revisores"),
     ("data/label_bank.json", "Banco Único de Rótulos"),
+    ("data/modality_suggestions.json", "Sugestões de modalidade do modelo"),
     ("data/match_labels", "Gabarito de lutas"),
     ("data/benchmark_golden", "Golden Benchmark (lutas congeladas e amostras)"),
     ("data/active_learning_queue.json", "Fila de Curadoria"),
@@ -64,6 +65,8 @@ EXPORT_EXCLUDES = ("data/internet/regras_texto/", "data/internet/baixando/", "/r
 # remove; o exportar não os leva (o catálogo guarda os links). Os demais vídeos da pasta são do usuário.
 INTERNET_VIDEOS_DIR = "data/videos"
 INTERNET_PREFIX = "internet_"
+# Vídeos que o próprio sistema traz para o treino: coleta na internet e cortes dos golpes em dúvida das análises
+DATASET_VIDEO_PREFIXES = ("internet_", "analise_")
 
 
 def get_root(root: Optional[str] = None) -> str:
@@ -305,7 +308,7 @@ def _move_to_trash(root: str) -> Tuple[str, List[Tuple[str, str]], int]:
         if os.path.isdir(vdir):
             for name in sorted(os.listdir(vdir)):
                 src = os.path.join(vdir, name)
-                if name.startswith(INTERNET_PREFIX) and os.path.isfile(src):
+                if name.startswith(DATASET_VIDEO_PREFIXES) and os.path.isfile(src):
                     count += 1
                     dst = os.path.join(trash, "videos", name)
                     os.makedirs(os.path.dirname(dst), exist_ok=True)
@@ -601,12 +604,12 @@ def storage_report(root: Optional[str] = None) -> Dict[str, Any]:
         for dirpath, _, files in os.walk(vdir):
             for name in files:
                 sz = os.path.getsize(os.path.join(dirpath, name))
-                if dirpath == vdir and name.startswith(INTERNET_PREFIX):
+                if dirpath == vdir and name.startswith(DATASET_VIDEO_PREFIXES):
                     inet = (inet[0] + sz, inet[1] + 1)
                 else:
                     user = (user[0] + sz, user[1] + 1)
     groups["dataset"] += inet[0]
-    items.append({"caminho": f"{INTERNET_VIDEOS_DIR}/{INTERNET_PREFIX}*", "descricao": "Vídeos baixados pela coleta na internet",
+    items.append({"caminho": f"{INTERNET_VIDEOS_DIR}/internet_* e analise_*", "descricao": "Vídeos da coleta na internet e cortes das análises",
                   "grupo": "dataset", "arquivos": inet[1], "bytes": inet[0]})
     support = [{"caminho": INTERNET_VIDEOS_DIR, "descricao": "Seus vídeos de lutas e treinos", "arquivos": user[1], "bytes": user[0]}]
     labeled = set(_labeled_crops(root))

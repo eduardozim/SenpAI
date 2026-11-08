@@ -22,15 +22,17 @@ class TestCycle(unittest.TestCase):
             seen = []
             with mock.patch.object(tc, "step_cache", return_value=_ok()), \
                  mock.patch.object(tc, "step_flags", side_effect=RuntimeError("sem GPU")), \
-                 mock.patch.object(tc, "step_internet", return_value=_ok()),                  mock.patch.object(tc, "step_labels", return_value=_ok()), \
+                 mock.patch.object(tc, "step_labels", return_value=_ok()), \
                  mock.patch.object(tc, "step_pretrain", return_value=_ok()), \
                  mock.patch.object(tc, "step_strike_filter", return_value=_ok(promovido=True)), \
                  mock.patch.object(tc, "step_technique", return_value=_ok(promovido=False)),                  mock.patch.object(tc, "step_modality", return_value=_ok(promovido=False)), \
+                 mock.patch.object(tc, "step_suggest_modality", return_value=_ok()), \
                  mock.patch.object(tc, "step_calibration", return_value=_ok()), \
                  mock.patch.object(tc, "step_measure", return_value=_ok(total={"f1": 0.5})):
                 rec = tc.run_training_cycle(tmp, pipeline=mock.Mock(), history_path=hist,
                                             progress=lambda k, n: seen.append(k))
-            self.assertEqual(seen, ["cache", "bandeiras", "internet", "rotulos", "pretreino", "filtro", "tecnica", "modalidade", "calibracao", "medicao"])
+            self.assertEqual(seen, ["cache", "bandeiras", "rotulos", "pretreino", "filtro", "tecnica", "modalidade",
+                                    "sugestao", "calibracao", "medicao"])
             self.assertEqual(rec["etapas"]["bandeiras"]["status"], "falhou")
             self.assertIn("sem GPU", rec["etapas"]["bandeiras"]["detalhe"])
             self.assertEqual(rec["etapas"]["medicao"]["status"], "ok")   # seguiu depois da falha
@@ -52,7 +54,7 @@ class TestCycle(unittest.TestCase):
                 res = tc.step_cache(pipeline, videos, labels_path=labels_path)
             pipeline.extract_match_features.assert_called_once_with(videos[0])
             self.assertEqual((res["novos"], res["ignorados"]), (1, 1))
-            self.assertIn("1 ignorado(s)", res["detalhe"])
+            self.assertIn("Não aproveitável", res["detalhe"])   # "não é luta" antigo = descartado
 
     def test_ignored_entry_is_never_filled_golden_or_flag_target(self):
         from src.engine import weak_labels as wl
@@ -98,8 +100,11 @@ class TestCycle(unittest.TestCase):
 
 class TestBackgroundThread(unittest.TestCase):
     def test_single_cycle_at_a_time(self):
-        def slow_cycle(videos_dir, device_preference="gpu", progress=None):
+        seen_detail = []
+        def slow_cycle(videos_dir, device_preference="gpu", progress=None, detail=None):
             progress("cache", tc.STEP_NAMES["cache"])
+            detail("vídeo 1 de 2 sem poses no cache: a.mp4")
+            seen_detail.append(tc.get_cycle_state()["detalhe"])
             time.sleep(0.3)
             return {"id": "x"}
 
@@ -113,6 +118,53 @@ class TestBackgroundThread(unittest.TestCase):
         state = tc.get_cycle_state()
         self.assertFalse(state["rodando"])
         self.assertEqual(state["resultado"], {"id": "x"})
+        self.assertEqual(seen_detail, ["vídeo 1 de 2 sem poses no cache: a.mp4"])
+
+    def test_running_text_shows_step_detail_and_time(self):
+        import datetime
+        from src.utils.training_cycle_panel import running_text
+        ago = (datetime.datetime.now() - datetime.timedelta(minutes=3)).isoformat(timespec="seconds")
+        text = running_text({"etapa": "Cache de poses (etapa 1 de 9)", "detalhe": "vídeo 3 de 24 sem poses no cache: x.mp4",
+                             "etapa_inicio": ago, "inicio": ago})
+        self.assertIn("etapa 1 de 9", text)
+        self.assertIn("vídeo 3 de 24", text)
+        self.assertIn("3 min", text)
+
+
+class TestCacheAndReadiness(unittest.TestCase):
+    def test_cache_includes_training_videos_and_skips_discarded(self):
+        from src.engine import weak_labels as wl
+        with tempfile.TemporaryDirectory() as tmp:
+            labels = os.path.join(tmp, "g.json")
+            wl.save_match_labels({"versao": 1, "videos": {"treino.mp4": {"tipo": "kakari_geiko", "ignorar": True},
+                                                          "lixo.mp4": {"tipo": "descartar", "ignorar": True}}}, labels)
+            pipe = mock.Mock(vision_model="m")
+            details = []
+            tc._detail_cb = details.append
+            try:
+                with mock.patch("src.utils.feature_cache.load_match_features", return_value=None),                      mock.patch("src.utils.feature_cache.build_cache_key", return_value="k"):
+                    res = tc.step_cache(pipe, ["/v/luta.mp4", "/v/treino.mp4", "/v/lixo.mp4"], labels)
+            finally:
+                tc._detail_cb = None
+            extracted = [c.args[0] for c in pipe.extract_match_features.call_args_list]
+            self.assertEqual(extracted, ["/v/luta.mp4", "/v/treino.mp4"])
+            self.assertEqual(res["ignorados"], 1)
+            self.assertEqual(details[-1], "vídeo 2 de 2 sem poses no cache: treino.mp4")
+
+    def test_readiness_lists_what_is_still_unclassified(self):
+        from src.engine import weak_labels as wl
+        with tempfile.TemporaryDirectory() as tmp:
+            for n in ("a.mp4", "b.mp4", "c.mp4", "analise_x_1.0s.mp4"):
+                open(os.path.join(tmp, n), "wb").close()
+            labels = os.path.join(tmp, "g.json")
+            wl.save_match_labels({"versao": 1, "videos": {"a.mp4": {"tipo": "ji_geiko", "ignorar": True},
+                                                          "b.mp4": {"tipo": "luta", "pontos": []}}}, labels)
+            with mock.patch("src.vision.flag_detector.dataset_stats", return_value={"sem_rotulo": 7}),                  mock.patch("src.engine.active_learning.UncertaintySampler.get_queue", return_value=[]):
+                r = tc.readiness(tmp, labels)
+        got = {it["chave"]: it["quantidade"] for it in r["pendencias"]}
+        self.assertEqual(got, {"videos": 1, "lutas": 1, "bandeiras": 7})
+        self.assertFalse(r["pronto"])
+        self.assertEqual(r["videos"], 3)   # o corte de análise não conta
 
 
 def _panel_app():

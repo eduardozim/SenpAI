@@ -80,3 +80,4 @@ def safe_load_json(path: str, default: Any = None) -> Any:
             except Exception:
                 return default
         return default
+

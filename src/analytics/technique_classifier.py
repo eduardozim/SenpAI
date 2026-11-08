@@ -23,7 +23,7 @@ import os
 import json
 import math
 import datetime
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -157,7 +157,13 @@ def predict_proba(params: Dict[str, Any], X: np.ndarray) -> np.ndarray:
 
 def group_cross_validate(X: np.ndarray, y: List[str], groups: List[str], classes: List[str], l2: float = 1.0) -> List[Optional[str]]:
     """Previsões fora da amostra, deixando um vídeo de fora por vez."""
-    preds: List[Optional[str]] = [None] * len(y)
+    return [p for p, _ in group_cross_validate_proba(X, y, groups, classes, l2=l2)]
+
+
+def group_cross_validate_proba(X: np.ndarray, y: List[str], groups: List[str], classes: List[str],
+                               l2: float = 1.0) -> List[Tuple[Optional[str], Optional[float]]]:
+    """Como group_cross_validate, com a probabilidade da classe prevista (para medir o limiar de confiança)."""
+    preds: List[Tuple[Optional[str], Optional[float]]] = [(None, None)] * len(y)
     g = np.array(groups)
     ya = np.array(y)
     for vid in sorted(set(groups)):
@@ -169,7 +175,7 @@ def group_cross_validate(X: np.ndarray, y: List[str], groups: List[str], classes
         params = fit_softmax(X[train], ya[train].tolist(), train_classes, l2=l2)
         P = predict_proba(params, X[test])
         for i, row in zip(np.where(test)[0], P):
-            preds[i] = train_classes[int(np.argmax(row))]
+            preds[i] = (train_classes[int(np.argmax(row))], float(np.max(row)))
     return preds
 
 

@@ -1,0 +1,25 @@
+{
+ "versao": 1,
+ "videos": {
+  "novo.mp4": {
+   "tipo": "suburi",
+   "probabilidade": 0.99,
+   "confianca": "baixa",
+   "limiar": null,
+   "modelo": "modelo_x.json",
+   "titulo": null,
+   "em": "2026-11-07T22:11:45",
+   "duvida": true
+  },
+  "feito.mp4": {
+   "tipo": "suburi",
+   "probabilidade": 0.99,
+   "confianca": "baixa",
+   "limiar": null,
+   "modelo": "modelo_x.json",
+   "titulo": null,
+   "em": "2026-11-07T22:11:45",
+   "duvida": true
+  }
+ }
+}

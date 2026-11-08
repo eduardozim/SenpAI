@@ -31,6 +31,27 @@ def cycles_table(history: List[Dict[str, Any]]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _elapsed(iso: Any) -> str:
+    import datetime
+    try:
+        s = int((datetime.datetime.now() - datetime.datetime.fromisoformat(str(iso))).total_seconds())
+    except Exception:
+        return ""
+    return f"{s // 3600} h {s % 3600 // 60:02d} min" if s >= 3600 else f"{s // 60} min {s % 60:02d} s"
+
+
+def running_text(state: Dict[str, Any]) -> str:
+    """Etapa atual (N de M), o que ela está fazendo agora e há quanto tempo."""
+    text = f"⏳ Ciclo em andamento: **{state.get('etapa') or 'iniciando'}**"
+    if state.get("etapa_inicio"):
+        text += f" — nesta etapa há {_elapsed(state['etapa_inicio'])}"
+    if state.get("detalhe"):
+        text += f"\n\n↳ {state['detalhe']}"
+    if state.get("inicio"):
+        text += f"\n\nCiclo iniciado há {_elapsed(state['inicio'])}."
+    return text
+
+
 def render_training_cycle_panel(
     device_preference: str = "gpu",
     is_web_server: bool = False,
@@ -39,10 +60,11 @@ def render_training_cycle_panel(
     st.markdown("---")
     st.markdown(title)
     st.caption(
-        "O SenpAI melhora com dados, não com tempo de execução. Cada ciclo: (1) extrai as poses dos vídeos novos; "
-        "(2) grava pontos lidos das bandeiras, se o detector já provou ser confiável; (3) treina um filtro de golpes "
-        "desafiante e só o coloca em uso se ele melhorar o Golden Benchmark; (4) mede o sistema no golden. "
-        "Etapas sem dados suficientes são puladas, com o motivo."
+        "O SenpAI melhora com dados, não com tempo de execução. O ciclo usa só o que você já classificou e o que a "
+        "procura ativa já coletou (ele não coleta nada). Cada ciclo: (1) extrai as poses dos vídeos novos; (2) grava "
+        "pontos lidos das bandeiras, se o detector já provou ser confiável; (3) treina filtro de golpes, técnica e "
+        "modalidade, e só coloca em uso o que melhorar; (4) mede o sistema no golden. Etapas sem dados suficientes "
+        "são puladas, com o motivo."
     )
     if is_web_server:
         st.info("Disponível no ambiente Local: o ciclo usa os vídeos, o cache de poses e a GPU da máquina.")
@@ -55,10 +77,23 @@ def render_training_cycle_panel(
     with st.container(border=True):
         st.caption(f"Pasta dos vídeos: `{videos_dir}` (a mesma da aba Gabarito de Lutas).")
         if state["rodando"]:
-            st.info(f"⏳ Ciclo em andamento: **{state['etapa'] or 'iniciando'}**...")
+            st.info(running_text(state))
             time.sleep(2.0)
             st.rerun()
-        if st.button("▶️ Rodar ciclo agora", type="primary", key="btn_run_training_cycle", disabled=state["rodando"]):
+        ready = tc.readiness(videos_dir)
+        confirmed = True
+        if ready["pendencias"]:
+            with st.container(border=True):
+                st.markdown("**⚠️ Ainda há classificação pendente.** O ciclo treina só com o que já está rotulado:")
+                for it in ready["pendencias"]:
+                    st.markdown(f"- **{it['quantidade']}** {it['texto']} — _{it['onde']}_")
+                confirmed = st.checkbox("Rodar mesmo assim, com o que já está classificado", key="cycle_confirm_pending")
+        else:
+            st.success(f"✅ Tudo classificado: {ready['videos']} vídeo(s) prontos para o ciclo.")
+        if not ready["golden"]:
+            st.caption("Sem lutas no golden (Perfis de Calibração > Eixo 4): os modelos treinam, mas a medição final é pulada.")
+        if st.button("▶️ Rodar ciclo agora", type="primary", key="btn_run_training_cycle",
+                     disabled=state["rodando"] or not confirmed):
             if tc.start_cycle_thread(videos_dir, device_preference=device_preference):
                 st.toast("Ciclo de treino iniciado.", icon="🔁")
             time.sleep(0.3)

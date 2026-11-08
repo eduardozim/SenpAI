@@ -163,6 +163,74 @@ class TestModalityTraining(unittest.TestCase):
         self.assertEqual(set(data["groups"]), {"a.mp4", "b.mp4"})
 
 
+class TestSuggestions(unittest.TestCase):
+    def test_threshold_is_measured_on_validation(self):
+        probs = [0.95] * 12 + [0.6] * 10
+        correct = [True] * 12 + [False] * 5 + [True] * 5
+        thr = mcl.confidence_threshold(probs, correct)
+        self.assertEqual((thr["valor"], thr["acerto"], thr["trechos"]), (0.95, 1.0, 12))
+        self.assertIsNone(mcl.confidence_threshold([0.9] * 5, [True] * 5))          # poucos trechos
+        self.assertIsNone(mcl.confidence_threshold([0.9] * 20, [True, False] * 10))  # nunca chega a 90%
+        model = mcl.train_model(_dataset())
+        self.assertIn("limiar_confianca", model)
+
+    def _run(self, gab_videos, title=None, thr=0.8, prob=0.9, cls="suburi"):
+        from src.engine import weak_labels as wl
+        from src.engine.active_learning import UncertaintySampler
+        clf = mock.Mock()
+        clf.path = "modelo_x.json"
+        clf.model = {"limiar_confianca": None if thr is None else {"valor": thr}}
+        clf.predict_segments.return_value = {"dominante": cls, "probabilidade": prob,
+                                             "segmentos": [{"classe": cls, "inicio_s": 0.0, "fim_s": 30.0, "probabilidade": prob}]}
+        tmp = tempfile.mkdtemp()
+        labels = f"{tmp}/g.json"
+        wl.save_match_labels({"versao": 1, "videos": gab_videos}, labels)
+        videos = [f"{tmp}/{n}" for n in ("novo.mp4", "feito.mp4")]
+        for v in videos:
+            open(v, "wb").close()
+        from src.engine.feedback_manager import FeedbackManager
+        FeedbackManager().clear_active_learning_queue()
+        mcl._save_suggestions({})
+        with mock.patch.object(mcl, "_title_modality", return_value=title):
+            res = mcl.suggest_modalities(mock.Mock(), videos, classifier=clf, labels_path=labels,
+                                         tracks_loader=lambda v: ([[None]], 30.0, 900), make_clip=False)
+        doubts = [it for it in UncertaintySampler().get_queue() if it.get("tipo_duvida") == "modalidade"]
+        return res, mcl.load_suggestions(), doubts
+
+    def test_confident_suggestion_needs_no_doubt_and_skips_classified(self):
+        res, sug, doubts = self._run({"feito.mp4": {"tipo": "kirikaeshi", "ignorar": True}})
+        self.assertEqual(list(sug), ["novo.mp4"])
+        self.assertEqual((sug["novo.mp4"]["tipo"], sug["novo.mp4"]["confianca"]), ("suburi", "alta"))
+        self.assertEqual((res["sugeridos"], res["alta"], res["duvidas"]), (1, 1, 0))
+        self.assertEqual(doubts, [])
+
+    def test_low_confidence_or_title_disagreement_becomes_doubt(self):
+        _, sug, doubts = self._run({}, prob=0.6)
+        self.assertEqual(sug["novo.mp4"]["confianca"], "baixa")
+        self.assertEqual(len([d for d in doubts if d["video_source"].endswith("novo.mp4")]), 1)
+        _, _, doubts = self._run({}, title="kakari_geiko", prob=0.95)
+        d = [d for d in doubts if d["video_source"].endswith("novo.mp4")][0]
+        self.assertIn("título", d["motivo"])
+        self.assertEqual(d["opcoes"]["sugestao"], "suburi")
+
+    def test_without_measured_threshold_everything_goes_to_curation(self):
+        res, sug, _ = self._run({}, thr=None, prob=0.99)
+        self.assertEqual(sug["novo.mp4"]["confianca"], "baixa")
+        self.assertIn("ainda não medido", res["detalhe"])
+
+    def test_answering_doubt_writes_gabarito_type(self):
+        from src.engine import weak_labels as wl
+        from src.engine.feedback_manager import FeedbackManager
+        _, _, doubts = self._run({}, prob=0.5)
+        d = [d for d in doubts if d["video_source"].endswith("novo.mp4")][0]
+        labels = d["video_source"].rsplit("/", 1)[0] + "/g.json"
+        self.assertTrue(FeedbackManager().resolve_modality_doubt(d["id"], "ji_geiko", labels_path=labels))
+        entry = wl.load_match_labels(labels)["videos"]["novo.mp4"]
+        self.assertEqual((entry["tipo"], entry["ignorar"]), ("ji_geiko", True))
+        with self.assertRaises(ValueError):
+            FeedbackManager().resolve_modality_doubt(d["id"], "inexistente", labels_path=labels)
+
+
 class TestModalityIntegration(unittest.TestCase):
     def test_confidence_label_is_honest(self):
         self.assertEqual(modality_confidence_label("AUTO_DETECTED", 0.92), "confiança não medida (regra fixa)")

@@ -313,6 +313,18 @@ class _FakeLLM:
         return self.response(prompt) if callable(self.response) else self.response
 
 
+class TestDownloadOrder(unittest.TestCase):
+    def test_fights_first_then_least_downloaded_modality(self):
+        catalog = {
+            "a": {"status": "candidato", "modalidade_titulo": "kirikaeshi"},
+            "b": {"status": "candidato", "modalidade_titulo": "suburi"},
+            "c": {"status": "candidato", "modalidade_titulo": "luta"},
+            "d": {"status": "baixado", "modalidade_titulo": "kirikaeshi"},
+        }
+        self.assertEqual([k for k, _ in ic.download_order(catalog, {})][:3], ["c", "b", "a"])
+        self.assertEqual([k for k, _ in ic.download_order(catalog, {"prioridade_luta": False})][0], "b")  # sem prioridade: menos baixados
+
+
 class TestTextCollection(_Base):
     def _cfg(self, **textos):
         cfg = json.loads(json.dumps(ic.DEFAULT_CONFIG))

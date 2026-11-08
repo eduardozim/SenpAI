@@ -47,6 +47,20 @@ class TestMatchLabelsPageHelpers(unittest.TestCase):
         self.assertTrue(page.entry_status({}).startswith("⬜"))
         self.assertTrue(page.entry_status({"pontos": [], "pontos_completos": True}).startswith("✅"))
         self.assertTrue(page.entry_status({"pontos": [{"kenshi": "AKA"}]}).startswith("🟡"))
+        self.assertTrue(page.entry_status({"tipo": "luta", "pontos": []}).startswith("🥋"))
+
+    def test_progress_counts_every_classified_video(self):
+        entries = [{"pontos": [], "pontos_completos": True},              # luta com gabarito
+                   {"tipo": "luta", "pontos": []},                         # luta sem pontos ainda
+                   {"tipo": "kakari_geiko", "ignorar": True},              # treino
+                   {"tipo": "shinsa", "ignorar": True},                    # exame
+                   {"tipo": "descartar", "ignorar": True},
+                   {"ignorar": True},                                      # antigo "não é luta" = descartado
+                   {}, {"pontos": []}]                                     # não classificados
+        prog = page.classification_progress(entries)
+        self.assertEqual((prog["classificados"], prog["lutas"], prog["lutas_sem_pontos"], prog["treinos"], prog["descartados"]),
+                         (6, 1, 1, 2, 2))
+        self.assertTrue(page.progress_text(prog, 8).startswith("6 de 8 vídeos classificados"))
 
     def test_format_time(self):
         self.assertEqual(page.wl_format_time(83.46), "01:23.5")
@@ -74,12 +88,13 @@ class TestMatchLabelsPageRender(unittest.TestCase):
             at = AppTest.from_function(_labels_app, args=(videos_dir, labels_path), default_timeout=60)
             at.run()
             self.assertFalse(at.exception, [e.value for e in at.exception])
-            self.assertEqual(len(at.selectbox), 1)
+            self.assertEqual(len(at.selectbox), 2)   # luta + tipo do vídeo
+            self.assertEqual(at.selectbox[1].value, wl.VIDEO_TYPE_LUTA)
             self.assertIn("luta_demo.mp4", wl.load_match_labels(labels_path)["videos"])
-            # Luta ainda sem gabarito: a seção de rotulagem pede o preenchimento
-            self.assertTrue(any("Salve os pontos oficiais" in i.value for i in at.info))
+            # A rotulagem manual saiu da tela: o ciclo de treino e o golden rotulam sozinhos
+            self.assertFalse(any("Rotular agora" in b.label for b in at.button))
 
-            # Salvar a luta como completa (0 x 0) grava o gabarito e libera a rotulagem
+            # Salvar a luta como completa (0 x 0) grava o gabarito
             at.checkbox[0].check()
             at.text_input[1].input("Fulano")
             at.button[0].click().run()
@@ -88,9 +103,17 @@ class TestMatchLabelsPageRender(unittest.TestCase):
             self.assertTrue(saved["pontos_completos"])
             self.assertEqual(saved["aka"], "Fulano")
             self.assertTrue(any("Gabarito salvo" in s.value for s in at.success))
-            self.assertTrue(any("Rotular agora" in b.label for b in at.button))
             # O golden tem um único local na interface (painel do Eixo 4), não nesta tela
             self.assertFalse(any("golden" in b.label.lower() for b in at.button))
+
+            # Trocar o tipo para um treino (kakari-geiko): vira rótulo de modalidade e sai dos pontos
+            at.selectbox(key="labels_tipo_luta_demo.mp4").set_value("kakari_geiko")
+            [b for b in at.button if "Salvar gabarito" in b.label][0].click().run()
+            self.assertFalse(at.exception, [e.value for e in at.exception])
+            saved = wl.load_match_labels(labels_path)["videos"]["luta_demo.mp4"]
+            self.assertEqual((saved["tipo"], saved["ignorar"]), ("kakari_geiko", True))
+            self.assertTrue(any("Kakari-geiko" in s.value for s in at.success))
+            self.assertIn("Kakari-geiko", at.selectbox[0].format_func(at.selectbox[0].value))
 
 
 def _golden_panel_app(labels_path: str):

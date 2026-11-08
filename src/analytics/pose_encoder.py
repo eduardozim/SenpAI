@@ -243,20 +243,23 @@ def train_encoder(X: Optional[np.ndarray] = None, groups: Optional[List[str]] = 
     Xt = torch.from_numpy(X[train_idx])
     before = pair_recognition(net, X[val_idx], device)
     losses = []
-    for _ in range(epochs):
-        net.train()
-        perm = torch.randperm(len(Xt))
-        total = 0.0
-        steps = 0
-        for s in range(0, len(Xt) - batch + 1, batch):
-            xb = Xt[perm[s:s + batch]].to(device)
-            loss = nt_xent(net.project(net(augment(xb))), net.project(net(augment(xb))))
-            opt.zero_grad()
-            loss.backward()
-            opt.step()
-            total += loss.item()
-            steps += 1
-        losses.append(round(total / max(1, steps), 4))
+    # O detector de poses desliga os gradientes na thread em que é criado (inferência mais rápida); no ciclo de
+    # treino essa thread é a mesma, então o treino religa explicitamente.
+    with torch.enable_grad():
+        for _ in range(epochs):
+            net.train()
+            perm = torch.randperm(len(Xt))
+            total = 0.0
+            steps = 0
+            for s in range(0, len(Xt) - batch + 1, batch):
+                xb = Xt[perm[s:s + batch]].to(device)
+                loss = nt_xent(net.project(net(augment(xb))), net.project(net(augment(xb))))
+                opt.zero_grad()
+                loss.backward()
+                opt.step()
+                total += loss.item()
+                steps += 1
+            losses.append(round(total / max(1, steps), 4))
     after = pair_recognition(net, X[val_idx], device)
 
     stamp = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")

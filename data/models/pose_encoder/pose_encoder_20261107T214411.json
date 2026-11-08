@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "modelo": "data\\models\\pose_encoder\\pose_encoder_20261107T214411.pt",
+  "treinado_em": "20261107T214411",
+  "embed_dim": 32,
+  "janela": 32,
+  "frame_dim": 33,
+  "epocas": 15,
+  "perda_por_epoca": [
+    6.0364,
+    4.7692,
+    4.3191,
+    4.0155,
+    3.803,
+    3.6303,
+    3.5125,
+    3.4166,
+    3.3505,
+    3.3115,
+    3.2681,
+    3.245,
+    3.1926,
+    3.1614,
+    3.1451
+  ],
+  "janelas": {
+    "treino": 8111,
+    "validacao": 92
+  },
+  "videos_validacao": [
+    "internet_ptKlU1qV5jU.mp4"
+  ],
+  "reconhecimento_do_par": {
+    "antes_do_treino": 0.4565,
+    "depois_do_treino": 0.8696
+  }
+}

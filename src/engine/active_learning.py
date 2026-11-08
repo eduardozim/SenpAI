@@ -23,6 +23,8 @@ from src.engine.llm_assistant import KendoLLMAssistant
 # 4.1 AMOSTRAGEM POR INCERTEZA (UNCERTAINTY SAMPLING)
 # ==============================================================================
 DOUBT_TYPES = ("pontuacao", "golpe_filtro", "tecnica", "regra", "conflito", "bandeira", "modalidade")
+# Dúvidas sobre um golpe de luta analisada: o golpe vira um corte de ~10 s em data/videos (treino)
+ANALYSIS_CLIP_DOUBTS = ("pontuacao", "golpe_filtro", "tecnica", "regra")
 DOUBT_LABELS = {
     "pontuacao": "Pontuação", "golpe_filtro": "É golpe?", "tecnica": "Técnica", "regra": "Regra",
     "conflito": "Conflito entre fontes", "bandeira": "Bandeiras", "modalidade": "Modalidade",
@@ -158,6 +160,7 @@ class UncertaintySampler:
         """
         if doubt_type not in DOUBT_TYPES:
             raise ValueError(f"Tipo de dúvida desconhecido: {doubt_type}")
+        original_source = video_source
         from src.utils.strike_clip_manager import get_cross_platform_basename
         if clip_path:
             try:
@@ -216,6 +219,17 @@ class UncertaintySampler:
             try:
                 from src.utils.strike_clip_manager import get_or_create_strike_clip
                 entry["clip_path"] = get_or_create_strike_clip(entry)
+            except Exception:
+                pass
+
+        # Golpe em dúvida numa luta analisada: guarda um corte de ~10 s em data/videos para o treino
+        # (recortes de bandeira, gabarito, ciclo). Não repete golpes a menos de 10 s de um corte já guardado.
+        if doubt_type in ANALYSIS_CLIP_DOUBTS and strike_time is not None:
+            try:
+                from src.utils.video_library import save_analysis_clip
+                saved = save_analysis_clip(original_source, float(strike_time))
+                if saved:
+                    entry["corte_treino"] = saved.replace("\\", "/")
             except Exception:
                 pass
 

@@ -32,16 +32,28 @@ from src.utils.test_isolation import is_test_mode, get_test_sandbox_dir
 DEFAULT_HISTORY_PATH = os.path.join("data", "training_cycles.jsonl")
 STEP_NAMES = {
     "cache": "Cache de poses",
-    "internet": "Coleta na internet (regras e vídeos)",
     "rotulos": "Banco único de rótulos (sincronização)",
     "bandeiras": "Rótulos pelas bandeiras",
     "pretreino": "Pré-treino do encoder de movimento (sem rótulo)",
     "filtro": "Filtro de golpes (desafiante × atual)",
     "tecnica": "Classificador de técnica (desafiante × atual)",
     "modalidade": "Classificador luta × 14 modalidades (desafiante × atual)",
+    "sugestao": "Sugestão de modalidade nos vídeos não classificados (dúvidas na curadoria)",
     "calibracao": "Calibração dos perfis (pesos e limiares)",
     "medicao": "Medição no Golden Benchmark",
 }
+
+
+_detail_cb: Optional[Callable[[str], None]] = None
+
+
+def report_detail(text: str) -> None:
+    """Andamento dentro de uma etapa (ex.: "vídeo 3 de 24: nome"), mostrado na tela e na linha de comando."""
+    if _detail_cb:
+        try:
+            _detail_cb(text)
+        except Exception:
+            pass
 
 
 def get_history_path() -> str:
@@ -77,24 +89,29 @@ def _append_history(record: Dict[str, Any], path: Optional[str] = None) -> None:
 # ------------------------------------------------------------------------------
 
 def step_cache(pipeline, videos: List[str], labels_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Poses de todos os vídeos aproveitáveis: lutas (golpes, bandeiras) e treinos/exames (modalidade).
+    Só os descartados ficam de fora. Assim a etapa de modalidade não precisa extrair nada depois.
+    """
     from src.utils import feature_cache
     from src.engine import weak_labels as wl
     labels = wl.load_match_labels(labels_path or wl.DEFAULT_LABELS_PATH)["videos"]
-    ignored = [v for v in videos if wl.is_entry_ignored(labels.get(os.path.basename(v)))]
+    ignored = [v for v in videos if wl.is_entry_discarded(labels.get(os.path.basename(v)))]
     videos = [v for v in videos if v not in ignored]
+    pending = [v for v in videos
+               if feature_cache.load_match_features(feature_cache.build_cache_key(v, pipeline.vision_model)) is None]
     new, failed = 0, []
-    for video in videos:
-        key = feature_cache.build_cache_key(video, pipeline.vision_model)
-        if feature_cache.load_match_features(key) is not None:
-            continue
+    for i, video in enumerate(pending):
+        report_detail(f"vídeo {i + 1} de {len(pending)} sem poses no cache: {os.path.basename(video)}")
         try:
             pipeline.extract_match_features(video)
             new += 1
         except Exception as e:
             failed.append(f"{os.path.basename(video)}: {e}")
-    detail = f"{new} vídeo(s) novo(s) no cache; {len(videos) - new - len(failed)} já estavam."
+    detail = f"{new} vídeo(s) novo(s) no cache; {len(videos) - len(pending)} já estavam."
     if ignored:
-        detail += f" {len(ignored)} ignorado(s) (não é luta)."
+        detail += (f" {len(ignored)} vídeo(s) que você marcou como \"Não aproveitável\" no Gabarito não entram "
+                   "(nenhum vídeo é apagado).")
     if failed:
         detail += f" Falhas: {len(failed)}."
     return {"status": "ok" if not failed else "falhou", "detalhe": detail, "novos": new, "ignorados": len(ignored), "falhas": failed[:5]}
@@ -186,19 +203,6 @@ MIN_ENCODER_QUALITY = 0.5      # reconhecimento do par em lutas não vistas
 ENCODER_REFRESH_GROWTH = 1.2   # refaz o pré-treino quando o cache cresce 20%
 
 
-def step_internet() -> Dict[str, Any]:
-    """Coleta na internet (I15): regulamentos (em cache) e busca/download de vídeos conforme a configuração."""
-    from src.engine import internet_collector as ic
-    cfg = ic.load_config()
-    rules = ic.collect_rules(cfg)
-    ok_src = sum(1 for r in rules["fontes"] if r["status"] == "ok")
-    vids = ic.collect_videos(cfg)
-    detail = (f"Regulamentos: {ok_src}/{len(rules['fontes'])} lidos. Vídeos: {vids['novos_no_catalogo']} novo(s) no catálogo, "
-              f"{len(vids['baixados'])} baixado(s), {vids['rotulos']} rótulo(s) e {vids['duvidas']} dúvida(s). "
-              + ("" if vids["download_ligado"] else "Download desligado (Base de Conhecimento > Coleta na Internet)."))
-    return {"status": "ok", "detalhe": detail, "baixados": vids["baixados"], "rotulos": vids["rotulos"]}
-
-
 def step_pretrain(epochs: int = 15) -> Dict[str, Any]:
     from src.analytics import pose_encoder as pe
     from src.utils import model_registry
@@ -284,6 +288,12 @@ def step_modality(pipeline, videos_dir: str) -> Dict[str, Any]:
             "validacao_por_video": model["validacao_por_video"]}
 
 
+def step_suggest_modality(pipeline, videos: List[str]) -> Dict[str, Any]:
+    """O modelo de modalidade ativo sugere o tipo dos vídeos não classificados; incertos viram dúvidas."""
+    from src.analytics import modality_classifier as mcl
+    return mcl.suggest_modalities(pipeline, videos, classifier=getattr(pipeline, "modality_classifier", None))
+
+
 def step_measure(pipeline, videos_dir: str) -> Dict[str, Any]:
     from src.engine.active_learning import GoldenBenchmark
     gb = GoldenBenchmark()
@@ -297,6 +307,54 @@ def step_measure(pipeline, videos_dir: str) -> Dict[str, Any]:
 
 
 # ------------------------------------------------------------------------------
+# Checagem antes de rodar: o que você ainda não classificou
+# ------------------------------------------------------------------------------
+
+def readiness(videos_dir: str, labels_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Pendências que o ciclo não consegue aproveitar ainda. Não impede o ciclo: só avisa, para você decidir
+    se classifica antes (o treino usa só o que já está rotulado).
+    """
+    from src.engine import weak_labels as wl
+    from src.utils.feature_cache import list_videos
+    from src.utils.video_library import is_analysis_clip
+    from src.analytics.modality_classifier import is_classified
+    videos = [v for v in list_videos(videos_dir) if not is_analysis_clip(v)] if os.path.isdir(videos_dir) else []
+    gab = wl.load_match_labels(labels_path or wl.DEFAULT_LABELS_PATH)["videos"]
+    entries = {os.path.basename(v): gab.get(os.path.basename(v)) for v in videos}
+    items = []
+
+    def add(key, n, text, where):
+        items.append({"chave": key, "quantidade": n, "texto": text, "onde": where})
+
+    add("videos", sum(1 for e in entries.values() if not is_classified(e)),
+        "vídeo(s) sem tipo (luta, treino, exame ou descartado)", "Gabarito de Lutas > Tipo do vídeo")
+    add("lutas", sum(1 for e in entries.values() if wl.entry_video_type(e) == wl.VIDEO_TYPE_LUTA and (e or {}).get("tipo")
+                     and not wl.is_entry_filled(e)),
+        "luta(s) sem os pontos preenchidos", "Gabarito de Lutas > pontos da luta")
+    try:
+        from src.vision import flag_detector as fd
+        add("bandeiras", fd.dataset_stats().get("sem_rotulo", 0), "recorte(s) de bandeira sem rótulo",
+            "Gabarito de Lutas > Detector de bandeiras")
+    except Exception:
+        pass
+    try:
+        from src.engine.active_learning import UncertaintySampler
+        add("curadoria", len([q for q in UncertaintySampler().get_queue() if q.get("status") == "pending_curation"]),
+            "dúvida(s) abertas na Fila de Curadoria", "Fila de Curadoria")
+    except Exception:
+        pass
+    golden = 0
+    try:
+        from src.engine.active_learning import GoldenBenchmark
+        golden = len(GoldenBenchmark().load_matches())
+    except Exception:
+        pass
+    pending = [it for it in items if it["quantidade"]]
+    return {"pendencias": pending, "pronto": not pending, "videos": len(videos), "golden": golden}
+
+
+# ------------------------------------------------------------------------------
 # Ciclo
 # ------------------------------------------------------------------------------
 
@@ -305,9 +363,15 @@ def run_training_cycle(
     pipeline=None,
     device_preference: str = "gpu",
     progress: Optional[Callable[[str, str], None]] = None,
-    history_path: Optional[str] = None
+    history_path: Optional[str] = None,
+    detail: Optional[Callable[[str], None]] = None,
 ) -> Dict[str, Any]:
-    """Executa as etapas em ordem; uma etapa que falha não impede as seguintes."""
+    """
+    Executa as etapas em ordem; uma etapa que falha não impede as seguintes. O ciclo só USA o que já foi
+    coletado: a coleta na internet roda apenas pela procura ativa (Base de Conhecimento), quando ligada.
+    """
+    global _detail_cb
+    _detail_cb = detail
     from src.utils.feature_cache import list_videos
     if pipeline is None:
         from src.pipeline import SenpAIPipeline
@@ -318,22 +382,25 @@ def run_training_cycle(
         "pasta": videos_dir,
         "etapas": {},
     }
-    videos = list_videos(videos_dir) if os.path.isdir(videos_dir) else []
+    from src.utils.video_library import is_analysis_clip
+    # Cortes de 10 s das análises servem às bandeiras e à curadoria; não entram no cache de luta nem nas sugestões
+    videos = [v for v in list_videos(videos_dir) if not is_analysis_clip(v)] if os.path.isdir(videos_dir) else []
     steps = [
         ("cache", lambda: step_cache(pipeline, videos)),
         ("bandeiras", lambda: step_flags(videos_dir)),
-        ("internet", lambda: step_internet()),
         ("rotulos", lambda: step_labels()),
         ("pretreino", lambda: step_pretrain()),
         ("filtro", lambda: step_strike_filter(pipeline, videos_dir)),
         ("tecnica", lambda: step_technique(pipeline, videos_dir)),
         ("modalidade", lambda: step_modality(pipeline, videos_dir)),
+        ("sugestao", lambda: step_suggest_modality(pipeline, videos)),
         ("calibracao", lambda: step_calibration(pipeline, videos_dir)),
         ("medicao", lambda: step_measure(pipeline, videos_dir)),
     ]
-    for key, fn in steps:
+    for n_step, (key, fn) in enumerate(steps, start=1):
+        report_detail("")
         if progress:
-            progress(key, STEP_NAMES[key])
+            progress(key, f"{STEP_NAMES[key]} (etapa {n_step} de {len(steps)})")
         try:
             result = fn()
         except Exception as e:
@@ -353,7 +420,7 @@ def run_training_cycle(
 # ------------------------------------------------------------------------------
 
 _state_lock = threading.Lock()
-_state: Dict[str, Any] = {"rodando": False, "etapa": None, "resultado": None, "erro": None}
+_state: Dict[str, Any] = {"rodando": False, "etapa": None, "detalhe": "", "inicio": None, "resultado": None, "erro": None}
 
 
 def get_cycle_state() -> Dict[str, Any]:
@@ -366,15 +433,21 @@ def start_cycle_thread(videos_dir: str, device_preference: str = "gpu") -> bool:
     with _state_lock:
         if _state["rodando"]:
             return False
-        _state.update({"rodando": True, "etapa": None, "resultado": None, "erro": None})
+        _state.update({"rodando": True, "etapa": None, "detalhe": "", "resultado": None, "erro": None,
+                       "inicio": datetime.datetime.now().isoformat(timespec="seconds")})
 
     def _progress(key: str, name: str) -> None:
         with _state_lock:
             _state["etapa"] = name
+            _state["etapa_inicio"] = datetime.datetime.now().isoformat(timespec="seconds")
+
+    def _detail(text: str) -> None:
+        with _state_lock:
+            _state["detalhe"] = text
 
     def _run() -> None:
         try:
-            result = run_training_cycle(videos_dir, device_preference=device_preference, progress=_progress)
+            result = run_training_cycle(videos_dir, device_preference=device_preference, progress=_progress, detail=_detail)
             with _state_lock:
                 _state["resultado"] = result
         except Exception as e:
@@ -404,7 +477,8 @@ def _main(argv: Optional[List[str]] = None) -> int:
             print(f"{r['iniciado_em']} · " + " · ".join(f"{STEP_NAMES[k]}: {v['status']}" for k, v in r["etapas"].items()))
         return 0
     rec = run_training_cycle(args.videos_dir, device_preference=args.device,
-                             progress=lambda k, name: print(f"→ {name}..."))
+                             progress=lambda k, name: print(f"→ {name}...", flush=True),
+                             detail=lambda t: t and print(f"   {t}", flush=True))
     for k, v in rec["etapas"].items():
         print(f"  [{v['status']}] {STEP_NAMES[k]}: {v['detalhe']}")
     return 0 if all(v["status"] != "falhou" for v in rec["etapas"].values()) else 1

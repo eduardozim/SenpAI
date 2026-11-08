@@ -26,7 +26,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from src.analytics.technique_classifier import fit_softmax, predict_proba, group_cross_validate
+from src.analytics.technique_classifier import fit_softmax, predict_proba, group_cross_validate_proba
 from src.utils import model_registry
 
 MODEL_FAMILY = "modality_classifier"
@@ -36,6 +36,10 @@ WINDOW_SEC = 10.0
 STRIDE_SEC = 5.0
 MIN_WINDOWS_PER_CLASS = 5
 MIN_CLASSES = 2
+# Confiança "alta" = a menor probabilidade a partir da qual a validação por vídeo acertou ≥ 90%,
+# em pelo menos 10 trechos. Sem isso medido, toda sugestão vai para a curadoria.
+CONFIDENCE_TARGET = 0.9
+MIN_CONFIDENT_WINDOWS = 10
 
 FEATURE_NAMES = [
     "praticantes_ativos", "praticante_solo", "pulso_vel_media", "pulso_vel_p90", "tornozelo_vel_media",
@@ -224,7 +228,9 @@ def build_dataset(pipeline, videos_dir: str) -> Dict[str, Any]:
     by_video: Dict[str, List[Dict[str, Any]]] = {}
     for lb in labels:
         by_video.setdefault(lb["video_name"], []).append(lb)
-    for name, lbs in sorted(by_video.items()):
+    from src.engine.training_cycle import report_detail
+    for i, (name, lbs) in enumerate(sorted(by_video.items())):
+        report_detail(f"poses do vídeo {i + 1} de {len(by_video)}: {name}")
         if is_golden_video(name):
             skipped.append({"video_name": name, "motivo": "golden"})
             continue
@@ -257,6 +263,23 @@ def _matrix(dataset: Dict[str, Any], idx: List[int], with_encoder: bool) -> np.n
     return X
 
 
+def confidence_threshold(probs: List[float], correct: List[bool], target: float = CONFIDENCE_TARGET,
+                         min_windows: int = MIN_CONFIDENT_WINDOWS) -> Optional[Dict[str, Any]]:
+    """Menor limiar com acerto ≥ alvo na validação por vídeo (só trechos fora da amostra). None se não houver."""
+    pairs = sorted(zip(probs, correct), key=lambda x: x[0])
+    for i, (t, _) in enumerate(pairs):
+        if i and pairs[i - 1][0] == t:
+            continue
+        rest = pairs[i:]
+        if len(rest) < min_windows:
+            break
+        acc = sum(1 for _, c in rest if c) / len(rest)
+        if acc >= target:
+            return {"valor": round(float(t), 4), "acerto": round(acc, 4), "trechos": len(rest),
+                    "cobertura": round(len(rest) / len(pairs), 4), "alvo": target}
+    return None
+
+
 def train_model(dataset: Dict[str, Any], l2: float = 1.0) -> Dict[str, Any]:
     counts: Dict[str, int] = {}
     for c in dataset["y"]:
@@ -273,15 +296,17 @@ def train_model(dataset: Dict[str, Any], l2: float = 1.0) -> Dict[str, Any]:
 
     def _cv(with_encoder):
         X = _matrix(dataset, keep, with_encoder)
-        oof = group_cross_validate(X, y, groups, classes, l2=l2)
-        judged = [(p, t) for p, t in zip(oof, y) if p is not None]
-        return X, (round(sum(1 for p, t in judged if p == t) / len(judged), 4) if judged else None)
+        oof = group_cross_validate_proba(X, y, groups, classes, l2=l2)
+        judged = [(p, pr, t) for (p, pr), t in zip(oof, y) if p is not None]
+        acc = round(sum(1 for p, _, t in judged if p == t) / len(judged), 4) if judged else None
+        thr = confidence_threshold([pr for _, pr, _ in judged], [p == t for p, _, t in judged])
+        return X, acc, thr
 
     variants = {"sem_encoder": _cv(False)}
     if has_emb:
         variants["com_encoder"] = _cv(True)
     chosen = max(variants, key=lambda k: (variants[k][1] or 0.0, k == "sem_encoder"))
-    X, cv_acc = variants[chosen]
+    X, cv_acc, threshold = variants[chosen]
     baseline = round(max(counts[c] for c in classes) / len(y), 4)
     return {
         "schema": SCHEMA_VERSION, "tipo": "regressao_logistica_multinomial_l2",
@@ -290,6 +315,7 @@ def train_model(dataset: Dict[str, Any], l2: float = 1.0) -> Dict[str, Any]:
         "params": fit_softmax(X, y, classes, l2=l2),
         "dados": {"trechos": len(y), "por_classe": {c: counts[c] for c in classes}, "videos": sorted(set(groups))},
         "validacao_por_video": {"acuracia": cv_acc, "chute_mais_comum": baseline},
+        "limiar_confianca": threshold,
         "variantes_validadas": {k: v[1] for k, v in variants.items()},
     }
 
@@ -394,6 +420,165 @@ class ModalityClassifier:
         dominant = max(dur, key=dur.get)
         dom_prob = float(np.mean([s["probabilidade"] for s in segments if s["classe"] == dominant]))
         return {"segmentos": segments, "dominante": dominant, "probabilidade": round(dom_prob, 4)}
+
+
+# ------------------------------------------------------------------------------
+# Sugestões para os vídeos ainda não classificados (Gabarito) e dúvidas na curadoria
+# ------------------------------------------------------------------------------
+
+SUGGESTIONS_FILE = os.path.join("data", "modality_suggestions.json")
+DOUBT_IMPACT = 0.7
+
+
+def _suggestions_path() -> str:
+    from src.utils.test_isolation import get_safe_data_path
+    return get_safe_data_path(SUGGESTIONS_FILE)
+
+
+def load_suggestions() -> Dict[str, Dict[str, Any]]:
+    """{nome_do_vídeo: {tipo, probabilidade, confianca (alta|baixa), limiar, modelo, em, titulo, duvida}}"""
+    path = _suggestions_path()
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f).get("videos", {})
+    except Exception:
+        return {}
+
+
+def _save_suggestions(items: Dict[str, Dict[str, Any]]) -> None:
+    from src.utils.file_utils import safe_write_json
+    safe_write_json(_suggestions_path(), {"versao": 1, "videos": items}, indent=1)
+
+
+def is_classified(entry: Optional[Dict[str, Any]]) -> bool:
+    """O usuário já decidiu o tipo do vídeo (luta com gabarito, tipo escolhido ou descartado)."""
+    from src.engine import weak_labels as wl
+    entry = entry or {}
+    return bool(entry.get("tipo") or entry.get("ignorar") or wl.is_entry_filled(entry))
+
+
+def cached_tracks(pipeline, video_path: str) -> Optional[Tuple[List[list], float, int]]:
+    """Poses só dos caches (nunca processa o vídeo aqui: vídeos longos travariam o ciclo)."""
+    from src.utils import feature_cache
+    try:
+        cached_t = feature_cache.load_training_features(
+            feature_cache.build_cache_key(video_path, pipeline.vision_model, mode="training"))
+        if cached_t is not None:
+            return [t["history"] for t in cached_t["tracks"].values()], cached_t["fps"], cached_t["total_frames"]
+        f = feature_cache.load_match_features(feature_cache.build_cache_key(video_path, pipeline.vision_model))
+        if f is not None:
+            return [f["aka_history"], f["shiro_history"]], f["fps"], f["total_frames"]
+    except Exception:
+        return None
+    return None
+
+
+def _title_modality(name: str) -> Optional[str]:
+    """Modalidade adivinhada pelo título do vídeo da internet (rótulo fraco do banco), se houver."""
+    from src.engine.label_bank import LabelBank
+    from src.engine import weak_labels as wl
+    for lb in LabelBank().labels(name, claim="modalidade"):
+        if lb.get("origin") == "internet":
+            return LUTA if lb["value"] in wl.LUTA_ALIASES else lb["value"]
+    return None
+
+
+def _pending_modality_doubt(sampler, name: str) -> bool:
+    from src.utils.strike_clip_manager import get_cross_platform_basename
+    return any(it.get("tipo_duvida") == "modalidade" and it.get("status") == "pending_curation"
+               and get_cross_platform_basename(it.get("video_source") or "") == name for it in sampler.get_queue())
+
+
+def modality_display(key: Optional[str]) -> str:
+    if not key:
+        return "—"
+    if key == LUTA:
+        return "Luta / Shiai-geiko"
+    from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA
+    return TRAINING_MODALITIES_METADATA.get(key, {}).get("name", key)
+
+
+def suggest_modalities(pipeline, videos: List[str], classifier: Optional["ModalityClassifier"] = None,
+                       labels_path: Optional[str] = None, tracks_loader=None, make_clip: bool = True) -> Dict[str, Any]:
+    """
+    O modelo ativo classifica cada vídeo que você ainda não classificou no Gabarito e grava a SUGESTÃO
+    (não é rótulo: o modelo nunca treina com o próprio palpite). Confiança baixa (abaixo do limiar medido
+    na validação) ou discordância com o título do vídeo vira dúvida de modalidade na curadoria.
+    """
+    from src.engine import weak_labels as wl
+    from src.engine.active_learning import UncertaintySampler, is_golden_video
+    classifier = classifier or ModalityClassifier.load_active()
+    if classifier is None:
+        return {"status": "pulado", "detalhe": "Nenhum classificador de modalidade ativo ainda."}
+    tracks_loader = tracks_loader or (lambda v: cached_tracks(pipeline, v))
+    gab = wl.load_match_labels(labels_path or wl.DEFAULT_LABELS_PATH)["videos"]
+    items = load_suggestions()
+    thr = classifier.model.get("limiar_confianca")
+    sampler = UncertaintySampler()
+    counts = {"sugeridos": 0, "alta": 0, "duvidas": 0, "sem_poses": 0, "ja_classificados": 0}
+    for video in videos:
+        name = os.path.basename(video)
+        if is_classified(gab.get(name)):
+            items.pop(name, None)   # a sua decisão substitui a sugestão
+            counts["ja_classificados"] += 1
+            continue
+        if is_golden_video(name):
+            continue
+        prev = items.get(name)
+        if prev and prev.get("modelo") == classifier.path:
+            continue   # já sugerido por este modelo
+        loaded = tracks_loader(video)
+        if loaded is None:
+            counts["sem_poses"] += 1
+            continue
+        histories, fps, n_frames = loaded
+        pred = classifier.predict_segments([h for h in histories if h], int(n_frames), float(fps))
+        dom, prob = pred.get("dominante"), pred.get("probabilidade")
+        if not dom:
+            counts["sem_poses"] += 1
+            continue
+        high = bool(thr) and prob >= thr["valor"]
+        title = _title_modality(name)
+        disagree = bool(title) and title != dom
+        items[name] = {"tipo": dom, "probabilidade": prob, "confianca": "alta" if high else "baixa",
+                       "limiar": thr["valor"] if thr else None, "modelo": classifier.path, "titulo": title,
+                       "em": datetime.datetime.now().isoformat(timespec="seconds"), "duvida": False}
+        counts["sugeridos"] += 1
+        counts["alta"] += int(high)
+        if (not high or disagree) and not _pending_modality_doubt(sampler, name):
+            seg = max((s for s in pred["segmentos"] if s["classe"] == dom), key=lambda s: s["fim_s"] - s["inicio_s"])
+            t = round((seg["inicio_s"] + seg["fim_s"]) / 2.0, 2)
+            why = (f"O modelo vê {modality_display(dom)} ({prob:.0%})" +
+                   (f", abaixo do limiar medido ({thr['valor']:.0%})" if thr and not high else
+                    ", sem limiar de confiança medido ainda" if not thr else "") +
+                   (f", mas o título do vídeo indica {modality_display(title)}" if disagree else "") +
+                   ". Qual é o tipo deste vídeo?")
+            clip = None
+            if make_clip:
+                try:
+                    from src.utils.strike_clip_manager import extract_strike_subclip, get_clips_dir
+                    clip = extract_strike_subclip(video, os.path.join(get_clips_dir(), f"unc_modalidade_{abs(hash(name)) % 10**10}.mp4"),
+                                                  target_time_sec=t, window_before_sec=5.0, window_after_sec=5.0,
+                                                  strike_type="MODALIDADE")
+                except Exception:
+                    clip = None
+            entry = sampler.enqueue_doubt(
+                doubt_type="modalidade", video_source=video, uncertainty=max(1.0 - prob, 0.5 if disagree else 0.0),
+                impact=DOUBT_IMPACT, reason=why, confidence=prob, clip_path=clip,
+                strike_data={"strike_type": modality_display(dom), "timestamp_seconds": t},
+                options={"sugestao": dom, "titulo": title},
+            )
+            if entry is not None:
+                items[name]["duvida"] = True
+                counts["duvidas"] += 1
+    _save_suggestions(items)
+    detail = (f"{counts['sugeridos']} vídeo(s) com sugestão ({counts['alta']} com confiança alta), "
+              f"{counts['duvidas']} dúvida(s) nova(s) na curadoria" +
+              (f", {counts['sem_poses']} sem poses no cache" if counts["sem_poses"] else "") + "." +
+              ("" if thr else " Limiar de confiança ainda não medido: todas as sugestões vão para a curadoria."))
+    return {"status": "ok", "detalhe": detail, **counts}
 
 
 def _main(argv: Optional[List[str]] = None) -> int:

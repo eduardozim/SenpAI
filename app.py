@@ -3626,8 +3626,11 @@ elif nav_page == "settings":
                         st.markdown('<div class="video-side-panel-marker"></div>', unsafe_allow_html=True)
                         conf_pct = float(unc_item.get("confidence") or 0.0) * 100
                         unc_pct = float(unc_item.get("uncertainty_score", 0.0)) * 100
-                        st.markdown(f"#### 🥋 Golpe: `{strike_t}`")
                         _tipo = unc_item.get("tipo_duvida", "pontuacao")
+                        if _tipo == "modalidade":
+                            st.markdown(f"#### 🏋️ Sugestão do modelo: `{unc_item.get('strike_type', '—')}`")
+                        else:
+                            st.markdown(f"#### 🥋 Golpe: `{strike_t}`")
                         st.markdown(f"- ❓ **Dúvida:** `{DOUBT_LABELS.get(_tipo, _tipo)}` &nbsp;|&nbsp; 📈 **Ordem na fila:** `{idx + 1}º`")
                         if unc_item.get("motivo"):
                             st.caption(unc_item["motivo"])
@@ -3664,6 +3667,33 @@ elif nav_page == "settings":
                             st.markdown(f"- 💡 **Orientação Técnica:** {triage.get('coaching_advice', '')}")
 
                         it_id = str(unc_item.get("id", f"item_{idx}"))
+                        if _tipo == "modalidade":
+                            # Dúvida de modalidade: a resposta vira o "Tipo do vídeo" no Gabarito de Lutas
+                            from src.utils.match_labels_page import video_type_options, video_type_label
+                            _opts = unc_item.get("opcoes") or {}
+                            _types = video_type_options()
+                            _sug = _opts.get("sugestao")
+                            st.markdown("**Qual é o tipo deste vídeo?**")
+                            _choice = st.selectbox("Tipo do vídeo", _types, index=_types.index(_sug) if _sug in _types else 0,
+                                                   format_func=video_type_label, key=f"sel_cur_mod_{it_id}",
+                                                   label_visibility="collapsed")
+                            _mc1, _mc2 = st.columns(2)
+                            with _mc1:
+                                if st.button("✅ Confirmar tipo", key=f"btn_cur_mod_{it_id}", type="primary", width="stretch"):
+                                    try:
+                                        auto_trainer.feedback_mgr.resolve_modality_doubt(it_id, _choice, reviewer_dan=5)
+                                        st.session_state["curation_alert"] = (f"✅ Vídeo classificado como {video_type_label(_choice)} no Gabarito: "
+                                                                              "o classificador de modalidade aprende no próximo ciclo.")
+                                    except Exception as err:
+                                        st.session_state["curation_alert"] = f"⚠️ Não foi possível registrar o tipo: {err}"
+                                    st.rerun()
+                            with _mc2:
+                                if st.button("🗑️ Descartar dúvida", key=f"btn_cur_mod_discard_{it_id}", width="stretch"):
+                                    auto_trainer.discard_active_learning_item(it_id, notes="Descartado: modalidade indeterminada")
+                                    st.session_state["curation_alert"] = "🗑️ Dúvida de modalidade descartada (sem afetar o treinamento)."
+                                    st.rerun()
+                            st.markdown("---")
+                            continue
                         if _tipo == "tecnica":
                             # Dúvida de técnica: a decisão vai para o Banco Único de Rótulos (treina o classificador de técnica)
                             _probs = unc_item.get("opcoes") or {}

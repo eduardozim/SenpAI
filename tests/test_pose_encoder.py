@@ -80,6 +80,14 @@ class TestTraining(unittest.TestCase):
             self.assertEqual(emb.shape, (pe.EMBED_DIM,))
             self.assertTrue(np.isfinite(emb).all())
 
+    def test_trains_even_when_the_thread_has_gradients_off(self):
+        # O detector de poses desliga os gradientes na thread do ciclo de treino
+        import torch
+        X, groups = _synthetic_windows()
+        with tempfile.TemporaryDirectory() as tmp, torch.no_grad():
+            meta = pe.train_encoder(X, groups, epochs=1, batch=128, device="cpu", models_dir=tmp)
+            self.assertTrue(os.path.isfile(meta["modelo"]))
+
     def test_refuses_too_little_data(self):
         X, groups = _synthetic_windows(n_per_video=50, videos=1)
         with self.assertRaises(ValueError):

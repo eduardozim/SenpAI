@@ -16,6 +16,17 @@ from typing import Dict, Any, List, Optional
 DEFAULT_LOG_PATH = "logs/senpai_debug.log"
 MAX_MEMORY_LOGS = 1000
 
+def _resolve_log_path(log_file: str) -> str:
+    """Nos testes, o log padrão vai para a sandbox: testes nunca leem, escrevem nem limpam o log real do app."""
+    try:
+        from src.utils.test_isolation import is_test_mode, get_test_sandbox_dir
+        if is_test_mode() and os.path.normpath(log_file) == os.path.normpath(DEFAULT_LOG_PATH):
+            return os.path.join(get_test_sandbox_dir(), "logs", "senpai_debug.log")
+    except Exception:
+        pass
+    return log_file
+
+
 class RingBufferHandler(logging.Handler):
     """
     Handler de logging customizado que retém as últimas N entradas em memória.
@@ -56,6 +67,7 @@ def setup_system_logger(log_file: str = DEFAULT_LOG_PATH, level: int = logging.D
     if _logger_initialized:
         return root_logger
 
+    log_file = _resolve_log_path(log_file)
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
     formatter = logging.Formatter(
@@ -134,6 +146,7 @@ def get_debug_log_file_content(log_file: str = DEFAULT_LOG_PATH) -> str:
     """
     Retorna todo o conteúdo textual do arquivo de log de debug para download.
     """
+    log_file = _resolve_log_path(log_file)
     if os.path.exists(log_file):
         try:
             with open(log_file, "r", encoding="utf-8") as f:
@@ -171,6 +184,7 @@ def clear_debug_logs(log_file: str = DEFAULT_LOG_PATH) -> None:
     """
     Limpa o arquivo de log no disco e reseta o buffer de memória.
     """
+    log_file = _resolve_log_path(log_file)
     global _ring_handler
     if _ring_handler:
         _ring_handler.buffer.clear()

@@ -70,6 +70,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "max_duracao_min": 20,
         "limite_disco_gb": 10.0,
         "max_downloads_por_ciclo": 3,
+        "prioridade_luta": True,   # lutas (shiai) primeiro: têm bandeiras, pontos e gabarito
         "baixar": False,
         "somente_creative_commons": True,
         "intervalo_sessao_min": 15,
@@ -449,6 +450,23 @@ def _license_ok(item: Dict[str, Any], only_cc: bool) -> bool:
     return (not only_cc) or "creative commons" in str(item.get("licenca") or "").lower()
 
 
+def download_order(catalog: Dict[str, Dict[str, Any]], cfg: Dict[str, Any]) -> List[Tuple[str, Dict[str, Any]]]:
+    """
+    Ordem de download dos candidatos. Com "prioridade_luta" (padrão), lutas (shiai) vêm primeiro: são elas que
+    têm bandeiras de shinpan, pontos e gabarito. Depois, a modalidade com menos vídeos baixados, para equilibrar.
+    """
+    baixados: Dict[str, int] = {}
+    for it in catalog.values():
+        if it.get("status") == "baixado":
+            m = it.get("modalidade_titulo") or "?"
+            baixados[m] = baixados.get(m, 0) + 1
+    luta_first = bool(cfg.get("prioridade_luta", True))
+    order = list(catalog.items())
+    order.sort(key=lambda kv: (0 if luta_first and kv[1].get("modalidade_titulo") == "luta" else 1,
+                               baixados.get(kv[1].get("modalidade_titulo") or "?", 0)))
+    return order
+
+
 def collect_videos(config: Optional[Dict[str, Any]] = None, searcher=None, downloader=None, flag_reader=None, license_reader=None,
                    allow_download: Optional[bool] = None, history_path: Optional[str] = None,
                    progress: Optional[Callable[[str], None]] = None, depth: int = 1,
@@ -501,7 +519,7 @@ def collect_videos(config: Optional[Dict[str, Any]] = None, searcher=None, downl
     if do_download:
         max_s = float(cfg.get("max_duracao_min", 20)) * 60
         budget = float(cfg.get("limite_disco_gb", 10.0))
-        for vid, item in catalog.items():
+        for vid, item in download_order(catalog, cfg):
             if stop() or len(downloaded) >= int(cfg.get("max_downloads_por_ciclo", 3)):
                 break
             if item["status"] != "candidato":

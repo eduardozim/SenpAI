@@ -158,9 +158,32 @@ def parse_official_points(entry: Dict[str, Any]) -> List[Dict[str, Any]]:
     return points
 
 
+VIDEO_TYPE_LUTA = "luta"            # luta oficial ou shiai-geiko (mesma classe)
+VIDEO_TYPE_DISCARD = "descartar"    # não aproveitável (outro esporte, vídeo ruim)
+LUTA_ALIASES = {"luta", "shiai", "shiai_geiko"}
+
+
+def entry_video_type(entry: Optional[Dict[str, Any]]) -> str:
+    """
+    Tipo do vídeo no gabarito: "luta" (inclui shiai-geiko), uma das modalidades de treino (chave de
+    TRAINING_MODALITIES_METADATA, ex.: "kakari_geiko", "shinsa") ou "descartar".
+    Gabaritos antigos só com "ignorar": True contam como "descartar".
+    """
+    entry = entry or {}
+    tipo = str(entry.get("tipo") or "").strip()
+    if tipo:
+        return VIDEO_TYPE_LUTA if tipo in LUTA_ALIASES else tipo
+    return VIDEO_TYPE_DISCARD if entry.get("ignorar") else VIDEO_TYPE_LUTA
+
+
 def is_entry_ignored(entry: Optional[Dict[str, Any]]) -> bool:
-    """Vídeo marcado como "não é luta" (ex.: gravação de treino): fica fora do gabarito, do cache e do treino."""
-    return bool((entry or {}).get("ignorar"))
+    """Vídeo que não é luta (treino, exame ou descartado): fica fora dos pontos, do cache de luta e do treino de golpes."""
+    return entry_video_type(entry) != VIDEO_TYPE_LUTA
+
+
+def is_entry_discarded(entry: Optional[Dict[str, Any]]) -> bool:
+    """Vídeo marcado como não aproveitável: não ensina nada, nem a modalidade."""
+    return entry_video_type(entry) == VIDEO_TYPE_DISCARD
 
 
 def is_entry_filled(entry: Dict[str, Any]) -> bool:

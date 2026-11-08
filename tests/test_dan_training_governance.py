@@ -899,3 +899,18 @@ class TestDanTrainingGovernance(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
+
+class TestCyclesCountAsTrainings(unittest.TestCase):
+    def test_completed_training_cycles_are_counted(self):
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            mgr = FeedbackManager(dataset_path=os.path.join(tmp, "f.json"), history_path=os.path.join(tmp, "h.json"))
+            cycles = [{"id": "c1", "terminado_em": "2026-11-07T21:53:42"}, {"id": "c2"}]   # c2 não terminou
+            with mock.patch("src.engine.training_cycle.load_cycle_history", return_value=cycles):
+                m = mgr.get_training_metrics()
+        self.assertEqual(m["auto_trainings_count"], 1)
+        self.assertEqual(m["total_trainings_count"], 1)
+        ia = [r for r in m["dan_distribution"] if r["Dan"] == "🤖 IA"][0]
+        self.assertEqual((ia["Quantidade Treinamentos"], ia["Percentual (%)"]), (1, "100.0%"))

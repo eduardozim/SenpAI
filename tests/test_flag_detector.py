@@ -32,6 +32,13 @@ class TestGeometryAndHint(unittest.TestCase):
         self.assertLess(x0, 480)
         self.assertGreater(x1, 520)
 
+    def test_crop_box_reaches_a_raised_flag(self):
+        # Bandeira erguida na diagonal: ~2,2 troncos acima e ~1,6 para o lado do ombro
+        x0, y0, x1, y1 = fd.crop_box(_kp(sx=900, sy=600, torso=100), 1920, 1080)
+        self.assertLessEqual(y0, 600 - 220)
+        self.assertGreaterEqual(x1, 900 + 160)
+        self.assertLessEqual(x0, 900 - 160)
+
     def test_crop_box_requires_shoulders_and_hips(self):
         kp = _kp()
         kp[11] = (0, 0)
@@ -83,6 +90,98 @@ class TestRaiseEvents(unittest.TestCase):
                              + [(t + 20.0, p) for t, p in _samples({"a": (200, "branca", 3.0, 5.0),
                                                                      "b": (900, "branca", 3.4, 5.0)})])
         self.assertEqual([(e["kenshi"], round(e["bandeira_s"])) for e in ev], [("AKA", 2), ("SHIRO", 23)])
+
+
+class TestStopSignal(unittest.TestCase):
+    def test_both_flags_raised_is_a_stop_not_a_point(self):
+        ev = fd.flag_events(_samples({"a": (200, "ambas", 5.0, 9.0), "b": (900, "ambas", 5.4, 9.0),
+                                      "c": (1600, "ambas", 5.6, 9.0)}))
+        self.assertEqual(ev["pontos"], [])
+        self.assertEqual(len(ev["paradas"]), 1)
+        self.assertAlmostEqual(ev["paradas"][0]["bandeira_s"], 5.0)
+        self.assertEqual(ev["paradas"][0]["juizes"], 3)
+
+    def test_color_raise_during_stop_gesture_is_not_a_point(self):
+        # Dois juízes vistos primeiro como "vermelha" ao levantarem as duas bandeiras para o yame
+        samples = _samples({"a": (200, "vermelha", 5.0, 5.5), "b": (900, "vermelha", 5.0, 5.5)})
+        later = _samples({"a": (200, "ambas", 5.5, 9.0), "b": (900, "ambas", 5.5, 9.0)})
+        merged = [(t, [p if p[2] != "nenhuma" else q for p, q in zip(ps, qs)]) for (t, ps), (_, qs) in zip(samples, later)]
+        ev = fd.flag_events(merged, on_after=2)
+        self.assertEqual(ev["pontos"], [])
+        self.assertEqual(len(ev["paradas"]), 1)
+
+    def test_point_far_from_stop_still_counts(self):
+        spec = _samples({"a": (200, "vermelha", 2.0, 4.0), "b": (900, "vermelha", 2.2, 4.0)}, duration=20.0)
+        stop = _samples({"a": (200, "ambas", 12.0, 15.0), "b": (900, "ambas", 12.0, 15.0)}, duration=20.0)
+        merged = [(t, [p if p[2] != "nenhuma" else q for p, q in zip(ps, qs)]) for (t, ps), (_, qs) in zip(spec, stop)]
+        ev = fd.flag_events(merged)
+        self.assertEqual([(e["kenshi"], round(e["bandeira_s"])) for e in ev["pontos"]], [("AKA", 2)])
+        self.assertEqual([round(p["bandeira_s"]) for p in ev["paradas"]], [12])
+
+    def test_stop_label_is_optional_for_training(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fd.save_dataset({"a": {"video_name": "v1.mp4", "tempo_s": 5, "arquivo": "x", "pista": None, "rotulo": None}}, tmp)
+            self.assertEqual(fd.set_labels({"a": "ambas"}, tmp), 1)
+            st = fd.dataset_stats(tmp)
+            self.assertEqual(st["ambas"], 1)
+            self.assertNotIn("ambas", fd.check_enough_labels(st))     # não trava o treino
+        self.assertEqual(fd.training_classes({"ambas": fd.MIN_STOP_LABELS - 1}), fd.CLASSES)
+        self.assertEqual(fd.training_classes({"ambas": fd.MIN_STOP_LABELS}), fd.CLASSES + ["ambas"])
+        items = {f"{v}_{i}": {"video_name": f"{v}.mp4", "rotulo": "ambas" if i == 0 else "nenhuma"} for v in "abcd" for i in range(3)}
+        train, val = fd.split_by_video(items)
+        self.assertFalse(any(items[k]["rotulo"] == "ambas" for k in train + val))   # fora do treino abaixo do mínimo
+        train, val = fd.split_by_video(items, classes=fd.CLASSES + ["ambas"])
+        self.assertTrue(any(items[k]["rotulo"] == "ambas" for k in train + val))
+
+    def test_apply_records_stops(self):
+        det = lambda v: {"eventos": [{"kenshi": "AKA", "cor": "vermelha", "bandeira_s": 12.0, "golpe_estimado_s": 11.0}],
+                         "paradas": [{"tipo": "parada", "bandeira_s": 30.0, "juizes": 3}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            labels_path = TestEvaluateAndApply()._gabarito(tmp)
+            ev = fd.evaluate_against_gabarito(tmp, labels_path, detector=det)
+            fd.apply_to_gabarito(tmp, ev, labels_path, detector=det)
+            self.assertEqual(wl.load_match_labels(labels_path)["videos"]["nova.mp4"]["paradas_bandeiras"], [30.0])
+
+
+class TestTrainingProgress(unittest.TestCase):
+    def test_epoch_info_and_progress_text(self):
+        import time
+        from src.utils.match_labels_page import flag_progress_text
+        trainer = mock.Mock(epoch=4, epochs=40, metrics={"val/loss": 0.07, "metrics/accuracy_top1": 0.97},
+                            tloss=0.2, stopper=mock.Mock(best_epoch=3, patience=10))
+        info = fd._epoch_info(trainer, time.time() - 50)
+        self.assertEqual((info["epoca"], info["epocas"], info["paciencia"]), (5, 40, 10))
+        self.assertAlmostEqual(info["restante_s"], 350, delta=5)
+        text = flag_progress_text(info)
+        self.assertIn("Época 5/40", text)
+        self.assertIn("97.0%", text)
+        prep = flag_progress_text({"etapa": "preparando", "treino": {"vermelha": 20}, "validacao": {"vermelha": 11},
+                                   "videos_validacao": ["a.mp4"]})
+        self.assertIn("vermelha 20", prep)
+
+    def test_balance_repeats_minority_classes(self):
+        reps = fd.balance_repeats({"vermelha": 16, "branca": 9, "nenhuma": 1153})
+        self.assertEqual(reps["nenhuma"], 1)
+        self.assertEqual(reps["vermelha"], 20)    # teto MAX_REPEATS
+        self.assertEqual(fd.balance_repeats({"vermelha": 100, "nenhuma": 200}), {"vermelha": 1, "nenhuma": 1})
+
+    def test_missing_weights_raise_clear_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            items = {f"{v}_{c}_{i}": {"video_name": f"{v}.mp4", "rotulo": c, "arquivo": os.path.join(tmp, "x.jpg")}
+                     for v in "ab" for c, n in (("vermelha", 15), ("branca", 15), ("nenhuma", 30)) for i in range(n)}
+            open(os.path.join(tmp, "x.jpg"), "wb").close()
+            fd.save_dataset(items, tmp)
+            fake = mock.Mock()
+            fake.load.return_value = fake
+            fake.trainer = mock.Mock(save_dir=os.path.join(tmp, "nada"))
+            seen = []
+            with mock.patch("ultralytics.YOLO", return_value=fake), mock.patch.object(fd, "_pose_model_path", return_value="p.pt"), \
+                 mock.patch.object(fd, "get_models_dir", return_value=tmp):
+                with self.assertRaises(FileNotFoundError):
+                    fd.train_flag_classifier(dataset_dir=tmp, progress=seen.append)
+            self.assertEqual(seen[0]["etapa"], "preparando")
+            project = fake.train.call_args.kwargs["project"]
+            self.assertTrue(os.path.isabs(project))   # nunca relativo (o YOLO gravaria em outra pasta)
 
 
 class TestDatasetAndRegistry(unittest.TestCase):

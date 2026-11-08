@@ -1,8 +1,115 @@
 {
   "version": "2.0.0",
   "last_updated": "2026-11-06T13:02:22.641815",
-  "total_web_sources_indexed": 0,
-  "sources": {},
+  "total_web_sources_indexed": 6,
+  "sources": {
+    "web_d1f1d8e67893": {
+      "title": "List of Ranma ½ chapters",
+      "type": "wikipedia",
+      "url": "https://en.wikipedia.org/wiki/List_of_Ranma_½_chapters",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "Geral",
+      "key_rules": [],
+      "summary": "",
+      "coletado_em": "2026-11-06T14:25:11",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_b92e9e79dddb": {
+      "title": "Kendo Kata",
+      "type": "wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Kendo_Kata",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "tsubazeriai, conteudo",
+      "key_rules": [
+        "Tsubazeriai: “Hiki waza Tsubazeriai kara no Hiki Doh Kihon 5:”",
+        "Conteúdo: “Sanbon-me Criticism [ edit ] There has been criticism of the Nihon Kendo Kata by kendoka due to continued usage of outdated forms. [ 1 ] For example, kodachi are no longer used except when wielding two swords. [ 1 ] This”",
+        "Conteúdo: “Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho [ edit ] Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho is a new form of bokken training that is directly translatable to bogu kendo.”"
+      ],
+      "summary": "Sanbon-me Criticism [ edit ] There has been criticism of the Nihon Kendo Kata by kendoka due to continued usage of outdated forms. [ 1 ] For example, kodachi are no longer used except when wielding two swords. [ 1 ] This led to the development of Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho.",
+      "coletado_em": "2026-11-06T14:40:47",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_c616a76575d7": {
+      "title": "International Kendo Federation",
+      "type": "official_manual",
+      "url": "https://en.wikipedia.org/wiki/International_Kendo_Federation",
+      "authority": "FIK Official Rulebook",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “All Japan Kendo Federation ( 全日本剣道連盟 , Zen Nihon Kendō Renmei ) (AJKF / ZNKR) [ 10 ] Hong Kong :”",
+        "Conteúdo: “Retrieved 22 April 2022 . ↑ \"대한검도회\" . www.kumdo.org . ↑ \"United Kendo Federation of the Philippines – United Kendo Federation of the Philippines\" . ↑ \"全日本剣道連盟 | All Japan Kendo Federation\" . 全日本剣道連盟 AJKF . ↑ \"中國香港劍道協會 Ho”"
+      ],
+      "summary": "All Japan Kendo Federation ( 全日本剣道連盟 , Zen Nihon Kendō Renmei ) (AJKF / ZNKR) [ 10 ] Hong Kong :",
+      "coletado_em": "2026-11-06T14:40:48",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_597d3f400e41": {
+      "title": "FIK — Regulations of Kendo Shiai and Shinpan (jul/2021, texto completo; cópia da federação sérvia)",
+      "type": "official_manual",
+      "url": "https://kendo.rs/files/202107-Regulations-of-Kendo-Shiai-and-Shinpan.pdf",
+      "authority": "FIK Official Rulebook",
+      "focus": "datotsu_bui, jogai, yuko_datotsu",
+      "key_rules": [
+        "Lado do shiaijo: 9 a 11 m — “The shiai-jo should be a square or a rectangle with sides of 9 to 11 meters in length inclusive of the width of the line.”",
+        "Tempo regulamentar da luta: 5 min — “The standard duration for shiai shall be five minutes, and encho shall be three minutes.”",
+        "Tempo do encho (prorrogação): 3 min — “The standard duration for shiai shall be five minutes, and encho shall be three minutes.”",
+        "Pontos para vencer (sanbon-shobu): 2 pontos — “In sanbon-shobu, the shiai-sha who first scores two points within the shiai duration shall be the winner.”",
+        "Hansoku que dão um ponto ao oponente: 2 hansoku — “In the case whereby a shiai-sha commits two hansoku stipulated under Article 17, Items 2 to 7, the opponent shall be given one point.”",
+        "Alvos válidos (datotsu-bui): “Yuko-datotsu Article 12 Yuko-datotsu ......................5 Article 13 Datotsu-bu of Shinai .........6 Article 14 Datotsu-bui ........................6 Chapter 3:”",
+        "Alvos válidos (datotsu-bui): “Datotsu-bui in Article 14 of the “Regulations” CONTENTS the Regulations the Subsidiary Rules Article 15 Drug Abuse .......................7 Article 16 Insulting or Offensive Behavior ............................7 Article”",
+        "Saída do shiaijo (jogai): “Jogai in Article 17-4 of the “Regulations” Article 16:”",
+        "Saída do shiaijo (jogai): “Jogai, or stepping out of the shiai-jo while the match is in play.”",
+        "Definição de yuko-datotsu: “A yuko-datotsu is defined as an accurate strike or thrust made onto designated targets (datotsu-bui) of the opponent’s kendo-gu .”"
+      ],
+      "summary": "",
+      "coletado_em": "2026-11-07T20:33:06",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_31f1f0e1a09b": {
+      "title": "FIK — Regulations of Kendo Shiai and Shinpan (revisão 26/07/2023)",
+      "type": "official_manual",
+      "url": "https://www.kendo.or.jp/wp/wp-content/uploads/2025/01/RevisionE-Regulations-of-Kendo-Shiai-and-Shinpan-20230726.pdf",
+      "authority": "FIK Official Rulebook",
+      "focus": "jogai, hansoku, tsubazeriai",
+      "key_rules": [
+        "Saída do shiaijo (jogai): “In such cases, a caution will be given by the shinpan-in after the match. ② Jogai as prescribed in Article 17, Item 4 of the “Regulations” is specified as follows:”",
+        "Saída do shiaijo (jogai): “Having one foot totally outside the boundary line.”",
+        "Faltas (hansoku): “P.21 Hansoku Use or possession of prohibited substances Wakare 1.”",
+        "Tsubazeriai: “When tsubazeriai reaches a stalemate P.”"
+      ],
+      "summary": "",
+      "coletado_em": "2026-11-07T20:33:11",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_48fe11f9fa34": {
+      "title": "FIK — Handbook for Kendo Shiai and Shinpan Management (07/07/2025)",
+      "type": "official_manual",
+      "url": "https://www.kendo-fik.org/wp-content/uploads/2026/01/FIK-Handbook-for-Kendo-Shiai-and-Shinpan-Management-20250707.pdf",
+      "authority": "FIK Official Rulebook",
+      "focus": "zanshin, tsubazeriai, datotsu_bui",
+      "key_rules": [
+        "Zanshin: “I nterpreting and Discerning Zanshin ............................................8 III.”",
+        "Zanshin: “The strike or thrust must be executed in high spirits with correct posture, using the striking section (datosu-bu) of the shinai with correct angle (hasuji), and followed by zanshin.”",
+        "Tsubazeriai: “About Tsubazeriai IV .”",
+        "Tsubazeriai: “About Tsubazeriai Tsubazeriai represents the closest and tensest point between two opponents when they enter a close-quarters tussle with tsuba joined together.”",
+        "Alvos válidos (datotsu-bui): “Yuko-Datotsu (Valid Strikes) Criteria for yuko-datotsu are stipulated in Article 12 of the “Regulations.” It states that an accurate strike or thrust made onto designated targets (datotsu-bui ) of the opponent’s kendo-gu”",
+        "Golpes simultâneos (aiuchi): “It is important to identify different types of technique for yuko-datotsu and not simply assume that it is “invalid as ippon because it was too light.” It is easy to conclude that techniques are invalid if executed at th”",
+        "Golpes simultâneos (aiuchi): “Shinpan-in should understand and act in accordance with the notion that there is no such thing as aiuchi. – 7 – Yuko-Datotsu (Ki-ken-tai-no-itchi) – 8 – II.”",
+        "Invalidação de ponto: “Nevertheless, strikes made with a shoto from the tsubazeriai position will not be considered valid in principle.”",
+        "Definição de yuko-datotsu: “(Yuko-datotsu) (1) If shinpan-ki’s signal of the yuko-datotsu is mistakenly indicated, the correct signal should be shown immediately without the need to cancel the original signal. – 19 – (Other Guidelines) (1) There is”",
+        "Faltas (hansoku): “(Case 7) In the context of Nito, single-handed, or one-handed Jodan, would it be considered as Hansoku if shiai-sha grips close to the Tsubamoto (base of the Tsuba) of the Daito to hide his/her Kote? (Explanation) (1) Id”"
+      ],
+      "summary": "",
+      "coletado_em": "2026-11-07T20:33:15",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    }
+  },
   "learned_parameters": {
     "auto_learning_sequence_step": 0,
     "general_kendo_principles": [

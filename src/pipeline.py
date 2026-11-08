@@ -1163,7 +1163,8 @@ class SenpAIPipeline:
         if dom and chosen_mode == "luta" and dom != LUTA:
             aviso = f"O classificador vê treino ({dom}, {prob:.0%}) neste vídeo analisado como luta. Confira o modo de análise."
         elif dom == LUTA and chosen_mode == "treino":
-            aviso = f"O classificador vê luta ({prob:.0%}) neste vídeo analisado como treino. Confira o modo de análise."
+            aviso = (f"O classificador vê luta ou shiai-geiko ({prob:.0%}) neste vídeo analisado como treino. "
+                     "Confira o modo de análise.")
         return {"predicao": pred, "classe_prevista": dom, "probabilidade": prob, "modo_escolhido": chosen_mode,
                 "aviso": aviso, "modelo": self.modality_classifier.path}
 

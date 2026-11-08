@@ -751,6 +751,15 @@ class FeedbackManager:
                         human_weight_count += 1
             total_trainings = human_weight_count + shinpan_trainings_count
 
+        # Cada ciclo de treino concluído (Governança > Ciclo de Treino) conta como um treinamento automatizado
+        try:
+            from src.engine.training_cycle import load_cycle_history
+            cycles = sum(1 for c in load_cycle_history() if c.get("terminado_em"))
+        except Exception:
+            cycles = 0
+        auto_trainings_count += cycles
+        total_trainings += cycles
+
         avg_dan = (dan_sum / human_weight_count) if human_weight_count > 0 else 0.0
         avg_dan_round = round(avg_dan, 1)
         avg_dan_int = max(1, min(8, round(avg_dan))) if avg_dan > 0 else 1
@@ -792,7 +801,7 @@ class FeedbackManager:
         auto_pct = round((auto_trainings_count / total_trainings) * 100, 1) if total_trainings > 0 else 0.0
         table_data.append({
             "Dan": "🤖 IA",
-            "Nome Graduação": "Treinamentos Automatizados (IA / Web & Vídeo)",
+            "Nome Graduação": "Ciclos de Treino e treinos automáticos (IA)",
             "Quantidade Treinamentos": auto_trainings_count,
             "Percentual (%)": f"{auto_pct}%"
         })
@@ -1985,6 +1994,33 @@ class FeedbackManager:
         )
         return self.uncertainty_sampler.resolve_item(item_id=item_id, label_approved=True, reviewer_dan=reviewer_dan,
                                                      notes=notes or f"Técnica: {tech}", decision=f"TECNICA_{tech}")
+
+    def resolve_modality_doubt(self, item_id: str, video_type: str, reviewer_dan: Any = 5, notes: str = "",
+                               labels_path: Optional[str] = None) -> bool:
+        """
+        Decide uma dúvida de modalidade da curadoria: grava o "Tipo do vídeo" no Gabarito de Lutas (o mesmo
+        lugar onde você classifica os vídeos), de onde o Banco Único tira o rótulo no próximo ciclo.
+        Os pontos já preenchidos no gabarito são mantidos.
+        """
+        from src.engine import weak_labels as wl
+        from src.utils.strike_clip_manager import get_cross_platform_basename
+        from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA
+        valid = {wl.VIDEO_TYPE_LUTA, wl.VIDEO_TYPE_DISCARD, *TRAINING_MODALITIES_METADATA}
+        if video_type not in valid:
+            raise ValueError(f"Tipo de vídeo inválido: {video_type}")
+        item = next((it for it in self.uncertainty_sampler.get_queue() if str(it.get("id")) == str(item_id)), None)
+        if item is None:
+            return False
+        name = get_cross_platform_basename(str(item.get("video_source", "")))
+        path = labels_path or wl.DEFAULT_LABELS_PATH
+        data = wl.load_match_labels(path)
+        entry = data["videos"].get(name) or {"pontos": [], "pontos_completos": False}
+        tipo = wl.VIDEO_TYPE_LUTA if video_type in wl.LUTA_ALIASES else video_type
+        entry.update({"tipo": tipo, "ignorar": tipo != wl.VIDEO_TYPE_LUTA, "tipo_decidido_em": "curadoria"})
+        data["videos"][name] = entry
+        wl.save_match_labels(data, path)
+        return self.uncertainty_sampler.resolve_item(item_id=item_id, label_approved=True, reviewer_dan=reviewer_dan,
+                                                     notes=notes or f"Tipo do vídeo: {tipo}", decision=f"MODALIDADE_{tipo}")
 
     def resolve_active_learning_item(
         self,

@@ -43,6 +43,8 @@ ORIGIN_BASE_AUTHORITY = {
     "bandeiras": 2.0, "modo_treino": 1.0, "internet": 0.5,
 }
 MATCH_TOLERANCE_SEC = 1.5
+# Modalidade: uma origem por vídeo, da mais específica para a menos
+MODALITY_ORIGIN_PRIORITY = ("modo_treino", "gabarito", "bandeiras", "internet")
 LUTA_MODALITY = "luta"   # rótulo de modalidade das lutas oficiais (as outras são as 14 modalidades de treino)
 # Diferença mínima de autoridade para um rótulo vencer outro sem virar conflito para a curadoria
 CONFLICT_MARGIN = 0.25
@@ -178,6 +180,17 @@ class LabelBank:
         gab_labels = []
         gabarito = wl.load_match_labels(labels_path or wl.DEFAULT_LABELS_PATH)["videos"]
         for name, entry in gabarito.items():
+            tipo = wl.entry_video_type(entry)
+            if tipo not in (LUTA_MODALITY, wl.VIDEO_TYPE_DISCARD):
+                # Treino ou exame (uma das modalidades): o vídeo inteiro vira rótulo de modalidade
+                gab_labels.append({"origin": "gabarito", "video_name": name, "claim": "modalidade", "value": tipo,
+                                   "time_sec": 0.0, "fim_s": None, "kenshi": None, "ref": "video", "confidence": 1.0})
+                continue
+            if tipo == LUTA_MODALITY and entry.get("tipo") and not wl.is_entry_filled(entry):
+                # Marcado como luta, mas ainda sem pontos: já ensina a modalidade
+                gab_labels.append({"origin": "gabarito", "video_name": name, "claim": "modalidade", "value": LUTA_MODALITY,
+                                   "time_sec": 0.0, "fim_s": None, "kenshi": None, "ref": "video", "confidence": 1.0})
+                continue
             if not wl.is_entry_filled(entry):
                 continue
             origin = "bandeiras" if str(entry.get("origem", "")).startswith("automatico") else "gabarito"
@@ -327,8 +340,24 @@ class LabelBank:
         return len(labels)
 
     def modality_labels(self) -> List[Dict[str, Any]]:
-        """Rótulos de modalidade (luta ou uma das 14 modalidades) para o classificador da I14."""
-        return sorted(self.labels(claim="modalidade"), key=lambda x: (x["video_name"], x.get("time_sec") or 0.0))
+        """
+        Rótulos de modalidade (luta ou uma das modalidades de treino) para o classificador da I14.
+        Shiai-geiko conta como luta. Em cada vídeo vale uma origem só, a mais específica: trechos corrigidos
+        no Modo Treinamento > tipo escolhido no gabarito > bandeiras > título do vídeo da internet
+        (ex.: a sua escolha no gabarito substitui a modalidade adivinhada pelo título).
+        """
+        from src.engine import weak_labels as wl
+        by_video: Dict[str, List[Dict[str, Any]]] = {}
+        for x in self.labels(claim="modalidade"):
+            if x.get("value") in wl.LUTA_ALIASES:
+                x = dict(x, value=LUTA_MODALITY)
+            by_video.setdefault(x["video_name"], []).append(x)
+        out = []
+        for lbs in by_video.values():
+            rank = lambda o: MODALITY_ORIGIN_PRIORITY.index(o) if o in MODALITY_ORIGIN_PRIORITY else len(MODALITY_ORIGIN_PRIORITY)  # noqa: E731
+            best = min(rank(x.get("origin")) for x in lbs)
+            out.extend(x for x in lbs if rank(x.get("origin")) == best)
+        return sorted(out, key=lambda x: (x["video_name"], x.get("time_sec") or 0.0))
 
     def labeled_videos(self, labels_path: Optional[str] = None) -> List[str]:
         """Vídeos com algo a ensinar: gabarito preenchido ou alguma correção no banco."""

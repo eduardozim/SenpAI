@@ -125,6 +125,34 @@ class TestTrainingModeCorrections(unittest.TestCase):
             bank.record_training_segments("Treino.mp4", [{"start_time": "00:00", "end_time": "05:30", "modality_key": "suburi"}])
             self.assertEqual([x["value"] for x in bank.modality_labels()], ["suburi"])
 
+    def test_video_type_in_gabarito_becomes_modality(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bank = LabelBank(os.path.join(tmp, "b.json"))
+            labels_path = os.path.join(tmp, "g.json")
+            fb_path = os.path.join(tmp, "f.json")
+            with open(fb_path, "w", encoding="utf-8") as f:
+                json.dump([], f)
+            wl.save_match_labels({"versao": 1, "videos": {
+                "internet_kk.mp4": {"tipo": "kakari_geiko", "ignorar": True, "pontos": [{"kenshi": "AKA", "tecnica": "MEN", "tempo": "00:03"}]},
+                "exame.mp4": {"tipo": "shinsa", "ignorar": True, "pontos": []},
+                "sg.mp4": {"tipo": "shiai_geiko", "pontos": [], "pontos_completos": False},
+                "lixo.mp4": {"tipo": "descartar", "ignorar": True, "pontos": []},
+                "antigo.mp4": {"ignorar": True, "pontos": []},
+            }}, labels_path)
+            # O título do vídeo da internet tinha sugerido outra modalidade: a escolha no gabarito vence
+            bank.add_label(origin="internet", video_name="internet_kk.mp4", claim="modalidade", value="kirikaeshi",
+                           time_sec=0.0, ref="titulo", confidence=0.5)
+            bank.add_label(origin="internet", video_name="sg2.mp4", claim="modalidade", value="shiai_geiko", time_sec=0.0, ref="titulo")
+            bank.sync_from_sources(labels_path=labels_path, feedback_path=fb_path)
+            got = {x["video_name"]: x["value"] for x in bank.modality_labels()}
+            self.assertEqual(got, {"internet_kk.mp4": "kakari_geiko", "exame.mp4": "shinsa", "sg.mp4": "luta", "sg2.mp4": "luta"})
+            self.assertEqual(bank.labels("internet_kk.mp4", claim="ponto"), [])   # treino: pontos não entram
+        self.assertEqual(wl.entry_video_type({"ignorar": True}), wl.VIDEO_TYPE_DISCARD)
+        self.assertEqual(wl.entry_video_type({"tipo": "shiai_geiko"}), wl.VIDEO_TYPE_LUTA)
+        self.assertTrue(wl.is_entry_ignored({"tipo": "ji_geiko"}))
+        self.assertFalse(wl.is_entry_discarded({"tipo": "ji_geiko"}))
+        self.assertFalse(wl.is_entry_ignored({"pontos": []}))
+
     def test_whole_video_modality(self):
         with tempfile.TemporaryDirectory() as tmp:
             bank = LabelBank(os.path.join(tmp, "b.json"))
