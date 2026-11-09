@@ -180,14 +180,36 @@ class TestApplyCorrections(unittest.TestCase):
         self.assertEqual(out[0]["tecnica_corrigida"], "DO")
         self.assertEqual(conflicts, [])
 
-    def test_strong_reviewer_overrides_gabarito_weak_one_becomes_conflict(self):
+    def _review(self, dan, value):
+        return [{"id": f"r{dan}", "origin": "revisao", "video_name": "v", "claim": "ponto", "value": value, "time_sec": 10.0,
+                 "reviewer_weight": dan}]
+
+    def test_shinpan_decision_is_not_absolute_and_dan_decides(self):
+        """O ponto dado pelos shinpan (gabarito 3,0) cai diante de um revisor de dan alto; 3º dan empata (curadoria)."""
         items = [_item(10.0, wl.POSITIVE)]
-        weak = [{"id": "w", "origin": "revisao", "video_name": "v", "claim": "ponto", "value": False, "time_sec": 10.0, "reviewer_weight": 4.5}]
-        strong = [{"id": "s", "origin": "revisao", "video_name": "v", "claim": "ponto", "value": False, "time_sec": 10.0, "reviewer_weight": 8}]
-        out, conflicts = self.bank.apply_corrections(items, weak)
-        self.assertEqual((out[0]["weak_label"], len(conflicts)), (wl.POSITIVE, 1))
-        out, conflicts = self.bank.apply_corrections(items, strong)
+        results = {}
+        for dan in (1, 2, 3, 4, 8):
+            out, conflicts = self.bank.apply_corrections(items, self._review(dan, False))
+            results[dan] = (out[0]["weak_label"], len(conflicts))
+        self.assertEqual(results[1], (wl.POSITIVE, 0))
+        self.assertEqual(results[2], (wl.POSITIVE, 0))
+        self.assertEqual(results[3], (wl.POSITIVE, 1))            # empate: vai para a curadoria
+        self.assertEqual(results[4], (wl.NEG_CORRECTION, 0))
+        self.assertEqual(results[8], (wl.NEG_CORRECTION, 0))
+        # Golpe válido que os shinpan não deram: o revisor de dan alto transforma em positivo
+        out, _ = self.bank.apply_corrections([_item(10.0, wl.NEG_CORRECTION)], self._review(5, True))
+        self.assertEqual(out[0]["weak_label"], wl.POSITIVE)
+
+    def test_flags_are_only_an_indication(self):
+        """Pontos lidos das bandeiras (1,5): a partir do 2º dan a revisão corrige."""
+        items = [_item(10.0, wl.POSITIVE)]
+        flags = ORIGIN_BASE_AUTHORITY["bandeiras"]
+        out, conflicts = self.bank.apply_corrections(items, self._review(1, False), base_authority=flags)
+        self.assertEqual((out[0]["weak_label"], len(conflicts)), (wl.POSITIVE, 0))
+        out, conflicts = self.bank.apply_corrections(items, self._review(2, False), base_authority=flags)
         self.assertEqual((out[0]["weak_label"], len(conflicts)), (wl.NEG_CORRECTION, 0))
+        self.assertEqual(out[0]["autoridade_rotulo"], 2.0)
+        self.assertLess(flags, ORIGIN_BASE_AUTHORITY["gabarito"])
 
     def test_kenshi_must_match_when_given(self):
         items = [_item(10.0, wl.UNKNOWN, kenshi="KENSHI_SHIRO")]

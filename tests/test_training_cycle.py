@@ -28,11 +28,12 @@ class TestCycle(unittest.TestCase):
                  mock.patch.object(tc, "step_technique", return_value=_ok(promovido=False)),                  mock.patch.object(tc, "step_modality", return_value=_ok(promovido=False)), \
                  mock.patch.object(tc, "step_suggest_modality", return_value=_ok()), \
                  mock.patch.object(tc, "step_calibration", return_value=_ok()), \
+                 mock.patch.object(tc, "step_reference", return_value=_ok()), \
                  mock.patch.object(tc, "step_measure", return_value=_ok(total={"f1": 0.5})):
                 rec = tc.run_training_cycle(tmp, pipeline=mock.Mock(), history_path=hist,
                                             progress=lambda k, n: seen.append(k))
             self.assertEqual(seen, ["cache", "bandeiras", "rotulos", "pretreino", "filtro", "tecnica", "modalidade",
-                                    "sugestao", "calibracao", "medicao"])
+                                    "sugestao", "calibracao", "referencia", "medicao"])
             self.assertEqual(rec["etapas"]["bandeiras"]["status"], "falhou")
             self.assertIn("sem GPU", rec["etapas"]["bandeiras"]["detalhe"])
             self.assertEqual(rec["etapas"]["medicao"]["status"], "ok")   # seguiu depois da falha

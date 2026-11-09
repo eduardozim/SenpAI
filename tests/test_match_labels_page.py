@@ -116,6 +116,38 @@ class TestMatchLabelsPageRender(unittest.TestCase):
             self.assertIn("Kakari-geiko", at.selectbox[0].format_func(at.selectbox[0].value))
 
 
+def _flag_section_app():
+    from unittest import mock
+    import streamlit as st
+    from src.vision import flag_detector as fd
+    from src.utils.match_labels_page import render_flag_detector_section
+    queue = [{"id": f"c{i}", "arquivo": "nao_existe.jpg", "video_name": "internet_x.mp4", "tempo_s": float(i)} for i in range(3)]
+    saved = st.session_state.setdefault("saved_labels", [])
+    with mock.patch.object(fd, "dataset_stats", return_value={"vermelha": 0, "branca": 0, "ambas": 0, "nenhuma": 0, "sem_rotulo": 3}), \
+         mock.patch.object(fd, "mining_candidates", return_value=([], {"ja_minerados": 0, "nao_luta": 0})), \
+         mock.patch.object(fd, "next_to_label", return_value=queue), \
+         mock.patch.object(fd, "set_labels", side_effect=lambda labels: saved.append(dict(labels)) or len(labels)), \
+         mock.patch("src.utils.model_registry.get_active_info", return_value=None):
+        import tempfile
+        render_flag_detector_section(tempfile.gettempdir())
+
+
+class TestFlagLabelForm(unittest.TestCase):
+    def test_fill_rest_only_marks_and_keeps_choices(self):
+        from streamlit.testing.v1 import AppTest
+        at = AppTest.from_function(_flag_section_app, default_timeout=30)
+        at.run()
+        self.assertFalse(at.exception, [e.value for e in at.exception])
+        self.assertTrue(all(r.value is None for r in at.radio))       # começa limpo
+        at.radio(key="flag_c0").set_value("vermelha")
+        next(b for b in at.button if "resto como Nenhuma" in b.label).click().run()
+        self.assertFalse(at.exception, [e.value for e in at.exception])
+        self.assertEqual([at.radio(key=f"flag_c{i}").value for i in range(3)], ["vermelha", "nenhuma", "nenhuma"])
+        self.assertEqual(at.session_state["saved_labels"], [])          # só marcou, não salvou
+        next(b for b in at.button if "Salvar rótulos" in b.label).click().run()
+        self.assertEqual(at.session_state["saved_labels"], [{"c0": "vermelha", "c1": "nenhuma", "c2": "nenhuma"}])
+
+
 def _golden_panel_app(labels_path: str):
     from src.utils.golden_benchmark_panel import render_golden_benchmark_panel, render_golden_matches_manager
     render_golden_benchmark_panel()

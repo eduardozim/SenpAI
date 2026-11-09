@@ -339,6 +339,14 @@ def _show_flag_progress(info, box, bar, line, table, history) -> None:
         box.update(label="Medindo o modelo final…")
 
 
+def _fill_unmarked_flags(item_ids: List[str]) -> None:
+    """Marca Nenhuma nos recortes da página sem marcação, sem salvar (o envio do formulário já guardou o que foi marcado)."""
+    for item_id in item_ids:
+        key = f"flag_{item_id}"
+        if not st.session_state.get(key):
+            st.session_state[key] = "nenhuma"
+
+
 def render_flag_detector_section(videos_dir: str, device_preference: str = "gpu") -> None:
     from src.vision import flag_detector as fd
     from src.utils import model_registry
@@ -395,7 +403,13 @@ def render_flag_detector_section(videos_dir: str, device_preference: str = "gpu"
                             st.caption(f"{item['video_name'][:28]} · {item['tempo_s']:.0f}s")
                             choices[item["id"]] = st.radio("Rótulo", FLAG_OPTIONS, index=None, key=f"flag_{item['id']}",
                                                            format_func=lambda o: FLAG_LABELS[o], label_visibility="collapsed")
-                if st.form_submit_button("💾 Salvar rótulos", type="primary"):
+                b1, b2 = st.columns(2)
+                save = b1.form_submit_button("💾 Salvar rótulos", type="primary")
+                b2.form_submit_button(
+                    "⬜ Marcar o resto como Nenhuma", on_click=_fill_unmarked_flags, args=([it["id"] for it in queue],),
+                    help="Só marca (não salva): coloca Nenhuma nos recortes desta página que ainda estão sem marcação e "
+                         "mantém o que você já marcou. Confira e depois clique em Salvar rótulos.")
+                if save:
                     n = fd.set_labels({k: v for k, v in choices.items() if v})
                     st.session_state["flag_flash"] = f"{n} recorte(s) rotulado(s)."
                     st.rerun()

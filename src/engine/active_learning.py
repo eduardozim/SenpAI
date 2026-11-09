@@ -22,12 +22,13 @@ from src.engine.llm_assistant import KendoLLMAssistant
 # ==============================================================================
 # 4.1 AMOSTRAGEM POR INCERTEZA (UNCERTAINTY SAMPLING)
 # ==============================================================================
-DOUBT_TYPES = ("pontuacao", "golpe_filtro", "tecnica", "regra", "conflito", "bandeira", "modalidade")
+DOUBT_TYPES = ("pontuacao", "golpe_filtro", "tecnica", "regra", "conflito", "bandeira", "modalidade", "padrao")
 # Dúvidas sobre um golpe de luta analisada: o golpe vira um corte de ~10 s em data/videos (treino)
-ANALYSIS_CLIP_DOUBTS = ("pontuacao", "golpe_filtro", "tecnica", "regra")
+ANALYSIS_CLIP_DOUBTS = ("pontuacao", "golpe_filtro", "tecnica", "regra", "padrao")
 DOUBT_LABELS = {
     "pontuacao": "Pontuação", "golpe_filtro": "É golpe?", "tecnica": "Técnica", "regra": "Regra",
     "conflito": "Conflito entre fontes", "bandeira": "Bandeiras", "modalidade": "Modalidade",
+    "padrao": "Fora do padrão dos validados",
 }
 MAX_QUEUE_ITEMS = 100
 
@@ -154,7 +155,8 @@ class UncertaintySampler:
         """
         Fila de Curadoria de TODAS as dúvidas (Pendência I12). Tipos:
         pontuacao (nota do golpe), golpe_filtro (filtro de golpes), tecnica, regra (ai-uchi, golpe após o
-        yame...), conflito (fontes do banco de rótulos discordam), bandeira, modalidade.
+        yame...), conflito (fontes do banco de rótulos discordam), bandeira, modalidade, padrao (golpe que destoa
+        dos golpes validados da mesma técnica, pela referência do ciclo de treino).
         Prioridade = incerteza × impacto (as que mais ensinam primeiro). Não repete a mesma dúvida
         (mesmo vídeo, tipo e instante ±1 s) enquanto ela estiver pendente.
         """

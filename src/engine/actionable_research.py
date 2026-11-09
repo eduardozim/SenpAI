@@ -430,10 +430,9 @@ class PhysicalConstraintExtractor:
 
 class EmpiricalDistributionLearner:
     """
-    Minerador de Vídeos Oficiais de Kendo (Eixo 2.2).
-    Extrai distribuições empíricas de referência (média, desvio padrão, percentis p25, p50, p75, p90)
-    a partir de lances oficiais confirmados por árbitros (3 ou 2 bandeiras).
-    Gera o padrão áureo real aplicado nos campeonatos mundiais e nacionais (FIK / AJKF).
+    Distribuições descritivas (média, desvio, percentis) de golpes confirmados.
+    LEGADO: a tela e o ciclo de treino usam src/analytics/strike_reference.py (golpes validados pelo banco de
+    rótulos, pesados por dan). Esta classe não preenche mais nada com valores fixos: sem amostras, fica vazia.
     """
 
     DISTRIBUTIONS_STORAGE_PATH = "data/empirical_reference_distributions.json"
@@ -466,7 +465,8 @@ class EmpiricalDistributionLearner:
 
     def mine_from_confirmed_clips(
         self,
-        clips_dataset: List[Dict[str, Any]]
+        clips_dataset: List[Dict[str, Any]],
+        save: bool = True
     ) -> Dict[str, Any]:
         """
         Extrai distribuições empíricas por tipo de golpe (MEN, KOTE, DO, TSUKI)
@@ -492,48 +492,35 @@ class EmpiricalDistributionLearner:
             if strike not in by_strike:
                 strike = "MEN"
 
-            scores = clip.get("sub_scores", clip.get("scores", clip))
-            def _val(k, default=0.75):
-                v = scores.get(k, clip.get(k, default))
-                if isinstance(v, (int, float)):
-                    return (v / 100.0) if v > 1.0 else float(v)
-                return default
-
-            by_strike[strike]["target_impact"].append(_val("target_impact", 0.82))
-            by_strike[strike]["fumikomi_sync"].append(_val("fumikomi_sync", 0.78))
-            by_strike[strike]["posture"].append(_val("posture", 0.80))
-            by_strike[strike]["zanshin"].append(_val("zanshin", 0.75))
-            by_strike[strike]["hasuji"].append(_val("hasuji", 0.82))
+            scores = clip.get("sub_scores") or clip.get("scores") or {}
+            got = False
+            for key in by_strike[strike]:
+                v = scores.get(key)
+                if isinstance(v, (int, float)):   # pilar sem nota fica de fora (nada é preenchido)
+                    by_strike[strike][key].append(v / 100.0 if v > 1.0 else float(v))
+                    got = True
+            if not got:
+                continue
             confirmed_count += 1
-
-        # Se houver golpes sem amostras suficientes, inicializar com priors empíricos da AJKF
-        baseline_seed = {
-            "MEN": {"target_impact": [0.82, 0.88, 0.85, 0.90, 0.80, 0.86], "fumikomi_sync": [0.78, 0.84, 0.80, 0.85, 0.76], "posture": [0.82, 0.86, 0.84, 0.88], "zanshin": [0.75, 0.82, 0.80, 0.84], "hasuji": [0.80, 0.85, 0.82, 0.88]},
-            "KOTE": {"target_impact": [0.80, 0.85, 0.82, 0.88], "fumikomi_sync": [0.76, 0.82, 0.80, 0.84], "posture": [0.78, 0.84, 0.82], "zanshin": [0.72, 0.80, 0.78], "hasuji": [0.78, 0.82, 0.80]},
-            "DO": {"target_impact": [0.84, 0.88, 0.85], "fumikomi_sync": [0.75, 0.80, 0.78], "posture": [0.75, 0.80, 0.76], "zanshin": [0.80, 0.85, 0.82], "hasuji": [0.82, 0.86, 0.84]},
-            "TSUKI": {"target_impact": [0.88, 0.92, 0.90], "fumikomi_sync": [0.80, 0.85, 0.82], "posture": [0.85, 0.90, 0.88], "zanshin": [0.82, 0.88, 0.85], "hasuji": [0.85, 0.90, 0.88]}
-        }
 
         results: Dict[str, Any] = {
             "metadata": {
                 "last_mined_at": datetime.datetime.now().isoformat(),
                 "total_confirmed_clips_mined": confirmed_count,
-                "referee_flag_standard": "2_or_3_flags_confirmed",
-                "authority_baseline": "FIK World Kendo Championships & AJKF Official Clips"
+                "observacao": "Substituída pela referência dos golpes validados (src/analytics/strike_reference.py). "
+                              "Sem amostras, a distribuição fica vazia: nenhum valor é preenchido."
             },
             "distributions_by_strike": {}
         }
 
         for strike_name, metric_dict in by_strike.items():
             results["distributions_by_strike"][strike_name] = {}
-            seed_dict = baseline_seed.get(strike_name, {})
             for m_name, vals in metric_dict.items():
-                if len(vals) < 3 and m_name in seed_dict:
-                    vals.extend(seed_dict[m_name])
                 dist = self.compute_distribution(vals)
                 results["distributions_by_strike"][strike_name][m_name] = dist
 
-        self.save_distributions(results)
+        if save:
+            self.save_distributions(results)
         return results
 
     def save_distributions(self, data: Dict[str, Any]) -> None:
@@ -547,10 +534,13 @@ class EmpiricalDistributionLearner:
         if os.path.exists(self.storage_path):
             try:
                 with open(self.storage_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                    data = json.load(f)
+                # O formato antigo completava as técnicas sem amostras com valores fixos: não é usado
+                if "observacao" in data.get("metadata", {}):
+                    return data
             except Exception:
                 pass
-        return self.mine_from_confirmed_clips([])
+        return self.mine_from_confirmed_clips([], save=False)
 
 
 # ==============================================================================
@@ -676,10 +666,8 @@ class BayesianPriorInjector:
 
         # Ancoragem por distribuição empírica (se disponível, usa a mediana p50 como âncora)
         st_emp = emp_data.get("distributions_by_strike", {}).get(st, {})
-        target_med = st_emp.get("target_impact", {}).get("p50", 0.82)
-        fumi_med = st_emp.get("fumikomi_sync", {}).get("p50", 0.78)
-        post_med = st_emp.get("posture", {}).get("p50", 0.80)
-        zan_med = st_emp.get("zanshin", {}).get("p50", 0.75)
+        _med = lambda k: st_emp.get(k, {}).get("p50") if st_emp.get(k, {}).get("sample_count") else None  # noqa: E731
+        target_med, fumi_med, post_med, zan_med = _med("target_impact"), _med("fumikomi_sync"), _med("posture"), _med("zanshin")
 
         return {
             "strike_type": st,

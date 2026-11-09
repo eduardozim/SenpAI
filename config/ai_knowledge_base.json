@@ -1,20 +1,8 @@
 {
   "version": "2.0.0",
   "last_updated": "2026-11-06T13:02:22.641815",
-  "total_web_sources_indexed": 6,
+  "total_web_sources_indexed": 9,
   "sources": {
-    "web_d1f1d8e67893": {
-      "title": "List of Ranma ½ chapters",
-      "type": "wikipedia",
-      "url": "https://en.wikipedia.org/wiki/List_of_Ranma_½_chapters",
-      "authority": "Blogs, fóruns e redes",
-      "focus": "Geral",
-      "key_rules": [],
-      "summary": "",
-      "coletado_em": "2026-11-06T14:25:11",
-      "origem": "coleta_internet",
-      "modo_extracao": "regras"
-    },
     "web_b92e9e79dddb": {
       "title": "Kendo Kata",
       "type": "wikipedia",
@@ -106,6 +94,66 @@
       ],
       "summary": "",
       "coletado_em": "2026-11-07T20:33:15",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_f7d660b7a368": {
+      "title": "剣道",
+      "type": "wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/剣道",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “また、剣道は 有効打突 の判定基準が曖昧で、フェンシングのように電気審判機も導入されていないため、特に国際試合では 審判 が難しい問題もある [ 21 ] 。”",
+        "Conteúdo: “素振り 切り返し 打ち込み稽古（打突） 追込み稽古 掛かり稽古 互角稽古 （地稽古） 試合 稽古 立ち切り 形稽古 [ 編集 ] 日本剣道形 の稽古 木刀 、 模擬刀 、刃引で行う形の稽古。”"
+      ],
+      "summary": "また、剣道は 有効打突 の判定基準が曖昧で、フェンシングのように電気審判機も導入されていないため、特に国際試合では 審判 が難しい問題もある [ 21 ] 。",
+      "coletado_em": "2026-11-08T00:13:14",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_107f7ff576d6": {
+      "title": "短剣道",
+      "type": "wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/短剣道",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “剣道のような防具を身につけて短い 竹刀 を用いて 打突 しあう 競技 である [ 1 ] 。”",
+        "Conteúdo: “歴史 [ 編集 ] 旧日本軍の短剣術 [ 編集 ] 着剣していない状態の 銃剣 短剣道の稽古に使用する 木刀 、 竹刀 明治維新 後に発足した 大日本帝国陸軍 は、 フランス陸軍 から教官を招聘し、 フェンシング と西洋式の 銃剣術 を訓練した。”"
+      ],
+      "summary": "剣道のような防具を身につけて短い 竹刀 を用いて 打突 しあう 競技 である [ 1 ] 。",
+      "coletado_em": "2026-11-08T00:13:14",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_cd7fb81af186": {
+      "title": "日本剣道形",
+      "type": "wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/日本剣道形",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “剣道における礼法、目付、 構え 、姿勢、呼吸、太刀筋、間合、気位、足さばき、 残心 等の習得のために稽古する。”",
+        "Conteúdo: “剣道形と 竹刀稽古 は 車の両輪 にたとえられ、いずれも体得が必須とされているが、現在、剣道形は 昇段審査 や 公開演武 のときだけ付け焼刃で稽古されることが多く、竹刀稽古に比べて軽視されている。”"
+      ],
+      "summary": "剣道における礼法、目付、 構え 、姿勢、呼吸、太刀筋、間合、気位、足さばき、 残心 等の習得のために稽古する。",
+      "coletado_em": "2026-11-08T00:13:17",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_5e46f648b6d4": {
+      "title": "剣道の段級位制",
+      "type": "wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/剣道の段級位制",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “剣道の技術的力量（ 竹刀 剣道と 日本剣道形 演武 の 実技 ）および学科の審査会を経て授与される。”",
+        "Conteúdo: “審査は 試合 （3人以上の リーグ戦 ）、 形 、 筆答 が実施され、査定委員会（ 警務部長 、 警務課長 、 消防課長 、 監察官 および警務部長の指名する武道 師範 教師10名（剣道柔道各5名））が審査した。”"
+      ],
+      "summary": "剣道の技術的力量（ 竹刀 剣道と 日本剣道形 演武 の 実技 ）および学科の審査会を経て授与される。",
+      "coletado_em": "2026-11-08T12:37:34",
       "origem": "coleta_internet",
       "modo_extracao": "regras"
     }

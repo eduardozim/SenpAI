@@ -971,26 +971,42 @@ class SenpAIPipeline:
         for ev, prob in filter_doubts:
             unc = 1.0 - abs(prob - filter_threshold) / FILTER_DOUBT_MARGIN
             jobs.append(("golpe_filtro", ev.impact_frame, ev.type, _kenshi(ev.attacker_id), unc, 0.8,
-                         f"Filtro de golpes em dúvida ({prob:.0%}; limiar {filter_threshold:.0%}): é um golpe que vira ponto?", {}, prob))
+                         f"Filtro de golpes em dúvida ({prob:.0%}; limiar {filter_threshold:.0%}): é um golpe que vira ponto?", {}, prob, {}))
         for ev, pred in technique_doubts:
             jobs.append(("tecnica", ev.impact_frame, pred["tecnica"], _kenshi(ev.attacker_id), 1.0 - pred["probabilidade"], 0.6,
                          f"Técnica incerta: o modelo diz {pred['tecnica']} com {pred['probabilidade']:.0%}.", pred["probabilidades"],
-                         pred["probabilidade"]))
+                         pred["probabilidade"], {}))
         valid = sorted((e["event_info"] for e in analyzed_events if e["evaluation"].get("is_valid")), key=lambda i: i["impact_frame"])
         for a, b in zip(valid, valid[1:]):
             dt = (b["impact_frame"] - a["impact_frame"]) / max(1.0, float(fps))
             if a["attacker_id"] != b["attacker_id"] and dt <= AIUCHI_WINDOW_SEC:
                 jobs.append(("regra", a["impact_frame"], a.get("type", "MEN"), None, 0.9, 1.0,
-                             f"Possível ai-uchi: Aka e Shiro pontuaram com {dt:.1f} s de diferença. Só um, nenhum ou os dois valem?", {}, None))
+                             f"Possível ai-uchi: Aka e Shiro pontuaram com {dt:.1f} s de diferença. Só um, nenhum ou os dois valem?", {}, None, {}))
             elif dt <= AFTER_POINT_WINDOW_SEC:
                 jobs.append(("regra", b["impact_frame"], b.get("type", "MEN"), _kenshi(b["attacker_id"]), 0.9, 1.0,
-                             f"Ponto {dt:.1f} s depois de outro ponto: possível golpe após o yame (não deveria valer).", {}, None))
+                             f"Ponto {dt:.1f} s depois de outro ponto: possível golpe após o yame (não deveria valer).", {}, None, {}))
+        # Golpe fora do padrão dos golpes validados (referência do ciclo de treino): vale um revisor olhar
+        try:
+            from src.analytics import strike_reference as sref
+            ref = sref.cached_reference()
+        except Exception:
+            ref = {}
+        if ref:
+            for e in analyzed_events:
+                info, evaluation = e["event_info"], e["evaluation"]
+                out = sref.outlier_reason(info.get("type"), evaluation.get("sub_scores") or {}, bool(evaluation.get("is_valid")), ref)
+                if out:
+                    reason, unc = out
+                    jobs.append(("padrao", info.get("impact_frame", 0), info.get("type", "MEN"), _kenshi(info.get("attacker_id")),
+                                 unc, 0.9, reason, {}, None,
+                                 {"sub_scores": evaluation.get("sub_scores") or {}, "total_score": evaluation.get("total_score"),
+                                  "is_valid": bool(evaluation.get("is_valid"))}))
 
         jobs.sort(key=lambda j: j[4] * j[5], reverse=True)
         sampler = UncertaintySampler()
         profile = getattr(self.calibrator, "profile_name", "normal")
         added = 0
-        for doubt_type, frame, strike_type, kenshi, unc, impact, reason, options, model_conf in jobs[:MAX_EXTRA_DOUBTS_PER_VIDEO]:
+        for doubt_type, frame, strike_type, kenshi, unc, impact, reason, options, model_conf, extra in jobs[:MAX_EXTRA_DOUBTS_PER_VIDEO]:
             t = float(frame) / max(1.0, float(fps))
             clip = None
             try:
@@ -1000,7 +1016,7 @@ class SenpAIPipeline:
                 pass
             entry = sampler.enqueue_doubt(
                 doubt_type=doubt_type, video_source=video_path, uncertainty=unc, impact=impact, reason=reason,
-                strike_data={"strike_type": strike_type, "timestamp_seconds": t, "impact_frame": frame, "fps": fps, "kenshi": kenshi},
+                strike_data={"strike_type": strike_type, "timestamp_seconds": t, "impact_frame": frame, "fps": fps, "kenshi": kenshi, **extra},
                 profile_name=profile, clip_path=clip, options=options, kenshi=kenshi, confidence=model_conf,
             )
             added += int(entry is not None)

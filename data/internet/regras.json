@@ -43,19 +43,6 @@
         }
       }
     },
-    "https://en.wikipedia.org/wiki/List_of_Ranma_½_chapters": {
-      "titulo": "List of Ranma ½ chapters",
-      "autoridade": "Blogs, fóruns e redes",
-      "nivel": 5,
-      "origem": "wikipedia",
-      "coletado_em": "2026-11-06T14:25:11",
-      "caracteres": 220902,
-      "consulta": "kendo oji waza techniques list",
-      "resumo": "",
-      "modo": "regras",
-      "fatos": {},
-      "regras": {}
-    },
     "https://en.wikipedia.org/wiki/Kendo_Kata": {
       "titulo": "Kendo Kata",
       "autoridade": "Blogs, fóruns e redes",
@@ -305,6 +292,94 @@
           "rotulo": "Saída do shiaijo (jogai)",
           "trechos": [
             "(Case 11) Shinpan-in A and B indicate jogai hansoku."
+          ]
+        }
+      }
+    },
+    "https://ja.wikipedia.org/wiki/剣道": {
+      "titulo": "剣道",
+      "autoridade": "Blogs, fóruns e redes",
+      "nivel": 5,
+      "origem": "wikipedia",
+      "coletado_em": "2026-11-08T00:13:14",
+      "caracteres": 39970,
+      "consulta": "剣道 有効打突 条件",
+      "resumo": "また、剣道は 有効打突 の判定基準が曖昧で、フェンシングのように電気審判機も導入されていないため、特に国際試合では 審判 が難しい問題もある [ 21 ] 。",
+      "modo": "regras",
+      "fatos": {},
+      "regras": {
+        "conteudo": {
+          "rotulo": "Conteúdo",
+          "trechos": [
+            "また、剣道は 有効打突 の判定基準が曖昧で、フェンシングのように電気審判機も導入されていないため、特に国際試合では 審判 が難しい問題もある [ 21 ] 。",
+            "素振り 切り返し 打ち込み稽古（打突） 追込み稽古 掛かり稽古 互角稽古 （地稽古） 試合 稽古 立ち切り 形稽古 [ 編集 ] 日本剣道形 の稽古 木刀 、 模擬刀 、刃引で行う形の稽古。",
+            "《例》面返し胴、小手すり上げ面、引き面 など 有効打突 [ 編集 ] 有効打突（ 一本 ）とは、 充実した気勢、適正な姿勢をもって、竹刀の打突部（弦の反対側の 物打ち を中心とした刃部）で打突部位を刃筋正しく打突し、 残心 あるもの である。"
+          ]
+        }
+      }
+    },
+    "https://ja.wikipedia.org/wiki/短剣道": {
+      "titulo": "短剣道",
+      "autoridade": "Blogs, fóruns e redes",
+      "nivel": 5,
+      "origem": "wikipedia",
+      "coletado_em": "2026-11-08T00:13:14",
+      "caracteres": 5194,
+      "consulta": "剣道 有効打突 条件",
+      "resumo": "剣道のような防具を身につけて短い 竹刀 を用いて 打突 しあう 競技 である [ 1 ] 。",
+      "modo": "regras",
+      "fatos": {},
+      "regras": {
+        "conteudo": {
+          "rotulo": "Conteúdo",
+          "trechos": [
+            "剣道のような防具を身につけて短い 竹刀 を用いて 打突 しあう 競技 である [ 1 ] 。",
+            "歴史 [ 編集 ] 旧日本軍の短剣術 [ 編集 ] 着剣していない状態の 銃剣 短剣道の稽古に使用する 木刀 、 竹刀 明治維新 後に発足した 大日本帝国陸軍 は、 フランス陸軍 から教官を招聘し、 フェンシング と西洋式の 銃剣術 を訓練した。",
+            "服装は 剣道 とほぼ同じであるが、短い 竹刀 を使用し、右手に指嚢/指袋（しのう）という 防具 を着ける銃剣道と違い、右手に籠手を付け、左手は何もつけないのが大きな違いである。"
+          ]
+        }
+      }
+    },
+    "https://ja.wikipedia.org/wiki/日本剣道形": {
+      "titulo": "日本剣道形",
+      "autoridade": "Blogs, fóruns e redes",
+      "nivel": 5,
+      "origem": "wikipedia",
+      "coletado_em": "2026-11-08T00:13:17",
+      "caracteres": 10340,
+      "consulta": "剣道 残心 審判",
+      "resumo": "剣道における礼法、目付、 構え 、姿勢、呼吸、太刀筋、間合、気位、足さばき、 残心 等の習得のために稽古する。",
+      "modo": "regras",
+      "fatos": {},
+      "regras": {
+        "conteudo": {
+          "rotulo": "Conteúdo",
+          "trechos": [
+            "剣道における礼法、目付、 構え 、姿勢、呼吸、太刀筋、間合、気位、足さばき、 残心 等の習得のために稽古する。",
+            "剣道形と 竹刀稽古 は 車の両輪 にたとえられ、いずれも体得が必須とされているが、現在、剣道形は 昇段審査 や 公開演武 のときだけ付け焼刃で稽古されることが多く、竹刀稽古に比べて軽視されている。",
+            "( 全日本剣道連盟 1981 , p. 附・作成の経緯:p.2) 関連項目 [ 編集 ] 警視流木太刀形 東京高師五行之形 修武館奥之形 木刀による剣道基本技稽古法 全日本剣道連盟居合 全日本剣道連盟杖道 五行の構え 外部リンク [ 編集 ] 武徳流剣術 大日本帝国剣道形 - 全日本剣道連盟 日本剣道形 - 全日本剣道連盟 「 https://ja.wikipedia.org/w/index.php?title=日本剣道形&oldid=110064253 」から取得 カテゴリ : 剣道 大日本武徳会 形 (武道) 隠しカテゴリ: 参照方法 最終更新 2026年6月26日 (金) 14:21 （日時は 個人設定 で未設定ならば UTC ）。"
+          ]
+        }
+      }
+    },
+    "https://ja.wikipedia.org/wiki/剣道の段級位制": {
+      "titulo": "剣道の段級位制",
+      "autoridade": "Blogs, fóruns e redes",
+      "nivel": 5,
+      "origem": "wikipedia",
+      "coletado_em": "2026-11-08T12:37:34",
+      "caracteres": 8639,
+      "consulta": "剣道 昇段審査 基準",
+      "resumo": "剣道の技術的力量（ 竹刀 剣道と 日本剣道形 演武 の 実技 ）および学科の審査会を経て授与される。",
+      "modo": "regras",
+      "fatos": {},
+      "regras": {
+        "conteudo": {
+          "rotulo": "Conteúdo",
+          "trechos": [
+            "剣道の技術的力量（ 竹刀 剣道と 日本剣道形 演武 の 実技 ）および学科の審査会を経て授与される。",
+            "審査は 試合 （3人以上の リーグ戦 ）、 形 、 筆答 が実施され、査定委員会（ 警務部長 、 警務課長 、 消防課長 、 監察官 および警務部長の指名する武道 師範 教師10名（剣道柔道各5名））が審査した。",
+            "出典 [ 編集 ] 1 2 警視庁武道九十年史28頁 1 2 剣道を知る事典97頁 1 2 剣道を知る事典96頁 ↑ 1997年6月6日放送、「心で闘う120秒 〜剣道・日本最難関試験に挑む〜」 ↑ “ 全日本剣道連盟｜行事予定 ”. www.kendo.or.jp ."
           ]
         }
       }

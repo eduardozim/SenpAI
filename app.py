@@ -3367,11 +3367,11 @@ elif nav_page == "settings":
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.markdown("### 🌐 Eixo 2: Conversão da Pesquisa Web em Parâmetros Físicos Acionáveis")
-        st.caption("Extração paramétrica estruturada (JSON Schema), hierarquia regulamentar estrita de fontes (FIK > AJKF > Artigos) e mineração de vídeos de referência oficial.")
+        st.caption("Extração paramétrica estruturada (JSON Schema), hierarquia regulamentar estrita de fontes (FIK > AJKF > Artigos) e a referência real dos golpes validados.")
 
         tab_e2_constraints, tab_e2_empirical, tab_e2_hierarchy = st.tabs([
             "📏 Restrições Biomecânicas (JSON Schema)",
-            "🎬 Distribuições Empíricas de Vídeos Oficiais",
+            "📐 Referência dos Golpes Validados",
             "⚖️ Hierarquia de Fontes & Resolução de Conflitos"
         ])
 
@@ -3406,47 +3406,8 @@ elif nav_page == "settings":
                 st.info("Nenhuma restrição física consolidada registrada no momento.")
 
         with tab_e2_empirical:
-            st.markdown("#### 🏆 Distribuição Empírica de Referência (Oficiais FIK / AJKF)")
-            st.caption("Padrão áureo cinemático extraído de clipes onde árbitros oficiais levantaram bandeira de Ippon (2 ou 3 bandeiras):")
-
-            try:
-                emp_dists_data = auto_trainer.get_empirical_reference_distributions() if hasattr(auto_trainer, "get_empirical_reference_distributions") else {}
-                dists_by_strike = emp_dists_data.get("distributions_by_strike", {})
-            except Exception:
-                emp_dists_data = {}
-                dists_by_strike = {}
-
-            if dists_by_strike:
-                st_tabs = st.tabs(["🔴 Men", "🟡 Kote", "🟢 Do", "🔵 Tsuki"])
-                for s_idx, s_key in enumerate(["MEN", "KOTE", "DO", "TSUKI"]):
-                    with st_tabs[s_idx]:
-                        s_metrics = dists_by_strike.get(s_key, {})
-                        if s_metrics:
-                            rows = []
-                            for m_k, dist_v in s_metrics.items():
-                                rows.append({
-                                    "Métrica": m_k.replace('_', ' ').title(),
-                                    "Média (μ)": f"{dist_v.get('mean', 0.0):.3f}",
-                                    "Desvio (σ)": f"±{dist_v.get('std', 0.0):.3f}",
-                                    "Mediana (p50)": f"{dist_v.get('p50', 0.0):.3f}",
-                                    "p25": f"{dist_v.get('p25', 0.0):.3f}",
-                                    "p75": f"{dist_v.get('p75', 0.0):.3f}",
-                                    "p90": f"{dist_v.get('p90', 0.0):.3f}",
-                                    "Amostras": dist_v.get('sample_count', 0)
-                                })
-                            st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
-                        else:
-                            st.write(f"Sem dados suficientes para {s_key}.")
-
-            if st.button("🎬 Minerar Clipes de Lutas Oficiais (FIK/AJKF)", key="btn_mine_official_clips", width="stretch"):
-                with st.spinner("Minerando métricas cinemáticas dos clipes oficiais confirmados..."):
-                    try:
-                        mine_res = auto_trainer.mine_official_video_clips()
-                        cnt = mine_res.get("metadata", {}).get("total_confirmed_clips_mined", 0)
-                        st.success(f"✅ Mineração concluída! {cnt} clipes oficiais com bandeiras integrados às distribuições empíricas.")
-                        st.rerun()
-                    except Exception as m_err:
-                        st.error(f"Erro na mineração: {m_err}")
+            from src.utils.strike_reference_panel import render_strike_reference_panel
+            render_strike_reference_panel()
 
         with tab_e2_hierarchy:
             st.markdown("#### 🏛️ Hierarquia Estrita de Autoridade Regulamentar")
@@ -3544,6 +3505,16 @@ elif nav_page == "settings":
                     "🥋 **Como revisar:** Assista ao trecho do golpe controverso abaixo, avalie a biomecânica de Ki-Ken-Tai-Ichi "
                     "e registre a decisão arbitral. Sua decisão **vira treino**: o SenpAI recalibra o perfil (a gravação só ocorre se não piorar o Golden Benchmark) "
                     "e **apaga o clipe** do disco. Esta fila não mede o desempenho do sistema; quem mede é o Golden Benchmark acima."
+                )
+                # Graduação de quem decide: o peso da decisão no treino é o dan (shinpan credenciado 4,5; kyu 0,8)
+                _cur_dan_opts = {1: "1º Dan", 2: "2º Dan", 3: "3º Dan", 4: "4º Dan", 5: "5º Dan", 6: "6º Dan", 7: "7º Dan",
+                                 8: "8º Dan", "shinpan": "Shinpan credenciado"}
+                _cur_dan_keys = list(_cur_dan_opts)
+                cur_dan = st.selectbox(
+                    "🥋 Sua graduação (pesa a decisão no treino: quanto maior o dan, mais confiável; shinpan credenciado vale 4,5)",
+                    _cur_dan_keys, index=_cur_dan_keys.index(st.session_state.get("curation_reviewer_dan", 3))
+                    if st.session_state.get("curation_reviewer_dan", 3) in _cur_dan_keys else 2,
+                    format_func=lambda k: _cur_dan_opts[k], key="curation_reviewer_dan",
                 )
                 from src.engine.active_learning import DOUBT_LABELS
                 tipos_pendentes = {}
@@ -3681,7 +3652,7 @@ elif nav_page == "settings":
                             with _mc1:
                                 if st.button("✅ Confirmar tipo", key=f"btn_cur_mod_{it_id}", type="primary", width="stretch"):
                                     try:
-                                        auto_trainer.feedback_mgr.resolve_modality_doubt(it_id, _choice, reviewer_dan=5)
+                                        auto_trainer.feedback_mgr.resolve_modality_doubt(it_id, _choice, reviewer_dan=cur_dan)
                                         st.session_state["curation_alert"] = (f"✅ Vídeo classificado como {video_type_label(_choice)} no Gabarito: "
                                                                               "o classificador de modalidade aprende no próximo ciclo.")
                                     except Exception as err:
@@ -3705,7 +3676,7 @@ elif nav_page == "settings":
                                 with _col:
                                     if st.button(_tech, key=f"btn_cur_tech_{_tech}_{it_id}", width="stretch"):
                                         try:
-                                            auto_trainer.feedback_mgr.resolve_technique_doubt(it_id, _tech, reviewer_dan=5)
+                                            auto_trainer.feedback_mgr.resolve_technique_doubt(it_id, _tech, reviewer_dan=cur_dan)
                                             st.session_state["curation_alert"] = f"✅ Técnica registrada como {_tech}: o classificador de técnica aprende no próximo ciclo de treino."
                                         except Exception as err:
                                             st.session_state["curation_alert"] = f"⚠️ Não foi possível registrar a técnica: {err}"
@@ -3737,19 +3708,19 @@ elif nav_page == "settings":
                                     if hasattr(auto_trainer, "resolve_active_learning_item"):
                                         try:
                                             auto_trainer.resolve_active_learning_item(
-                                                it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral",
+                                                it_id, True, cur_dan, "Homologado como Ippon via Benchmark Arbitral",
                                                 trigger_retrain=True, cleanup_clip=True, decision="IPPON"
                                             )
                                         except TypeError:
-                                            auto_trainer.resolve_active_learning_item(it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral", decision="IPPON")
+                                            auto_trainer.resolve_active_learning_item(it_id, True, cur_dan, "Homologado como Ippon via Benchmark Arbitral", decision="IPPON")
                                     elif hasattr(feedback_mgr, "resolve_active_learning_item"):
                                         try:
                                             feedback_mgr.resolve_active_learning_item(
-                                                it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral",
+                                                it_id, True, cur_dan, "Homologado como Ippon via Benchmark Arbitral",
                                                 trigger_retrain=True, cleanup_clip=True, decision="IPPON"
                                             )
                                         except TypeError:
-                                            feedback_mgr.resolve_active_learning_item(it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral", decision="IPPON")
+                                            feedback_mgr.resolve_active_learning_item(it_id, True, cur_dan, "Homologado como Ippon via Benchmark Arbitral", decision="IPPON")
                                 except Exception as err:
                                     log_event("WARNING", f"Erro ao resolver item na curadoria: {err}", "app")
 
@@ -3790,19 +3761,19 @@ elif nav_page == "settings":
                                     if hasattr(auto_trainer, "resolve_active_learning_item"):
                                         try:
                                             auto_trainer.resolve_active_learning_item(
-                                                it_id, False, 5, "Golpe Inválido (Tentativa de movimento sem pontuação) via Benchmark Arbitral",
+                                                it_id, False, cur_dan, "Golpe Inválido (Tentativa de movimento sem pontuação) via Benchmark Arbitral",
                                                 trigger_retrain=True, cleanup_clip=True, decision="INVALID_STRIKE"
                                             )
                                         except TypeError:
-                                            auto_trainer.resolve_active_learning_item(it_id, False, 5, "Golpe Inválido via Benchmark Arbitral", decision="INVALID_STRIKE")
+                                            auto_trainer.resolve_active_learning_item(it_id, False, cur_dan, "Golpe Inválido via Benchmark Arbitral", decision="INVALID_STRIKE")
                                     elif hasattr(feedback_mgr, "resolve_active_learning_item"):
                                         try:
                                             feedback_mgr.resolve_active_learning_item(
-                                                it_id, False, 5, "Golpe Inválido (Tentativa de movimento sem pontuação) via Benchmark Arbitral",
+                                                it_id, False, cur_dan, "Golpe Inválido (Tentativa de movimento sem pontuação) via Benchmark Arbitral",
                                                 trigger_retrain=True, cleanup_clip=True, decision="INVALID_STRIKE"
                                             )
                                         except TypeError:
-                                            feedback_mgr.resolve_active_learning_item(it_id, False, 5, "Golpe Inválido via Benchmark Arbitral", decision="INVALID_STRIKE")
+                                            feedback_mgr.resolve_active_learning_item(it_id, False, cur_dan, "Golpe Inválido via Benchmark Arbitral", decision="INVALID_STRIKE")
                                 except Exception as err:
                                     log_event("WARNING", f"Erro ao resolver item na curadoria: {err}", "app")
 
@@ -3843,19 +3814,19 @@ elif nav_page == "settings":
                                     if hasattr(auto_trainer, "resolve_active_learning_item"):
                                         try:
                                             auto_trainer.resolve_active_learning_item(
-                                                it_id, False, 5, "Não tem golpe (Nenhuma tentativa de movimento para pontuação) via Benchmark Arbitral",
+                                                it_id, False, cur_dan, "Não tem golpe (Nenhuma tentativa de movimento para pontuação) via Benchmark Arbitral",
                                                 trigger_retrain=True, cleanup_clip=True, decision="NO_STRIKE"
                                             )
                                         except TypeError:
-                                            auto_trainer.resolve_active_learning_item(it_id, False, 5, "Não tem golpe via Benchmark Arbitral", decision="NO_STRIKE")
+                                            auto_trainer.resolve_active_learning_item(it_id, False, cur_dan, "Não tem golpe via Benchmark Arbitral", decision="NO_STRIKE")
                                     elif hasattr(feedback_mgr, "resolve_active_learning_item"):
                                         try:
                                             feedback_mgr.resolve_active_learning_item(
-                                                it_id, False, 5, "Não tem golpe (Nenhuma tentativa de movimento para pontuação) via Benchmark Arbitral",
+                                                it_id, False, cur_dan, "Não tem golpe (Nenhuma tentativa de movimento para pontuação) via Benchmark Arbitral",
                                                 trigger_retrain=True, cleanup_clip=True, decision="NO_STRIKE"
                                             )
                                         except TypeError:
-                                            feedback_mgr.resolve_active_learning_item(it_id, False, 5, "Não tem golpe via Benchmark Arbitral", decision="NO_STRIKE")
+                                            feedback_mgr.resolve_active_learning_item(it_id, False, cur_dan, "Não tem golpe via Benchmark Arbitral", decision="NO_STRIKE")
                                 except Exception as err:
                                     log_event("WARNING", f"Erro ao resolver item na curadoria: {err}", "app")
 
@@ -3896,14 +3867,14 @@ elif nav_page == "settings":
                                         auto_trainer.discard_active_learning_item(it_id, notes="Descartado: Resultado indeterminado")
                                     elif hasattr(auto_trainer, "resolve_active_learning_item"):
                                         auto_trainer.resolve_active_learning_item(
-                                            it_id, False, 5, "Descartado: Resultado indeterminado",
+                                            it_id, False, cur_dan, "Descartado: Resultado indeterminado",
                                             trigger_retrain=False, cleanup_clip=True, decision="DISCARDED"
                                         )
                                     elif hasattr(feedback_mgr, "discard_active_learning_item"):
                                         feedback_mgr.discard_active_learning_item(it_id, notes="Descartado: Resultado indeterminado")
                                     elif hasattr(feedback_mgr, "resolve_active_learning_item"):
                                         feedback_mgr.resolve_active_learning_item(
-                                            it_id, False, 5, "Descartado: Resultado indeterminado",
+                                            it_id, False, cur_dan, "Descartado: Resultado indeterminado",
                                             trigger_retrain=False, cleanup_clip=True, decision="DISCARDED"
                                         )
                                 except Exception as err:
@@ -8692,6 +8663,13 @@ elif nav_page in ["match", "training", "analysis"]:
                                                 st.markdown(f"**Timestamp:** `{current_rev['timestamp']}`" + (f" (Frame {strike_item['impact_frame']})" if strike_item['impact_frame'] > 0 else ""))
                                                 if strike_source == "AI_DETECTED":
                                                     st.markdown(f"**Pontuação original:** `{eval_info['total_score']}%` (Exigido: `{eval_info['min_required']}%`)")
+                                                    if eval_info.get("sub_scores"):
+                                                        try:
+                                                            from src.analytics import strike_reference as _sref
+                                                            st.caption("📐 " + _sref.describe(current_rev['strike_type'], eval_info["sub_scores"],
+                                                                                              _sref.cached_reference()))
+                                                        except Exception as _ref_err:
+                                                            log_event("WARNING", f"Referência dos golpes validados indisponível: {_ref_err}", "app")
 
                                                 st.markdown(badge_html, unsafe_allow_html=True)
                                                 if current_rev.get("notes"):

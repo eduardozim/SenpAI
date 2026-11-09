@@ -422,15 +422,11 @@ class AutoTrainingEngine:
         if "auto_learning_sequence_step" not in kb["learned_parameters"]:
             kb["learned_parameters"]["auto_learning_sequence_step"] = 0
 
-        # Garantir restrições físicas acionáveis e distribuições empíricas (Eixo 2)
+        # Garantir restrições físicas acionáveis (Eixo 2). As antigas "distribuições empíricas" (números fixos)
+        # foram apagadas: a referência real fica em data/strike_reference.json (src/analytics/strike_reference.py).
         if "physical_constraints" not in kb["learned_parameters"]:
             kb["learned_parameters"]["physical_constraints"] = dict(DEFAULT_PHYSICAL_CONSTRAINTS)
-        if "empirical_distributions" not in kb["learned_parameters"]:
-            try:
-                emp_dists = getattr(self, "empirical_learner", EmpiricalDistributionLearner()).load_distributions()
-                kb["learned_parameters"]["empirical_distributions"] = emp_dists.get("distributions_by_strike", {})
-            except Exception:
-                pass
+        kb["learned_parameters"].pop("empirical_distributions", None)
 
         return kb
 

@@ -37,10 +37,17 @@ from src.utils.file_utils import safe_write_json, safe_load_json, _GLOBAL_FILE_I
 DEFAULT_BANK_PATH = os.path.join("data", "label_bank.json")
 CLAIMS = ("ponto", "golpe", "tecnica", "modalidade", "regra")
 ORIGINS = ("gabarito", "revisao", "excel", "curadoria", "bandeiras", "modo_treino", "internet")
-# Peso base de cada origem (multiplicado pelo peso do revisor quando houver um revisor humano)
+# Peso base de cada origem (multiplicado pelo peso do revisor quando houver um revisor humano: dan 1–8 vale o
+# próprio dan, shinpan credenciado 4,5, kyu/anônimo 0,8).
+# Nem o resultado oficial é verdade absoluta: os shinpan podem errar (dar ponto num golpe inválido ou deixar
+# passar um válido). Por isso:
+# - gabarito (decisão oficial dos shinpan) = 3,0: um revisor 1º–2º dan não derruba; 3º dan empata e vai para
+#   a curadoria; 4º dan ou mais (ou shinpan credenciado) corrige;
+# - bandeiras lidas pelo detector = 1,5: só um indicativo (a decisão dos shinpan + o erro do detector);
+#   a partir do 2º dan a revisão corrige.
 ORIGIN_BASE_AUTHORITY = {
-    "gabarito": 4.0, "revisao": 1.0, "excel": 1.0, "curadoria": 1.0,
-    "bandeiras": 2.0, "modo_treino": 1.0, "internet": 0.5,
+    "gabarito": 3.0, "revisao": 1.0, "excel": 1.0, "curadoria": 1.0,
+    "bandeiras": 1.5, "modo_treino": 1.0, "internet": 0.5,
 }
 MATCH_TOLERANCE_SEC = 1.5
 # Modalidade: uma origem por vídeo, da mais específica para a menos
@@ -270,11 +277,12 @@ class LabelBank:
                 and x["origin"] not in ("gabarito", "bandeiras") and x.get("time_sec") is not None]
 
     def apply_corrections(self, items: List[Dict[str, Any]], corrections: List[Dict[str, Any]],
-                          tolerance_sec: float = MATCH_TOLERANCE_SEC) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+                          tolerance_sec: float = MATCH_TOLERANCE_SEC, base_authority: Optional[float] = None) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """
         Sobrepõe as correções aos rótulos vindos do gabarito, pelo golpe mais próximo no tempo (e mesmo kenshi,
-        se informado). Vence quem tem mais autoridade (o gabarito vale 4.0); empate apertado vira conflito.
-        Devolve (itens corrigidos, conflitos).
+        se informado). Vence quem tem mais autoridade; empate apertado vira conflito para a curadoria.
+        `base_authority` é a autoridade dos rótulos que vieram do gabarito (3,0 se manual, 1,5 se lido das
+        bandeiras). Devolve (itens corrigidos, conflitos).
         """
         from src.engine import weak_labels as wl
         out = [dict(it) for it in items]
@@ -293,7 +301,8 @@ class LabelBank:
                 it["tecnica_corrigida"] = c["value"]
                 continue
             new_label = wl.POSITIVE if (c["claim"] == "ponto" and c["value"]) else wl.NEG_CORRECTION
-            current_auth = it.get("autoridade_rotulo", ORIGIN_BASE_AUTHORITY["gabarito"] if it["weak_label"] in (wl.POSITIVE, *wl.NEGATIVE_LABELS) else 0.0)
+            base = ORIGIN_BASE_AUTHORITY["gabarito"] if base_authority is None else base_authority
+            current_auth = it.get("autoridade_rotulo", base if it["weak_label"] in (wl.POSITIVE, *wl.NEGATIVE_LABELS) else 0.0)
             new_auth = self.authority(c)
             if new_label == it["weak_label"]:
                 it["autoridade_rotulo"] = max(current_auth, new_auth)
@@ -396,8 +405,14 @@ def build_training_reports(pipeline, videos_dir: str, labels_path: Optional[str]
             entry = {"pontos": [], "pontos_completos": False}
         report = wl.weak_label_video(pipeline, video, entry, invert_combatants=bool(entry.get("inverter_aka_shiro", False)))
         corrections = bank.corrections_for(name)
+        from_flags = str(entry.get("origem", "")).startswith("automatico")
+        base = ORIGIN_BASE_AUTHORITY["bandeiras" if from_flags else "gabarito"]
         for level in ("candidates", "events"):
-            report[level]["items"], c = bank.apply_corrections(report[level]["items"], corrections)
+            report[level]["items"], c = bank.apply_corrections(report[level]["items"], corrections, base_authority=base)
+            for it in report[level]["items"]:
+                if it["weak_label"] in (wl.POSITIVE, *wl.NEGATIVE_LABELS):
+                    it.setdefault("autoridade_rotulo", base)
+                    it.setdefault("origem_rotulo", "bandeiras" if from_flags else "gabarito")
             if level == "events":
                 conflicts.extend(c)
         report["inverter_aka_shiro"] = bool(entry.get("inverter_aka_shiro", False))
@@ -427,7 +442,8 @@ def optimizer_feedback(training: Dict[str, Any], bank: Optional[LabelBank] = Non
             if not ev.get("sub_scores"):
                 continue
             out.append({"label": label, "sub_scores": ev["sub_scores"], "strike_type": ev.get("strike_type"),
-                        "video_name": r["video_name"], "reviewer_dan": "shinpan" if r.get("origem_gabarito") == "manual" else 4,
+                        # Peso = autoridade do rótulo (gabarito 3,0; bandeiras 1,5; revisão = dan do revisor)
+                        "video_name": r["video_name"], "reviewer_dan": float(ev.get("autoridade_rotulo") or ORIGIN_BASE_AUTHORITY["gabarito"]),
                         "timestamp": None, "origem": ev.get("origem_rotulo", "gabarito")})
     for lb in bank.labels(claim="ponto"):
         if lb["video_name"] in replayed or not lb.get("sub_scores"):

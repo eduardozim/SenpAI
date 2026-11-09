@@ -40,11 +40,14 @@ STEP_NAMES = {
     "modalidade": "Classificador luta × 14 modalidades (desafiante × atual)",
     "sugestao": "Sugestão de modalidade nos vídeos não classificados (dúvidas na curadoria)",
     "calibracao": "Calibração dos perfis (pesos e limiares)",
+    "referencia": "Referência dos golpes validados (percentis por pilar)",
     "medicao": "Medição no Golden Benchmark",
 }
 
 
 _detail_cb: Optional[Callable[[str], None]] = None
+# Golpes rotulados que a calibração reanalisou: a referência reaproveita (evita analisar tudo de novo)
+_last_training: Optional[Dict[str, Any]] = None
 
 
 def report_detail(text: str) -> None:
@@ -154,11 +157,13 @@ def step_calibration(pipeline, videos_dir: str) -> Dict[str, Any]:
     from src.engine.calibrator import CalibrationEngine
     previous = (pipeline.strike_filter, pipeline.technique_classifier)
     pipeline.strike_filter = pipeline.technique_classifier = None  # golpes como a análise base os detecta
+    global _last_training
     try:
         training = build_training_reports(pipeline, videos_dir)
         samples = optimizer_feedback(training)
     finally:
         pipeline.strike_filter, pipeline.technique_classifier = previous
+    _last_training = training
     queued_conflicts = enqueue_conflicts(training.get("conflitos", []), videos_dir)
     if not samples:
         detail = "Nenhum golpe rotulado com as notas para calibrar."
@@ -183,6 +188,31 @@ def step_calibration(pipeline, videos_dir: str) -> Dict[str, Any]:
     if queued_conflicts:
         detail += f" {queued_conflicts} conflito(s) entre fontes enviado(s) à curadoria."
     return {"status": "ok", "detalhe": detail, "perfis": results, "conflitos_na_fila": queued_conflicts}
+
+
+def step_reference(pipeline, videos_dir: str) -> Dict[str, Any]:
+    """Distribuição real dos pilares nos golpes validados, por técnica (análise e curadoria usam)."""
+    from src.analytics import strike_reference as sr
+    global _last_training
+    training = _last_training
+    if training is None:
+        from src.engine.label_bank import build_training_reports
+        previous = (pipeline.strike_filter, pipeline.technique_classifier)
+        pipeline.strike_filter = pipeline.technique_classifier = None
+        try:
+            training = build_training_reports(pipeline, videos_dir)
+        finally:
+            pipeline.strike_filter, pipeline.technique_classifier = previous
+    _last_training = None
+    ref = sr.build_reference(training)
+    sr.save_reference(ref)
+    measured = [t for t, v in ref["tecnicas"].items() if v["medido"]]
+    detail = (f"Golpes validados: {sr.summary_text(ref)}. "
+              + (f"Referência medida para {', '.join(measured)}." if measured else
+                 f"Nenhuma técnica com o mínimo ({sr.MIN_SAMPLES} golpes de {sr.MIN_VIDEOS} vídeos): a análise mostra "
+                 "\"não medida\" e não cria dúvidas de golpe fora do padrão."))
+    return {"status": "ok" if measured else "pulado", "detalhe": detail, "medidas": measured,
+            "golpes": {t: v["golpes"] for t, v in ref["tecnicas"].items()}}
 
 
 def step_flags(videos_dir: str) -> Dict[str, Any]:
@@ -395,6 +425,7 @@ def run_training_cycle(
         ("modalidade", lambda: step_modality(pipeline, videos_dir)),
         ("sugestao", lambda: step_suggest_modality(pipeline, videos)),
         ("calibracao", lambda: step_calibration(pipeline, videos_dir)),
+        ("referencia", lambda: step_reference(pipeline, videos_dir)),
         ("medicao", lambda: step_measure(pipeline, videos_dir)),
     ]
     for n_step, (key, fn) in enumerate(steps, start=1):

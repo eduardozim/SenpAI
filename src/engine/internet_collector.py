@@ -160,6 +160,20 @@ def resolve_video_path(videos_dir: str, name: str) -> str:
 # 1. Regras: texto oficial → fatos com evidência
 # ------------------------------------------------------------------------------
 
+def decode_html(data: bytes, ctype: str = "") -> str:
+    """Bytes da página em texto: charset do cabeçalho ou da <meta>; páginas japonesas antigas usam Shift_JIS/EUC-JP."""
+    m = re.search(r"charset=[\"']?([\w-]+)", ctype or "", re.I) or re.search(rb"charset=[\"']?([\w-]+)", data[:4000], re.I)
+    declared = m.group(1) if m else None
+    if isinstance(declared, bytes):
+        declared = declared.decode("ascii", "ignore")
+    for enc in [e for e in (declared, "utf-8", "cp932", "euc_jp") if e]:
+        try:
+            return data.decode(enc)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return data.decode("utf-8", errors="replace")
+
+
 def html_to_text(html: str) -> str:
     html = re.sub(r"(?is)<(script|style|noscript).*?</\1>", " ", html)
     html = re.sub(r"(?i)<br\s*/?>|</p>|</li>|</h\d>|</tr>", "\n", html)
@@ -200,7 +214,7 @@ def fetch_source_text(url_or_path: str, fetcher: Optional[Callable[[str], Tuple[
     if "pdf" in ctype.lower() or data[:5] == b"%PDF-":
         text = pdf_to_text(data)
     else:
-        text = html_to_text(data.decode("utf-8", errors="replace"))
+        text = html_to_text(decode_html(data, ctype))
     with open(cache_file, "w", encoding="utf-8") as f:
         f.write(text)
     return {"texto": text, "cache": False}
@@ -209,8 +223,8 @@ def fetch_source_text(url_or_path: str, fetcher: Optional[Callable[[str], Tuple[
 def split_sentences(text: str) -> List[str]:
     flat = re.sub(r"\s+", " ", text)
     flat = re.sub(r"(\w)-\s+(\w)", r"\1-\2", flat)   # "yuko- datotsu" (quebra de linha do PDF) → "yuko-datotsu"
-    parts = re.split(r"(?<=[.;:])\s+(?=[A-Z0-9(])", flat)
-    return [p.strip() for p in parts if 20 <= len(p.strip()) <= 600]
+    parts = re.split(r"(?<=[.;:])\s+(?=[A-Z0-9(])|(?<=[。！？])", flat)   # inglês/português e japonês (。)
+    return [p.strip() for p in parts if (10 if re.search(r"[\u3040-\u9fff]", p) else 20) <= len(p.strip()) <= 600]
 
 
 _NUM = r"(\d+(?:[.,]\d+)?|one|two|three|four|five|six|ten)"
@@ -694,6 +708,51 @@ def add_to_corpus(url: str, title: str, analysis: Dict[str, Any], tier_name: str
     return key
 
 
+def revalidate_sources(fetcher=None) -> List[str]:
+    """
+    Reaplica o filtro atual às páginas que a pesquisa já levou ao Corpus e tira as que não passam mais (ex.: a
+    lista de capítulos de um mangá que citava kendo de passagem). Só mexe no que a coleta pesquisou; as fontes
+    oficiais configuradas (regulamentos da FIK) não passam por aqui. Devolve os títulos removidos.
+    """
+    from src.engine import web_research as wr
+    store = _load_json("regras.json", {"fontes": {}})
+    seen = _load_json("textos.json", {})
+    removed: Dict[str, str] = {}
+    for url, src in list(store.get("fontes", {}).items()):
+        if not src.get("origem"):
+            continue
+        reason = wr.title_rejection(src.get("titulo", ""))
+        if not reason:
+            try:
+                reason = wr.kendo_focus(fetch_source_text(url, fetcher=fetcher)["texto"], src.get("titulo", ""))["motivo"]
+            except Exception:
+                continue   # sem o texto não dá para julgar de novo: fica como está
+        if reason:
+            store["fontes"].pop(url)
+            seen[url] = {"status": "descartado", "titulo": src.get("titulo", ""), "motivo": reason}
+            removed[url] = reason
+    if not removed:
+        return []
+    _save_json("regras.json", store)
+    _save_json("textos.json", seen)
+    try:
+        from src.utils.test_isolation import get_safe_data_path
+        kb_path = get_safe_data_path("config/ai_knowledge_base.json")
+        with open(kb_path, "r", encoding="utf-8") as f:
+            kb = json.load(f)
+        keys = {"web_" + hashlib.sha1(u.encode("utf-8")).hexdigest()[:12] for u in removed}
+        kb["sources"] = {k: v for k, v in kb.get("sources", {}).items() if k not in keys}
+        safe_write_json(kb_path, kb, indent=2)
+    except Exception:
+        pass
+    titles = []
+    for url, reason in removed.items():
+        title = seen[url]["titulo"]
+        titles.append(title)
+        log_activity("descartado", f"🧹 Retirado do Corpus pelo filtro novo ({reason}): {title}", url)
+    return titles
+
+
 def collect_texts(config: Optional[Dict[str, Any]] = None, depth: int = 1, searcher=None, fetcher=None, llm="auto",
                   should_stop: Optional[Callable[[], bool]] = None, progress: Optional[Callable[[str], None]] = None) -> Dict[str, Any]:
     """
@@ -708,6 +767,7 @@ def collect_texts(config: Optional[Dict[str, Any]] = None, depth: int = 1, searc
         return {"consultas": 0, "lidas": 0, "carregadas": 0, "descartadas": 0}
     if llm == "auto":
         llm = wr.get_llm()
+    revalidate_sources(fetcher=fetcher)
     seen = _load_json("textos.json", {})
     store = _load_json("regras.json", {"fontes": {}})
     resolver = SourceHierarchyResolver()
@@ -744,11 +804,11 @@ def collect_texts(config: Optional[Dict[str, Any]] = None, depth: int = 1, searc
             url = r["url"]
             if url in seen:
                 continue
-            other = wr.title_is_other_art(r["titulo"])
-            if other:
-                seen[url] = {"status": "descartado", "titulo": r["titulo"], "motivo": f"página sobre {other}"}
+            reason = wr.title_rejection(r["titulo"])
+            if reason:
+                seen[url] = {"status": "descartado", "titulo": r["titulo"], "motivo": reason}
                 counts["descartadas"] += 1
-                log_activity("descartado", f"🚫 Não é kendo ({other}): {r['titulo']}", url)
+                log_activity("descartado", f"🚫 Não é kendo ({reason}): {r['titulo']}", url)
                 continue
             if progress:
                 progress(f"Lendo: {r['titulo']}")
@@ -794,6 +854,36 @@ import threading  # noqa: E402
 _session_lock = threading.RLock()
 _session_stop = threading.Event()
 _session_thread: Optional[threading.Thread] = None
+SESSION_THREAD_NAME = "senpai-internet-session"
+# A espera entre rodadas é feita em fatias curtas conferindo o relógio: no Windows, a espera de um Event não
+# conta o tempo em que o PC ficou suspenso, e uma espera de 15 min podia durar a noite toda.
+WAIT_SLICE_SEC = 5.0
+
+
+def _live_session_thread() -> Optional[threading.Thread]:
+    """A thread da procura, mesmo que este módulo tenha sido recarregado (o Streamlit recarrega ao editar o código)."""
+    if _session_thread is not None and _session_thread.is_alive():
+        return _session_thread
+    return next((t for t in threading.enumerate() if t.name == SESSION_THREAD_NAME and t.is_alive()), None)
+
+
+def _keep_awake(on: bool) -> None:
+    """Pede ao Windows para não suspender o PC enquanto a procura roda (a tela pode apagar). Sem efeito fora do Windows."""
+    try:
+        import ctypes
+        ES_CONTINUOUS, ES_SYSTEM_REQUIRED = 0x80000000, 0x00000001
+        ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | (ES_SYSTEM_REQUIRED if on else 0))
+    except Exception:
+        pass
+
+
+def _wait_until(stop_event: threading.Event, deadline: datetime.datetime) -> None:
+    """Espera até o horário (relógio de parede) ou até desligarem."""
+    while not stop_event.is_set():
+        left = (deadline - _now()).total_seconds()
+        if left <= 0:
+            return
+        stop_event.wait(min(WAIT_SLICE_SEC, left))
 
 
 def _now() -> datetime.datetime:
@@ -867,14 +957,26 @@ def get_session() -> Dict[str, Any]:
     """Estado da sessão (persistido em sessao.json). Sessão marcada ativa sem thread viva = interrompida."""
     with _session_lock:
         sess = _load_json("sessao.json", {"ativa": False})
-        alive = _session_thread is not None and _session_thread.is_alive()
+        thread = _live_session_thread()
+        alive = thread is not None
         if sess.get("ativa") and not alive:
             sess.update(ativa=False, etapa=None, encerrada_em=sess.get("encerrada_em") or _now().isoformat(timespec="seconds"),
                         encerrada_por="interrompida (o app foi reiniciado)")
             _save_json("sessao.json", sess)
+        elif sess.get("ativa") and _past_deadline(sess):
+            # Prazo vencido e a thread ainda viva (ex.: terminando um download): pede para parar e mostra isso
+            getattr(thread, "stop_event", _session_stop).set()
+            sess["etapa"] = "prazo encerrado — finalizando"
         telemetry = compute_session_progress(sess)
         sess.update(telemetry)
         return sess
+
+
+def _past_deadline(sess: Dict[str, Any]) -> bool:
+    try:
+        return _now() >= datetime.datetime.fromisoformat(sess["fim_previsto"])
+    except Exception:
+        return False
 
 
 def _update_session(**kw) -> Dict[str, Any]:
@@ -904,6 +1006,7 @@ def run_collection_session(hours: float, allow_download: bool, config: Optional[
               "internet_collector")
     rounds = 0
     reason = "prazo encerrado"
+    _keep_awake(True)
     try:
         while not stop_event.is_set() and _now() < end:
             rounds += 1
@@ -931,13 +1034,15 @@ def run_collection_session(hours: float, allow_download: bool, config: Optional[
             remaining = (end - _now()).total_seconds()
             if stop_event.is_set() or remaining <= 0:
                 break
-            stop_event.wait(min(interval * 60.0, remaining))
-        if stop_event.is_set():
+            _wait_until(stop_event, min(end, _now() + datetime.timedelta(minutes=interval)))
+        if stop_event.is_set() and _now() < end:
             reason = "desligada pelo usuário"
     except Exception as e:
         reason = "erro"
         _update_session(erro=f"{type(e).__name__}: {e}")
         log_event("WARNING", f"Sessão de procura parou com erro: {e}", "internet_collector")
+    finally:
+        _keep_awake(False)
     sess = _update_session(ativa=False, etapa=None, encerrada_em=_now().isoformat(timespec="seconds"), encerrada_por=reason)
     log_event("INFO", f"Procura de vídeos encerrada ({reason}): {sess.get('rodadas')} rodada(s), "
                       f"{sess.get('novos')} novo(s), {len(sess.get('baixados', []))} baixado(s).", "internet_collector")
@@ -950,7 +1055,7 @@ def start_collection_session(hours: float, allow_download: bool, **kwargs) -> bo
     if hours <= 0:
         raise ValueError("O prazo precisa ser maior que zero.")
     with _session_lock:
-        if _session_thread is not None and _session_thread.is_alive():
+        if _live_session_thread() is not None:
             return False
         _session_stop.clear()
         now_dt = _now()
@@ -961,18 +1066,20 @@ def start_collection_session(hours: float, allow_download: bool, **kwargs) -> bo
                         baixar=bool(allow_download), etapa="iniciando", encerrada_por=None, erro=None)
         _session_thread = threading.Thread(
             target=run_collection_session, args=(hours, allow_download),
-            kwargs=dict(kwargs, stop_event=_session_stop), name="senpai-internet-session", daemon=True)
+            kwargs=dict(kwargs, stop_event=_session_stop), name=SESSION_THREAD_NAME, daemon=True)
+        _session_thread.stop_event = _session_stop   # quem recarregar o módulo ainda consegue desligar esta procura
         _session_thread.start()
     return True
 
 
 def stop_collection_session(wait_sec: float = 0.0) -> bool:
     """Desliga a procura. Um download em andamento termina antes de parar. False se não havia sessão."""
-    if _session_thread is None or not _session_thread.is_alive():
+    thread = _live_session_thread()
+    if thread is None:
         return False
-    _session_stop.set()
+    getattr(thread, "stop_event", _session_stop).set()
     if wait_sec:
-        _session_thread.join(wait_sec)
+        thread.join(wait_sec)
     return True
 
 
