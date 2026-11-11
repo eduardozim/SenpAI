@@ -2408,7 +2408,7 @@ def render_welcome_home_page():
                     🎯 Desempenho Medido, Nunca Estimado
                 </div>
                 <div style="color: #CBD5E1; font-size: 13px; line-height: 1.5; margin-bottom: 10px;">
-                    A acurácia e a precisão do SenpAI são medidas em lutas reais com placar oficial conhecido (<b>Golden Benchmark</b>), que nunca são usadas no treino. Enquanto não houver lutas golden, nenhum número de desempenho é exibido.
+                    A acurácia e a precisão do SenpAI são medidas em lutas reais cujos golpes foram revisados por kenshi e senseis (<b>Golden Benchmark</b>), que nunca são usadas no treino. A decisão dos shinpan não é a verdade. Enquanto não houver lutas golden, nenhum número de desempenho é exibido.
                 </div>
                 <div style="color: #94A3B8; font-size: 12.5px; line-height: 1.45;">
                     A calibração melhora quando <b>árbitros graduados (1º ao 8º Dan)</b> e o gabarito de lutas oficiais alimentam o dataset de revisões; cada mudança é conferida contra o Golden Benchmark antes de ser gravada.
@@ -3043,7 +3043,7 @@ elif nav_page == "settings":
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.markdown("#### 🏷️ 2. Gabarito de Lutas")
-        st.caption("Informe os pontos oficiais de cada luta. O SenpAI rotula sozinho todas as detecções (positivo, negativo ou ambíguo) e mede a precisão real do placar.")
+        st.caption("Informe os pontos oficiais de cada luta. Eles registram a decisão dos shinpan, que também erram: servem para apontar os golpes a revisar (curadoria), não como rótulo. A validade de cada golpe vem das revisões de kenshi e senseis, pesadas pelo dan.")
         if is_web_server:
             st.info("ℹ️ **Ambiente em Nuvem:** O Gabarito de Lutas utiliza a pasta de vídeos de combate e cache de poses em disco. No ambiente local Desktop/Dojo, todos os dados são persistidos diretamente no seu workspace.")
         from src.utils.match_labels_page import render_match_labels_page

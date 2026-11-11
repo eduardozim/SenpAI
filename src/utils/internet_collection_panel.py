@@ -1,7 +1,6 @@
 """
 Painel da Coleta Automática na Internet (Pendência I15), dentro da Base de Conhecimento de Referência.
-Mostra só o que foi coletado de verdade: fatos com a frase do regulamento, catálogo de vídeos e a trava
-do detector de bandeiras.
+Mostra só o que foi coletado de verdade: fatos com a frase do regulamento, e catálogo de vídeos.
 """
 
 import streamlit as st
@@ -162,8 +161,8 @@ def render_internet_collection_panel() -> None:
     st.markdown("##### 🌐 Coleta Automática na Internet")
     st.caption(
         "Regulamentos oficiais viram referência (e restrições biomecânicas, quando o texto traz números). "
-        "Vídeos encontrados entram como rótulos fracos de origem \"internet\" (peso 0,5). "
-        "Os pontos lidos pelas bandeiras só entram depois que o detector provar F1 ≥ 0,9."
+        "Vídeos encontrados entram só com o rótulo fraco de modalidade pelo título (origem \"internet\", peso 0,5); "
+        "a validade dos golpes vem das revisões."
     )
     cfg = ic.load_config()
     st_now = ic.status()
@@ -199,16 +198,11 @@ def render_internet_collection_panel() -> None:
         st.info("Nenhum fato numérico coletado ainda.")
 
     st.markdown("**Vídeos (YouTube)**")
-    gate = st_now["bandeiras"]
     cat = st_now["catalogo"]
     m1, m2, m3 = st.columns(3)
     m1.metric("No catálogo", sum(cat.values()))
     m2.metric("Baixados", cat.get("baixado", 0))
     m3.metric("Disco (GB)", st_now["disco_gb"])
-    if gate["liberado"]:
-        st.success(f"Detector de bandeiras liberado (F1 {gate['f1']} em {gate['videos']} lutas): pontos dos vídeos baixados entram no banco.")
-    else:
-        st.warning("Detector de bandeiras ainda não validado (F1 ≥ 0,9 em ≥ 3 lutas): os vídeos entram só com o rótulo de modalidade do título.")
 
     v = cfg["videos"]
     with st.form("i15_cfg"):

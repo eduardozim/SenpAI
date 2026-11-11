@@ -3,10 +3,10 @@ Ciclo de Treino Real do SenpAI (Pendência I8 — substitui o treinamento simula
 
 O sistema melhora com DADOS, nunca com tempo de execução. Cada ciclo:
 1. Cache de poses: extrai as poses dos vídeos ainda não processados (I1).
-2. Rótulos automáticos: se o detector de bandeiras provou F1 alto contra os gabaritos manuais,
-   grava os pontos lidos das bandeiras nas lutas ainda sem gabarito (I7).
+2. Rótulos: sincroniza o banco único. A validade dos golpes vem só das revisões; os pontos do gabarito
+   (decisão dos shinpan) só apontam golpes para revisar (dúvidas "shinpan" na curadoria).
 2b. Pré-treino: refaz o encoder de movimento auto-supervisionado quando o cache cresce (I10).
-3. Filtro de golpes: treina um modelo DESAFIANTE com os gabaritos (exceto golden) e só o promove
+3. Filtro de golpes: treina um modelo DESAFIANTE com os golpes revisados (exceto golden) e só o promove
    se ele melhorar o F1 no Golden Benchmark; o anterior fica guardado para voltar (I3).
 3b. Técnica: treina um classificador DESAFIANTE (MEN/KOTE/DO/TSUKI) e só o promove se a acurácia
    de técnica no golden subir sem piorar o F1 dos pontos (I9).
@@ -32,8 +32,8 @@ from src.utils.test_isolation import is_test_mode, get_test_sandbox_dir
 DEFAULT_HISTORY_PATH = os.path.join("data", "training_cycles.jsonl")
 STEP_NAMES = {
     "cache": "Cache de poses",
+    "preprocessamento": "Pré-processamento das lutas da internet (dúvidas na curadoria)",
     "rotulos": "Banco único de rótulos (sincronização)",
-    "bandeiras": "Rótulos pelas bandeiras",
     "pretreino": "Pré-treino do encoder de movimento (sem rótulo)",
     "filtro": "Filtro de golpes (desafiante × atual)",
     "tecnica": "Classificador de técnica (desafiante × atual)",
@@ -93,7 +93,7 @@ def _append_history(record: Dict[str, Any], path: Optional[str] = None) -> None:
 
 def step_cache(pipeline, videos: List[str], labels_path: Optional[str] = None) -> Dict[str, Any]:
     """
-    Poses de todos os vídeos aproveitáveis: lutas (golpes, bandeiras) e treinos/exames (modalidade).
+    Poses de todos os vídeos aproveitáveis: lutas (golpes) e treinos/exames (modalidade).
     Só os descartados ficam de fora. Assim a etapa de modalidade não precisa extrair nada depois.
     """
     from src.utils import feature_cache
@@ -118,6 +118,17 @@ def step_cache(pipeline, videos: List[str], labels_path: Optional[str] = None) -
     if failed:
         detail += f" Falhas: {len(failed)}."
     return {"status": "ok" if not failed else "falhou", "detalhe": detail, "novos": new, "ignorados": len(ignored), "falhas": failed[:5]}
+
+
+def step_preprocess(pipeline, videos_dir: str) -> Dict[str, Any]:
+    """Analisa as lutas baixadas da internet ainda não vistas e manda os golpes em dúvida à curadoria."""
+    from src.engine import internet_preprocess as ip
+    res = ip.preprocess_internet_videos(pipeline, videos_dir, progress=report_detail)
+    if not res["processados"] and not res["falhas"]:
+        why = res.get("motivo_parada") or "nenhuma luta da internet nova para analisar"
+        return {"status": "pulado", "detalhe": why[0].upper() + why[1:] + ".", "restantes": res["restantes"]}
+    return {"status": "ok" if res["processados"] else "falhou", "detalhe": ip.summary_text(res),
+            "analisadas": len(res["processados"]), "duvidas": res["duvidas"], "restantes": res["restantes"]}
 
 
 def step_labels() -> Dict[str, Any]:
@@ -150,6 +161,41 @@ def enqueue_conflicts(conflicts: List[Dict[str, Any]], videos_dir: str) -> int:
     return added
 
 
+MAX_REVIEW_DOUBTS_PER_CYCLE = 40
+
+
+def enqueue_review_requests(requests: List[Dict[str, Any]], limit: int = MAX_REVIEW_DOUBTS_PER_CYCLE) -> int:
+    """
+    Golpes que a decisão dos shinpan aponta e ninguém revisou (label_bank.review_requests) viram dúvidas
+    "shinpan" na curadoria. A resposta, com o dan de quem revisa, é o rótulo.
+    A fila não repete a mesma dúvida pendente (mesmo vídeo, tipo e instante).
+    """
+    if not requests:
+        return 0
+    from src.engine.active_learning import UncertaintySampler
+    sampler = UncertaintySampler()
+    added = 0
+    for r in sorted(requests, key=lambda x: -x.get("prioridade", 0.0)):
+        if added >= limit:
+            break
+        kenshi = str(r.get("kenshi") or "").replace("KENSHI_", "") or None
+        entry = sampler.enqueue_doubt(
+            doubt_type="shinpan", video_source=r["video_path"], uncertainty=0.9, impact=float(r.get("prioridade", 0.9)),
+            reason=r["motivo"], kenshi=kenshi,
+            strike_data={"timestamp_seconds": r["time_sec"], "strike_type": r.get("strike_type") or "MEN",
+                         "sub_scores": r.get("sub_scores") or {}, "total_score": r.get("total_score")},
+        )
+        added += int(entry is not None)
+    return added
+
+
+def shinpan_agreement_text(reports: List[Dict[str, Any]]) -> str:
+    """'Shinpan × revisão: X de Y golpes revisados batem' (só informação; não treina nem mede o modelo)."""
+    comp = sum((r.get("concordancia_shinpan") or {}).get("comparados", 0) for r in reports)
+    agree = sum((r.get("concordancia_shinpan") or {}).get("concordam", 0) for r in reports)
+    return f" Shinpan × revisão: {agree} de {comp} golpe(s) revisado(s) batem." if comp else ""
+
+
 def step_calibration(pipeline, videos_dir: str) -> Dict[str, Any]:
     """Recalibra os perfis com os golpes rotulados pelo banco (I11 → I4); a trava do golden decide se grava."""
     from src.engine.label_bank import build_training_reports, optimizer_feedback
@@ -165,11 +211,18 @@ def step_calibration(pipeline, videos_dir: str) -> Dict[str, Any]:
         pipeline.strike_filter, pipeline.technique_classifier = previous
     _last_training = training
     queued_conflicts = enqueue_conflicts(training.get("conflitos", []), videos_dir)
+    from src.engine.label_bank import review_requests
+    queued_reviews = enqueue_review_requests(
+        [dict(r, video_path=rep["video_path"]) for rep in training["reports"] for r in review_requests(rep)])
+    extra = shinpan_agreement_text(training["reports"])
+    if queued_reviews:
+        extra += f" {queued_reviews} golpe(s) apontado(s) pelos shinpan enviado(s) à curadoria para revisão."
     if not samples:
-        detail = "Nenhum golpe rotulado com as notas para calibrar."
+        detail = "Nenhum golpe revisado com as notas para calibrar (a validade vem só das revisões, não dos shinpan)."
         if queued_conflicts:
-            detail += f" {queued_conflicts} conflito(s) entre fontes enviado(s) à curadoria."
-        return {"status": "pulado", "detalhe": detail, "conflitos_na_fila": queued_conflicts}
+            detail += f" {queued_conflicts} conflito(s) entre revisões enviado(s) à curadoria."
+        return {"status": "pulado", "detalhe": detail + extra, "conflitos_na_fila": queued_conflicts,
+                "revisoes_na_fila": queued_reviews}
     fm = FeedbackManager()
     engine = CalibrationEngine()
     results = {}
@@ -184,10 +237,11 @@ def step_calibration(pipeline, videos_dir: str) -> Dict[str, Any]:
         results[profile] = {"gravado": changed, "status": stats.get("status"), "f1": stats.get("f1_score"),
                             "mudancas": stats.get("changes", [])[:3]}
     saved = [p for p, r in results.items() if r["gravado"]]
-    detail = f"{len(samples)} golpe(s) rotulado(s); perfis atualizados: {', '.join(saved) or 'nenhum (sem melhora ou bloqueado pelo golden)'}."
+    detail = f"{len(samples)} golpe(s) revisado(s); perfis atualizados: {', '.join(saved) or 'nenhum (sem melhora ou bloqueado pelo golden)'}."
     if queued_conflicts:
-        detail += f" {queued_conflicts} conflito(s) entre fontes enviado(s) à curadoria."
-    return {"status": "ok", "detalhe": detail, "perfis": results, "conflitos_na_fila": queued_conflicts}
+        detail += f" {queued_conflicts} conflito(s) entre revisões enviado(s) à curadoria."
+    return {"status": "ok", "detalhe": detail + extra, "perfis": results, "conflitos_na_fila": queued_conflicts,
+            "revisoes_na_fila": queued_reviews}
 
 
 def step_reference(pipeline, videos_dir: str) -> Dict[str, Any]:
@@ -213,20 +267,6 @@ def step_reference(pipeline, videos_dir: str) -> Dict[str, Any]:
                  "\"não medida\" e não cria dúvidas de golpe fora do padrão."))
     return {"status": "ok" if measured else "pulado", "detalhe": detail, "medidas": measured,
             "golpes": {t: v["golpes"] for t, v in ref["tecnicas"].items()}}
-
-
-def step_flags(videos_dir: str) -> Dict[str, Any]:
-    from src.utils import model_registry
-    from src.vision import flag_detector as fd
-    if not model_registry.get_active_model_path(fd.MODEL_FAMILY):
-        return {"status": "pulado", "detalhe": "Nenhum detector de bandeiras ativo (rotule e treine na aba Gabarito de Lutas)."}
-    evaluation = fd.evaluate_against_gabarito(videos_dir)
-    res = fd.apply_to_gabarito(videos_dir, evaluation)
-    t = evaluation["total"]
-    if not res.get("aplicado"):
-        return {"status": "pulado", "detalhe": res.get("motivo"), "f1": t.get("f1"), "videos": t.get("videos")}
-    return {"status": "ok", "detalhe": f"Pontos automáticos gravados em {len(res['lutas'])} luta(s) (F1 do detector {t.get('f1')}).",
-            "f1": t.get("f1"), "videos": t.get("videos")}
 
 
 MIN_ENCODER_QUALITY = 0.5      # reconhecimento do par em lutas não vistas
@@ -331,9 +371,17 @@ def step_measure(pipeline, videos_dir: str) -> Dict[str, Any]:
         return {"status": "pulado", "detalhe": "Nenhuma luta congelada no golden (Perfis de Calibração > Eixo 4)."}
     res = gb.run_matches(pipeline, videos_dir)
     t = res["total"]
-    return {"status": "ok" if res["lutas"] else "pulado",
-            "detalhe": f"{t['lutas']} luta(s): acurácia {t.get('acuracia')}, precisão {t.get('precisao')}, recall {t.get('recall')}, F1 {t.get('f1')}.",
-            "total": t}
+    queued = enqueue_review_requests(res.get("pedidos_revisao", []))
+    if res["lutas"]:
+        detail = (f"{t['lutas']} luta(s), {t['golpes_revisados']} golpe(s) revisado(s): acurácia {t.get('acuracia')}, "
+                  f"precisão {t.get('precisao')}, recall {t.get('recall')}, F1 {t.get('f1')}.")
+        if t.get("concordancia_shinpan") is not None:
+            detail += f" Shinpan × revisão: {t['shinpan_concordam']} de {t['shinpan_comparados']} batem."
+    else:
+        detail = "Nenhum golpe revisado nas lutas golden: revise os golpes delas (análise ou curadoria) para medir."
+    if queued:
+        detail += f" {queued} golpe(s) das lutas golden enviado(s) à curadoria para revisão."
+    return {"status": "ok" if res["lutas"] else "pulado", "detalhe": detail, "total": t, "revisoes_na_fila": queued}
 
 
 # ------------------------------------------------------------------------------
@@ -362,12 +410,6 @@ def readiness(videos_dir: str, labels_path: Optional[str] = None) -> Dict[str, A
     add("lutas", sum(1 for e in entries.values() if wl.entry_video_type(e) == wl.VIDEO_TYPE_LUTA and (e or {}).get("tipo")
                      and not wl.is_entry_filled(e)),
         "luta(s) sem os pontos preenchidos", "Gabarito de Lutas > pontos da luta")
-    try:
-        from src.vision import flag_detector as fd
-        add("bandeiras", fd.dataset_stats().get("sem_rotulo", 0), "recorte(s) de bandeira sem rótulo",
-            "Gabarito de Lutas > Detector de bandeiras")
-    except Exception:
-        pass
     try:
         from src.engine.active_learning import UncertaintySampler
         add("curadoria", len([q for q in UncertaintySampler().get_queue() if q.get("status") == "pending_curation"]),
@@ -413,11 +455,11 @@ def run_training_cycle(
         "etapas": {},
     }
     from src.utils.video_library import is_analysis_clip
-    # Cortes de 10 s das análises servem às bandeiras e à curadoria; não entram no cache de luta nem nas sugestões
+    # Cortes de 10 s das análises servem à curadoria; não entram no cache de luta nem nas sugestões
     videos = [v for v in list_videos(videos_dir) if not is_analysis_clip(v)] if os.path.isdir(videos_dir) else []
     steps = [
         ("cache", lambda: step_cache(pipeline, videos)),
-        ("bandeiras", lambda: step_flags(videos_dir)),
+        ("preprocessamento", lambda: step_preprocess(pipeline, videos_dir)),
         ("rotulos", lambda: step_labels()),
         ("pretreino", lambda: step_pretrain()),
         ("filtro", lambda: step_strike_filter(pipeline, videos_dir)),
@@ -461,8 +503,9 @@ def get_cycle_state() -> Dict[str, Any]:
 
 def start_cycle_thread(videos_dir: str, device_preference: str = "gpu") -> bool:
     """Inicia um ciclo em segundo plano; devolve False se já houver um rodando."""
+    from src.engine.internet_preprocess import get_state as preprocess_state
     with _state_lock:
-        if _state["rodando"]:
+        if _state["rodando"] or preprocess_state().get("rodando"):
             return False
         _state.update({"rodando": True, "etapa": None, "detalhe": "", "resultado": None, "erro": None,
                        "inicio": datetime.datetime.now().isoformat(timespec="seconds")})
@@ -505,13 +548,13 @@ def _main(argv: Optional[List[str]] = None) -> int:
 
     if args.command == "history":
         for r in load_cycle_history():
-            print(f"{r['iniciado_em']} · " + " · ".join(f"{STEP_NAMES[k]}: {v['status']}" for k, v in r["etapas"].items()))
+            print(f"{r['iniciado_em']} · " + " · ".join(f"{STEP_NAMES.get(k, k)}: {v['status']}" for k, v in r["etapas"].items()))
         return 0
     rec = run_training_cycle(args.videos_dir, device_preference=args.device,
                              progress=lambda k, name: print(f"→ {name}...", flush=True),
                              detail=lambda t: t and print(f"   {t}", flush=True))
     for k, v in rec["etapas"].items():
-        print(f"  [{v['status']}] {STEP_NAMES[k]}: {v['detalhe']}")
+        print(f"  [{v['status']}] {STEP_NAMES.get(k, k)}: {v['detalhe']}")
     return 0 if all(v["status"] != "falhou" for v in rec["etapas"].values()) else 1
 
 

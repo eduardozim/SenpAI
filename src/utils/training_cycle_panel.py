@@ -52,6 +52,53 @@ def running_text(state: Dict[str, Any]) -> str:
     return text
 
 
+def internet_status_text(st_: Dict[str, Any]) -> str:
+    """Uma linha com a situação real das lutas baixadas da internet (nada estimado)."""
+    return (f"**{st_['lutas']}** luta(s) baixada(s) · **{st_['preprocessadas']}** analisada(s) "
+            f"({st_['golpes_analisados']} golpes) · **{st_['pendentes']}** por analisar · "
+            f"**{st_['duvidas_abertas']}** dúvida(s) delas esperando resposta na Fila de Curadoria")
+
+
+def render_internet_preprocess_section(videos_dir: str, device_preference: str = "gpu") -> None:
+    """Lutas da internet: pré-processar (análise + dúvidas na curadoria) e acompanhar."""
+    from src.engine import internet_preprocess as ip
+    state = ip.get_state()
+    with st.container(border=True):
+        st.markdown("**🌐 Lutas baixadas da internet**")
+        st.caption("Baixada, uma luta só tem a modalidade pelo título. O pré-processamento analisa cada uma (com o cache "
+                   "de poses) e manda à Fila de Curadoria os golpes em que o SenpAI está em dúvida. Suas respostas, com "
+                   "o seu dan, viram rótulos e o próximo ciclo de treino aprende com elas. O ciclo também faz isso sozinho.")
+        other = None
+        try:
+            st_now = ip.status(videos_dir)
+            other = st_now.get("rodando_em_outro_processo")
+            st.markdown(internet_status_text(st_now))
+        except Exception as e:
+            st.warning(f"Não foi possível ler a situação das lutas da internet: {e}")
+        if other and not state["rodando"]:
+            st.info(f"⏳ Já há um pré-processamento rodando em outro processo (PID {other}, ex.: linha de comando). "
+                    "Os números acima se atualizam ao recarregar a página.")
+        if state["rodando"]:
+            st.info(f"⏳ Pré-processando… {state.get('detalhe') or 'iniciando'}"
+                    + (f" (há {_elapsed(state['inicio'])})" if state.get("inicio") else ""))
+            if st.button("⏹️ Parar depois desta luta", key="btn_stop_internet_preprocess"):
+                ip.request_stop()
+            time.sleep(2.0)
+            st.rerun()
+        cycle_running = tc.get_cycle_state().get("rodando")
+        if st.button("⚙️ Pré-processar agora", key="btn_run_internet_preprocess",
+                     disabled=state["rodando"] or bool(cycle_running) or bool(other),
+                     help="Analisa as lutas da internet ainda não vistas. Para sozinho se a fila de curadoria encher."):
+            if ip.start_thread(videos_dir, device_preference=device_preference):
+                st.toast("Pré-processamento iniciado.", icon="⚙️")
+            time.sleep(0.3)
+            st.rerun()
+        if state.get("resultado"):
+            st.success(ip.summary_text(state["resultado"]))
+        if state.get("erro"):
+            st.error(f"O pré-processamento parou com erro: {state['erro']}")
+
+
 def render_training_cycle_panel(
     device_preference: str = "gpu",
     is_web_server: bool = False,
@@ -61,9 +108,11 @@ def render_training_cycle_panel(
     st.markdown(title)
     st.caption(
         "O SenpAI melhora com dados, não com tempo de execução. O ciclo usa só o que você já classificou e o que a "
-        "procura ativa já coletou (ele não coleta nada). Cada ciclo: (1) extrai as poses dos vídeos novos; (2) grava "
-        "pontos lidos das bandeiras, se o detector já provou ser confiável; (3) treina filtro de golpes, técnica e "
-        "modalidade, e só coloca em uso o que melhorar; (4) mede o sistema no golden. Etapas sem dados suficientes "
+        "procura ativa já coletou (ele não coleta nada). Cada ciclo: (1) extrai as poses dos vídeos novos e analisa as lutas novas da internet, mandando "
+        "os golpes em dúvida à curadoria; (2) junta "
+        "as revisões dos golpes (só elas dizem se um golpe é válido) e manda à curadoria os pontos dos shinpan ainda não "
+        "revisados; (3) treina filtro de golpes, técnica e modalidade, e só coloca em uso o que melhorar; (4) mede o "
+        "sistema no golden. Etapas sem dados suficientes "
         "são puladas, com o motivo."
     )
     if is_web_server:
@@ -73,6 +122,7 @@ def render_training_cycle_panel(
     st.session_state.setdefault("labels_videos_dir", DEFAULT_VIDEOS_DIR)
     videos_dir = st.session_state.get("labels_videos_dir", DEFAULT_VIDEOS_DIR)
     state = tc.get_cycle_state()
+    render_internet_preprocess_section(videos_dir, device_preference)
 
     with st.container(border=True):
         st.caption(f"Pasta dos vídeos: `{videos_dir}` (a mesma da aba Gabarito de Lutas).")
@@ -92,8 +142,9 @@ def render_training_cycle_panel(
             st.success(f"✅ Tudo classificado: {ready['videos']} vídeo(s) prontos para o ciclo.")
         if not ready["golden"]:
             st.caption("Sem lutas no golden (Perfis de Calibração > Eixo 4): os modelos treinam, mas a medição final é pulada.")
+        from src.engine.internet_preprocess import get_state as _pre_state
         if st.button("▶️ Rodar ciclo agora", type="primary", key="btn_run_training_cycle",
-                     disabled=state["rodando"] or not confirmed):
+                     disabled=state["rodando"] or not confirmed or bool(_pre_state().get("rodando"))):
             if tc.start_cycle_thread(videos_dir, device_preference=device_preference):
                 st.toast("Ciclo de treino iniciado.", icon="🔁")
             time.sleep(0.3)

@@ -184,7 +184,7 @@ Dev/
 │   ├── empirical_reference_distributions.json # Distribuições estatísticas empíricas de referência por modalidade
 │   ├── feedback_dataset.json       # Base de dados de anotações (TP/FP/FN/Dan) para RL
 │   ├── internet/                   # Catálogo, sessões e vídeos coletados na internet
-│   ├── label_bank.json             # Banco Único de Rótulos unificado (humano, web, bandeiras, gabarito)
+│   ├── label_bank.json             # Banco Único de Rótulos unificado (revisões, curadoria, web, gabarito)
 │   ├── match_labels/               # Gabaritos de luta canônicos (anotações de Shiai)
 │   ├── models/                     # Modelos de rede neural locais (pesos YOLOv8-Pose / YOLO11n-pose)
 │   └── training_history.json       # Histórico de sessões de treinamento e revisões por Dan
@@ -234,7 +234,6 @@ Dev/
 │   │   └── video_player_controls.py # Controles interativos de reprodução e VAR via HTML/JS injetado
 │   ├── vision/
 │   │   ├── combatant_tracker.py    # Rastreamento dos 2 Kenshi (Aka/Shiro), flag dorsal e planos
-│   │   ├── flag_detector.py        # Detecção visual de bandeiras de árbitros (Shinpans)
 │   │   ├── pose_detector.py        # Rastreamento de esqueleto 3D via YOLOv8-Pose / MediaPipe
 │   │   ├── pose_encoder.py         # Codificação e extração de embeddings posturais
 │   │   └── shinai_tracker.py       # Estimação do Kensen e zonas anatômicas de alvo
@@ -763,9 +762,7 @@ O módulo de captura assíncrona foi expandido para fornecer o **Formato de Entr
   - Em intervalos programados (padrão de 15 minutos), cada rodada aprofunda a pesquisa combinando duas frentes:
     1. **Mineração de Diretrizes e Manuais Oficiais**: Extração estruturada de normas e textos biomecânicos em enciclopédias e manuais online (Wikipedia, DuckDuckGo, manuais oficiais da FIK/AJKF).
     2. **Busca e Download de Vídeos de Luta / Treino**: Consulta a canais e vídeos no YouTube via `yt-dlp` com rotação inteligente de palavras-chave, respeitando limites estritos de disco, duração e parâmetros de licença.
-- **Detecção Computadorizada de Bandeiras de Árbitros ([flag_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/flag_detector.py))**:
-  - Durante o processamento de vídeos de combate coletados, o detector analisa a movimentação e elevação de bandeiras dos três Shinpans em quadra.
-  - Eventos confirmados por quórum arbitral ($\ge 2$ bandeiras) são automaticamente rotulados como Ippon no banco de dados e adicionados ao pipeline de aprendizado ativo.
+- **Validade pelas revisões, não pelos shinpan**: a decisão dos shinpan (pontos do gabarito) só aponta golpes a revisar (dúvidas "Decisão dos shinpan a revisar" na curadoria). A validade de cada golpe, no treino e no golden, vem das revisões de kenshi e senseis, pesadas pelo dan. O antigo detector de bandeiras foi removido em 2026-11-11.
 - **Atualização Reativa Automática via Streamlit Fragment (`@st.fragment(run_every=3)`)**:
   - O painel de telemetria da sessão ativa ([`_render_active_session_card`](file:///d:/Projetos/SenpAI/Dev/src/utils/internet_collection_panel.py)) utiliza fragmentação nativa do Streamlit com reexecução a cada 3 segundos.
   - Atualiza automaticamente métricas em tempo real: tempo decorrido, percentual de avanço do prazo (%) com barra de progresso visual, estimativa de horário de término, contadores de rodadas, novos no catálogo e vídeos baixados, sem necessidade de cliques em botões de recarga manual.
@@ -800,7 +797,7 @@ O módulo de captura assíncrona foi expandido para fornecer o **Formato de Entr
   - `safe_replace(src, dst, max_retries=25, delay=0.05)`: Executa tentativas progressivas com espera exponencial (backoff). Caso o bloqueio do Windows persista, aciona fallback emergencial seguro via `shutil.copyfile(src, dst)` e posterior remoção do arquivo temporário.
   - `safe_write_json(path, data, indent=2)`: Escrita atômica em arquivo temporário `.tmp` com proteção de lock reentrante global (`_GLOBAL_FILE_IO_LOCK`) e aplicação de `safe_replace`.
   - `safe_load_json(path, default=None)`: Leitura thread-safe protegida por lock com suporte a retry e recuperação a partir de `.tmp` caso o arquivo principal esteja no meio de uma gravação.
-  - Adoção uniforme em todos os módulos que realizam persistência concorrente de dados (`label_bank`, `weak_labels`, `active_learning`, `flag_detector`, `feature_cache`, `hardware`, `internet_collector`).
+  - Adoção uniforme em todos os módulos que realizam persistência concorrente de dados (`label_bank`, `weak_labels`, `active_learning`, `feature_cache`, `hardware`, `internet_collector`).
 
 ---
 
@@ -866,7 +863,6 @@ A suíte cobre exaustivamente todos os pilares do sistema, dividida em áreas fu
   - `test_auto_trainer.py`: Motor de auto-treinamento autônomo por IA e checkpoints de tolerância a falhas.
   - `test_feedback_loop.py`: Malha de feedback e aprendizado por reforço.
 - **Classificação e Visão Computacional**:
-  - `test_flag_detector.py`: Detecção visual de bandeiras de árbitros (Shinpans) e quórum de confirmação.
   - `test_modality_classifier.py`: Classificador das modalidades pedagógicas e cálculo de acurácia.
   - `test_technique_classifier.py` & `test_strike_classifier.py`: Classificação de técnicas de Kendo e detecção de Ippon.
   - `test_pose_encoder.py`: Codificação e extração de embeddings posturais.
@@ -929,10 +925,9 @@ Total de **490 testes automatizados** distribuídos em 50 módulos, executados e
 - **Resiliência de I/O e Escrita Atômica no Windows ([file_utils.py](file:///d:/Projetos/SenpAI/Dev/src/utils/file_utils.py))**:
   - Implementação de `safe_replace`, `safe_write_json` e `safe_load_json` protegidos pelo lock reentrante global `_GLOBAL_FILE_IO_LOCK`.
   - Resolução definitiva de erros de travamento por leitura concorrente do Streamlit e antivírus (`PermissionError: [WinError 5] Acesso negado: '*.tmp' -> '*'`) através de retries exponenciais e fallback seguro de cópia direta (`shutil.copyfile`).
-  - Padronização em todos os módulos com persistência frequente em disco (`label_bank`, `weak_labels`, `active_learning`, `flag_detector`, `feature_cache`, `hardware`, `internet_collector`).
-- **Banco Único de Rótulos & Classificador de Bandeiras ([label_bank.py](file:///d:/Projetos/SenpAI/Dev/src/engine/label_bank.py) & [flag_detector.py](file:///d:/Projetos/SenpAI/Dev/src/vision/flag_detector.py))**:
+  - Padronização em todos os módulos com persistência frequente em disco (`label_bank`, `weak_labels`, `active_learning`, `feature_cache`, `hardware`, `internet_collector`).
+- **Banco Único de Rótulos ([label_bank.py](file:///d:/Projetos/SenpAI/Dev/src/engine/label_bank.py))**:
   - Criação do `LabelBank` consolidando origens humanas, mineradas e automáticas em `data/label_bank.json`.
-  - Detecção computadorizada de bandeiras de árbitros (Shinpans) em vídeos de campeonato para anotação automática de pontos confirmados por maioria e incertezas para curadoria.
 - **Expansão da Suíte de Testes para 490 Testes Automatizados**:
   - Auditoria completa com **490 testes automatizados** distribuídos em 50 módulos com **100% de aprovação**, garantindo estabilidade e integridade em todo o sistema.
 

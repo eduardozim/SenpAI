@@ -423,7 +423,8 @@ class SenpAIPipeline:
         frame_step: int = 1,
         use_feature_cache: Optional[bool] = None,
         record_learning_side_effects: bool = True,
-        use_strike_filter: Optional[bool] = None
+        use_strike_filter: Optional[bool] = None,
+        enqueue_doubts: Optional[bool] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Executa a análise completa de um arquivo de vídeo de luta/treino de Kendo:
@@ -438,7 +439,10 @@ class SenpAIPipeline:
         use_feature_cache: reaproveita poses já extraídas deste vídeo (None = padrão; ligado fora de testes).
         record_learning_side_effects: False desliga a gravação de baselines do Kenshi e da fila de
         curadoria ativa, para reanálises repetidas (ex.: ajuste de limiares) não contaminarem os dados.
+        enqueue_doubts: liga/desliga só as dúvidas da curadoria (None = segue record_learning_side_effects).
+        O pré-processamento dos vídeos da internet usa False + True: cria dúvidas sem gravar o perfil dos kenshi.
         """
+        doubts_on = record_learning_side_effects if enqueue_doubts is None else bool(enqueue_doubts)
         if not os.path.exists(video_path):
             raise FileNotFoundError(f"Arquivo de vídeo não encontrado: {video_path}")
 
@@ -713,7 +717,7 @@ class SenpAIPipeline:
 
             # Curadoria Ativa: Se o lance recai na faixa de incerteza arbitral (45%-65%), extrair corte real da luta
             conf_val = float(evaluation.get("total_score", 0.0)) / 100.0 if float(evaluation.get("total_score", 0.0)) > 1.0 else float(evaluation.get("total_score", 0.0))
-            if record_learning_side_effects and 0.45 <= conf_val <= 0.65 and video_path and os.path.isfile(video_path):
+            if doubts_on and 0.45 <= conf_val <= 0.65 and video_path and os.path.isfile(video_path):
                 try:
                     from src.utils.strike_clip_manager import extract_strike_subclip, get_clips_dir
                     from src.engine.active_learning import UncertaintySampler
@@ -748,7 +752,7 @@ class SenpAIPipeline:
                     log_event("WARNING", f"Falha ao extrair corte real de golpe incerto no pipeline: {e}", "pipeline")
 
         # 5b. Curadoria de todas as dúvidas (I12): filtro de golpes, técnica e regras (ai-uchi, golpe após o yame)
-        if record_learning_side_effects and video_path and os.path.isfile(video_path):
+        if doubts_on and video_path and os.path.isfile(video_path):
             try:
                 self._enqueue_extra_doubts(video_path, fps, filter_doubts, technique_doubts, analyzed_events,
                                            getattr(active_filter, "threshold", None))

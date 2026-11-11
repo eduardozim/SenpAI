@@ -116,38 +116,6 @@ class TestMatchLabelsPageRender(unittest.TestCase):
             self.assertIn("Kakari-geiko", at.selectbox[0].format_func(at.selectbox[0].value))
 
 
-def _flag_section_app():
-    from unittest import mock
-    import streamlit as st
-    from src.vision import flag_detector as fd
-    from src.utils.match_labels_page import render_flag_detector_section
-    queue = [{"id": f"c{i}", "arquivo": "nao_existe.jpg", "video_name": "internet_x.mp4", "tempo_s": float(i)} for i in range(3)]
-    saved = st.session_state.setdefault("saved_labels", [])
-    with mock.patch.object(fd, "dataset_stats", return_value={"vermelha": 0, "branca": 0, "ambas": 0, "nenhuma": 0, "sem_rotulo": 3}), \
-         mock.patch.object(fd, "mining_candidates", return_value=([], {"ja_minerados": 0, "nao_luta": 0})), \
-         mock.patch.object(fd, "next_to_label", return_value=queue), \
-         mock.patch.object(fd, "set_labels", side_effect=lambda labels: saved.append(dict(labels)) or len(labels)), \
-         mock.patch("src.utils.model_registry.get_active_info", return_value=None):
-        import tempfile
-        render_flag_detector_section(tempfile.gettempdir())
-
-
-class TestFlagLabelForm(unittest.TestCase):
-    def test_fill_rest_only_marks_and_keeps_choices(self):
-        from streamlit.testing.v1 import AppTest
-        at = AppTest.from_function(_flag_section_app, default_timeout=30)
-        at.run()
-        self.assertFalse(at.exception, [e.value for e in at.exception])
-        self.assertTrue(all(r.value is None for r in at.radio))       # começa limpo
-        at.radio(key="flag_c0").set_value("vermelha")
-        next(b for b in at.button if "resto como Nenhuma" in b.label).click().run()
-        self.assertFalse(at.exception, [e.value for e in at.exception])
-        self.assertEqual([at.radio(key=f"flag_c{i}").value for i in range(3)], ["vermelha", "nenhuma", "nenhuma"])
-        self.assertEqual(at.session_state["saved_labels"], [])          # só marcou, não salvou
-        next(b for b in at.button if "Salvar rótulos" in b.label).click().run()
-        self.assertEqual(at.session_state["saved_labels"], [{"c0": "vermelha", "c1": "nenhuma", "c2": "nenhuma"}])
-
-
 def _golden_panel_app(labels_path: str):
     from src.utils.golden_benchmark_panel import render_golden_benchmark_panel, render_golden_matches_manager
     render_golden_benchmark_panel()
@@ -166,6 +134,9 @@ class TestGoldenBenchmarkPanel(unittest.TestCase):
                 "luta_a.mp4": {"pontos_completos": True, "pontos": [{"kenshi": "AKA", "tecnica": "MEN", "tempo": "00:10"}]},
                 "luta_b.mp4": {"pontos_completos": False, "pontos": []},
             }}, labels_path)
+            from unittest import mock
+            patcher = mock.patch("src.utils.golden_benchmark_panel.reviewed_counts", return_value={"luta_a.mp4": 2})
+            patcher.start()
             try:
                 at = AppTest.from_function(_golden_panel_app, args=(labels_path,), default_timeout=60)
                 at.run()
@@ -174,7 +145,7 @@ class TestGoldenBenchmarkPanel(unittest.TestCase):
                 if not gb.load_history():
                     self.assertEqual(len(at.metric), 0)
                     self.assertTrue(any("Ainda não há medição real" in i.value for i in at.info))
-                self.assertEqual(at.multiselect[0].options, ["luta_a.mp4"])  # só lutas completas
+                self.assertEqual(at.multiselect[0].options, ["luta_a.mp4"])  # só lutas com golpes revisados
 
                 at.multiselect[0].select("luta_a.mp4")
                 next(b for b in at.button if "Congelar selecionadas" in b.label).click().run()
@@ -186,6 +157,7 @@ class TestGoldenBenchmarkPanel(unittest.TestCase):
                 next(b for b in at.button if "Tirar do golden" in b.label).click().run()
                 self.assertFalse(gb.is_golden_video("luta_a.mp4"))
             finally:
+                patcher.stop()
                 gb.unfreeze_match("luta_a.mp4")
 
 

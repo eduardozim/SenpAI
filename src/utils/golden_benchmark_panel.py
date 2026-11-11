@@ -2,7 +2,8 @@
 Painel único do Golden Benchmark na interface (Configurações > Perfis de Calibração > Eixo 4).
 
 Tudo o que é do golden fica aqui: métricas da trava anti-regressão, lutas congeladas
-(congelar, recongelar, tirar) e benchmark por luta com histórico. A lógica e as métricas
+(congelar, recongelar, tirar) e benchmark por luta com histórico. A verdade de cada golpe vem das
+revisões (kenshi e senseis, pesadas pelo dan); a decisão dos shinpan aparece só como informação. A lógica e as métricas
 vêm do GoldenBenchmark (src/engine/active_learning.py) e de src/engine/weak_labels.py.
 """
 
@@ -24,18 +25,34 @@ def _pct(v: Optional[float]) -> str:
 def golden_rows_table(rows: List[Dict[str, Any]]) -> pd.DataFrame:
     return pd.DataFrame([{
         "luta": r["video_name"],
-        "oficial (A x S)": f"{r['placar_oficial']['aka']} x {r['placar_oficial']['shiro']}",
-        "SenpAI (A x S)": f"{r['placar_senpai']['aka']} x {r['placar_senpai']['shiro']}",
+        "golpes revisados": r["golpes_revisados"],
+        "válidos pela revisão": r["validos_revisados"],
         "acertos": r["acertos"],
         "falsos pontos": r["falsos_pontos"],
         "perdidos": r["perdidos"],
+        "shinpan (A x S)": f"{r['placar_shinpan']['aka']} x {r['placar_shinpan']['shiro']}",
+        "shinpan × revisão": (f"{r['shinpan_concordam']} de {r['shinpan_comparados']}" if r["shinpan_comparados"] else "—"),
     } for r in rows])
 
 
-def golden_matches_table(gabarito: Dict[str, Dict[str, Any]], golden: Dict[str, Dict[str, Any]], gb) -> pd.DataFrame:
-    """Lutas com gabarito completo e o estado de cada uma no golden."""
+def reviewed_counts(bank=None) -> Dict[str, int]:
+    """Golpes revisados (ponto/golpe) por luta no banco de rótulos: o que o golden consegue medir."""
+    from src.engine.label_bank import LabelBank, SHINPAN_ORIGINS
+    bank = bank or LabelBank()
+    out: Dict[str, int] = {}
+    for x in bank.load().values():
+        if x.get("claim") in ("ponto", "golpe") and x.get("origin") not in SHINPAN_ORIGINS:
+            out[x["video_name"]] = out.get(x["video_name"], 0) + 1
+    return out
+
+
+def golden_matches_table(gabarito: Dict[str, Dict[str, Any]], golden: Dict[str, Dict[str, Any]], gb,
+                         reviewed: Optional[Dict[str, int]] = None) -> pd.DataFrame:
+    """Lutas com golpes revisados (ou já congeladas) e o estado de cada uma no golden."""
+    reviewed = reviewed if reviewed is not None else reviewed_counts()
     rows = []
-    for name in sorted(set(golden) | {n for n, e in gabarito.items() if e.get("pontos_completos")}):
+    lutas = {n for n, e in gabarito.items() if wl.entry_video_type(e) == wl.VIDEO_TYPE_LUTA and not wl.is_entry_ignored(e)}
+    for name in sorted(set(golden) | {n for n in lutas if reviewed.get(n)}):
         frozen = golden.get(name)
         if frozen and name in gabarito and gb.differs_from_gabarito(name, gabarito[name]):
             status = "🥇 congelada (gabarito mudou)"
@@ -44,9 +61,10 @@ def golden_matches_table(gabarito: Dict[str, Dict[str, Any]], golden: Dict[str, 
         else:
             status = "disponível"
         source = frozen or gabarito.get(name, {})
-        rows.append({"luta": name, "golden": status, "pontos": len(source.get("pontos") or []),
+        rows.append({"luta": name, "golden": status, "golpes revisados": reviewed.get(name, 0),
+                     "pontos dos shinpan": len(source.get("pontos") or []),
                      "congelada em": (frozen or {}).get("congelado_em", "")})
-    return pd.DataFrame(rows, columns=["luta", "golden", "pontos", "congelada em"])
+    return pd.DataFrame(rows, columns=["luta", "golden", "golpes revisados", "pontos dos shinpan", "congelada em"])
 
 
 def _get_pipeline(device_preference: str):
@@ -74,22 +92,25 @@ def render_golden_benchmark_panel() -> None:
 
     if last is None:
         st.info(
-            "**Ainda não há medição real.** Os números aparecem depois de congelar lutas com gabarito completo "
-            "e rodar o benchmark por luta (logo abaixo)."
+            "**Ainda não há medição real.** Os números aparecem depois de congelar lutas com golpes revisados "
+            "(por você ou outro sensei, na análise ou na curadoria) e rodar o benchmark por luta (logo abaixo)."
         )
     else:
         t = last["total"]
         m_c1, m_c2, m_c3, m_c4 = st.columns(4)
         m_c1.metric("Acurácia", _pct(t.get("acuracia")),
-                    help="Das decisões ponto / não-ponto sobre os golpes avaliados, quantas estavam certas.")
-        m_c2.metric("Precisão", _pct(t.get("precisao")), help="Dos pontos que o SenpAI deu, quantos eram oficiais.")
-        m_c3.metric("Recall", _pct(t.get("recall")), help="Dos pontos oficiais, quantos o SenpAI deu.")
+                    help="Das decisões válido / não válido sobre os golpes revisados, quantas batem com a revisão.")
+        m_c2.metric("Precisão", _pct(t.get("precisao")), help="Dos pontos que o SenpAI deu, quantos a revisão considera válidos.")
+        m_c3.metric("Recall", _pct(t.get("recall")), help="Dos golpes que a revisão considera válidos, quantos o SenpAI deu.")
         m_c4.metric("F1", _pct(t.get("f1")))
-        st.caption(
-            f"Medido em {t['lutas']} luta(s) golden ({t['pontos_oficiais']} pontos oficiais, "
-            f"{t.get('decisoes_avaliadas', 0)} golpes avaliados) · placares exatos: {t['placares_exatos']} de {t['lutas']} · "
-            f"rodada de {last['executado_em']}."
-        )
+        if "golpes_revisados" in t:
+            shinpan = (f" · shinpan × revisão: {t['shinpan_concordam']} de {t['shinpan_comparados']} batem"
+                       if t.get("shinpan_comparados") else "")
+            st.caption(f"Medido em {t['lutas']} luta(s) golden, contra {t['golpes_revisados']} golpes revisados "
+                       f"(a decisão dos shinpan não é a verdade){shinpan} · rodada de {last['executado_em']}.")
+        else:
+            st.caption(f"⚠️ Rodada de {last['executado_em']} medida pelo placar dos shinpan (formato antigo). "
+                       "Rode o benchmark de novo para medir pelas revisões.")
 
     src = gb.samples_source()
     st.caption(
@@ -112,8 +133,8 @@ def render_golden_matches_manager(
 
     with st.expander(f"🥇 Lutas do golden & benchmark por luta ({len(golden)} congelada(s))", expanded=False):
         st.caption(
-            "Lutas reais com gabarito completo (aba Gabarito de Lutas), congeladas como estão no momento. "
-            "Nunca entram no treino nem na curadoria. Congele as lutas do golden **antes** de gravar o feedback das demais."
+            "Lutas reais com golpes revisados por kenshi ou senseis (na análise ou na curadoria), congeladas como estão. "
+            "Nunca entram no treino. A verdade é a revisão (pesada pelo dan); os pontos dos shinpan só apontam o que revisar."
         )
         if is_web_server:
             st.info("Disponível no ambiente Local: o benchmark usa os vídeos e o cache de poses em disco.")
@@ -122,7 +143,8 @@ def render_golden_matches_manager(
         gabarito = wl.load_match_labels(labels_path)["videos"]
         table = golden_matches_table(gabarito, golden, gb)
         if table.empty:
-            st.info("Nenhuma luta com gabarito completo ainda. Preencha na aba Gabarito de Lutas e marque \"todos os pontos listados\".")
+            st.info("Nenhuma luta com golpes revisados ainda. Revise os golpes de uma luta na análise ou responda as "
+                    "dúvidas \"Decisão dos shinpan a revisar\" na curadoria; depois congele a luta aqui.")
             return
         st.dataframe(table, width="stretch", hide_index=True)
 
@@ -169,11 +191,16 @@ def render_golden_matches_manager(
         if res:
             t = res["total"]
             r1, r2, r3, r4 = st.columns(4)
-            r1.metric("Placares exatos", f"{t['placares_exatos']} de {t['lutas']}")
-            r2.metric("Precisão dos pontos", _pct(t["precisao"]), help="Dos pontos que o SenpAI deu, quantos eram oficiais.")
-            r3.metric("Recall dos pontos", _pct(t["recall"]), help="Dos pontos oficiais, quantos o SenpAI deu.")
-            r4.metric("F1 dos pontos", _pct(t["f1"]))
-            st.caption(f"Detector bruto encontra {_pct(t['recall_candidatos'])} dos pontos oficiais · {res['golpes_reais']} golpes reais gravados no golden.")
+            r1.metric("Golpes revisados", t["golpes_revisados"])
+            r2.metric("Precisão", _pct(t["precisao"]), help="Dos pontos que o SenpAI deu, quantos a revisão considera válidos.")
+            r3.metric("Recall", _pct(t["recall"]), help="Dos golpes válidos pela revisão, quantos o SenpAI deu.")
+            r4.metric("F1", _pct(t["f1"]))
+            st.caption(f"Detector bruto encontra {_pct(t['recall_candidatos'])} dos golpes válidos pela revisão · "
+                       f"{res['golpes_reais']} golpes revisados gravados no golden"
+                       + (f" · shinpan × revisão: {t['shinpan_concordam']} de {t['shinpan_comparados']} batem"
+                          if t.get("shinpan_comparados") else "") + ".")
+            if res.get("sem_revisao"):
+                st.info("Sem golpe revisado (não medidas): " + ", ".join(res["sem_revisao"]))
             if res["lutas"]:
                 st.dataframe(golden_rows_table(res["lutas"]), width="stretch", hide_index=True)
             for missing in res["videos_ausentes"]:
@@ -185,6 +212,7 @@ def render_golden_matches_manager(
         if history:
             st.markdown("**Histórico do benchmark por luta**")
             st.dataframe(pd.DataFrame([{
-                "quando": h["executado_em"], "lutas": h["total"]["lutas"], "placares exatos": h["total"]["placares_exatos"],
+                "quando": h["executado_em"], "lutas": h["total"]["lutas"],
+                "medido por": "revisão" if "golpes_revisados" in h["total"] else "shinpan (antigo)",
                 "precisão": _pct(h["total"]["precisao"]), "recall": _pct(h["total"]["recall"]), "F1": _pct(h["total"]["f1"]),
             } for h in reversed(history)]), width="stretch", hide_index=True)

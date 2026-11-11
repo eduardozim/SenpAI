@@ -22,13 +22,14 @@ from src.engine.llm_assistant import KendoLLMAssistant
 # ==============================================================================
 # 4.1 AMOSTRAGEM POR INCERTEZA (UNCERTAINTY SAMPLING)
 # ==============================================================================
-DOUBT_TYPES = ("pontuacao", "golpe_filtro", "tecnica", "regra", "conflito", "bandeira", "modalidade", "padrao")
+DOUBT_TYPES = ("pontuacao", "golpe_filtro", "tecnica", "regra", "conflito", "modalidade", "padrao", "shinpan")
 # Dúvidas sobre um golpe de luta analisada: o golpe vira um corte de ~10 s em data/videos (treino)
 ANALYSIS_CLIP_DOUBTS = ("pontuacao", "golpe_filtro", "tecnica", "regra", "padrao")
 DOUBT_LABELS = {
     "pontuacao": "Pontuação", "golpe_filtro": "É golpe?", "tecnica": "Técnica", "regra": "Regra",
-    "conflito": "Conflito entre fontes", "bandeira": "Bandeiras", "modalidade": "Modalidade",
+    "conflito": "Conflito entre fontes", "modalidade": "Modalidade",
     "padrao": "Fora do padrão dos validados",
+    "shinpan": "Decisão dos shinpan a revisar",
 }
 MAX_QUEUE_ITEMS = 100
 
@@ -155,8 +156,9 @@ class UncertaintySampler:
         """
         Fila de Curadoria de TODAS as dúvidas (Pendência I12). Tipos:
         pontuacao (nota do golpe), golpe_filtro (filtro de golpes), tecnica, regra (ai-uchi, golpe após o
-        yame...), conflito (fontes do banco de rótulos discordam), bandeira, modalidade, padrao (golpe que destoa
-        dos golpes validados da mesma técnica, pela referência do ciclo de treino).
+        yame...), conflito (fontes do banco de rótulos discordam), modalidade, padrao (golpe que destoa
+        dos golpes validados da mesma técnica, pela referência do ciclo de treino), shinpan (golpe em que a decisão
+        dos shinpan aponta ponto, ou o SenpAI e os shinpan discordam: a revisão, com o dan, é o rótulo).
         Prioridade = incerteza × impacto (as que mais ensinam primeiro). Não repete a mesma dúvida
         (mesmo vídeo, tipo e instante ±1 s) enquanto ela estiver pendente.
         """
@@ -225,7 +227,7 @@ class UncertaintySampler:
                 pass
 
         # Golpe em dúvida numa luta analisada: guarda um corte de ~10 s em data/videos para o treino
-        # (recortes de bandeira, gabarito, ciclo). Não repete golpes a menos de 10 s de um corte já guardado.
+        # (curadoria, gabarito, ciclo). Não repete golpes a menos de 10 s de um corte já guardado.
         if doubt_type in ANALYSIS_CLIP_DOUBTS and strike_time is not None:
             try:
                 from src.utils.video_library import save_analysis_clip
@@ -603,16 +605,16 @@ class GoldenBenchmark:
     """
     Conjunto de validação padrão-ouro do SenpAI (data/benchmark_golden/), único no sistema.
 
-    - Lutas golden: lutas reais com gabarito completo, congeladas em golden_matches.json
-      (cópia do gabarito no momento do congelamento) e nunca usadas no treino nem na curadoria.
-    - Amostras (golden_dataset.json): golpes avaliados nessas lutas, com rótulo vindo do placar
-      oficial (categoria "real_match"), mais as amostras sintéticas originais, que só valem
-      enquanto houver menos de MIN_REAL_SAMPLES_FOR_GATE golpes reais.
+    - Lutas golden: lutas reais congeladas em golden_matches.json (cópia do gabarito no momento do
+      congelamento) e nunca usadas no treino. A VERDADE de cada golpe vem das revisões (kenshi e senseis,
+      pesadas pelo dan), não da decisão dos shinpan: o gabarito só aponta onde revisar.
+    - Amostras (golden_dataset.json): golpes revisados nessas lutas (categoria "real_match"), mais as amostras
+      sintéticas originais, que só valem enquanto houver menos de MIN_REAL_SAMPLES_FOR_GATE golpes reais.
     - Trava anti-regressão (validate_no_regression) antes de qualquer gravação de calibração.
-    - Benchmark por luta (run_matches): placar oficial × SenpAI, com histórico.
+    - Benchmark por luta (run_matches): revisão × SenpAI, com histórico (e a concordância shinpan × revisão).
 
     Todas as métricas usam a fonte única de src.engine.weak_labels
-    (precision_recall_f1, match_metrics, aggregate_match_metrics).
+    (precision_recall_f1, review_metrics, aggregate_review_metrics).
     """
 
     def __init__(self, dataset_path: str = GOLDEN_DATASET_DEFAULT_PATH):
@@ -666,14 +668,14 @@ class GoldenBenchmark:
 
     @staticmethod
     def report_to_samples(report: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Golpes avaliados de uma luta golden → amostras (notas 0..1, verdade pelo placar oficial)."""
+        """Golpes revisados de uma luta golden → amostras (notas 0..1, verdade pela revisão)."""
         from src.engine import weak_labels as wl
         samples = []
         for ev in report["events"]["items"]:
             if ev["weak_label"] == wl.POSITIVE:
                 truth = True
-            elif ev["weak_label"] in wl.NEGATIVE_LABELS or ev["weak_label"] == wl.AMBIGUOUS:
-                truth = False  # gabarito completo: ambíguo não é ponto novo
+            elif ev["weak_label"] in wl.NEGATIVE_LABELS:
+                truth = False
             else:
                 continue
             sub = ev.get("sub_scores") or {}
@@ -723,14 +725,16 @@ class GoldenBenchmark:
         return any(frozen.get(k) != current.get(k) for k in GOLDEN_FROZEN_FIELDS)
 
     def freeze_match(self, video_name: str, entry: Dict[str, Any]) -> Dict[str, Any]:
-        """Congela (ou recongela) uma luta. Exige gabarito completo: sem ele os negativos não são confiáveis."""
+        """
+        Congela (ou recongela) uma luta. A verdade vem das revisões dos golpes dessa luta (banco de rótulos);
+        o gabarito, se houver, só aponta onde revisar. Por isso basta ser uma luta (não descartada).
+        """
         from src.engine import weak_labels as wl
-        if not entry or not entry.get("pontos_completos"):
-            raise ValueError("Só lutas com todos os pontos listados (pontos_completos) entram no golden.")
-        if entry.get("ignorar"):
-            raise ValueError("Vídeo marcado como \"não é luta\": não pode entrar no golden.")
-        if str(entry.get("origem", "")).startswith("automatico"):
-            raise ValueError("O golden só aceita gabarito humano: pontos lidos automaticamente (bandeiras) não entram.")
+        entry = dict(entry or {})
+        if entry.get("ignorar") or wl.is_entry_discarded(entry):
+            raise ValueError("Vídeo marcado como \"não é luta\" ou descartado: não pode entrar no golden.")
+        if wl.entry_video_type(entry) != wl.VIDEO_TYPE_LUTA:
+            raise ValueError("Só lutas (shiai ou shiai-geiko) entram no golden.")
         wl.parse_official_points(entry)  # valida tempos e técnicas
         matches = self.load_matches()
         frozen = self._frozen_copy(entry)
@@ -760,13 +764,18 @@ class GoldenBenchmark:
         update_samples: bool = True
     ) -> Dict[str, Any]:
         """
-        Reanalisa as lutas golden (via cache de features) e mede o placar oficial × SenpAI.
+        Reanalisa as lutas golden (via cache de features) e mede o SenpAI contra as REVISÕES dos golpes.
+        Luta sem golpe revisado não entra na conta. "pedidos_revisao" traz o que os shinpan apontam e ainda
+        ninguém revisou (o ciclo manda para a curadoria).
         record_history/update_samples=False servem para comparar um modelo desafiante sem alterar o golden.
         """
         from src.engine import weak_labels as wl
+        from src.engine.label_bank import LabelBank, relabel_by_reviews, review_requests
+        bank = LabelBank()
+        requests: List[Dict[str, Any]] = []
         tol = wl.DEFAULT_TOLERANCE_SEC if tolerance_sec is None else tolerance_sec
         matches = self.load_matches()
-        rows, samples, missing, failures = [], [], [], []
+        rows, samples, missing, failures, sem_revisao = [], [], [], [], []
         names = sorted(matches)
         for idx, name in enumerate(names, start=1):
             if progress:
@@ -782,7 +791,13 @@ class GoldenBenchmark:
             except Exception as e:
                 failures.append({"video_name": name, "erro": str(e)})
                 continue
-            rows.append(report["metricas"])
+            relabel_by_reviews(report, bank.corrections_for(name), bank)
+            requests.extend(dict(r, video_path=video) for r in review_requests(report))
+            row = wl.review_metrics(report)
+            if not row["golpes_revisados"] and not row["validos_revisados"]:
+                sem_revisao.append(name)
+                continue
+            rows.append(row)
             samples.extend(self.report_to_samples(report))
 
         result = {
@@ -790,10 +805,12 @@ class GoldenBenchmark:
             "perfil": getattr(getattr(pipeline, "calibrator", None), "active_config", {}).get("name", "normal"),
             "tolerancia_s": tol,
             "lutas": rows,
-            "total": wl.aggregate_match_metrics(rows),
+            "total": wl.aggregate_review_metrics(rows),
             "golpes_reais": len(samples),
             "videos_ausentes": missing,
             "falhas": failures,
+            "sem_revisao": sem_revisao,
+            "pedidos_revisao": requests,
         }
         if rows:
             if update_samples:

@@ -14,8 +14,10 @@ features (I1), o SenpAI reanalisa o vídeo em segundos e rotula automaticamente 
 - DESCONHECIDO          gabarito incompleto e sem ponto perto; não vira rótulo
 
 Pontos oficiais que nenhuma detecção encontrou são registrados como "perdidos" (recall do detector).
-As métricas (precision_recall_f1, match_metrics, aggregate_match_metrics) são a fonte única usada
-também pelo GoldenBenchmark (src/engine/active_learning.py).
+Os shinpan também erram: este casamento só diz o que ELES decidiram. O banco de rótulos guarda isso como
+"rotulo_shinpan" (contexto e pedidos de revisão) e a validade usada no treino e no golden vem só das revisões
+(label_bank.relabel_by_reviews, review_metrics / aggregate_review_metrics).
+precision_recall_f1 é a fórmula única; match_metrics compara com o placar dos shinpan (informativo).
 
 Rótulos gerados em dois níveis:
 - candidatos: todos os disparos brutos do EventSpotter (sem corte do sonkyō), base do filtro da I3;
@@ -397,6 +399,78 @@ def aggregate_match_metrics(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     return tot
 
 
+def review_metrics(report: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Métrica do golden por luta, com a VERDADE VINDA DAS REVISÕES (label_bank.relabel_by_reviews), nunca da
+    decisão dos shinpan. Só os golpes revisados contam:
+    - acertos: o SenpAI deu ponto e a revisão diz que é válido;
+    - falsos pontos: o SenpAI deu ponto e a revisão diz que não é;
+    - perdidos: a revisão diz que é válido e o SenpAI não deu ponto (ou nem detectou o golpe).
+    A decisão dos shinpan aparece só como informação (placar e concordância com a revisão).
+    """
+    events = report["events"]["items"]
+    reviewed = [e for e in events if e["weak_label"] in (POSITIVE, NEG_CORRECTION)]
+    tp = sum(1 for e in reviewed if e.get("predicted_valid") and e["weak_label"] == POSITIVE)
+    fp = sum(1 for e in reviewed if e.get("predicted_valid") and e["weak_label"] == NEG_CORRECTION)
+    unmatched = int(report.get("revisoes_sem_golpe", 0))
+    fn = sum(1 for e in reviewed if not e.get("predicted_valid") and e["weak_label"] == POSITIVE) + unmatched
+    correct = sum(1 for e in reviewed if decision_is_correct(e))
+    by_index = {p["index"]: normalize_technique(p.get("technique")) for p in report.get("official_points", [])}
+    tech_judged = tech_correct = 0
+    for e in events:
+        if e.get("nao_e_golpe"):
+            continue
+        truth = normalize_technique(e.get("tecnica_corrigida")) or by_index.get(e.get("matched_point"))
+        if truth is None:
+            continue
+        tech_judged += 1
+        tech_correct += int(normalize_technique(e.get("strike_type")) == truth)
+    points = report.get("official_points", [])
+    shinpan = report.get("concordancia_shinpan") or {"comparados": 0, "concordam": 0}
+    cands = report["candidates"]["items"]
+    return {
+        "video_name": report["video_name"],
+        "golpes_revisados": len(reviewed),
+        "validos_revisados": tp + fn,
+        "acertos": tp,
+        "falsos_pontos": fp,
+        "perdidos": fn,
+        "decisoes_avaliadas": len(reviewed),
+        "decisoes_corretas": correct,
+        "acuracia": round(correct / len(reviewed), 4) if reviewed else None,
+        "tecnica_avaliada": tech_judged,
+        "tecnica_correta": tech_correct,
+        "acuracia_tecnica": round(tech_correct / tech_judged, 4) if tech_judged else None,
+        "candidatos": len(cands),
+        "candidatos_que_acham_valido": sum(1 for c in cands if c["weak_label"] == POSITIVE),
+        "placar_shinpan": {"aka": sum(1 for p in points if p["kenshi_id"] == "KENSHI_AKA"),
+                           "shiro": sum(1 for p in points if p["kenshi_id"] == "KENSHI_SHIRO")},
+        "placar_senpai": {k.split("_")[1].lower(): sum(1 for e in events if e["attacker_id"] == k and e.get("predicted_valid"))
+                          for k in KENSHI_IDS.values()},
+        "shinpan_comparados": shinpan["comparados"],
+        "shinpan_concordam": shinpan["concordam"],
+        **precision_recall_f1(tp, fp, fn),
+    }
+
+
+def aggregate_review_metrics(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Soma das lutas golden (verdade pelas revisões). Mesma fórmula única de precisão/recall/F1."""
+    keys = ("golpes_revisados", "validos_revisados", "acertos", "falsos_pontos", "perdidos", "decisoes_avaliadas",
+            "decisoes_corretas", "tecnica_avaliada", "tecnica_correta", "candidatos", "candidatos_que_acham_valido",
+            "shinpan_comparados", "shinpan_concordam")
+    tot: Dict[str, Any] = {k: sum(r.get(k, 0) for r in rows) for k in keys}
+    tot["lutas"] = len(rows)
+    tot["lutas_com_revisao"] = sum(1 for r in rows if r.get("golpes_revisados"))
+    tot.update(precision_recall_f1(tot["acertos"], tot["falsos_pontos"], tot["perdidos"]))
+    tot["acuracia"] = round(tot["decisoes_corretas"] / tot["decisoes_avaliadas"], 4) if tot["decisoes_avaliadas"] else None
+    tot["acuracia_tecnica"] = round(tot["tecnica_correta"] / tot["tecnica_avaliada"], 4) if tot["tecnica_avaliada"] else None
+    tot["recall_candidatos"] = (round(tot["candidatos_que_acham_valido"] / tot["validos_revisados"], 4)
+                                if tot["validos_revisados"] else None)
+    tot["concordancia_shinpan"] = (round(tot["shinpan_concordam"] / tot["shinpan_comparados"], 4)
+                                   if tot["shinpan_comparados"] else None)
+    return tot
+
+
 # ------------------------------------------------------------------------------
 # Execução sobre um vídeo
 # ------------------------------------------------------------------------------
@@ -694,12 +768,14 @@ def _golden_cli(args) -> int:
     res = gb.run_matches(pipeline, args.target, tolerance_sec=args.tolerance,
                          progress=lambda i, n, name: print(f"[{i}/{n}] {name}"))
     for r in res["lutas"]:
-        print(f"  {r['video_name']}: oficial {r['placar_oficial']} × SenpAI {r['placar_senpai']} · "
-              f"acertos {r['acertos']} · falsos {r['falsos_pontos']} · perdidos {r['perdidos']}")
+        print(f"  {r['video_name']}: {r['golpes_revisados']} golpes revisados · shinpan {r['placar_shinpan']} × SenpAI "
+              f"{r['placar_senpai']} · acertos {r['acertos']} · falsos {r['falsos_pontos']} · perdidos {r['perdidos']}")
     t = res["total"]
-    print(f"TOTAL {t['lutas']} lutas · placares exatos {t['placares_exatos']} · precisão {_fmt_pct(t['precisao'])} · "
+    print(f"TOTAL {t['lutas']} lutas · {t['golpes_revisados']} golpes revisados · precisão {_fmt_pct(t['precisao'])} · "
           f"recall {_fmt_pct(t['recall'])} · F1 {_fmt_pct(t['f1'])} · detector bruto acha {_fmt_pct(t['recall_candidatos'])} · "
-          f"{res['golpes_reais']} golpes reais")
+          f"shinpan × revisão {_fmt_pct(t['concordancia_shinpan'])}")
+    for name in res.get("sem_revisao", []):
+        print(f"  sem golpe revisado (não medida): {name}")
     for name in res["videos_ausentes"]:
         print(f"  ausente na pasta: {name}")
     for f in res["falhas"]:

@@ -10,7 +10,6 @@ import unittest
 from unittest import mock
 
 from src.utils import video_library as vl
-from src.vision import flag_detector as fd
 from src.engine import weak_labels as wl
 
 
@@ -54,26 +53,6 @@ class TestAnalysisClips(unittest.TestCase):
         self.assertEqual(saved, [("data/tmp/upload_1_luta.mp4", 10.0)])
         self.assertEqual(e["corte_treino"], "data/videos/analise_x_10.0s.mp4")
         FeedbackManager().clear_active_learning_queue()
-
-
-class TestMiningCandidates(unittest.TestCase):
-    def test_only_new_fight_videos_are_mined(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            fd.save_dataset({"a": {"video_name": "velho.mp4", "rotulo": None}}, tmp, mined=["vazio.mp4"])
-            labels = os.path.join(tmp, "g.json")
-            wl.save_match_labels({"versao": 1, "videos": {"treino.mp4": {"tipo": "kakari_geiko", "ignorar": True},
-                                                          "lixo.mp4": {"tipo": "descartar", "ignorar": True},
-                                                          "luta.mp4": {"tipo": "luta"}}}, labels)
-            videos = [f"/v/{n}" for n in ("velho.mp4", "vazio.mp4", "treino.mp4", "lixo.mp4", "luta.mp4",
-                                          "novo.mp4", "analise_x_10.0s.mp4")]
-            todo, skipped = fd.mining_candidates(videos, tmp, labels)
-            self.assertEqual([os.path.basename(v) for v in todo], ["luta.mp4", "novo.mp4", "analise_x_10.0s.mp4"])
-            self.assertEqual(skipped, {"ja_minerados": 2, "nao_luta": 2})
-            # O registro de minerados sobrevive a salvar rótulos
-            fd.set_labels({"a": "nenhuma"}, tmp)
-            self.assertIn("vazio.mp4", fd.mined_videos(tmp))
-            with open(os.path.join(tmp, "labels.json"), encoding="utf-8") as f:
-                self.assertIn("videos_minerados", json.load(f))
 
 
 if __name__ == "__main__":

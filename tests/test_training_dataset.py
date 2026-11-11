@@ -33,14 +33,9 @@ def _populate(root):
     _w(root, "data/active_learning_curated_history.json", [{"id": "h"}])
     _w(root, "data/active_learning_clips/c1_corte.mp4", b"\x00clip")
     _w(root, "data/training_cycles.jsonl", '{"id": "c1"}\n{"id": "c2"}\n')
-    _w(root, "data/flag_dataset/crops/a.jpg", b"jpgA")
-    _w(root, "data/flag_dataset/crops/b.jpg", b"jpgB")
-    _w(root, "data/flag_dataset/labels.json", {"versao": 1, "recortes": {
-        "a": {"arquivo": "data\\flag_dataset\\crops\\a.jpg", "rotulo": "vermelha", "rotulado_em": "x"},
-        "b": {"arquivo": "data\\flag_dataset\\crops\\b.jpg"}}})
     _w(root, "data/models/strike_filter/active.json", {"path": "m.json"})
     _w(root, "data/models/strike_filter/m.json", {"w": [1, 2]})
-    _w(root, "data/models/flag_detector/runs/r1/weights.bin", b"big")
+    _w(root, "data/models/strike_filter/runs/r1/weights.bin", b"big")
     _w(root, "data/internet/catalogo.json", {"v1": {}})
     _w(root, "data/videos/internet_v1.mp4", b"video")
     _w(root, "config/calibration_profiles.json", {"normal": {"custom": True}})
@@ -73,7 +68,7 @@ class TestTrainingDataset(unittest.TestCase):
     def test_summary_counts_real_items(self):
         s = td.summarize(self.root)
         self.assertEqual(s, {"revisoes": 2, "rotulos_no_banco": 3, "lutas_com_gabarito": 1, "lutas_no_golden": 1,
-                             "duvidas_na_fila": 1, "decisoes_de_curadoria": 1, "recortes_de_bandeira_rotulados": 1,
+                             "duvidas_na_fila": 1, "decisoes_de_curadoria": 1,
                              "modelos_ativos": 1, "ciclos_de_treino": 2})
 
     def test_export_contains_everything_but_cache(self):
@@ -81,11 +76,11 @@ class TestTrainingDataset(unittest.TestCase):
             names = set(zf.namelist())
             manifest = json.loads(zf.read("manifest.json"))
         for rel in ("data/label_bank.json", "data/match_labels/gabarito_lutas.json", "data/benchmark_golden/golden_matches.json",
-                    "data/active_learning_clips/c1_corte.mp4", "data/models/strike_filter/m.json", "data/flag_dataset/labels.json",
-                    "data/flag_dataset/crops/a.jpg", "data/internet/catalogo.json", "config/calibration_profiles.json"):
+                    "data/active_learning_clips/c1_corte.mp4", "data/models/strike_filter/m.json",
+                    "data/internet/catalogo.json", "config/calibration_profiles.json"):
             self.assertIn(rel, names)
-        for rel in ("data/flag_dataset/crops/b.jpg", "data/videos/internet_v1.mp4",
-                    "data/models/flag_detector/runs/r1/weights.bin", "data/feature_cache/k.pkl.gz", "config/settings.json"):
+        for rel in ("data/videos/internet_v1.mp4",
+                    "data/models/strike_filter/runs/r1/weights.bin", "data/feature_cache/k.pkl.gz", "config/settings.json"):
             self.assertNotIn(rel, names)
         self.assertEqual(manifest["resumo"]["rotulos_no_banco"], 3)
         self.assertEqual(len(manifest["arquivos"]), len(names) - 1)
@@ -99,12 +94,7 @@ class TestTrainingDataset(unittest.TestCase):
             self.assertFalse(self._exists(rel), rel)
         with open(os.path.join(self.root, "config", "calibration_profiles.json"), encoding="utf-8") as f:
             self.assertNotIn("custom", json.load(f).get("normal", {}))
-        # Índice dos recortes fica, só sem rótulos; cache e configurações do app intactos
-        with open(os.path.join(self.root, "data", "flag_dataset", "labels.json"), encoding="utf-8") as f:
-            crops = json.load(f)["recortes"]
-        self.assertEqual(set(crops), {"a", "b"})
-        self.assertNotIn("rotulo", crops["a"])
-        self.assertTrue(self._exists("data/flag_dataset/crops/a.jpg"))
+        # Cache e configurações do app intactos
         self.assertTrue(self._exists("data/feature_cache/k.pkl.gz"))
         self.assertTrue(self._exists("config/settings.json"))
         self.assertTrue(res["copia_de_seguranca"] and os.path.isfile(res["copia_de_seguranca"]))
@@ -234,7 +224,6 @@ class TestTrainingDataset(unittest.TestCase):
         self.assertGreater(rep["grupos"]["modelos"], 0)
         apoio = {a["caminho"]: a for a in rep["apoio"]}
         self.assertEqual(apoio["models"]["bytes"], 1000)                      # base baixado: apoio, não treino
-        self.assertEqual(apoio["data/flag_dataset/crops"]["arquivos"], 1)      # b.jpg (a.jpg rotulado conta no dataset)
         prog = td.training_progress(self.root)
         self.assertEqual(prog["modelos_ativos"], 1)
         self.assertIsNone(prog["ultima_medicao_golden"])

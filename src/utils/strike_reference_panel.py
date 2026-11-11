@@ -29,8 +29,8 @@ def render_strike_reference_panel() -> None:
     st.markdown("#### 📐 Referência dos golpes validados")
     st.caption(
         "Distribuição real das notas de cada pilar nos golpes que o banco de rótulos considera válidos, por técnica. "
-        "Cada golpe pesa a autoridade do rótulo: gabarito oficial 3,0, bandeiras 1,5 (só indicativo) e revisão = dan "
-        "do revisor. Serve para (1) mostrar na análise em que percentil cada pilar do golpe ficou e (2) mandar à "
+        "Válido = revisado no vídeo por kenshi ou sensei; a decisão dos shinpan (pontos do gabarito) não valida golpe. "
+        "Cada golpe pesa o dan de quem revisou. Serve para (1) mostrar na análise em que percentil cada pilar do golpe ficou e (2) mandar à "
         "curadoria os golpes fora do padrão. Não altera pesos nem limiares (isso é da calibração, medida no golden)."
     )
     ref = sr.load_reference()
@@ -39,4 +39,4 @@ def render_strike_reference_panel() -> None:
         return
     st.dataframe(reference_table(ref), hide_index=True, width="stretch")
     st.caption(f"Calculada no ciclo de treino de {str(ref.get('gerado_em', '—')).replace('T', ' ')}. "
-               "Golden fica de fora. Cresce com o gabarito, as revisões das análises e as decisões da curadoria.")
+               "Golden fica de fora. Cresce com as revisões das análises e as decisões da curadoria.")

@@ -2,8 +2,8 @@
 Registro único dos modelos treinados pelo SenpAI.
 
 Cada família de modelo tem uma pasta em data/models/<familia>/ com as versões treinadas e um
-ponteiro active.json para a versão em uso. Usado pelo filtro de golpes (I3) e pelo detector de
-bandeiras dos shinpan (I7). Em modo de teste, tudo vive na sandbox isolada.
+ponteiro active.json para a versão em uso. Usado pelo filtro de golpes (I3), técnica, modalidade e
+encoder de movimento. Em modo de teste, tudo vive na sandbox isolada.
 """
 
 import os

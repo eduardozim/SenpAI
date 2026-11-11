@@ -20,9 +20,8 @@ class TestCycle(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             hist = os.path.join(tmp, "ciclos.jsonl")
             seen = []
-            with mock.patch.object(tc, "step_cache", return_value=_ok()), \
-                 mock.patch.object(tc, "step_flags", side_effect=RuntimeError("sem GPU")), \
-                 mock.patch.object(tc, "step_labels", return_value=_ok()), \
+            with mock.patch.object(tc, "step_cache", return_value=_ok()),                  mock.patch.object(tc, "step_preprocess", return_value=_ok()), \
+                 mock.patch.object(tc, "step_labels", side_effect=RuntimeError("sem GPU")), \
                  mock.patch.object(tc, "step_pretrain", return_value=_ok()), \
                  mock.patch.object(tc, "step_strike_filter", return_value=_ok(promovido=True)), \
                  mock.patch.object(tc, "step_technique", return_value=_ok(promovido=False)),                  mock.patch.object(tc, "step_modality", return_value=_ok(promovido=False)), \
@@ -32,10 +31,10 @@ class TestCycle(unittest.TestCase):
                  mock.patch.object(tc, "step_measure", return_value=_ok(total={"f1": 0.5})):
                 rec = tc.run_training_cycle(tmp, pipeline=mock.Mock(), history_path=hist,
                                             progress=lambda k, n: seen.append(k))
-            self.assertEqual(seen, ["cache", "bandeiras", "rotulos", "pretreino", "filtro", "tecnica", "modalidade",
+            self.assertEqual(seen, ["cache", "preprocessamento", "rotulos", "pretreino", "filtro", "tecnica", "modalidade",
                                     "sugestao", "calibracao", "referencia", "medicao"])
-            self.assertEqual(rec["etapas"]["bandeiras"]["status"], "falhou")
-            self.assertIn("sem GPU", rec["etapas"]["bandeiras"]["detalhe"])
+            self.assertEqual(rec["etapas"]["rotulos"]["status"], "falhou")
+            self.assertIn("sem GPU", rec["etapas"]["rotulos"]["detalhe"])
             self.assertEqual(rec["etapas"]["medicao"]["status"], "ok")   # seguiu depois da falha
             self.assertTrue(rec["promoveu_modelo"])
             self.assertEqual(len(tc.load_cycle_history(hist)), 1)
@@ -67,11 +66,6 @@ class TestCycle(unittest.TestCase):
             gb = GoldenBenchmark(dataset_path=os.path.join(tmp, "golden_dataset.json"))
             with self.assertRaises(ValueError):
                 gb.freeze_match("treino.mp4", ignored)
-
-    def test_flags_step_skipped_without_active_detector(self):
-        with mock.patch("src.utils.model_registry.get_active_model_path", return_value=None):
-            res = tc.step_flags("pasta")
-        self.assertEqual(res["status"], "pulado")
 
     def test_strike_filter_step_skipped_without_data(self):
         pipeline = mock.Mock(strike_filter="anterior")
@@ -160,10 +154,10 @@ class TestCacheAndReadiness(unittest.TestCase):
             labels = os.path.join(tmp, "g.json")
             wl.save_match_labels({"versao": 1, "videos": {"a.mp4": {"tipo": "ji_geiko", "ignorar": True},
                                                           "b.mp4": {"tipo": "luta", "pontos": []}}}, labels)
-            with mock.patch("src.vision.flag_detector.dataset_stats", return_value={"sem_rotulo": 7}),                  mock.patch("src.engine.active_learning.UncertaintySampler.get_queue", return_value=[]):
+            with mock.patch("src.engine.active_learning.UncertaintySampler.get_queue", return_value=[]):
                 r = tc.readiness(tmp, labels)
         got = {it["chave"]: it["quantidade"] for it in r["pendencias"]}
-        self.assertEqual(got, {"videos": 1, "lutas": 1, "bandeiras": 7})
+        self.assertEqual(got, {"videos": 1, "lutas": 1})
         self.assertFalse(r["pronto"])
         self.assertEqual(r["videos"], 3)   # o corte de análise não conta
 
@@ -178,10 +172,11 @@ class TestPanel(unittest.TestCase):
         from streamlit.testing.v1 import AppTest
         from src.utils.training_cycle_panel import cycles_table
         record = {"iniciado_em": "2026-11-04T20:00:00", "promoveu_modelo": False, "etapas": {
-            "cache": _ok(), "bandeiras": {"status": "pulado", "detalhe": "Nenhum detector de bandeiras ativo."},
+            "cache": _ok(), "bandeiras": {"status": "pulado", "detalhe": "Etapa antiga, já removida."},
             "filtro": {"status": "pulado", "detalhe": "Dados insuficientes"}, "medicao": {"status": "pulado", "detalhe": "sem golden"}}}
         table = cycles_table([record])
-        self.assertEqual(table.iloc[0][tc.STEP_NAMES["bandeiras"]], "⏭️")
+        self.assertEqual(table.iloc[0][tc.STEP_NAMES["filtro"]], "⏭️")
+        self.assertNotIn("bandeiras", tc.STEP_NAMES)                     # ciclos antigos com a etapa ainda abrem
         self.assertEqual(table.iloc[0]["F1 no golden"], "—")
 
         with mock.patch.object(tc, "load_cycle_history", return_value=[record]):
@@ -189,7 +184,7 @@ class TestPanel(unittest.TestCase):
             at.run()
         self.assertFalse(at.exception, [e.value for e in at.exception])
         self.assertTrue(any("Rodar ciclo agora" in b.label for b in at.button))
-        self.assertTrue(any("Nenhum detector de bandeiras ativo" in m.value for m in at.markdown))
+        self.assertTrue(any("Dados insuficientes" in m.value for m in at.markdown))
 
 
 if __name__ == "__main__":

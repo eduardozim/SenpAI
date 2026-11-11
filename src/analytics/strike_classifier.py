@@ -6,8 +6,9 @@ Etapa 2 (este módulo): um classificador leve decide, para cada candidato, se el
 vira ponto, olhando a janela de poses ao redor do impacto (os dois pulsos, desaceleração no impacto,
 amplitude do corte, maai entre os kenshi, aproximação, fumikomi pelo tornozelo, ponta do shinai...).
 
-- Aprende com os rótulos fracos do placar oficial (I2), a partir do cache de poses (I1):
-  POSITIVO = 1, negativos = 0; ambíguos e desconhecidos ficam de fora.
+- Aprende com os golpes REVISADOS (kenshi e senseis, pesados pelo dan), a partir do cache de poses (I1):
+  POSITIVO = 1, negativos = 0; golpes sem revisão ficam de fora. A decisão dos shinpan (placar oficial e
+  bandeiras) não é rótulo: eles erram, e o modelo aprenderia o viés deles.
 - Lutas do Golden Benchmark nunca entram no treino: servem só para decidir a promoção.
 - Validação cruzada agrupada por vídeo (nenhum vídeo aparece no treino e na validação ao mesmo tempo).
 - O modelo é uma regressão logística em numpy, salvo em JSON legível (pesos, médias, limiar).
@@ -358,7 +359,8 @@ def _target(label: str) -> Optional[int]:
 def build_dataset(pipeline, videos_dir: str, labels_path: Optional[str] = None,
                   exclude_golden: bool = True) -> Dict[str, Any]:
     """
-    Candidatos rotulados pelo BANCO ÚNICO (I11): gabarito + correções de revisão, Excel, curadoria e bandeiras.
+    Candidatos rotulados pelo BANCO ÚNICO (I11): só as revisões (análise, Excel, curadoria), pesadas pelo dan.
+    A decisão dos shinpan (gabarito e bandeiras) não rotula: só gera pedidos de revisão.
     Lutas do Golden Benchmark ficam de fora.
     """
     from src.engine.label_bank import build_training_reports
@@ -397,7 +399,7 @@ def train_model(dataset: Dict[str, Any], l2: float = 1.0) -> Dict[str, Any]:
     pos, neg = int(y.sum()), int(len(y) - y.sum())
     if pos < MIN_TRAINING_POSITIVES or neg < MIN_TRAINING_NEGATIVES:
         raise ValueError(f"Dados insuficientes para treinar: {pos} positivos e {neg} negativos "
-                         f"(mínimo {MIN_TRAINING_POSITIVES} e {MIN_TRAINING_NEGATIVES}). Preencha mais lutas no gabarito.")
+                         f"(mínimo {MIN_TRAINING_POSITIVES} e {MIN_TRAINING_NEGATIVES}). Revise golpes na análise ou responda a curadoria (dúvidas \"Decisão dos shinpan a revisar\").")
 
     def _cv(names):
         X = features_matrix(dataset["rows"], names)

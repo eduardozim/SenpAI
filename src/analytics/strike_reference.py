@@ -2,9 +2,10 @@
 Referência dos golpes validados (substitui o antigo "padrão áureo" de números fixos).
 
 O que é: para cada técnica (MEN, KOTE, DO, TSUKI), a distribuição REAL das notas dos pilares nos golpes que o
-banco único de rótulos considera válidos. Cada golpe pesa a autoridade do seu rótulo: o gabarito oficial vale
-3,0, as bandeiras 1,5 (só indicativo) e uma revisão vale o dan do revisor (um MEN confirmado por um 7º dan pesa
-mais que um lido das bandeiras). O ciclo de treino recalcula a referência; o golden nunca entra.
+banco único de rótulos considera válidos. Válido aqui é só o que alguém REVISOU no vídeo (kenshi ou sensei); a
+decisão dos shinpan (gabarito e bandeiras) não valida golpe. Cada golpe pesa o dan de quem revisou (um MEN
+confirmado por um 7º dan pesa mais que um confirmado por um 1º dan). O ciclo de treino recalcula a referência;
+o golden nunca entra.
 
 Para que serve:
 1. Retorno por pilar na análise: "zanshin no percentil 18 dos MEN validados" (o que puxa o golpe para baixo).
@@ -78,7 +79,7 @@ def collect_samples(training: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]
             if tech not in out or not scores:
                 continue
             out[tech].append({"notas": scores, "peso": float(item.get("autoridade_rotulo") or 1.0),
-                              "video": report.get("video_name"), "origem": item.get("origem_rotulo", "gabarito")})
+                              "video": report.get("video_name"), "origem": item.get("origem_rotulo", "revisao")})
     return out
 
 
@@ -189,7 +190,7 @@ def describe(strike_type: Any, sub_scores: Dict[str, Any], ref: Optional[Dict[st
     tech = c["tecnica"] or str(strike_type or "golpe")
     if not c["medido"]:
         return (f"Referência dos {tech} validados ainda não medida: {c['golpes']} de {MIN_SAMPLES} golpes "
-                f"({c['videos']} de {MIN_VIDEOS} vídeos). Cresce com o gabarito, as revisões e a curadoria.")
+                f"({c['videos']} de {MIN_VIDEOS} vídeos). Cresce com as revisões das análises e a curadoria.")
     if not c["percentis"]:
         return f"Golpe sem as notas dos pilares para comparar com os {c['golpes']} {tech} validados."
     worst = min(c["percentis"], key=c["percentis"].get)

@@ -83,7 +83,7 @@ class TestSync(unittest.TestCase):
         self.assertEqual((counts["ignorados_derivados"], counts["ignorados_sem_tempo"]), (1, 1))
         st = self.bank.stats()
         # gabarito: ponto + técnica + "modalidade = luta"; bandeiras: ponto + "modalidade = luta"
-        self.assertEqual(st["por_origem"], {"gabarito": 3, "bandeiras": 2, "revisao": 2, "curadoria": 1})
+        self.assertEqual(st["por_origem"], {"gabarito": 5, "revisao": 2, "curadoria": 1})   # gabarito automático antigo conta como gabarito
         self.assertEqual(sorted(x["video_name"] for x in self.bank.modality_labels() if x["value"] == "luta"), ["auto.mp4", "luta.mp4"])
         tech = self.bank.labels("luta.mp4", claim="tecnica")
         self.assertEqual([t["value"] for t in tech], ["KOTE"])
@@ -199,17 +199,6 @@ class TestApplyCorrections(unittest.TestCase):
         # Golpe válido que os shinpan não deram: o revisor de dan alto transforma em positivo
         out, _ = self.bank.apply_corrections([_item(10.0, wl.NEG_CORRECTION)], self._review(5, True))
         self.assertEqual(out[0]["weak_label"], wl.POSITIVE)
-
-    def test_flags_are_only_an_indication(self):
-        """Pontos lidos das bandeiras (1,5): a partir do 2º dan a revisão corrige."""
-        items = [_item(10.0, wl.POSITIVE)]
-        flags = ORIGIN_BASE_AUTHORITY["bandeiras"]
-        out, conflicts = self.bank.apply_corrections(items, self._review(1, False), base_authority=flags)
-        self.assertEqual((out[0]["weak_label"], len(conflicts)), (wl.POSITIVE, 0))
-        out, conflicts = self.bank.apply_corrections(items, self._review(2, False), base_authority=flags)
-        self.assertEqual((out[0]["weak_label"], len(conflicts)), (wl.NEG_CORRECTION, 0))
-        self.assertEqual(out[0]["autoridade_rotulo"], 2.0)
-        self.assertLess(flags, ORIGIN_BASE_AUTHORITY["gabarito"])
 
     def test_kenshi_must_match_when_given(self):
         items = [_item(10.0, wl.UNKNOWN, kenshi="KENSHI_SHIRO")]

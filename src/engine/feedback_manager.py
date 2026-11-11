@@ -1828,6 +1828,17 @@ class FeedbackManager:
 
         raise ValueError("Formato de pacote de treinamento inválido.")
 
+    def review_feedback(self, profile_key: str) -> List[Dict[str, Any]]:
+        """
+        Feedback que pode calibrar: só revisões humanas do vídeo. Rótulos derivados do placar oficial
+        (rotulo_fraco, a decisão dos shinpan) não ensinam validade, e as lutas do golden nunca treinam.
+        """
+        from src.engine.active_learning import is_golden_video
+        return [d for d in self.load_feedback()
+                if (d.get("profile_key") == profile_key or not d.get("profile_key"))
+                and d.get("decision_category") != "rotulo_fraco"
+                and not is_golden_video(d.get("video_name") or "")]
+
     def optimize_profile_config(self, profile_key: str, current_config: Dict[str, Any],
                                 feedback_list: Optional[List[Dict[str, Any]]] = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
@@ -1839,7 +1850,7 @@ class FeedbackManager:
         """
         # feedback_list explícito = amostras do Banco Único de Rótulos (I11), usado pelo ciclo de treino
         if feedback_list is None:
-            feedback_list = [d for d in self.load_feedback() if d.get("profile_key") == profile_key or not d.get("profile_key")]
+            feedback_list = self.review_feedback(profile_key)
 
         fps = [d for d in feedback_list if d.get("label") == "FP"]
         tps = [d for d in feedback_list if d.get("label") in ["TP", "CONFIRMED"]]

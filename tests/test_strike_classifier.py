@@ -219,19 +219,35 @@ class TestBuildDataset(unittest.TestCase):
             wl.save_match_labels({"versao": 1, "videos": {"treino.mp4": entry, "golden.mp4": entry,
                                                          "vazio.mp4": {"pontos": [], "pontos_completos": False}}}, labels_path)
             gb.freeze_match("golden.mp4", entry)
+            from src.engine.label_bank import LabelBank
+            bank = LabelBank()
+            ids = []
             try:
                 pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
                 strikes = [StrikeEvent("MEN", start_frame=30, impact_frame=40, end_frame=60, fps=30.0),
                            StrikeEvent("MEN", start_frame=75, impact_frame=86, end_frame=89, fps=30.0)]  # 2,87 s: longe do ponto
                 with mock.patch.object(pipeline.event_spotter, "detect_strikes", return_value=strikes):
+                    only_shinpan = sc.build_dataset(pipeline, tmp, labels_path=labels_path)
+                    # Revisões (com o dan) nos dois vídeos: só as do vídeo de treino entram
+                    for video in ("treino.mp4", "golden.mp4"):
+                        ids.append(bank.add_label(origin="curadoria", video_name=video, claim="ponto", value=True,
+                                                  time_sec=1.33, kenshi=None, ref="t1", reviewer_weight=4.0))
+                        ids.append(bank.add_label(origin="revisao", video_name=video, claim="ponto", value=False,
+                                                  time_sec=2.87, kenshi=None, ref="t2", reviewer_weight=2.0))
                     ds = sc.build_dataset(pipeline, tmp, labels_path=labels_path)
             finally:
                 gb.unfreeze_match("golden.mp4")
+                labels = bank.load()
+                for i in ids:
+                    labels.pop(i, None)
+                bank._save(labels)
 
+        # A decisão dos shinpan (gabarito) não é rótulo: sem revisão, nada para treinar
+        self.assertEqual(only_shinpan["y"], [])
         self.assertEqual(set(ds["groups"]), {"treino.mp4"})
         self.assertIn({"video_name": "golden.mp4", "motivo": "golden"}, ds["skipped"])
-        self.assertEqual(sum(ds["y"]), 1)            # o golpe em 1,33 s casa com o ponto oficial
-        self.assertGreaterEqual(len(ds["y"]), 2)     # o outro vira negativo (gabarito completo)
+        self.assertEqual(sum(ds["y"]), 1)            # a revisão diz que o golpe em 1,33 s é válido
+        self.assertGreaterEqual(len(ds["y"]), 2)     # e que o de 2,87 s não é
         self.assertEqual(len(ds["rows"][0]), len(sc.FEATURE_NAMES))
 
 

@@ -165,31 +165,6 @@ class TestVideoCollection(_Base):
         self.assertEqual(res["baixados"], [])
         self.assertEqual(ic.load_catalog()["x"]["licenca"], "não informada")
 
-    def test_flag_points_only_when_gate_open(self):
-        items = [_item("m", "Kendo World Championship Final")]
-        reader = lambda path: {"eventos": [{"kenshi": "AKA", "golpe_estimado_s": 12.3, "juizes": 2}]}  # noqa: E731
-        ic.collect_videos(self._cfg(baixar=True), searcher=self._searcher(items), downloader=self._downloader,
-                          flag_reader=reader, history_path=self.hist)
-        self.assertEqual([lb["claim"] for lb in LabelBank().labels()], ["modalidade"])   # trava fechada
-
-        shutil.rmtree(ic.get_root_dir(), ignore_errors=True)
-        LabelBank()._save({})
-        with open(self.hist, "w", encoding="utf-8") as f:
-            f.write(json.dumps({"id": "c1", "etapas": {"bandeiras": {"status": "ok", "f1": 0.93, "videos": 4}}}) + "\n")
-        self.assertTrue(ic.flag_gate(self.hist)["liberado"])
-        res = ic.collect_videos(self._cfg(baixar=True), searcher=self._searcher(items), downloader=self._downloader,
-                                flag_reader=reader, history_path=self.hist)
-        claims = sorted(lb["claim"] for lb in LabelBank().labels())
-        self.assertEqual(claims, ["modalidade", "ponto"])
-        ponto = [lb for lb in LabelBank().labels() if lb["claim"] == "ponto"][0]
-        self.assertEqual((ponto["origin"], ponto["kenshi"], ponto["time_sec"]), ("internet", "AKA", 12.3))
-        self.assertEqual(res["duvidas"], 1)
-
-    def test_gate_needs_enough_videos(self):
-        with open(self.hist, "w", encoding="utf-8") as f:
-            f.write(json.dumps({"id": "c1", "etapas": {"bandeiras": {"f1": 0.95, "videos": 2}}}) + "\n")
-        self.assertFalse(ic.flag_gate(self.hist)["liberado"])
-
     def test_disk_budget_stops_downloads(self):
         items = [_item("a", "Kendo Kirikaeshi"), _item("b", "Kendo Suburi")]
         res = ic.collect_videos(self._cfg(baixar=True, limite_disco_gb=0.0), searcher=self._searcher(items),

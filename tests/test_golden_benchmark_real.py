@@ -99,12 +99,17 @@ class TestGoldenMatches(unittest.TestCase):
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_freeze_requires_complete_and_valid_points(self):
-        with self.assertRaises(ValueError):
-            self.gb.freeze_match("luta.mp4", {"pontos": [], "pontos_completos": False})
+    def test_freeze_requires_a_match_with_valid_points(self):
+        """Verdade = revisão: basta ser luta (gabarito incompleto pode); descartado ou tempo inválido não entra."""
         with self.assertRaises(ValueError):
             self.gb.freeze_match("luta.mp4", {"pontos_completos": True, "pontos": [{"kenshi": "AKA", "tecnica": "MEN", "tempo": "x"}]})
+        with self.assertRaises(ValueError):
+            self.gb.freeze_match("luta.mp4", {"tipo": "descartar", "pontos": []})
+        with self.assertRaises(ValueError):
+            self.gb.freeze_match("luta.mp4", {"tipo": "kakari_geiko", "pontos": []})
         self.assertFalse(self.gb.is_golden_video("luta.mp4"))
+        self.gb.freeze_match("luta.mp4", {"pontos": [], "pontos_completos": False})
+        self.assertTrue(self.gb.is_golden_video("luta.mp4"))
 
     def test_frozen_copy_is_independent_of_gabarito(self):
         entry = json.loads(json.dumps(COMPLETE_ENTRY))
@@ -120,7 +125,8 @@ class TestGoldenMatches(unittest.TestCase):
         self.assertFalse(self.gb.unfreeze_match("luta.mp4"))
 
     def test_report_to_samples(self):
-        items = [_ev(30, wl.POSITIVE, True), _ev(40, wl.AMBIGUOUS, False), _ev(50, wl.UNKNOWN, False), _ev(60, wl.NEG_OUTSIDE, False, sub={})]
+        items = [_ev(30, wl.POSITIVE, True), _ev(40, wl.NEG_CORRECTION, False), _ev(50, wl.UNKNOWN, False),
+                 _ev(55, wl.AMBIGUOUS, False), _ev(60, wl.NEG_OUTSIDE, False, sub={})]
         samples = GoldenBenchmark.report_to_samples(_report(items))
         self.assertEqual([s["ground_truth"] for s in samples], [True, False])
         self.assertEqual(samples[0]["category"], REAL_MATCH_CATEGORY)
@@ -208,14 +214,30 @@ class TestGoldenRun(unittest.TestCase):
 
         pipeline = SenpAIPipeline(calibration_profile="normal", device_preference="cpu")
         fake = StrikeEvent("MEN", start_frame=30, impact_frame=40, end_frame=60, fps=30.0)
-        with mock.patch.object(pipeline.event_spotter, "detect_strikes", return_value=[fake]):
-            res = gb.run_matches(pipeline, self.tmp.name)
+        from src.engine.label_bank import LabelBank
+        bank = LabelBank()
+        review_id = None
+        try:
+            with mock.patch.object(pipeline.event_spotter, "detect_strikes", return_value=[fake]):
+                # Só o ponto dos shinpan: nada medido, e o golpe vira pedido de revisão
+                before = gb.run_matches(pipeline, self.tmp.name)
+                review_id = bank.add_label(origin="curadoria", video_name="demo_golden.mp4", claim="ponto", value=True,
+                                           time_sec=1.33, kenshi=None, ref="r1", reviewer_weight=5.0)
+                res = gb.run_matches(pipeline, self.tmp.name)
+        finally:
+            labels = bank.load()
+            labels.pop(review_id, None)
+            bank._save(labels)
 
+        self.assertEqual(before["total"]["lutas"], 0)
+        self.assertEqual(before["sem_revisao"], ["demo_golden.mp4"])
+        self.assertTrue(any("shinpan deram ponto" in r["motivo"] for r in before["pedidos_revisao"]))
         self.assertEqual(res["videos_ausentes"], ["sumiu.mp4"])
         self.assertEqual(res["falhas"], [])
         self.assertEqual(res["total"]["lutas"], 1)
-        self.assertEqual(res["total"]["pontos_oficiais"], 1)
-        self.assertEqual(res["total"]["candidatos_que_acham_ponto"], 1)
+        self.assertEqual(res["total"]["validos_revisados"], 1)
+        self.assertEqual(res["total"]["candidatos_que_acham_valido"], 1)
+        self.assertEqual(res["total"]["shinpan_concordam"], 1)     # shinpan e revisão deram ponto no mesmo golpe
         self.assertEqual(len(gb.load_history()), 1)
         self.assertEqual(gb.samples_source()["golpes_reais"], res["golpes_reais"])
 

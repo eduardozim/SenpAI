@@ -1,7 +1,7 @@
 """
 Pasta única de vídeos do SenpAI: Dev/data/videos.
 
-Gabarito de lutas, ciclo de treino, golden, detector de bandeiras e coleta na internet usam esta mesma
+Gabarito de lutas, ciclo de treino, golden e coleta na internet usam esta mesma
 pasta. Os vídeos baixados da internet entram nela com o prefixo "internet_" (o catálogo da coleta guarda
 a origem de cada um); só esses são removidos pelo botão Apagar Treinamento — os seus vídeos nunca.
 
@@ -43,7 +43,7 @@ def internet_videos(videos_dir: str) -> List[str]:
 # ------------------------------------------------------------------------------
 
 ANALYSIS_PREFIX = "analise_"
-ANALYSIS_CLIP_HALF_SEC = 5.0       # 5 s antes e 5 s depois do golpe (as bandeiras sobem ~1 s depois)
+ANALYSIS_CLIP_HALF_SEC = 5.0       # 5 s antes e 5 s depois do golpe
 ANALYSIS_MIN_GAP_SEC = 10.0        # não repete golpes do mesmo vídeo a menos de 10 s de um corte já guardado
 DATASET_VIDEO_PREFIXES = (INTERNET_PREFIX, ANALYSIS_PREFIX)
 

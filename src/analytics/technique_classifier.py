@@ -6,7 +6,7 @@ onde o golpe termina EM RELAÇÃO AO CORPO DO OPONENTE (cabeça, punho, lateral 
 e a direção do movimento (corte vertical, diagonal ou estocada).
 
 - Rótulos: a técnica oficial de cada ponto do gabarito (I2), herdada pelo golpe que casou com ele.
-  Pontos lidos das bandeiras (origem automática) não entram: a técnica deles é desconhecida.
+  Pontos de gabarito automático antigo (origem "automatico") não entram: a técnica deles é desconhecida.
 - Lutas do Golden Benchmark nunca entram no treino.
 - Validação cruzada deixando um vídeo de fora por vez.
 - Modelo: regressão logística multinomial (softmax) L2 em numpy, salvo em JSON legível,
@@ -239,9 +239,9 @@ class TechniqueClassifier:
 
 def build_dataset(pipeline, videos_dir: str, labels_path: Optional[str] = None) -> Dict[str, Any]:
     """
-    Golpes com técnica conhecida, pelo BANCO ÚNICO (I11): a técnica do ponto oficial que o golpe acertou
-    (gabarito manual) ou a técnica informada numa correção. Pontos lidos das bandeiras não têm técnica
-    conhecida; lutas golden ficam de fora.
+    Golpes com técnica conhecida, pelo BANCO ÚNICO (I11): a técnica informada numa revisão ou a do ponto oficial
+    que o golpe casou no tempo (gabarito manual; é a técnica tentada, não um juízo de validade). Gabarito automático antigo não tem
+    técnica conhecida; lutas golden ficam de fora.
     """
     from src.engine import weak_labels as wl
     from src.engine.label_bank import build_training_reports
@@ -257,7 +257,9 @@ def build_dataset(pipeline, videos_dir: str, labels_path: Optional[str] = None) 
             skipped.append({"video_name": report["video_name"], "motivo": "técnica desconhecida (pontos automáticos)"})
         examples = []
         for cand in report["candidates"]["items"]:
-            if cand["weak_label"] != wl.POSITIVE:
+            # Técnica tentada, válida ou não: a correção do revisor ou a do ponto oficial que o golpe casou.
+            # Golpe que a revisão disse que nem é golpe fica de fora.
+            if cand.get("nao_e_golpe"):
                 continue
             tech = wl.normalize_technique(cand.get("tecnica_corrigida")) or official.get(cand.get("matched_point"))
             if tech:

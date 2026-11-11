@@ -18,8 +18,8 @@ Duas frentes, com travas para que nada inventado ou não confiável entre no tre
    - O título vira rótulo fraco de modalidade ("kirikaeshi", "final"…) para a I14.
    - Download só se o usuário ligar (`baixar: true`), dentro do limite de disco e de duração, de
      preferência só Creative Commons (termos de uso e direito de imagem dos atletas).
-   - Pontos pelas bandeiras (I7) só se o detector já provou F1 ≥ 0,9 em ≥ 3 lutas no último ciclo;
-     senão, o vídeo fica só com o rótulo de modalidade. Pontos lidos viram dúvidas na curadoria (I12).
+   - O vídeo entra só com o rótulo de modalidade. A validade dos golpes vem das revisões (curadoria),
+     nunca da decisão dos shinpan.
    - Os rótulos entram no Banco Único (I11); o ciclo (I8) só promove modelos que melhorem o golden.
 
 Uso via linha de comando (a partir da pasta Dev/):
@@ -45,9 +45,6 @@ from src.utils.file_utils import safe_replace, safe_write_json, safe_load_json, 
 DEFAULT_CONFIG_PATH = os.path.join("config", "internet_sources.json")
 INTERNET_ORIGIN = "internet"
 TITLE_LABEL_CONFIDENCE = 0.5     # rótulo de modalidade pelo título (fraco)
-FLAG_LABEL_CONFIDENCE = 0.5      # ponto lido pelas bandeiras num vídeo da internet
-FLAG_GATE_F1 = 0.9
-FLAG_GATE_VIDEOS = 3
 MAX_SEARCH_DEPTH = 100           # resultados por consulta, no máximo
 
 DEFAULT_CONFIG: Dict[str, Any] = {
@@ -70,7 +67,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "max_duracao_min": 20,
         "limite_disco_gb": 10.0,
         "max_downloads_por_ciclo": 3,
-        "prioridade_luta": True,   # lutas (shiai) primeiro: têm bandeiras, pontos e gabarito
+        "prioridade_luta": True,   # lutas (shiai) primeiro: têm golpes para revisar e pontos para o gabarito
         "baixar": False,
         "somente_creative_commons": True,
         "intervalo_sessao_min": 15,
@@ -439,18 +436,6 @@ def _dir_size_gb(d: str) -> float:
     return total / 1e9
 
 
-def flag_gate(history_path: Optional[str] = None) -> Dict[str, Any]:
-    """O detector de bandeiras (I7) já provou F1 ≥ 0,9 em ≥ 3 lutas no último ciclo de treino?"""
-    from src.engine.training_cycle import load_cycle_history
-    for rec in reversed(load_cycle_history(history_path)):
-        b = rec.get("etapas", {}).get("bandeiras")
-        if not b or b.get("f1") is None:
-            continue
-        ok = (b.get("f1") or 0.0) >= FLAG_GATE_F1 and (b.get("videos") or 0) >= FLAG_GATE_VIDEOS
-        return {"liberado": ok, "f1": b.get("f1"), "videos": b.get("videos"), "ciclo": rec.get("id")}
-    return {"liberado": False, "f1": None, "videos": 0, "ciclo": None}
-
-
 def fetch_license(url: str) -> Optional[str]:
     """Licença declarada do vídeo (a busca rápida não traz); None se não informada."""
     import yt_dlp
@@ -467,7 +452,7 @@ def _license_ok(item: Dict[str, Any], only_cc: bool) -> bool:
 def download_order(catalog: Dict[str, Dict[str, Any]], cfg: Dict[str, Any]) -> List[Tuple[str, Dict[str, Any]]]:
     """
     Ordem de download dos candidatos. Com "prioridade_luta" (padrão), lutas (shiai) vêm primeiro: são elas que
-    têm bandeiras de shinpan, pontos e gabarito. Depois, a modalidade com menos vídeos baixados, para equilibrar.
+    têm golpes para revisar e pontos para o gabarito. Depois, a modalidade com menos vídeos baixados, para equilibrar.
     """
     baixados: Dict[str, int] = {}
     for it in catalog.values():
@@ -481,7 +466,7 @@ def download_order(catalog: Dict[str, Dict[str, Any]], cfg: Dict[str, Any]) -> L
     return order
 
 
-def collect_videos(config: Optional[Dict[str, Any]] = None, searcher=None, downloader=None, flag_reader=None, license_reader=None,
+def collect_videos(config: Optional[Dict[str, Any]] = None, searcher=None, downloader=None, license_reader=None,
                    allow_download: Optional[bool] = None, history_path: Optional[str] = None,
                    progress: Optional[Callable[[str], None]] = None, depth: int = 1,
                    should_stop: Optional[Callable[[], bool]] = None) -> Dict[str, Any]:
@@ -529,7 +514,6 @@ def collect_videos(config: Optional[Dict[str, Any]] = None, searcher=None, downl
 
     do_download = cfg.get("baixar", False) if allow_download is None else allow_download
     downloaded, labels, doubts = [], 0, 0
-    gate = flag_gate(history_path)
     if do_download:
         max_s = float(cfg.get("max_duracao_min", 20)) * 60
         budget = float(cfg.get("limite_disco_gb", 10.0))
@@ -567,15 +551,13 @@ def collect_videos(config: Optional[Dict[str, Any]] = None, searcher=None, downl
             item.update(status="baixado", arquivo=os.path.basename(path), baixado_em=datetime.datetime.now().isoformat(timespec="seconds"))
             log_activity("download", f"⬇️ Baixado: {item['titulo']} → data/videos/{item['arquivo']}", item.get("url"))
             downloaded.append(item["arquivo"])
-            n_lab, n_doubt = label_video(item, path, gate, flag_reader=flag_reader)
-            labels += n_lab
-            doubts += n_doubt
+            labels += label_video(item, path)
         _save_json("catalogo.json", catalog)
     status_count: Dict[str, int] = {}
     for it in catalog.values():
         status_count[it["status"]] = status_count.get(it["status"], 0) + 1
     return {"novos_no_catalogo": new, "catalogo": status_count, "baixados": downloaded, "rotulos": labels,
-            "duvidas": doubts, "bandeiras": gate, "download_ligado": bool(do_download)}
+            "duvidas": doubts, "download_ligado": bool(do_download)}
 
 
 def _download(item: Dict[str, Any], downloader=None) -> str:
@@ -594,35 +576,14 @@ def _download(item: Dict[str, Any], downloader=None) -> str:
     return target
 
 
-def label_video(item: Dict[str, Any], path: str, gate: Dict[str, Any], flag_reader=None) -> Tuple[int, int]:
-    """Rótulo de modalidade pelo título e, se o detector de bandeiras estiver liberado, pontos + dúvidas."""
+def label_video(item: Dict[str, Any], path: str) -> int:
+    """Rótulo de modalidade pelo título (fraco). Os golpes do vídeo só ganham validade quando alguém revisa."""
     from src.engine.label_bank import LabelBank
-    name = os.path.basename(path)
-    labels = [{"origin": INTERNET_ORIGIN, "video_name": name, "claim": "modalidade", "value": item["modalidade_titulo"],
-               "time_sec": 0.0, "fim_s": None, "kenshi": None, "ref": "titulo", "confidence": TITLE_LABEL_CONFIDENCE,
-               "fonte": item.get("url"), "titulo": item.get("titulo")}]
-    doubts = 0
-    if gate.get("liberado") and item["modalidade_titulo"] == "luta":
-        if flag_reader is None:
-            from src.vision.flag_detector import detect_flag_events as flag_reader
-        events = flag_reader(path)["eventos"]
-        from src.engine.active_learning import UncertaintySampler
-        sampler = UncertaintySampler()
-        for i, ev in enumerate(events):
-            labels.append({"origin": INTERNET_ORIGIN, "video_name": name, "claim": "ponto", "value": True,
-                           "time_sec": ev["golpe_estimado_s"], "kenshi": ev["kenshi"], "ref": f"bandeira{i}",
-                           "confidence": FLAG_LABEL_CONFIDENCE, "fonte": item.get("url")})
-            try:
-                sampler.enqueue_doubt(
-                    doubt_type="bandeira", video_source=path,
-                    strike_data={"strike_type": "MEN", "kenshi": ev["kenshi"], "timestamp_seconds": ev["golpe_estimado_s"]},
-                    uncertainty=0.5, impact=0.6, kenshi=ev["kenshi"],
-                    reason=f"Ponto lido pelas bandeiras ({ev.get('juizes')} juiz(es)) num vídeo da internet: confirme.")
-                doubts += 1
-            except Exception as e:
-                log_event("WARNING", f"Não foi possível criar a dúvida de bandeira: {e}", "internet_collector")
+    labels = [{"origin": INTERNET_ORIGIN, "video_name": os.path.basename(path), "claim": "modalidade",
+               "value": item["modalidade_titulo"], "time_sec": 0.0, "fim_s": None, "kenshi": None, "ref": "titulo",
+               "confidence": TITLE_LABEL_CONFIDENCE, "fonte": item.get("url"), "titulo": item.get("titulo")}]
     LabelBank().add_labels(labels)
-    return len(labels), doubts
+    return len(labels)
 
 
 # ------------------------------------------------------------------------------
@@ -1089,7 +1050,7 @@ def status() -> Dict[str, Any]:
     for it in cat.values():
         counts[it["status"]] = counts.get(it["status"], 0) + 1
     rules = load_rules()
-    return {"catalogo": counts, "disco_gb": round(_internet_bytes() / 1e9, 2), "bandeiras": flag_gate(),
+    return {"catalogo": counts, "disco_gb": round(_internet_bytes() / 1e9, 2), 
             "fontes_regras": {s["titulo"]: {"fatos": len(s.get("fatos", {})), "regras": len(s.get("regras", {}))}
                               for s in rules.get("fontes", {}).values()}}
 

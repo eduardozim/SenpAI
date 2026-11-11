@@ -8,7 +8,7 @@ então o que é apagado é exatamente o que é exportado e o que a importação 
   (perfis de calibração e base de conhecimento). Antes, grava uma cópia de segurança em data/backups/.
 - exportar (export_training_zip): .zip com manifest.json (lista de arquivos, tamanhos e SHA-256) e os
   arquivos nos mesmos caminhos. Fica de fora só o que é cache/derivado ou grande demais e recuperável:
-  cache de poses, recortes de bandeira sem rótulo, vídeos baixados da internet e pastas runs/ do YOLO.
+  cache de poses, vídeos baixados da internet e pastas runs/ do YOLO.
 - importar (import_training_zip): RESTAURA o estado do pacote (não mistura). Valida o manifest e cada
   arquivo, grava uma cópia de segurança do estado atual, apaga e extrai. Pacotes antigos (sem manifest)
   seguem pelo importador legado, que mescla.
@@ -53,8 +53,7 @@ TRAINING_STORES: List[Tuple[str, str]] = [
     ("data/strike_reference.json", "Referência dos golpes validados"),
     ("data/training_cycles.jsonl", "Histórico dos ciclos de treino"),
     ("data/auto_training_checkpoint.json", "Checkpoint do treinador antigo"),
-    ("data/flag_dataset/labels.json", "Rótulos dos recortes de bandeira"),
-    ("data/models", "Modelos treinados (filtro, técnica, modalidade, encoder, bandeiras)"),
+    ("data/models", "Modelos treinados (filtro, técnica, modalidade, encoder)"),
     ("data/internet", "Coleta na internet (regras, catálogo, sessões, vídeos)"),
     ("config/calibration_profiles.json", "Perfis de calibração"),
     ("config/ai_knowledge_base.json", "Base de conhecimento"),
@@ -91,31 +90,12 @@ def _norm(rel: str) -> str:
 
 def _is_training_path(rel: str) -> bool:
     rel = _norm(rel)
-    return any(rel == p or rel.startswith(p.rstrip("/") + "/") for p, _ in TRAINING_STORES) or rel.startswith("data/flag_dataset/crops/")
+    return any(rel == p or rel.startswith(p.rstrip("/") + "/") for p, _ in TRAINING_STORES)
 
 
 def _excluded(rel: str) -> bool:
     rel = "/" + _norm(rel)
     return any(x in rel if x.startswith("/") else rel.startswith("/" + x) for x in EXPORT_EXCLUDES)
-
-
-def _labeled_crops(root: str) -> List[str]:
-    """Recortes de bandeira que têm rótulo (sem eles, os rótulos não retreinam o detector)."""
-    p = _abs(root, "data/flag_dataset/labels.json")
-    if not os.path.isfile(p):
-        return []
-    try:
-        with open(p, "r", encoding="utf-8") as f:
-            items = json.load(f).get("recortes", {})
-    except Exception:
-        return []
-    out = []
-    for it in items.values():
-        if it.get("rotulo") and it.get("arquivo"):
-            rel = _norm(it["arquivo"])
-            if os.path.isfile(_abs(root, rel)):
-                out.append(rel)
-    return sorted(set(out))
 
 
 def iter_training_files(root: Optional[str] = None, for_export: bool = True) -> Iterable[str]:
@@ -134,8 +114,6 @@ def iter_training_files(root: Optional[str] = None, for_export: bool = True) -> 
                     r = _norm(os.path.relpath(os.path.join(dirpath, name), root))
                     if not (for_export and _excluded(r)):
                         yield r
-    if for_export:
-        yield from _labeled_crops(root)
 
 
 def _sha256(path: str) -> str:
@@ -163,7 +141,6 @@ def summarize(root: Optional[str] = None) -> Dict[str, Any]:
     mroot = _abs(root, "data/models")
     if os.path.isdir(mroot):
         models = sum(1 for fam in os.listdir(mroot) if os.path.isfile(os.path.join(mroot, fam, "active.json")))
-    flags = _json("data/flag_dataset/labels.json", {}).get("recortes", {})
     cycles = 0
     cp = _abs(root, "data/training_cycles.jsonl")
     if os.path.isfile(cp):
@@ -176,7 +153,6 @@ def summarize(root: Optional[str] = None) -> Dict[str, Any]:
         "lutas_no_golden": len(_json("data/benchmark_golden/golden_matches.json", {}).get("lutas", {})),
         "duvidas_na_fila": len(_json("data/active_learning_queue.json", [])),
         "decisoes_de_curadoria": len(_json("data/active_learning_curated_history.json", [])),
-        "recortes_de_bandeira_rotulados": sum(1 for it in flags.values() if it.get("rotulo") not in (None, "pular")),
         "modelos_ativos": models,
         "ciclos_de_treino": cycles,
     }
@@ -267,26 +243,6 @@ def _clear_in_memory_state() -> None:
         pass
 
 
-FLAG_LABELS = "data/flag_dataset/labels.json"
-
-
-def _strip_flag_labels(path: str) -> int:
-    """Tira só os rótulos dos recortes de bandeira; o índice dos recortes minerados (derivado) fica."""
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception:
-        return 0
-    n = 0
-    for it in data.get("recortes", {}).values():
-        if it.pop("rotulo", None) is not None:
-            n += 1
-        it.pop("rotulado_em", None)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=1, ensure_ascii=False)
-    return n
-
-
 def _move_to_trash(root: str) -> Tuple[str, List[Tuple[str, str]], int]:
     """
     Move todos os itens da lista para uma lixeira temporária (renomear é instantâneo). Se algo falhar,
@@ -298,7 +254,7 @@ def _move_to_trash(root: str) -> Tuple[str, List[Tuple[str, str]], int]:
     try:
         for i, (rel, _) in enumerate(TRAINING_STORES):
             src = _abs(root, rel)
-            if rel == FLAG_LABELS or not os.path.exists(src):
+            if not os.path.exists(src):
                 continue
             count += 1 if os.path.isfile(src) else sum(len(f) for _, _, f in os.walk(src))
             dst = os.path.join(trash, str(i))
@@ -372,9 +328,6 @@ def _cleanup_leftovers(root: str) -> None:
 
 def _delete_all(root: str) -> int:
     trash, _, removed = _move_to_trash(root)
-    labels = _abs(root, FLAG_LABELS)
-    if os.path.isfile(labels):
-        removed += _strip_flag_labels(labels)
     _remove_tree(trash)
     _cleanup_leftovers(root)
     return removed
@@ -521,7 +474,7 @@ def is_new_format(data: bytes) -> bool:
 SUMMARY_LABELS = {
     "revisoes": "Revisões de golpes", "rotulos_no_banco": "Rótulos no banco", "lutas_com_gabarito": "Lutas com gabarito",
     "lutas_no_golden": "Lutas no golden", "duvidas_na_fila": "Dúvidas na fila", "decisoes_de_curadoria": "Decisões de curadoria",
-    "recortes_de_bandeira_rotulados": "Recortes de bandeira rotulados", "modelos_ativos": "Modelos ativos",
+    "modelos_ativos": "Modelos ativos",
     "ciclos_de_treino": "Ciclos de treino",
 }
 
@@ -532,22 +485,20 @@ SUMMARY_LABELS = {
 
 # Grupo de cada item da lista, para a tela de disco
 STORE_GROUPS = {
-    "dataset": ("📂 Dataset de treinamento", "Rótulos, revisões, gabarito, golden, curadoria (com clipes), bandeiras rotuladas e coleta"),
-    "modelos": ("🧠 Modelos treinados", "Filtro de golpes, técnica, modalidade, encoder de movimento e detector de bandeiras"),
+    "dataset": ("📂 Dataset de treinamento", "Rótulos, revisões, gabarito, golden, curadoria (com clipes) e coleta"),
+    "modelos": ("🧠 Modelos treinados", "Filtro de golpes, técnica, modalidade e encoder de movimento"),
     "conhecimento": ("⚙️ Conhecimento & calibração", "Perfis de calibração e base de conhecimento"),
 }
 
 # Apoio: ocupa disco, mas não é treinamento (não é apagado nem exportado)
 SUPPORT_ITEMS: List[Tuple[str, str]] = [
     ("data/feature_cache", "Cache de poses (refeito a partir dos vídeos)"),
-    ("data/flag_dataset/crops", "Recortes de bandeira minerados"),
-    ("data/flag_dataset/labels.json", "Índice dos recortes minerados"),
     ("models", "Modelos base baixados prontos (YOLO pose)"),
 ]
 
 MODEL_FAMILIES = {
     "strike_filter": "Filtro de golpes", "technique_classifier": "Técnica", "modality_classifier": "Luta × modalidades",
-    "pose_encoder": "Encoder de movimento", "flag_detector": "Detector de bandeiras",
+    "pose_encoder": "Encoder de movimento",
 }
 
 
@@ -589,12 +540,6 @@ def storage_report(root: Optional[str] = None) -> Dict[str, Any]:
     items, groups = [], {k: 0 for k in STORE_GROUPS}
     for rel, desc in TRAINING_STORES:
         size, n = _size_and_count(_abs(root, rel))
-        if rel == FLAG_LABELS:
-            # O arquivo é sobretudo o índice dos recortes minerados (apoio); o treinamento são os recortes rotulados
-            size = n = 0
-            for crop in _labeled_crops(root):
-                size += os.path.getsize(_abs(root, crop))
-                n += 1
         g = _group_of(rel)
         groups[g] += size
         items.append({"caminho": rel, "descricao": desc, "grupo": g, "arquivos": n, "bytes": size})
@@ -613,12 +558,8 @@ def storage_report(root: Optional[str] = None) -> Dict[str, Any]:
     items.append({"caminho": f"{INTERNET_VIDEOS_DIR}/internet_* e analise_*", "descricao": "Vídeos da coleta na internet e cortes das análises",
                   "grupo": "dataset", "arquivos": inet[1], "bytes": inet[0]})
     support = [{"caminho": INTERNET_VIDEOS_DIR, "descricao": "Seus vídeos de lutas e treinos", "arquivos": user[1], "bytes": user[0]}]
-    labeled = set(_labeled_crops(root))
     for rel, desc in SUPPORT_ITEMS:
         size, n = _size_and_count(_abs(root, rel))
-        if rel == "data/flag_dataset/crops" and labeled:
-            lab = sum(os.path.getsize(_abs(root, c)) for c in labeled)
-            size, n = size - lab, n - len(labeled)
         support.append({"caminho": rel, "descricao": desc, "arquivos": n, "bytes": size})
     total = sum(groups.values())
     return {"total_bytes": total, "grupos": groups, "itens": items, "apoio": support,

@@ -30,7 +30,7 @@ def render_training_dataset_panel(feedback_mgr=None, auto_trainer=None) -> None:
     st.markdown("#### 🛠️ Gerenciamento do Dataset de Treinamento")
     st.caption(
         "Os três botões usam a mesma lista do que é treinamento: revisões, gabarito de lutas, Banco Único de Rótulos, "
-        "golden, fila e histórico da curadoria (com clipes), rótulos de bandeira, modelos treinados, ciclos, coleta na "
+        "golden, fila e histórico da curadoria (com clipes), modelos treinados, ciclos, coleta na "
         "internet, perfis de calibração e base de conhecimento. Não entram: seus vídeos, o cache de poses e as configurações do app."
     )
 
