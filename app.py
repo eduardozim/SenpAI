@@ -106,6 +106,7 @@ from src.analytics.training_analyzer import (
     recalculate_blocks_from_segments,
     get_kendoka_id_aliases
 )
+from src.analytics.training_feedback import metric_text
 from src.analytics.training_live_manager import LiveTrainingSessionManager
 from src.utils.hardware import (
     detect_nvidia_gpu, get_effective_device, check_cuda_framework_support,
@@ -1277,6 +1278,18 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
         else:
             badge_perf = ("⚠️ NECESSITA AJUSTES DE FUNDAMENTO", "#EF4444", "rgba(239, 68, 68, 0.15)", "#B91C1C")
 
+        # Histórico de evolução pelo nome do kendoca (training_progress): grava e compara com a sessão anterior
+        if (k_prof.get("diagnosis") or {}).get("achados") is not None:
+            from src.analytics.training_progress import attach_progress
+            if not train_data.get("session_id"):
+                import uuid as _uuid
+                train_data["session_id"] = _uuid.uuid4().hex
+            attach_progress(
+                k_prof, session_key=train_data["session_id"], name=k_cust, default_name=k_def,
+                video=str(res.get("video_name") or os.path.basename(str(res.get("video_path") or ""))),
+                source="gravado", session_date=train_data.get("created_at"),
+            )
+
         pres_sec = float(k_prof.get("presence_seconds", 0.0))
         reentries = int(k_prof.get("reentry_count", 0))
 
@@ -1337,13 +1350,16 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     constancia_submetrics=pillars.get("constancia_submetrics", {}),
                     cadence_cpm=cadence_cpm,
                     cadence_std_dev_seconds=pillars.get("cadence_std_dev_seconds", 0.0),
-                    total_repetitions=reps
+                    total_repetitions=reps,
+                    rep_details=pillars.get("rep_details"),
+                    nao_medidos=pillars.get("nao_medidos")
                 ),
                 strengths=strengths,
                 improvements=improvements,
                 recommended_exercises=exercises,
                 repetition_timeline=timeline,
-                modality_breakdown=k_prof.get("modality_breakdown", [])
+                modality_breakdown=k_prof.get("modality_breakdown", []),
+                diagnosis=k_prof.get("diagnosis")
             )
             indiv_md = k_obj.generate_individual_report_markdown(meta, modality_blocks=modality_blocks)
             safe_k_name = k_cust.replace(" ", "_").lower()
@@ -1419,7 +1435,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     </div>
                     <div style="font-size: 11px; color: #94A3B8; line-height: 1.6;">
                         • Trajetória no Ponto Alvo: <b style="color:#F1F5F9;">{prec_sub.get('trajetoria_alvo', 0):.1f}%</b><br>
-                        • Sincronismo Ki-Ken-Tai-Ichi: <b style="color:#F1F5F9;">{prec_sub.get('kikentai_sincronismo', 0):.1f}%</b><br>
+                        • Sincronismo Ki-Ken-Tai-Ichi: <b style="color:#F1F5F9;">{metric_text(prec_sub, 'kikentai_sincronismo')}</b><br>
                         • Controle da Linha Central: <b style="color:#F1F5F9;">{prec_sub.get('controle_linha_centro', 0):.1f}%</b>
                     </div>
                 </div>
@@ -1449,6 +1465,14 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
             )
 
         # DIAGNÓSTICOS PEDAGÓGICOS E PRESCRIÇÕES DE EXERCÍCIOS
+        k_diag = k_prof.get("diagnosis") or {}
+        if k_diag.get("achados") is not None:
+            from src.utils.training_diagnosis_panel import render_training_diagnosis
+            render_training_diagnosis(k_diag, key_prefix=f"{k_id}_{idx_k}", kendoka_name=k_cust)
+            st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+            continue
+
+        # Análises gravadas antes do diagnóstico detalhado: listas simples
         d_col1, d_col2 = st.columns(2)
         with d_col1:
             st.markdown("##### 🌟 Pontos Fortes Observados")
@@ -2608,7 +2632,7 @@ if nav_page == "home":
 elif nav_page == "settings":
     render_hero_banner()
     st.header("⚙️ Configurações Gerais do Sistema")
-    st.markdown("Gerencie os parâmetros de aceleração de hardware, governança de modelos, perfis de calibração, ferramentas de diagnóstico e consulte a documentação oficial.")
+    st.markdown("Gerencie os parâmetros de aceleração de hardware, governança de modelos, perfis de calibração, catálogo de exercícios, ferramentas de diagnóstico e consulte a documentação oficial.")
 
     # Barra Superior de Acesso Rápido a Documentações (Hyperlinks & Downloads)
     doc_top_c1, doc_top_c2, doc_top_c3 = st.columns([2, 1, 1])
@@ -2651,10 +2675,11 @@ elif nav_page == "settings":
     default_device_pref = st.session_state.get("device_preference", saved_sys_settings.get("processing_device", "cpu"))
     default_vision_pref = st.session_state.get("vision_model_preference", saved_sys_settings.get("vision_model", "yolov8"))
 
-    tab_hw, tab_train, tab_calib, tab_vars, tab_diag, tab_docs = st.tabs([
+    tab_hw, tab_train, tab_calib, tab_exercises, tab_vars, tab_diag, tab_docs = st.tabs([
         "🖥️ Processamento & Hardware",
         "🎓 Governança de Treinamento",
         "🎛️ Perfis de Calibração",
+        "🏋️ Catálogo de Exercícios",
         "⚙️ Variáveis do Sistema",
         "🐛 Diagnóstico, Alertas & Logs",
         "📚 Documentação & Manuais"
@@ -3576,6 +3601,13 @@ elif nav_page == "settings":
                             st.rerun()
                         except Exception as err:
                             st.error(f"Erro ao derivar perfil: {err}")
+
+    # --------------------------------------------------------------------------
+    # GUIA: CATÁLOGO DE EXERCÍCIOS (recomendados pelo diagnóstico do modo de treinamento)
+    # --------------------------------------------------------------------------
+    with tab_exercises:
+        from src.utils.exercise_catalog_panel import render_exercise_catalog_panel
+        render_exercise_catalog_panel()
 
     # --------------------------------------------------------------------------
     # GUIA 4: VARIÁVEIS DO SISTEMA & CHAVES DE API
@@ -5775,6 +5807,14 @@ elif nav_page in ["match", "training", "analysis"]:
                 unsafe_allow_html=True
             )
 
+            # Diagnóstico detalhado da sessão (pontos de atenção, exercícios, plano e metas)
+            if (rep.get("diagnosis") or {}).get("achados") is not None:
+                from src.utils.training_diagnosis_panel import render_training_diagnosis
+                st.markdown("#### 💡 Diagnóstico Detalhado da Sessão")
+                from src.analytics.training_progress import attach_progress
+                attach_progress(rep, session_key=str(rep.get("session_id") or "aovivo"), name=rep.get("kendoka_name", ""),
+                                default_name="Kendoka Praticante", source="ao_vivo", session_date=rep.get("created_at"))
+                render_training_diagnosis(rep["diagnosis"], key_prefix="live_cam", kendoka_name=rep.get("kendoka_name", ""), seekable=False)
             col_down1, col_down2, col_down3 = st.columns([1.5, 1.5, 1])
             with col_down1:
                 st.download_button(
@@ -6235,6 +6275,14 @@ elif nav_page in ["match", "training", "analysis"]:
                 unsafe_allow_html=True
             )
 
+            # Diagnóstico detalhado da sessão (pontos de atenção, exercícios, plano e metas)
+            if (rep.get("diagnosis") or {}).get("achados") is not None:
+                from src.utils.training_diagnosis_panel import render_training_diagnosis
+                st.markdown("#### 💡 Diagnóstico Detalhado da Sessão")
+                from src.analytics.training_progress import attach_progress
+                attach_progress(rep, session_key=str(rep.get("session_id") or "aovivo"), name=rep.get("kendoka_name", ""),
+                                default_name="Kendoka Praticante", source="ao_vivo", session_date=rep.get("created_at"))
+                render_training_diagnosis(rep["diagnosis"], key_prefix="live_stream", kendoka_name=rep.get("kendoka_name", ""), seekable=False)
             col_down1, col_down2, col_down3 = st.columns([1.5, 1.5, 1])
             with col_down1:
                 st.download_button(

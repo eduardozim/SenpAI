@@ -29,6 +29,11 @@ import math
 import numpy as np
 from typing import Dict, List, Any, Optional, Tuple, Sequence
 
+from src.analytics.training_feedback import (
+    FUMIKOMI_MODALITIES, KIKENTAI_MIN_MEASURED_FRACTION, build_diagnosis, diagnosis_markdown, legacy_lists,
+    measure_kikentai, metric_text,
+)
+from src.utils.logger_manager import log_event
 
 
 
@@ -258,7 +263,10 @@ class TrainingPillarMetrics:
         cadence_std_dev_seconds: float = 0.0,
         total_repetitions: int = 0,
         forma_score: Optional[float] = None,
-        forma_submetrics: Optional[Dict[str, float]] = None
+        forma_submetrics: Optional[Dict[str, float]] = None,
+        rep_details: Optional[List[Dict[str, Any]]] = None,
+        nao_medidos: Optional[List[Dict[str, str]]] = None,
+        diagnosis: Optional[Dict[str, Any]] = None
     ):
         # Suporte bidirecional para movimentacao / forma (retrocompatibilidade)
         mov_val = movimentacao_score if (movimentacao_score is not None and movimentacao_score > 0) else (forma_score if forma_score is not None else 0.0)
@@ -284,9 +292,16 @@ class TrainingPillarMetrics:
         self.cadence_cpm = round(float(cadence_cpm), 1)
         self.cadence_std_dev_seconds = round(float(cadence_std_dev_seconds), 3)
         self.total_repetitions = total_repetitions
+        # Valores por repetição (instante no vídeo e notas) e métricas que não puderam ser medidas
+        self.rep_details = list(rep_details or [])
+        self.nao_medidos = list(nao_medidos or [])
+        # Diagnóstico estruturado (src/analytics/training_feedback.py), preenchido pelo diagnóstico pedagógico
+        self.diagnosis = diagnosis or {}
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "rep_details": self.rep_details,
+            "nao_medidos": self.nao_medidos,
             "overall_score": self.overall_score,
             "movimentacao": self.movimentacao,
             "forma": self.forma,
@@ -322,7 +337,8 @@ class KendokaTrainingProfile:
         presence_intervals: Optional[List[Tuple[int, int]]] = None,
         reentry_count: int = 0,
         thumbnail: Optional[Any] = None,
-        modality_breakdown: Optional[List[Dict[str, Any]]] = None
+        modality_breakdown: Optional[List[Dict[str, Any]]] = None,
+        diagnosis: Optional[Dict[str, Any]] = None
     ):
         self.kendoka_id = kendoka_id  # "KENSHI_01", "KENSHI_02", "KENSHI_SHIRO", etc.
         self.default_name = default_name
@@ -341,6 +357,8 @@ class KendokaTrainingProfile:
         self.reentry_count = reentry_count
         self.thumbnail = thumbnail
         self.modality_breakdown = modality_breakdown or []
+        # Diagnóstico estruturado: o informado ou o que o diagnóstico pedagógico gravou nas métricas
+        self.diagnosis = diagnosis or getattr(self.pillars, "diagnosis", None) or {}
 
     def set_custom_name(self, name: str):
         if name and name.strip():
@@ -417,7 +435,7 @@ class KendokaTrainingProfile:
             f"",
             f"### 🎯 Pilar 2: Precisão ({p.precisao:.1f}%)",
             f"- **Trajetória no Alvo (Datotsu-bui):** {p.precisao_submetrics.get('trajetoria_alvo', 0):.1f}%",
-            f"- **Sincronismo Ki-Ken-Tai-Ichi:** {p.precisao_submetrics.get('kikentai_sincronismo', 0):.1f}%",
+            f"- **Sincronismo Ki-Ken-Tai-Ichi:** {metric_text(p.precisao_submetrics, 'kikentai_sincronismo')}",
             f"- **Controle da Linha Central (Chushin-sen):** {p.precisao_submetrics.get('controle_linha_centro', 0):.1f}%",
             f"",
             f"### ⏱️ Pilar 3: Constância ({p.constancia:.1f}%)",
@@ -432,29 +450,12 @@ class KendokaTrainingProfile:
             f"### 🌟 Pontos Fortes Observados",
         ]
 
-        if self.strengths:
-            for s in self.strengths:
-                md_lines.append(f"- ✅ {s}")
+        if self.diagnosis.get("achados") is not None:
+            # Diagnóstico detalhado: o que, onde, por que, causa, gravidade, exercícios, plano e metas
+            md_lines.pop()  # o título dos pontos fortes vem do próprio diagnóstico
+            md_lines.extend(diagnosis_markdown(self.diagnosis))
         else:
-            md_lines.append("- *Padrão em consolidação.*")
-
-        md_lines.append(f"")
-        md_lines.append(f"### ⚠️ Pontos de Atenção & Correção Técnica")
-        if self.improvements:
-            for imp in self.improvements:
-                md_lines.append(f"- ⚠️ {imp}")
-        else:
-            md_lines.append("- *Nenhum vício biomecânico crítico detectado.*")
-
-        md_lines.append(f"")
-        md_lines.append(f"### 🏋️ Exercícios Recomendados para Evolução no Dojo")
-        if self.recommended_exercises:
-            for ex in self.recommended_exercises:
-                md_lines.append(f"#### 🥋 {ex.get('name', 'Exercício')} *(Foco: {ex.get('target', 'Fundamentos')})*")
-                md_lines.append(f"- **Prescrição:** {ex.get('prescription', '')}")
-                md_lines.append(f"")
-        else:
-            md_lines.append("- *Manter rotina padrão de Suburi e Kihon diário.*")
+            md_lines.extend(self._legacy_diagnosis_markdown())
 
         # Seção dedicada separando por bloco de modalidade de treinamento
         if kendoka_blocks:
@@ -533,8 +534,24 @@ class KendokaTrainingProfile:
             "presence_seconds": self.presence_seconds,
             "presence_intervals": self.presence_intervals,
             "reentry_count": self.reentry_count,
-            "modality_breakdown": self.modality_breakdown
+            "modality_breakdown": self.modality_breakdown,
+            "diagnosis": self.diagnosis
         }
+
+    def _legacy_diagnosis_markdown(self) -> List[str]:
+        """Pontos fortes, de atenção e exercícios em lista simples (análises gravadas antes do diagnóstico detalhado)."""
+        lines = [f"- ✅ {s}" for s in self.strengths] or ["- *Padrão em consolidação.*"]
+        lines += ["", "### ⚠️ Pontos de Atenção & Correção Técnica"]
+        lines += [f"- ⚠️ {imp}" for imp in self.improvements] or ["- *Nenhum vício biomecânico crítico detectado.*"]
+        lines += ["", "### 🏋️ Exercícios Recomendados para Evolução no Dojo"]
+        if self.recommended_exercises:
+            for ex in self.recommended_exercises:
+                lines.append(f"#### 🥋 {ex.get('name', 'Exercício')} *(Foco: {ex.get('target', 'Fundamentos')})*")
+                lines.append(f"- **Prescrição:** {ex.get('prescription', '')}")
+                lines.append("")
+        else:
+            lines.append("- *Manter rotina padrão de Suburi e Kihon diário.*")
+        return lines
 
 
 class TrainingSubSession:
@@ -707,9 +724,16 @@ class TrainingSessionResult:
         self.web_sources = web_sources or []
         self.sub_sessions = sub_sessions or []
         self.modality_blocks = modality_blocks or []
+        # Identidade e data da sessão: chave do histórico de evolução de cada kenshi (training_progress)
+        import uuid
+        import datetime as _dt
+        self.session_id = uuid.uuid4().hex
+        self.created_at = _dt.datetime.now().isoformat(timespec="seconds")
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "session_id": self.session_id,
+            "created_at": self.created_at,
             "modality_key": self.modality_key,
             "modality_name": self.modality_name,
             "detection_confidence": self.detection_confidence,
@@ -899,12 +923,18 @@ class TrainingAnalyzer:
         target_accuracy_scores = []
         kikentai_sync_scores = []
         centerline_control_scores = []
+        rep_details: List[Dict[str, Any]] = []
+        nao_medidos: List[Dict[str, str]] = []
+        fps_safe = max(1.0, float(fps or 30.0))
+        uses_fumikomi = modality_key in FUMIKOMI_MODALITIES
+        furi_window = max(3, int(round(0.6 * fps_safe)))
 
-        for st in strikes:
+        for i_st, st in enumerate(strikes):
             f_raw = st.get("impact_frame", 0) if isinstance(st, dict) else getattr(st, "impact_frame", 0)
             f_impact = int(f_raw or 0) - (frame_offset or 0)
             if not (0 <= f_impact < len(pose_history)) and (0 <= int(f_raw or 0) < len(pose_history)):
                 f_impact = int(f_raw or 0)
+            rep = {"rep": i_st + 1, "tempo_s": round(int(f_raw or 0) / fps_safe, 2)}
             if 0 <= f_impact < len(pose_history):
                 lm_imp = pose_history[f_impact]
                 if lm_imp and "RIGHT_WRIST" in lm_imp and "NOSE" in lm_imp:
@@ -913,28 +943,59 @@ class TrainingAnalyzer:
                     lat_dev = abs(wrist_x - nose_x)
                     centerline_control_scores.append(max(0.0, 1.0 - (lat_dev * 5.0)))
                     target_accuracy_scores.append(max(0.0, 1.0 - (lat_dev * 3.5)))
+                    rep["centro"] = round(centerline_control_scores[-1] * 100.0, 1)
+                    rep["alvo"] = round(target_accuracy_scores[-1] * 100.0, 1)
+                if lm_imp and "LEFT_SHOULDER" in lm_imp and "LEFT_HIP" in lm_imp:
+                    tilt_imp = abs(lm_imp["LEFT_SHOULDER"]["x"] - lm_imp["LEFT_HIP"]["x"])
+                    rep["postura"] = round(max(0.0, 1.0 - (tilt_imp * 4.0)) * 100.0, 1)
+                # Furikaburi: ponto mais alto do pulso nos ~0,6 s antes do impacto
+                furi_vals = []
+                for f_b in range(max(0, f_impact - furi_window), f_impact + 1):
+                    lm_b = pose_history[f_b]
+                    if lm_b and "RIGHT_WRIST" in lm_b and "NOSE" in lm_b:
+                        furi_vals.append(max(0.0, 1.0 - (lm_b["RIGHT_WRIST"]["y"] - lm_b["NOSE"]["y"])))
+                if furi_vals:
+                    rep["furikaburi"] = round(min(1.0, max(furi_vals)) * 100.0, 1)
+                # Ki-Ken-Tai-Ichi medido: chegada do pé do fumikomi × impacto da espada
+                if uses_fumikomi:
+                    kkt = measure_kikentai(pose_history, f_impact, fps_safe)
+                    if kkt is not None:
+                        rep["kikentai_ms"], rep["kikentai"] = kkt
+                        kikentai_sync_scores.append(kkt[1] / 100.0)
+            rep_details.append(rep)
 
         if strikes:
-            kikentai_sync_scores = [0.82 for _ in strikes]
             if not centerline_control_scores:
                 centerline_control_scores = [0.80]
             if not target_accuracy_scores:
                 target_accuracy_scores = [0.78]
         else:
-            kikentai_sync_scores = [0.75]
             centerline_control_scores = [0.78]
             target_accuracy_scores = [0.75]
 
         score_trajetoria = float(np.mean(target_accuracy_scores)) * 100.0
-        score_kikentai = float(np.mean(kikentai_sync_scores)) * 100.0
         score_centro = float(np.mean(centerline_control_scores)) * 100.0
-
-        precisao_final = (score_trajetoria * 0.40) + (score_kikentai * 0.35) + (score_centro * 0.25)
         precisao_sub = {
             "trajetoria_alvo": round(score_trajetoria, 1),
-            "kikentai_sincronismo": round(score_kikentai, 1),
             "controle_linha_centro": round(score_centro, 1)
         }
+
+        # O Ki-Ken-Tai-Ichi só entra na nota quando foi medido em parte suficiente das repetições
+        kkt_min = max(2, int(np.ceil(KIKENTAI_MIN_MEASURED_FRACTION * len(strikes))))
+        if uses_fumikomi and len(kikentai_sync_scores) >= kkt_min:
+            score_kikentai = float(np.mean(kikentai_sync_scores)) * 100.0
+            precisao_sub["kikentai_sincronismo"] = round(score_kikentai, 1)
+            precisao_final = (score_trajetoria * 0.40) + (score_kikentai * 0.35) + (score_centro * 0.25)
+        else:
+            precisao_final = (score_trajetoria * 0.40 + score_centro * 0.25) / 0.65
+            if not uses_fumikomi:
+                motivo = "não se aplica a esta modalidade (sem fumikomi)"
+            elif not strikes:
+                motivo = "nenhum golpe detectado"
+            else:
+                motivo = (f"o pé do fumikomi foi medido em {len(kikentai_sync_scores)} de {len(strikes)} golpes "
+                          f"(mínimo {kkt_min}): pés fora da imagem ou sem fumikomi visível")
+            nao_medidos.append({"metrica": "kikentai_sincronismo", "label": "Sincronismo Ki-Ken-Tai-Ichi", "motivo": motivo})
 
         # ----------------------------------------------------------------------
         # PILAR 3: CONSTÂNCIA (Cadência, Regularidade do Ritmo, Fadiga)
@@ -997,7 +1058,9 @@ class TrainingAnalyzer:
             constancia_submetrics=constancia_sub,
             cadence_cpm=cadence_cpm,
             cadence_std_dev_seconds=std_dev_sec,
-            total_repetitions=total_reps
+            total_repetitions=total_reps,
+            rep_details=rep_details,
+            nao_medidos=nao_medidos
         )
 
     # --------------------------------------------------------------------------
@@ -1011,7 +1074,19 @@ class TrainingAnalyzer:
     ) -> Tuple[List[str], List[str], List[Dict[str, str]]]:
         """
         Gera os pontos fortes, pontos de melhoria e exercícios práticos compensatórios de Kendo.
+
+        Usa o diagnóstico estruturado (training_feedback.build_diagnosis): valor medido × referência, piores
+        repetições, por que importa, causa provável, gravidade, exercícios do catálogo com dose e progressão,
+        plano semanal e metas. O diagnóstico completo fica em pillars.diagnosis (e vai para o perfil do kendoca).
+        As regras antigas abaixo só são usadas se o diagnóstico falhar.
         """
+        try:
+            diag = build_diagnosis(pillars, modality_key, TRAINING_MODALITIES_METADATA.get(modality_key, {}))
+            pillars.diagnosis = diag
+            return legacy_lists(diag)
+        except Exception as err:
+            log_event("WARNING", f"Diagnóstico pedagógico detalhado indisponível ({err}); usando as regras simples.", "training_analyzer")
+
         strengths: List[str] = []
         improvements: List[str] = []
         exercises: List[Dict[str, str]] = []
@@ -1062,7 +1137,7 @@ class TrainingAnalyzer:
                 "prescription": "40 repetições de Shōmen parando exatamente na altura da testa em frente a uma fita vertical demarcatória."
             })
 
-        if prec_sub.get("kikentai_sincronismo", 0) >= 80:
+        if prec_sub.get("kikentai_sincronismo", 100) >= 80:  # não medido não vira falha
             strengths.append("Sincronismo Ki-Ken-Tai-Ichi bem coordenado entre aterrissagem do pé direito (Fumikomi) e impacto da espada.")
         else:
             improvements.append("Descompasso temporal entre o impacto das mãos e a batida do Fumikomi do pé direito.")
@@ -2395,7 +2470,11 @@ def merge_kendoka_profiles_dict(
     sub_p1 = pil1.get("precisao_submetrics", {})
     sub_p2 = pil2.get("precisao_submetrics", {})
     for k in set(list(sub_p1.keys()) + list(sub_p2.keys())):
-        merged_sub_prec[k] = _weighted(sub_p1.get(k, 0.0), sub_p2.get(k, 0.0))
+        if k in sub_p1 and k in sub_p2:
+            merged_sub_prec[k] = _weighted(sub_p1[k], sub_p2[k])
+        else:
+            # Métrica medida só num dos perfis (ex.: Ki-Ken-Tai-Ichi): vale o valor medido, não média com zero
+            merged_sub_prec[k] = round(float(sub_p1.get(k, sub_p2.get(k, 0.0))), 1)
 
     merged_sub_const = {}
     sub_c1 = pil1.get("constancia_submetrics", {})
@@ -2415,9 +2494,28 @@ def merge_kendoka_profiles_dict(
         "movimentacao_submetrics": merged_sub_mov,
         "precisao_submetrics": merged_sub_prec,
         "constancia_submetrics": merged_sub_const,
+        "rep_details": sorted(list(pil1.get("rep_details") or []) + list(pil2.get("rep_details") or []),
+                              key=lambda r: float(r.get("tempo_s") or 0.0)),
+        "nao_medidos": [n for n in (pil1.get("nao_medidos") or [])
+                        if not any(n.get("metrica") in sub for sub in (merged_sub_mov, merged_sub_prec, merged_sub_const))],
     }
 
-    # 5. Forças, Melhorias e Exercícios
+    # 5. Forças, Melhorias e Exercícios (diagnóstico detalhado refeito com os dados dos dois perfis)
+    diag_mod = (p1.get("diagnosis") or {}).get("modality_key") or (p2.get("diagnosis") or {}).get("modality_key")
+    if diag_mod:
+        try:
+            diag = build_diagnosis(merged["pillars"], diag_mod, TRAINING_MODALITIES_METADATA.get(diag_mod, {}))
+            merged["diagnosis"] = diag
+            merged["strengths"], merged["improvements"], merged["recommended_exercises"] = legacy_lists(diag)
+            ins1 = list(p1.get("kinesthetic_insights", []))
+            ins2 = list(p2.get("kinesthetic_insights", []))
+            merged["kinesthetic_insights"] = list(dict.fromkeys(ins1 + ins2))
+            merged["kinesthetic_deviations"] = {**dict(p1.get("kinesthetic_deviations", {})),
+                                                **dict(p2.get("kinesthetic_deviations", {}))}
+            return merged
+        except Exception as err:
+            log_event("WARNING", f"Diagnóstico da mesclagem indisponível ({err}); juntando as listas.", "training_analyzer")
+    merged.pop("diagnosis", None)
     s1 = list(p1.get("strengths", []))
     s2 = list(p2.get("strengths", []))
     merged["strengths"] = list(dict.fromkeys(s1 + s2))
@@ -2801,6 +2899,18 @@ def recalculate_blocks_from_segments(
             "adequacao_cadencia": round(cad_score, 1)
         }
 
+        # Repetições deste bloco e Ki-Ken-Tai-Ichi só onde há fumikomi
+        block_reps = [r for r in (base_pil.get("rep_details") or [])
+                      if any(iv_s <= float(r.get("tempo_s") or -1.0) < iv_e for iv_s, iv_e in intervals_sec)]
+        block_nao_medidos = list(base_pil.get("nao_medidos") or [])
+        if mod_key not in FUMIKOMI_MODALITIES and "kikentai_sincronismo" in prec_sub:
+            prec_sub.pop("kikentai_sincronismo")
+            if "trajetoria_alvo" in prec_sub and "controle_linha_centro" in prec_sub:
+                prec_score = (float(prec_sub["trajetoria_alvo"]) * 0.40 + float(prec_sub["controle_linha_centro"]) * 0.25) / 0.65
+            block_nao_medidos = [n for n in block_nao_medidos if n.get("metrica") != "kikentai_sincronismo"]
+            block_nao_medidos.append({"metrica": "kikentai_sincronismo", "label": "Sincronismo Ki-Ken-Tai-Ichi",
+                                      "motivo": "não se aplica a esta modalidade (sem fumikomi)"})
+
         pillars_obj = TrainingPillarMetrics(
             movimentacao_score=mov_score,
             precisao_score=prec_score,
@@ -2810,7 +2920,9 @@ def recalculate_blocks_from_segments(
             constancia_submetrics=const_sub,
             cadence_cpm=cpm,
             cadence_std_dev_seconds=std_dev,
-            total_repetitions=reps_count
+            total_repetitions=reps_count,
+            rep_details=block_reps,
+            nao_medidos=block_nao_medidos
         )
 
         k_id = gk_dict.get("kendoka_id", "KENSHI_01")

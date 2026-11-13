@@ -92,10 +92,10 @@
     },
     "platt_scaling": {
       "a": 1.0,
-      "b": -3.326,
+      "b": -3.3831,
       "is_fitted": true
     },
-    "last_calibrated_at": "2026-11-13T12:29:45.059035+00:00"
+    "last_calibrated_at": "2026-11-13T16:55:59.782203+00:00"
   },
   "rigido": {
     "name": "Campeonato / Audit de Dan (Rígido)",

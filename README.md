@@ -122,6 +122,7 @@ python run_tests.py
 - **Referência dos Golpes Validados**: distribuição real das notas dos pilares por técnica no lugar do antigo padrão de números fixos, com retorno por pilar na análise.
 - **Pré-processamento das lutas da internet**: os golpes em dúvida das lutas baixadas vão para a Fila de Curadoria, e as respostas viram treino.
 - **Fila de Curadoria na Governança de Treinamento**: transferida de Perfis de Calibração para logo após o Ciclo de Treino; o Eixo 4 passa a se chamar Golden Benchmark.
+- **Diagnóstico detalhado no modo de treinamento**: Ki-Ken-Tai-Ichi medido de verdade (pé × espada, em ms); cada ponto de atenção diz o que, onde (com botão para o instante no vídeo), por que importa, causa provável e gravidade; exercícios de um catálogo editável com dose e progressão, plano da semana e metas. O catálogo tem aba própria em Configurações > Catálogo de Exercícios. O modo ao vivo usa o mesmo diagnóstico, com alerta na hora quando pé e espada não chegam juntos. Com o kendoca nomeado, a seção Evolução compara com a sessão anterior do mesmo nome e confere as metas. No topo, um Resumo do Sensei que a IA pode reescrever usando só as medidas (sem o nome do kenshi; números inventados são rejeitados).
 - **Correção do golpe na curadoria**: seleção "Qual golpe foi?" pré-marcada com o golpe identificado; se a tentativa foi de outro golpe, o árbitro corrige e decide Ippon ou Golpe Inválido, e a correção também ensina o classificador de técnica.
 
 ## 🌟 Novidades da Versão `v 0.4.1.0`
