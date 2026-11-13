@@ -1,0 +1,30 @@
+{
+ "versao": 1,
+ "videos": {
+  "internet_02h8igC7sPo.mp4": {
+   "em": "2026-11-12T00:43:21",
+   "golpes": 132,
+   "duvidas": 44
+  },
+  "internet_2mUArQWvHt0.mp4": {
+   "em": "2026-11-12T00:45:31",
+   "golpes": 51,
+   "duvidas": 39
+  },
+  "internet_3mUlr8grsic.mp4": {
+   "em": "2026-11-12T10:01:46",
+   "golpes": 151,
+   "duvidas": 100
+  },
+  "internet_7VEsMGimqBA.mp4": {
+   "em": "2026-11-13T00:02:56",
+   "golpes": 23,
+   "duvidas": 11
+  },
+  "internet_9_CpN07qgpk.mp4": {
+   "em": "2026-11-13T00:24:46",
+   "golpes": 392,
+   "duvidas": 82
+  }
+ }
+}

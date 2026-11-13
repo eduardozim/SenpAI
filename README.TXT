@@ -4,7 +4,7 @@
 
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
 
-                              Versão: v 0.4.1.0
+                              Versão: v 0.4.2.0
 
 ===============================================================================
 
@@ -719,7 +719,33 @@ mudanças, consulte o arquivo manual.md.
 
 -------------------------------------------------------------------------------
 
-8. NOVIDADES DA VERSÃO (v 0.4.1.0)
+8. NOVIDADES DA VERSÃO (v 0.4.2.0) - ATUALIZAÇÃO DO MÉTODO DE TREINAMENTO
+
+-------------------------------------------------------------------------------
+
+- Validade dos golpes pelas revisões, não pelos shinpan:
+  • A decisão dos shinpan (Gabarito de Lutas) só aponta golpes a revisar na Fila de Curadoria.
+  • A validade de cada golpe vem das revisões de kenshi e senseis, pesadas pelo dan.
+  • O antigo detector visual de bandeiras foi removido.
+
+- Referência dos Golpes Validados:
+  • Distribuição real das notas dos pilares por técnica (MEN, KOTE, DO, TSUKI) no lugar
+    do antigo padrão de números fixos, com retorno por pilar na análise.
+
+- Pré-processamento das lutas da internet:
+  • Os golpes em dúvida das lutas baixadas vão para a Fila de Curadoria; as respostas
+    viram rótulos e o próximo ciclo de treino aprende com elas.
+
+- Fila de Curadoria na Governança de Treinamento:
+  • Transferida de Perfis de Calibração para logo após o Ciclo de Treino.
+  • O Eixo 4 de Perfis de Calibração passa a se chamar Golden Benchmark.
+  • Seleção "Qual golpe foi?" pré-marcada com o golpe identificado: se a tentativa foi
+    de outro golpe (ex.: TSUKI no lugar de MEN), o árbitro corrige e decide Ippon ou
+    Golpe Inválido; a correção também ensina o classificador de técnica.
+
+-------------------------------------------------------------------------------
+
+   NOVIDADES DA VERSÃO ANTERIOR (v 0.4.1.0)
 
 -------------------------------------------------------------------------------
 

@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) — Manual Técnico Completo
 
 > **Arquitetura, Implementação, Algoritmos e Log de Mudanças**  
-> **Versão Oficial do Sistema**: `v 0.4.1.0`
+> **Versão Oficial do Sistema**: `v 0.4.2.0`
 
 ---
 
@@ -600,6 +600,7 @@ O módulo de **Decisão dos Shinpans** foi concebido para atender às exigência
 O módulo de Aprendizado Ativo (*Active Learning*) automatiza o ciclo de evolução do SenpAI, priorizando instâncias que trazem maior ganho informativo e blindando o modelo contra o esquecimento catastrófico:
 
 - **Amostragem por Incerteza & Fila de Curadoria Ativa (`UncertaintySampler` & `strike_clip_manager.py`)**:
+  - Na interface, a fila fica em *Configurações > Governança de Treinamento > 4. Fila de Curadoria*; o Golden Benchmark continua em *Perfis de Calibração > Eixo 4*.
   - Em vez de solicitar rotulagem humana para golpes óbvios (confiança muito alta $> 85\%$ ou muito baixa $< 30\%$), o algoritmo calcula o índice de incerteza da predição:
     $$\text{Incerteza}(x) = 1.0 - 2 \cdot |P(\text{Ippon}) - 0.5|$$
   - Golpes cuja probabilidade/score de aprovação situa-se na faixa de contorno e ambiguidade regulamentar (**45% a 65%**) recebem incerteza elevada ($\ge 0.70$) e são automaticamente enfileirados em `data/active_learning_queue.json`.
@@ -898,7 +899,26 @@ Total de **490 testes automatizados** distribuídos em 50 módulos, executados e
 
 ---
 
-### `[v 0.4.1.0]` — 2026-11-07 *(Versão Atual)*
+### `[v 0.4.2.0]` — 2026-11-11 *(Versão Atual)* — Atualização do Método de Treinamento
+
+- **Validade dos golpes pelas revisões, não pelos shinpan ([label_bank.py](file:///d:/Projetos/SenpAI/Dev/src/engine/label_bank.py), [weak_labels.py](file:///d:/Projetos/SenpAI/Dev/src/engine/weak_labels.py) & [training_cycle.py](file:///d:/Projetos/SenpAI/Dev/src/engine/training_cycle.py))**:
+  - A decisão dos shinpan (pontos do Gabarito de Lutas) só aponta golpes a revisar, como dúvidas "Decisão dos shinpan a revisar" na Fila de Curadoria.
+  - A validade de cada golpe, no treino e no golden, vem das revisões de kenshi e senseis, pesadas pelo dan de quem revisou.
+  - O antigo detector visual de bandeiras (`flag_detector.py`) foi removido.
+- **Referência dos Golpes Validados ([strike_reference.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/strike_reference.py) & [strike_reference_panel.py](file:///d:/Projetos/SenpAI/Dev/src/utils/strike_reference_panel.py))**:
+  - Substitui o antigo "padrão áureo" de números fixos pela distribuição real das notas dos pilares nos golpes validados de cada técnica (MEN, KOTE, DO, TSUKI), pesada pelo dan.
+  - Retorno por pilar na análise (ex.: "zanshin no percentil 18 dos MEN validados") e envio à curadoria dos golpes fora do padrão.
+  - Recalculada pelo Ciclo de Treino; o golden nunca entra. Exibida em Perfis de Calibração > Eixo 2.
+- **Pré-processamento das Lutas da Internet ([internet_preprocess.py](file:///d:/Projetos/SenpAI/Dev/src/engine/internet_preprocess.py))**:
+  - Analisa cada luta baixada (com o cache de poses) e manda à Fila de Curadoria os golpes em que o SenpAI está em dúvida: nota na faixa de incerteza, filtro de golpes e técnica indecisos, possível ai-uchi ou golpe após o yame, golpe fora do padrão dos validados.
+  - Cada vídeo é analisado uma vez; o passo para sozinho com a fila quase cheia, para nenhuma dúvida ser descartada sem ninguém ver.
+- **Fila de Curadoria na Governança de Treinamento ([curation_queue_panel.py](file:///d:/Projetos/SenpAI/Dev/src/utils/curation_queue_panel.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
+  - A fila saiu de Perfis de Calibração > Eixo 4 e passou a ser o item *4. Fila de Curadoria* da Governança de Treinamento, logo após o Ciclo de Treino que gera as dúvidas. "O Que o SenpAI Já Aprendeu" passa a ser o item 5.
+  - O Eixo 4 de Perfis de Calibração passa a se chamar *Golden Benchmark*.
+  - O código da fila foi extraído do `app.py` para um painel próprio.
+  - **Correção do golpe na curadoria**: cada lance traz a seleção *"Qual golpe foi?"* (MEN, KOTE, DO, TSUKI), pré-marcada com o golpe identificado pelo SenpAI. Quando a tentativa foi de outro golpe (ex.: marcado TSUKI, mas foi MEN), o árbitro troca a seleção e decide *Ippon* ou *Golpe Inválido* normalmente, em vez de marcar "Não tem Golpe". O feedback é gravado com o golpe corrigido, a correção vira rótulo de técnica no Banco Único (o classificador de técnica aprende no próximo ciclo) e as notas dos pilares, medidas para o golpe errado, ficam fora da calibração.
+
+### `[v 0.4.1.0]` — 2026-11-07
 
 - **Reestruturação Estratégica da Governança de Treinamento ([training_dataset.py](file:///d:/Projetos/SenpAI/Dev/src/engine/training_dataset.py), [label_bank.py](file:///d:/Projetos/SenpAI/Dev/src/engine/label_bank.py), [weak_labels.py](file:///d:/Projetos/SenpAI/Dev/src/engine/weak_labels.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
   - **Organização Modular das Seções de Governança**:
@@ -1900,7 +1920,7 @@ Total de **490 testes automatizados** distribuídos em 50 módulos, executados e
 > [!IMPORTANT]
 > **AVISO LEGAL E TERMOS DE PROTEÇÃO INTELECTUAL**
 > 
-> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.4.1.0`.**  
+> **© 2026 SenpAI (先輩 AI) • Plataforma Inteligente de Kendo — Versão `v 0.4.2.0`.**  
 > **TODOS OS DIREITOS DE USO E CÓPIA RESERVADOS.**
 > 
 > 1. **Titularidade**: Todo o código-fonte, arquitetura de visão computacional, algoritmos biomecânicos de *Ki-Ken-Tai-Ichi*, modelos de detecção postural, pesos de rede neural, perfis de calibração heurística, identidade visual, interfaces e documentações pertencem exclusivamente aos desenvolvedores e detentores do projeto SenpAI.

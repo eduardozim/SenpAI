@@ -5,10 +5,10 @@
       "autoridade": "Blogs, fóruns e redes",
       "nivel": 5,
       "origem": "wikipedia",
-      "coletado_em": "2026-11-06T13:05:15",
-      "caracteres": 41390,
+      "coletado_em": "2026-11-11T21:54:48",
+      "caracteres": 41393,
       "consulta": "kendo zanshin after strike referee",
-      "resumo": "An appropriate venue has a clean and wooden sprung floor , suitable for fumikomi-ashi . [ 28 ] Kendo techniques comprise both strikes and thrusts.",
+      "resumo": "Additionally, kendōka execute fumikomi-ashi ( 踏み込み足 ) , an action similar to a stamp of the front foot, during a strike.",
       "modo": "regras",
       "fatos": {},
       "regras": {
@@ -36,9 +36,31 @@
         "conteudo": {
           "rotulo": "Conteúdo",
           "trechos": [
-            "An appropriate venue has a clean and wooden sprung floor , suitable for fumikomi-ashi . [ 28 ] Kendo techniques comprise both strikes and thrusts.",
-            "This can be to any part of the opponent's body, with valid strikes being: debana-men , debana-kote , and debana-Tsuki . Ōji-waza [ edit ] These counter-attack techniques are performed by executing a strike after responding or avoiding an attempted strike by the opponent.",
-            "Valid strikes include: men-suriage-men , kote-suriage-men , men-suriage-do , kote-suriage-kote , and Tsuki-suriage-men ."
+            "Additionally, kendōka execute fumikomi-ashi ( 踏み込み足 ) , an action similar to a stamp of the front foot, during a strike.",
+            "Shiai-geiko ( 試合稽古 ) Competition practice which may also be judged.",
+            "Datotsu-bu of the shinai is the forward, or blade side ( jin-bu ) of the top third ( monouchi ) of the shinai . [ 38 ] Zanshin ( 残心 ) , or continuation of awareness, must be present and shown throughout the execution of the strike and the kendōka must be mentally and physically ready to attack again."
+          ]
+        }
+      }
+    },
+    "https://en.wikipedia.org/wiki/International_Kendo_Federation": {
+      "titulo": "International Kendo Federation",
+      "autoridade": "FIK Official Rulebook",
+      "nivel": 1,
+      "origem": "wikipedia",
+      "coletado_em": "2026-11-11T22:26:52",
+      "caracteres": 19158,
+      "consulta": "kendo nihon kendo kata",
+      "resumo": "All Japan Kendo Federation ( 全日本剣道連盟 , Zen Nihon Kendō Renmei ) (AJKF / ZNKR) [ 10 ] Hong Kong :",
+      "modo": "regras",
+      "fatos": {},
+      "regras": {
+        "conteudo": {
+          "rotulo": "Conteúdo",
+          "trechos": [
+            "All Japan Kendo Federation ( 全日本剣道連盟 , Zen Nihon Kendō Renmei ) (AJKF / ZNKR) [ 10 ] Hong Kong :",
+            "Retrieved 22 April 2022 . ↑ \"대한검도회\" . www.kumdo.org . ↑ \"United Kendo Federation of the Philippines – United Kendo Federation of the Philippines\" . ↑ \"全日本剣道連盟 | All Japan Kendo Federation\" . 全日本剣道連盟 AJKF . ↑ \"中國香港劍道協會 Hong Kong Kendo Association\" . www.hongkongkendo.com . ↑ \"Kendo Kita\" .",
+            "Malaysia Kendo Association . ↑ \"New Zealand Kendo Federation – This federation supports more than 300 people of all ages, many ethnicities, male and female who train in Kendo across 11 dojo from Invercargill in the south to Auckland in the north\" . ↑ \"Singapore Kendo Club\" . ↑ \" [ 中華民國劍道協會 ] Republic of China Kendo Association\" . ↑ \"永遠のero | 人間みんな死ぬまでエロです。"
           ]
         }
       }
@@ -48,7 +70,7 @@
       "autoridade": "Blogs, fóruns e redes",
       "nivel": 5,
       "origem": "wikipedia",
-      "coletado_em": "2026-11-06T14:40:47",
+      "coletado_em": "2026-11-11T22:26:52",
       "caracteres": 5998,
       "consulta": "kendo nihon kendo kata",
       "resumo": "Sanbon-me Criticism [ edit ] There has been criticism of the Nihon Kendo Kata by kendoka due to continued usage of outdated forms. [ 1 ] For example, kodachi are no longer used except when wielding two swords. [ 1 ] This led to the development of Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho.",
@@ -71,237 +93,12 @@
         }
       }
     },
-    "https://en.wikipedia.org/wiki/International_Kendo_Federation": {
-      "titulo": "International Kendo Federation",
-      "autoridade": "FIK Official Rulebook",
-      "nivel": 1,
-      "origem": "wikipedia",
-      "coletado_em": "2026-11-06T14:40:48",
-      "caracteres": 19158,
-      "consulta": "kendo nihon kendo kata",
-      "resumo": "All Japan Kendo Federation ( 全日本剣道連盟 , Zen Nihon Kendō Renmei ) (AJKF / ZNKR) [ 10 ] Hong Kong :",
-      "modo": "regras",
-      "fatos": {},
-      "regras": {
-        "conteudo": {
-          "rotulo": "Conteúdo",
-          "trechos": [
-            "All Japan Kendo Federation ( 全日本剣道連盟 , Zen Nihon Kendō Renmei ) (AJKF / ZNKR) [ 10 ] Hong Kong :",
-            "Retrieved 22 April 2022 . ↑ \"대한검도회\" . www.kumdo.org . ↑ \"United Kendo Federation of the Philippines – United Kendo Federation of the Philippines\" . ↑ \"全日本剣道連盟 | All Japan Kendo Federation\" . 全日本剣道連盟 AJKF . ↑ \"中國香港劍道協會 Hong Kong Kendo Association\" . www.hongkongkendo.com . ↑ \"Kendo Kita\" .",
-            "Malaysia Kendo Association . ↑ \"New Zealand Kendo Federation – This federation supports more than 300 people of all ages, many ethnicities, male and female who train in Kendo across 11 dojo from Invercargill in the south to Auckland in the north\" . ↑ \"Singapore Kendo Club\" . ↑ \" [ 中華民國劍道協會 ] Republic of China Kendo Association\" . ↑ \"永遠のero | 人間みんな死ぬまでエロです。\" ."
-          ]
-        }
-      }
-    },
-    "https://kendo.rs/files/202107-Regulations-of-Kendo-Shiai-and-Shinpan.pdf": {
-      "titulo": "FIK — Regulations of Kendo Shiai and Shinpan (jul/2021, texto completo; cópia da federação sérvia)",
-      "autoridade": "FIK Official Rulebook",
-      "nivel": 1,
-      "coletado_em": "2026-11-07T20:33:06",
-      "caracteres": 61238,
-      "fatos": {
-        "shiaijo_lado_m": {
-          "rotulo": "Lado do shiaijo",
-          "valor": {
-            "min": 9.0,
-            "max": 11.0
-          },
-          "unidade": "m",
-          "evidencia": "The shiai-jo should be a square or a rectangle with sides of 9 to 11 meters in length inclusive of the width of the line."
-        },
-        "tempo_luta_min": {
-          "rotulo": "Tempo regulamentar da luta",
-          "valor": 5.0,
-          "unidade": "min",
-          "evidencia": "The standard duration for shiai shall be five minutes, and encho shall be three minutes."
-        },
-        "encho_min": {
-          "rotulo": "Tempo do encho (prorrogação)",
-          "valor": 3.0,
-          "unidade": "min",
-          "evidencia": "The standard duration for shiai shall be five minutes, and encho shall be three minutes."
-        },
-        "pontos_para_vencer": {
-          "rotulo": "Pontos para vencer (sanbon-shobu)",
-          "valor": 2.0,
-          "unidade": "pontos",
-          "evidencia": "In sanbon-shobu, the shiai-sha who first scores two points within the shiai duration shall be the winner."
-        },
-        "hansoku_para_ponto": {
-          "rotulo": "Hansoku que dão um ponto ao oponente",
-          "valor": 2.0,
-          "unidade": "hansoku",
-          "evidencia": "In the case whereby a shiai-sha commits two hansoku stipulated under Article 17, Items 2 to 7, the opponent shall be given one point."
-        }
-      },
-      "regras": {
-        "datotsu_bui": {
-          "rotulo": "Alvos válidos (datotsu-bui)",
-          "trechos": [
-            "Yuko-datotsu Article 12 Yuko-datotsu ......................5 Article 13 Datotsu-bu of Shinai .........6 Article 14 Datotsu-bui ........................6 Chapter 3:",
-            "Datotsu-bui in Article 14 of the “Regulations” CONTENTS the Regulations the Subsidiary Rules Article 15 Drug Abuse .......................7 Article 16 Insulting or Offensive Behavior ............................7 Article 17 Miscellaneous Prohibitions ......................7 Section 2:",
-            "Kendo-gu and Datotsu-bui......................24 Figure 4:",
-            "A yuko-datotsu is defined as an accurate strike or thrust made onto designated targets (datotsu-bui) of the opponent’s kendo-gu .",
-            "The datotsu-bu of the shinai shall be centered on the striking part (monouchi) of the jinbu on the opposite side of the cord (tsuru). （Datotsu-bui） Article 14:"
-          ]
-        },
-        "jogai": {
-          "rotulo": "Saída do shiaijo (jogai)",
-          "trechos": [
-            "Jogai in Article 17-4 of the “Regulations” Article 16:",
-            "Jogai, or stepping out of the shiai-jo while the match is in play.",
-            "Jogai as prescribed in Article 17, Item 4 of the “Regulations” is specified as follows:",
-            "Having one foot totally outside the boundary line.",
-            "Falling on the floor with a part of the body outside the boundary line."
-          ]
-        },
-        "yuko_datotsu": {
-          "rotulo": "Definição de yuko-datotsu",
-          "trechos": [
-            "A yuko-datotsu is defined as an accurate strike or thrust made onto designated targets (datotsu-bui) of the opponent’s kendo-gu .",
-            "When the shiai-sha who has scored yuko-datotsu is not alert in spirit and/or posture to a possible counterattack by the opponent."
-          ]
-        },
-        "zanshin": {
-          "rotulo": "Zanshin",
-          "trechos": [
-            "The strike or thrust must be executed in high spirits with correct posture, using the striking section (datotsu-bu) of the shinai with the correct angle (hasuji), and followed by zanshin."
-          ]
-        },
-        "hansoku": {
-          "rotulo": "Faltas (hansoku)",
-          "trechos": [
-            "A shiai-sha who commits any of the hansoku prescribed in Articles 15 and 16 shall lose the shiai and be ordered to retire from the shiai area ( taijo).",
-            "A shiai-sha who commits the hansoku stipulated in Article 17, Item 1 shall receive the penalties outlined below.",
-            "Regulations the Subsidiary Rules — 9 — hansoku , both shall lose the shiai and their points or status gained hitherto shall be nullified.",
-            "In the case whereby a shiai-sha commits two hansoku stipulated under Article 17, Items 2 to 7, the opponent shall be given one point.",
-            "The number of such hansoku shall be cumulative during the round of the concerned shiai ."
-          ]
-        },
-        "tsubazeriai": {
-          "rotulo": "Tsubazeriai",
-          "trechos": [
-            "Doing inappropriate tsubazeriai or datotsu.",
-            "In the case where tsubazeriai has come to a stalemate, the shushin shall separate the shiai-sha on the spot ( wakare ) and then resume the shiai.",
-            "When tsubazeriai has come to a stalemate, the shushin shall separate the shiai-sha by holding both shinpan-ki straight forward while pronouncing “ Wakare ”, and have them resume the shiai by lowering the shinpan-ki with the senkoku of “Hajime ” (Figures 15 & 9)."
-          ]
-        },
-        "invalidacao": {
-          "rotulo": "Invalidação de ponto",
-          "trechos": [
-            "A datotsu shall be considered as yuko and awarded one point in the following cases:"
-          ]
-        }
-      }
-    },
-    "https://www.kendo.or.jp/wp/wp-content/uploads/2025/01/RevisionE-Regulations-of-Kendo-Shiai-and-Shinpan-20230726.pdf": {
-      "titulo": "FIK — Regulations of Kendo Shiai and Shinpan (revisão 26/07/2023)",
-      "autoridade": "FIK Official Rulebook",
-      "nivel": 1,
-      "coletado_em": "2026-11-07T20:33:11",
-      "caracteres": 6393,
-      "fatos": {},
-      "regras": {
-        "jogai": {
-          "rotulo": "Saída do shiaijo (jogai)",
-          "trechos": [
-            "In such cases, a caution will be given by the shinpan-in after the match. ② Jogai as prescribed in Article 17, Item 4 of the “Regulations” is specified as follows:",
-            "Having one foot totally outside the boundary line.",
-            "2.Falling on the floor with a part of the body outside the boundary line.",
-            "Supporting the body with a part of the body or shinai outside the boundary line."
-          ]
-        },
-        "hansoku": {
-          "rotulo": "Faltas (hansoku)",
-          "trechos": [
-            "P.21 Hansoku Use or possession of prohibited substances Wakare 1."
-          ]
-        },
-        "tsubazeriai": {
-          "rotulo": "Tsubazeriai",
-          "trechos": [
-            "When tsubazeriai reaches a stalemate P."
-          ]
-        }
-      }
-    },
-    "https://www.kendo-fik.org/wp-content/uploads/2026/01/FIK-Handbook-for-Kendo-Shiai-and-Shinpan-Management-20250707.pdf": {
-      "titulo": "FIK — Handbook for Kendo Shiai and Shinpan Management (07/07/2025)",
-      "autoridade": "FIK Official Rulebook",
-      "nivel": 1,
-      "coletado_em": "2026-11-07T20:33:15",
-      "caracteres": 32031,
-      "fatos": {},
-      "regras": {
-        "zanshin": {
-          "rotulo": "Zanshin",
-          "trechos": [
-            "I nterpreting and Discerning Zanshin ............................................8 III.",
-            "The strike or thrust must be executed in high spirits with correct posture, using the striking section (datosu-bu) of the shinai with correct angle (hasuji), and followed by zanshin.",
-            "Interpreting and Discerning Zanshin Zanshin is a general term for the mental and physical posture taken after executing a strike.",
-            "Moreover, there is a difference in how zanshin is expressed after a technique executed off the mark with the timing of sen, and oji-waza (applied techniques).",
-            "For example, in the case of oji-waza and the like, it may be that zanshin can only be demonstrated momentarily."
-          ]
-        },
-        "tsubazeriai": {
-          "rotulo": "Tsubazeriai",
-          "trechos": [
-            "About Tsubazeriai IV .",
-            "About Tsubazeriai Tsubazeriai represents the closest and tensest point between two opponents when they enter a close-quarters tussle with tsuba joined together.",
-            "Tsubazeriai arises from attack and defense amid striking action.",
-            "When tsubazeriai is entered, shiai-sha must either proactively execute a waza, or seek to break away from the tussle.",
-            "Notwithstanding, shinpan-in must make a comprehensive judgment based on the following points if tsubazeriai continues for a protracted period (one breath - about 3 seconds or more): – 10 – (1) Ar e the shiai-sha engaged in correct tsubazeriai? (2) D o they demonstrate intent to strike? (3) D o they demonstrate the will to separate? The above rulings and procedure are normally summarized as follows: • It constitutes unfair tsubazeriai if the act appears irregular from a common-sensical stance."
-          ]
-        },
-        "datotsu_bui": {
-          "rotulo": "Alvos válidos (datotsu-bui)",
-          "trechos": [
-            "Yuko-Datotsu (Valid Strikes) Criteria for yuko-datotsu are stipulated in Article 12 of the “Regulations.” It states that an accurate strike or thrust made onto designated targets (datotsu-bui ) of the opponent’s kendo-gu."
-          ]
-        },
-        "aiuchi": {
-          "rotulo": "Golpes simultâneos (aiuchi)",
-          "trechos": [
-            "It is important to identify different types of technique for yuko-datotsu and not simply assume that it is “invalid as ippon because it was too light.” It is easy to conclude that techniques are invalid if executed at the same time (aiuchi ).",
-            "Shinpan-in should understand and act in accordance with the notion that there is no such thing as aiuchi. – 7 – Yuko-Datotsu (Ki-ken-tai-no-itchi) – 8 – II."
-          ]
-        },
-        "invalidacao": {
-          "rotulo": "Invalidação de ponto",
-          "trechos": [
-            "Nevertheless, strikes made with a shoto from the tsubazeriai position will not be considered valid in principle."
-          ]
-        },
-        "yuko_datotsu": {
-          "rotulo": "Definição de yuko-datotsu",
-          "trechos": [
-            "(Yuko-datotsu) (1) If shinpan-ki’s signal of the yuko-datotsu is mistakenly indicated, the correct signal should be shown immediately without the need to cancel the original signal. – 19 – (Other Guidelines) (1) There is no rule stipulating what number bar of the yoko-gane that the men-himo (men cords) should be tied, so this cannot be called as hansoku."
-          ]
-        },
-        "hansoku": {
-          "rotulo": "Faltas (hansoku)",
-          "trechos": [
-            "(Case 7) In the context of Nito, single-handed, or one-handed Jodan, would it be considered as Hansoku if shiai-sha grips close to the Tsubamoto (base of the Tsuba) of the Daito to hide his/her Kote? (Explanation) (1) Ideally, the grip on the Tsuka should be close to the Tsukagashira.",
-            "Various Prohibited Acts (Article 17) (Case 1) What should be done if a shiai-sha commits two hansoku simultaneously? (Explanation) (1) It is unlikely that two hansoku are committed exactly at the same time, so time elapsed becomes the criterion for the first penalizable offence.",
-            "(2) If two hansoku are committed at exactly the same time, the more serious of the two offences is the one that is penalized.",
-            "Is hansoku given to the one who struck the shinai forcefully, or to the one who dropped it? (Explanation) (1) If a strike to the opponent’s shinai is made in the course of an offensive or defensive action, then it is not hansoku.",
-            "Is this considered a hansoku through failure to fasten kendo-gu properly? (Explanation) (1) According to the rules, this does not constitute hansoku. – 26 – (2) It is hansoku if it is a serious error making it impossible to continue the shiai by clearly showing a lack of regard to safety."
-          ]
-        },
-        "jogai": {
-          "rotulo": "Saída do shiaijo (jogai)",
-          "trechos": [
-            "(Case 11) Shinpan-in A and B indicate jogai hansoku."
-          ]
-        }
-      }
-    },
     "https://ja.wikipedia.org/wiki/剣道": {
       "titulo": "剣道",
       "autoridade": "Blogs, fóruns e redes",
       "nivel": 5,
       "origem": "wikipedia",
-      "coletado_em": "2026-11-08T00:13:14",
+      "coletado_em": "2026-11-11T22:43:19",
       "caracteres": 39970,
       "consulta": "剣道 有効打突 条件",
       "resumo": "また、剣道は 有効打突 の判定基準が曖昧で、フェンシングのように電気審判機も導入されていないため、特に国際試合では 審判 が難しい問題もある [ 21 ] 。",
@@ -323,7 +120,7 @@
       "autoridade": "Blogs, fóruns e redes",
       "nivel": 5,
       "origem": "wikipedia",
-      "coletado_em": "2026-11-08T00:13:14",
+      "coletado_em": "2026-11-11T22:43:20",
       "caracteres": 5194,
       "consulta": "剣道 有効打突 条件",
       "resumo": "剣道のような防具を身につけて短い 竹刀 を用いて 打突 しあう 競技 である [ 1 ] 。",
@@ -345,7 +142,7 @@
       "autoridade": "Blogs, fóruns e redes",
       "nivel": 5,
       "origem": "wikipedia",
-      "coletado_em": "2026-11-08T00:13:17",
+      "coletado_em": "2026-11-11T22:43:22",
       "caracteres": 10340,
       "consulta": "剣道 残心 審判",
       "resumo": "剣道における礼法、目付、 構え 、姿勢、呼吸、太刀筋、間合、気位、足さばき、 残心 等の習得のために稽古する。",
@@ -367,7 +164,7 @@
       "autoridade": "Blogs, fóruns e redes",
       "nivel": 5,
       "origem": "wikipedia",
-      "coletado_em": "2026-11-08T12:37:34",
+      "coletado_em": "2026-11-11T23:16:30",
       "caracteres": 8639,
       "consulta": "剣道 昇段審査 基準",
       "resumo": "剣道の技術的力量（ 竹刀 剣道と 日本剣道形 演武 の 実技 ）および学科の審査会を経て授与される。",

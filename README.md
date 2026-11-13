@@ -1,7 +1,7 @@
 # SenpAI (先輩 AI) ⚔️
 
 > **Sistema Avançado de Avaliação e Análise Biomecânica de Kendo com Inteligência Artificial**  
-> **Versão Oficial**: `v 0.4.1.0` • **Python**: `3.11` • **Licença**: Todos os Direitos Reservados
+> **Versão Oficial**: `v 0.4.2.0` • **Python**: `3.11` • **Licença**: Todos os Direitos Reservados
 
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-FF4B4B.svg)](https://streamlit.io/)
@@ -115,6 +115,14 @@ python run_tests.py
 ```
 
 ---
+
+## 🌟 Novidades da Versão `v 0.4.2.0` — Atualização do Método de Treinamento
+
+- **Validade dos golpes pelas revisões**: a decisão dos shinpan só aponta golpes a revisar; quem valida é a revisão de kenshi e senseis, pesada pelo dan. O detector de bandeiras foi removido.
+- **Referência dos Golpes Validados**: distribuição real das notas dos pilares por técnica no lugar do antigo padrão de números fixos, com retorno por pilar na análise.
+- **Pré-processamento das lutas da internet**: os golpes em dúvida das lutas baixadas vão para a Fila de Curadoria, e as respostas viram treino.
+- **Fila de Curadoria na Governança de Treinamento**: transferida de Perfis de Calibração para logo após o Ciclo de Treino; o Eixo 4 passa a se chamar Golden Benchmark.
+- **Correção do golpe na curadoria**: seleção "Qual golpe foi?" pré-marcada com o golpe identificado; se a tentativa foi de outro golpe, o árbitro corrige e decide Ippon ou Golpe Inválido, e a correção também ensina o classificador de técnica.
 
 ## 🌟 Novidades da Versão `v 0.4.1.0`
 

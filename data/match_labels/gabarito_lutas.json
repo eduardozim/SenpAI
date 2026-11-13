@@ -2,359 +2,41 @@
   "versao": 1,
   "videos": {
     "internet_02h8igC7sPo.mp4": {
-      "origem": "manual",
-      "aka": "0",
-      "shiro": "2",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "KOTE",
-          "tempo": "2:26"
-        },
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "MEN",
-          "tempo": "3:08"
-        }
-      ],
-      "observacoes": ""
-    },
-    "internet_3mUlr8grsic.mp4": {
-      "origem": "manual",
       "aka": "",
       "shiro": "",
       "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "descartar",
-      "ignorar": true,
       "pontos": [],
-      "observacoes": ""
-    },
-    "internet_-EYj5i8LURI.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "kakari_geiko",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_60BA3B4siw4.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "kakari_geiko",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_7dj2OdGbMnY.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "kakari_geiko",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_E-mqxPM4LmE.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "kakari_geiko",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_FXhj4x74MHs.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "uchikomi_geiko",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_HQRQHRMRvnI.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "waza_geiko",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_IFp-btf1uLU.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "kirikaeshi",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_KpjWDUp-5yc.mp4": {
-      "origem": "manual",
-      "aka": "0",
-      "shiro": "1",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "KOTE",
-          "tempo": "6:51"
-        }
-      ],
-      "observacoes": ""
-    },
-    "internet_RHZ0LENRm0U.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "descartar",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_Z6F9727H70M.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "descartar",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_ZaXzUze9UcY.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "kirikaeshi",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_bFAALGz1Tp0.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "descartar",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_cx9PvA0eg9A.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "ji_geiko",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_eFE-9j0tmF0.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "uchikomi_geiko",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_hNyL9lvAzH8.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "descartar",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_hVzNP20XV0U.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "kakari_geiko",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_iw3sgykBOyw.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "ji_geiko",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_p093qIzxQhQ.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "descartar",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_rMfvxm7XvWg.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "suburi",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_t7fDYAfZw8k.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "kakari_geiko",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_tpHK1HHW7tU.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "kirikaeshi",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_u6_xqVJ0OtE.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "kirikaeshi",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_7VEsMGimqBA.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "descartar",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_ptKlU1qV5jU.mp4": {
-      "origem": "manual",
-      "aka": "2",
-      "shiro": "0",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "0:01"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "0:19"
-        }
-      ],
-      "observacoes": ""
-    },
-    "internet_nA3nv5GpkcU.mp4": {
-      "origem": "manual",
-      "aka": "0",
-      "shiro": "1",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "MEN",
-          "tempo": "1:16"
-        }
-      ],
-      "observacoes": ""
+      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     },
     "internet_2mUArQWvHt0.mp4": {
-      "origem": "manual",
-      "aka": "2",
-      "shiro": "0",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "0:27"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "1:40"
-        }
-      ],
-      "observacoes": ""
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
+    },
+    "internet_3mUlr8grsic.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
+    },
+    "internet_7VEsMGimqBA.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     },
     "internet_9_CpN07qgpk.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
+    },
+    "internet_DwSIcUdSREo.mp4": {
       "aka": "",
       "shiro": "",
       "pontos_completos": false,
@@ -375,6 +57,13 @@
       "pontos": [],
       "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     },
+    "internet_KpjWDUp-5yc.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
+    },
     "internet_Kwj9euqonx8.mp4": {
       "aka": "",
       "shiro": "",
@@ -389,105 +78,14 @@
       "pontos": [],
       "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     },
-    "internet_ZUcw6ugd4wU.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_m1DmeDCq1pk.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_nNT_VAEgZ2k.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_t9g--2djqL4.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_wIj7dnD_eyU.mp4": {
-      "origem": "manual",
-      "aka": "0",
-      "shiro": "1",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "MEN",
-          "tempo": "15:41"
-        }
-      ],
-      "observacoes": ""
-    },
-    "internet_yWboWpprNGM.mp4": {
-      "origem": "manual",
-      "aka": "0",
-      "shiro": "2",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "MEN",
-          "tempo": "3:46"
-        },
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "KOTE",
-          "tempo": "4:32"
-        }
-      ],
-      "observacoes": ""
-    },
-    "internet_4t714IV3J90.mp4": {
-      "origem": "manual",
-      "aka": "1",
-      "shiro": "0",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "3:05"
-        }
-      ],
-      "observacoes": ""
-    },
-    "internet_DwSIcUdSREo.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_TEic-DhpASM.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
     "internet_Xr7ADDcnkOk.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
+    },
+    "internet_ZUcw6ugd4wU.mp4": {
       "aka": "",
       "shiro": "",
       "pontos_completos": false,
@@ -501,14 +99,7 @@
       "pontos": [],
       "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     },
-    "internet_eWBVa4JvKUc.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_kVspWYZJa-8.mp4": {
+    "internet_eXu1Bf_lV30.mp4": {
       "aka": "",
       "shiro": "",
       "pontos_completos": false,
@@ -522,430 +113,35 @@
       "pontos": [],
       "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     },
-    "internet_xWwnza7khAE.mp4": {
-      "origem": "manual",
-      "aka": "1",
-      "shiro": "0",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "2:35"
-        }
-      ],
-      "observacoes": ""
-    },
-    "internet_-BGjtJIgQgU.mp4": {
-      "origem": "manual",
-      "aka": "9",
-      "shiro": "0",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "3:21"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "3:38"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "5:48"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "KOTE",
-          "tempo": "6:58"
-        },
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "HANSOKU",
-          "tempo": "8:09"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "8:58"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "KOTE",
-          "tempo": "10:48"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "11:47"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "12:37"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "KOTE",
-          "tempo": "14:12"
-        }
-      ],
-      "observacoes": ""
-    },
-    "internet_-LFa6acTqnQ.mp4": {
-      "origem": "manual",
-      "aka": "0",
-      "shiro": "2",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "MEN",
-          "tempo": "2:14"
-        },
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "MEN",
-          "tempo": "5:25"
-        }
-      ],
-      "observacoes": ""
-    },
-    "internet_5-1nrSS4Nl4.mp4": {
-      "origem": "manual",
-      "aka": "0",
-      "shiro": "1",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "KOTE",
-          "tempo": "6:13"
-        }
-      ],
-      "observacoes": ""
-    },
-    "internet_6MIinBWLOTA.mp4": {
-      "origem": "manual",
-      "aka": "4",
-      "shiro": "4",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "MEN",
-          "tempo": "0:17"
-        },
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "MEN",
-          "tempo": "1:50"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "KOTE",
-          "tempo": "4:00"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "KOTE",
-          "tempo": "4:13"
-        },
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "MEN",
-          "tempo": "5:37"
-        },
-        {
-          "kenshi": "SHIRO",
-          "tecnica": "MEN",
-          "tempo": "6:09"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "MEN",
-          "tempo": "6:34"
-        },
-        {
-          "kenshi": "AKA",
-          "tecnica": "KOTE",
-          "tempo": "7:43"
-        }
-      ],
-      "observacoes": ""
-    },
-    "internet_8NKJpDinRok.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "descartar",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_9nud1v1kbSE.mp4": {
+    "internet_m1DmeDCq1pk.mp4": {
       "aka": "",
       "shiro": "",
       "pontos_completos": false,
       "pontos": [],
       "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     },
-    "internet_A-ASijPFw50.mp4": {
+    "internet_nA3nv5GpkcU.mp4": {
       "aka": "",
       "shiro": "",
       "pontos_completos": false,
       "pontos": [],
       "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     },
-    "internet_By8ltAhq16M.mp4": {
-      "origem": "manual",
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "inverter_aka_shiro": false,
-      "tipo": "descartar",
-      "ignorar": true,
-      "pontos": [],
-      "observacoes": ""
-    },
-    "internet_EHrihuYYpNE.mp4": {
+    "internet_nNT_VAEgZ2k.mp4": {
       "aka": "",
       "shiro": "",
       "pontos_completos": false,
       "pontos": [],
       "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     },
-    "internet_Eh5YUWTczTI.mp4": {
+    "internet_ptKlU1qV5jU.mp4": {
       "aka": "",
       "shiro": "",
       "pontos_completos": false,
       "pontos": [],
       "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     },
-    "internet_FCNPKyhQg6o.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_F_6V9duKTjs.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_FdwRxNJNPCE.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_Fsq8EFdafGo.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_FvHwqCoy30U.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_GL_3vJuvkVg.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_Hsr1kmwWkLc.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_MvX5tInEplM.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_SiVbnvmCuNI.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_Sk398Vkzq-k.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_Uv7bhsOn6o0.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_V7WaUQqr5Qg.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_VMxlqayAwG8.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_VQKMw3Mk2zk.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_VZrkcRWFjYY.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_Wfk-pmfZHek.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_XJ2Osn-dv_0.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_Y4e1rKWMauw.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_ZUKXN2MG9Ok.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_Z_xq4o87fLk.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_bLp8tjnu1tM.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_cRvmluLyiRU.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_d5CXm60A94U.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_dt1vp-s9FQI.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_eXu1Bf_lV30.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_iwrXKWp68WU.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_l7ik_1u0bqM.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_pLRMyvPoIo0.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_qvkGtdTsHbk.mp4": {
-      "aka": "",
-      "shiro": "",
-      "pontos_completos": false,
-      "pontos": [],
-      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
-    },
-    "internet_sai91h-8Y74.mp4": {
+    "internet_t9g--2djqL4.mp4": {
       "aka": "",
       "shiro": "",
       "pontos_completos": false,
@@ -959,22 +155,19 @@
       "pontos": [],
       "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     },
-    "internet_zFxB05zruvg.mp4": {
-      "origem": "manual",
-      "aka": "1",
-      "shiro": "0",
-      "pontos_completos": true,
-      "inverter_aka_shiro": false,
-      "tipo": "luta",
-      "ignorar": false,
-      "pontos": [
-        {
-          "kenshi": "AKA",
-          "tecnica": "KOTE",
-          "tempo": "7:39"
-        }
-      ],
-      "observacoes": ""
+    "internet_wIj7dnD_eyU.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
+    },
+    "internet_yWboWpprNGM.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "observacoes": "Preencha os pontos oficiais: {\"kenshi\": \"AKA|SHIRO\", \"tecnica\": \"MEN|KOTE|DO|TSUKI|HANSOKU\", \"tempo\": \"mm:ss\"}. Marque pontos_completos=true quando todos os pontos da luta estiverem listados."
     }
   }
 }

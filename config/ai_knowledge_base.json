@@ -1,21 +1,25 @@
 {
   "version": "2.0.0",
-  "last_updated": "2026-11-06T13:02:22.641815",
-  "total_web_sources_indexed": 9,
+  "last_updated": "2026-11-11T21:45:11.762355",
+  "total_web_sources_indexed": 7,
   "sources": {
-    "web_b92e9e79dddb": {
-      "title": "Kendo Kata",
+    "web_47a8e4d50f60": {
+      "title": "Kendo",
       "type": "wikipedia",
-      "url": "https://en.wikipedia.org/wiki/Kendo_Kata",
+      "url": "https://en.wikipedia.org/wiki/Kendo",
       "authority": "Blogs, fóruns e redes",
-      "focus": "tsubazeriai, conteudo",
+      "focus": "datotsu_bui, tsubazeriai, zanshin",
       "key_rules": [
-        "Tsubazeriai: “Hiki waza Tsubazeriai kara no Hiki Doh Kihon 5:”",
-        "Conteúdo: “Sanbon-me Criticism [ edit ] There has been criticism of the Nihon Kendo Kata by kendoka due to continued usage of outdated forms. [ 1 ] For example, kodachi are no longer used except when wielding two swords. [ 1 ] This”",
-        "Conteúdo: “Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho [ edit ] Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho is a new form of bokken training that is directly translatable to bogu kendo.”"
+        "Alvos válidos (datotsu-bui): “Strikes are only made towards specified target areas ( 打突-部位 , datotsu-bui ) on the wrists, head, or body, all of which are protected by armor.”",
+        "Alvos válidos (datotsu-bui): “Two kendōka in tsuba zeriai Kendo target areas, or datotsu-bui Two kendōka , one (left) is playing in nitō (two sword style) and the other (right) is playing in ittō (one sword style).”",
+        "Tsubazeriai: “Two kendōka in tsuba zeriai Kendo target areas, or datotsu-bui Two kendōka , one (left) is playing in nitō (two sword style) and the other (right) is playing in ittō (one sword style).”",
+        "Zanshin: “A scorable point ( 有効打突 , yūkō-datotsu ) in a kendo competition ( tai-kai ) is defined as an accurate strike or thrust made onto a datotsu-bui of the opponent's kendo-gu with the shinai making contact at its datotsu-bu ,”",
+        "Zanshin: “Datotsu-bu of the shinai is the forward, or blade side ( jin-bu ) of the top third ( monouchi ) of the shinai . [ 38 ] Zanshin ( 残心 ) , or continuation of awareness, must be present and shown throughout the execution of ”",
+        "Conteúdo: “Additionally, kendōka execute fumikomi-ashi ( 踏み込み足 ) , an action similar to a stamp of the front foot, during a strike.”",
+        "Conteúdo: “Shiai-geiko ( 試合稽古 ) Competition practice which may also be judged.”"
       ],
-      "summary": "Sanbon-me Criticism [ edit ] There has been criticism of the Nihon Kendo Kata by kendoka due to continued usage of outdated forms. [ 1 ] For example, kodachi are no longer used except when wielding two swords. [ 1 ] This led to the development of Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho.",
-      "coletado_em": "2026-11-06T14:40:47",
+      "summary": "Additionally, kendōka execute fumikomi-ashi ( 踏み込み足 ) , an action similar to a stamp of the front foot, during a strike.",
+      "coletado_em": "2026-11-11T21:54:48",
       "origem": "coleta_internet",
       "modo_extracao": "regras"
     },
@@ -30,70 +34,23 @@
         "Conteúdo: “Retrieved 22 April 2022 . ↑ \"대한검도회\" . www.kumdo.org . ↑ \"United Kendo Federation of the Philippines – United Kendo Federation of the Philippines\" . ↑ \"全日本剣道連盟 | All Japan Kendo Federation\" . 全日本剣道連盟 AJKF . ↑ \"中國香港劍道協會 Ho”"
       ],
       "summary": "All Japan Kendo Federation ( 全日本剣道連盟 , Zen Nihon Kendō Renmei ) (AJKF / ZNKR) [ 10 ] Hong Kong :",
-      "coletado_em": "2026-11-06T14:40:48",
+      "coletado_em": "2026-11-11T22:26:52",
       "origem": "coleta_internet",
       "modo_extracao": "regras"
     },
-    "web_597d3f400e41": {
-      "title": "FIK — Regulations of Kendo Shiai and Shinpan (jul/2021, texto completo; cópia da federação sérvia)",
-      "type": "official_manual",
-      "url": "https://kendo.rs/files/202107-Regulations-of-Kendo-Shiai-and-Shinpan.pdf",
-      "authority": "FIK Official Rulebook",
-      "focus": "datotsu_bui, jogai, yuko_datotsu",
+    "web_b92e9e79dddb": {
+      "title": "Kendo Kata",
+      "type": "wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Kendo_Kata",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "tsubazeriai, conteudo",
       "key_rules": [
-        "Lado do shiaijo: 9 a 11 m — “The shiai-jo should be a square or a rectangle with sides of 9 to 11 meters in length inclusive of the width of the line.”",
-        "Tempo regulamentar da luta: 5 min — “The standard duration for shiai shall be five minutes, and encho shall be three minutes.”",
-        "Tempo do encho (prorrogação): 3 min — “The standard duration for shiai shall be five minutes, and encho shall be three minutes.”",
-        "Pontos para vencer (sanbon-shobu): 2 pontos — “In sanbon-shobu, the shiai-sha who first scores two points within the shiai duration shall be the winner.”",
-        "Hansoku que dão um ponto ao oponente: 2 hansoku — “In the case whereby a shiai-sha commits two hansoku stipulated under Article 17, Items 2 to 7, the opponent shall be given one point.”",
-        "Alvos válidos (datotsu-bui): “Yuko-datotsu Article 12 Yuko-datotsu ......................5 Article 13 Datotsu-bu of Shinai .........6 Article 14 Datotsu-bui ........................6 Chapter 3:”",
-        "Alvos válidos (datotsu-bui): “Datotsu-bui in Article 14 of the “Regulations” CONTENTS the Regulations the Subsidiary Rules Article 15 Drug Abuse .......................7 Article 16 Insulting or Offensive Behavior ............................7 Article”",
-        "Saída do shiaijo (jogai): “Jogai in Article 17-4 of the “Regulations” Article 16:”",
-        "Saída do shiaijo (jogai): “Jogai, or stepping out of the shiai-jo while the match is in play.”",
-        "Definição de yuko-datotsu: “A yuko-datotsu is defined as an accurate strike or thrust made onto designated targets (datotsu-bui) of the opponent’s kendo-gu .”"
+        "Tsubazeriai: “Hiki waza Tsubazeriai kara no Hiki Doh Kihon 5:”",
+        "Conteúdo: “Sanbon-me Criticism [ edit ] There has been criticism of the Nihon Kendo Kata by kendoka due to continued usage of outdated forms. [ 1 ] For example, kodachi are no longer used except when wielding two swords. [ 1 ] This”",
+        "Conteúdo: “Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho [ edit ] Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho is a new form of bokken training that is directly translatable to bogu kendo.”"
       ],
-      "summary": "",
-      "coletado_em": "2026-11-07T20:33:06",
-      "origem": "coleta_internet",
-      "modo_extracao": "regras"
-    },
-    "web_31f1f0e1a09b": {
-      "title": "FIK — Regulations of Kendo Shiai and Shinpan (revisão 26/07/2023)",
-      "type": "official_manual",
-      "url": "https://www.kendo.or.jp/wp/wp-content/uploads/2025/01/RevisionE-Regulations-of-Kendo-Shiai-and-Shinpan-20230726.pdf",
-      "authority": "FIK Official Rulebook",
-      "focus": "jogai, hansoku, tsubazeriai",
-      "key_rules": [
-        "Saída do shiaijo (jogai): “In such cases, a caution will be given by the shinpan-in after the match. ② Jogai as prescribed in Article 17, Item 4 of the “Regulations” is specified as follows:”",
-        "Saída do shiaijo (jogai): “Having one foot totally outside the boundary line.”",
-        "Faltas (hansoku): “P.21 Hansoku Use or possession of prohibited substances Wakare 1.”",
-        "Tsubazeriai: “When tsubazeriai reaches a stalemate P.”"
-      ],
-      "summary": "",
-      "coletado_em": "2026-11-07T20:33:11",
-      "origem": "coleta_internet",
-      "modo_extracao": "regras"
-    },
-    "web_48fe11f9fa34": {
-      "title": "FIK — Handbook for Kendo Shiai and Shinpan Management (07/07/2025)",
-      "type": "official_manual",
-      "url": "https://www.kendo-fik.org/wp-content/uploads/2026/01/FIK-Handbook-for-Kendo-Shiai-and-Shinpan-Management-20250707.pdf",
-      "authority": "FIK Official Rulebook",
-      "focus": "zanshin, tsubazeriai, datotsu_bui",
-      "key_rules": [
-        "Zanshin: “I nterpreting and Discerning Zanshin ............................................8 III.”",
-        "Zanshin: “The strike or thrust must be executed in high spirits with correct posture, using the striking section (datosu-bu) of the shinai with correct angle (hasuji), and followed by zanshin.”",
-        "Tsubazeriai: “About Tsubazeriai IV .”",
-        "Tsubazeriai: “About Tsubazeriai Tsubazeriai represents the closest and tensest point between two opponents when they enter a close-quarters tussle with tsuba joined together.”",
-        "Alvos válidos (datotsu-bui): “Yuko-Datotsu (Valid Strikes) Criteria for yuko-datotsu are stipulated in Article 12 of the “Regulations.” It states that an accurate strike or thrust made onto designated targets (datotsu-bui ) of the opponent’s kendo-gu”",
-        "Golpes simultâneos (aiuchi): “It is important to identify different types of technique for yuko-datotsu and not simply assume that it is “invalid as ippon because it was too light.” It is easy to conclude that techniques are invalid if executed at th”",
-        "Golpes simultâneos (aiuchi): “Shinpan-in should understand and act in accordance with the notion that there is no such thing as aiuchi. – 7 – Yuko-Datotsu (Ki-ken-tai-no-itchi) – 8 – II.”",
-        "Invalidação de ponto: “Nevertheless, strikes made with a shoto from the tsubazeriai position will not be considered valid in principle.”",
-        "Definição de yuko-datotsu: “(Yuko-datotsu) (1) If shinpan-ki’s signal of the yuko-datotsu is mistakenly indicated, the correct signal should be shown immediately without the need to cancel the original signal. – 19 – (Other Guidelines) (1) There is”",
-        "Faltas (hansoku): “(Case 7) In the context of Nito, single-handed, or one-handed Jodan, would it be considered as Hansoku if shiai-sha grips close to the Tsubamoto (base of the Tsuba) of the Daito to hide his/her Kote? (Explanation) (1) Id”"
-      ],
-      "summary": "",
-      "coletado_em": "2026-11-07T20:33:15",
+      "summary": "Sanbon-me Criticism [ edit ] There has been criticism of the Nihon Kendo Kata by kendoka due to continued usage of outdated forms. [ 1 ] For example, kodachi are no longer used except when wielding two swords. [ 1 ] This led to the development of Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho.",
+      "coletado_em": "2026-11-11T22:26:52",
       "origem": "coleta_internet",
       "modo_extracao": "regras"
     },
@@ -108,7 +65,7 @@
         "Conteúdo: “素振り 切り返し 打ち込み稽古（打突） 追込み稽古 掛かり稽古 互角稽古 （地稽古） 試合 稽古 立ち切り 形稽古 [ 編集 ] 日本剣道形 の稽古 木刀 、 模擬刀 、刃引で行う形の稽古。”"
       ],
       "summary": "また、剣道は 有効打突 の判定基準が曖昧で、フェンシングのように電気審判機も導入されていないため、特に国際試合では 審判 が難しい問題もある [ 21 ] 。",
-      "coletado_em": "2026-11-08T00:13:14",
+      "coletado_em": "2026-11-11T22:43:19",
       "origem": "coleta_internet",
       "modo_extracao": "regras"
     },
@@ -123,7 +80,7 @@
         "Conteúdo: “歴史 [ 編集 ] 旧日本軍の短剣術 [ 編集 ] 着剣していない状態の 銃剣 短剣道の稽古に使用する 木刀 、 竹刀 明治維新 後に発足した 大日本帝国陸軍 は、 フランス陸軍 から教官を招聘し、 フェンシング と西洋式の 銃剣術 を訓練した。”"
       ],
       "summary": "剣道のような防具を身につけて短い 竹刀 を用いて 打突 しあう 競技 である [ 1 ] 。",
-      "coletado_em": "2026-11-08T00:13:14",
+      "coletado_em": "2026-11-11T22:43:20",
       "origem": "coleta_internet",
       "modo_extracao": "regras"
     },
@@ -138,7 +95,7 @@
         "Conteúdo: “剣道形と 竹刀稽古 は 車の両輪 にたとえられ、いずれも体得が必須とされているが、現在、剣道形は 昇段審査 や 公開演武 のときだけ付け焼刃で稽古されることが多く、竹刀稽古に比べて軽視されている。”"
       ],
       "summary": "剣道における礼法、目付、 構え 、姿勢、呼吸、太刀筋、間合、気位、足さばき、 残心 等の習得のために稽古する。",
-      "coletado_em": "2026-11-08T00:13:17",
+      "coletado_em": "2026-11-11T22:43:22",
       "origem": "coleta_internet",
       "modo_extracao": "regras"
     },
@@ -153,7 +110,7 @@
         "Conteúdo: “審査は 試合 （3人以上の リーグ戦 ）、 形 、 筆答 が実施され、査定委員会（ 警務部長 、 警務課長 、 消防課長 、 監察官 および警務部長の指名する武道 師範 教師10名（剣道柔道各5名））が審査した。”"
       ],
       "summary": "剣道の技術的力量（ 竹刀 剣道と 日本剣道形 演武 の 実技 ）および学科の審査会を経て授与される。",
-      "coletado_em": "2026-11-08T12:37:34",
+      "coletado_em": "2026-11-11T23:16:30",
       "origem": "coleta_internet",
       "modo_extracao": "regras"
     }

@@ -2043,6 +2043,7 @@ class FeedbackManager:
         cleanup_clip: bool = True,
         decision: Optional[str] = None,
         *args,
+        technique: Optional[str] = None,
         **kwargs
     ) -> Dict[str, Any]:
         """
@@ -2051,6 +2052,12 @@ class FeedbackManager:
         - INVALID_STRIKE: Houve movimento/tentativa, mas o golpe não foi válido.
         - NO_STRIKE: Nenhuma tentativa de movimento para pontuação (detecção espúria).
         - DISCARDED: Lance com resultado indeterminado (descartado sem afetar o treinamento).
+
+        `technique` (MEN/KOTE/DO/TSUKI) é o golpe que o árbitro viu, em IPPON e INVALID_STRIKE. Se for diferente
+        do identificado pelo sistema, o feedback é gravado com o golpe corrigido, a correção de técnica vai ao
+        Banco Único de Rótulos (o classificador de técnica aprende no próximo ciclo) e as notas dos pilares ficam
+        de fora do feedback: foram medidas para o golpe errado (alvo de TSUKI num MEN, por exemplo) e
+        desviariam a calibração e a referência dos golpes validados.
         """
         if not decision:
             decision = kwargs.get("decision", "IPPON" if approved else "INVALID_STRIKE")
@@ -2101,6 +2108,19 @@ class FeedbackManager:
             decision_cat = "INVALID_STRIKE"
             default_notes = "Golpe Inválido (Tentativa sem Ippon) via Curadoria Ativa"
 
+        # Golpe que o árbitro viu × golpe identificado pelo sistema
+        from src.engine.weak_labels import normalize_technique
+        detected_tech = normalize_technique(target_item.get("strike_type")) if target_item else None
+        chosen_tech = normalize_technique(technique) if decision in ("IPPON", "INVALID_STRIKE") else None
+        if technique and decision in ("IPPON", "INVALID_STRIKE") and chosen_tech is None:
+            raise ValueError(f"Técnica inválida: {technique}")
+        tech_corrected = chosen_tech is not None and chosen_tech != detected_tech
+        sub_scores = strike_data.get("sub_scores") or strike_data.get("scores") or {}
+        if tech_corrected:
+            correction_note = f"Técnica corrigida na curadoria: {detected_tech or target_item.get('strike_type', '?')} → {chosen_tech}"
+            notes = f"{notes or default_notes} | {correction_note}"
+            sub_scores = {}
+
         # 2. Registrar no dataset de feedback (apenas se NÃO for descartado)
         if target_item and decision != "DISCARDED" and fb_label is not None:
             self.save_feedback(
@@ -2109,16 +2129,33 @@ class FeedbackManager:
                 event_id=item_id,
                 label=fb_label,
                 decision_category=decision_cat,
-                strike_type=target_item.get("strike_type", "MEN"),
+                strike_type=chosen_tech or target_item.get("strike_type", "MEN"),
                 # Instante do GOLPE no vídeo (o "timestamp" do item é a hora em que ele entrou na fila)
                 timestamp=_strike_time_text(target_item),
                 notes=notes or default_notes,
                 reviewer_dan=reviewer_dan,
                 is_included=eff_approved,
-                sub_scores=strike_data.get("sub_scores") or strike_data.get("scores") or {},
+                sub_scores=sub_scores,
                 total_score=float(strike_data.get("total_score") or float(target_item.get("confidence") or 0.50) * 100.0),
                 enqueue_uncertain=False
             )
+
+        # 2b. Correção de técnica: rótulo "tecnica" no Banco Único (o mesmo da dúvida de técnica)
+        if target_item and tech_corrected:
+            try:
+                from src.engine.label_bank import LabelBank
+                from src.engine.mathematical_calibrator import BayesianCalibrationOptimizer
+                time_sec = target_item.get("tempo_golpe_s")
+                if time_sec is None:
+                    time_sec = strike_data.get("timestamp_seconds")
+                LabelBank().add_label(
+                    origin="curadoria", video_name=str(target_item.get("video_source", "")), claim="tecnica",
+                    value=chosen_tech, time_sec=time_sec, kenshi=target_item.get("kenshi"), ref=str(item_id),
+                    reviewer_weight=BayesianCalibrationOptimizer.get_reviewer_weight({"reviewer_dan": reviewer_dan}),
+                    notes=correction_note,
+                )
+            except Exception as e:
+                log_event("WARNING", f"Falha ao gravar a correção de técnica do item {item_id}: {e}", "feedback_manager")
 
         # 3. Resolver na fila e apagar clipe de demonstração
         resolved = self.uncertainty_sampler.resolve_item(
@@ -2178,6 +2215,8 @@ class FeedbackManager:
             "decision": decision,
             "curated_label": decision,
             "approved": eff_approved,
+            "technique": chosen_tech or detected_tech,
+            "technique_corrected": tech_corrected,
             "retrained": retrained,
             "clip_deleted": cleanup_clip,
             "optimization_stats": opt_stats
