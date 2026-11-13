@@ -76,6 +76,11 @@ data/checkpoints/
 data/test_*.json
 data/tmp/
 data/uploads/
+data/feature_cache/
+data/weak_labels/
+data/flag_dataset/
+data/models/*/runs/
+data/models/**/*.pt
 
 # Serializações e dumps temporários de treino
 *.joblib
@@ -94,3 +99,14 @@ Melhorias_Issues.md
 desktop.ini
 Thumbs.db
 .DS_Store
+
+# Pasta única de vídeos (lutas, treinos e vídeos baixados pela coleta)
+data/videos/
+data/internet/baixando/
+data/internet/atividade.jsonl
+data/internet/regras_texto/
+data/internet/textos.json
+data/backups/
+
+# Chaves de API da coleta (só neste computador)
+config/api_keys.local.json

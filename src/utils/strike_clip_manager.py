@@ -21,6 +21,12 @@ DEFAULT_CLIPS_DIR = "data/active_learning_clips"
 DEFAULT_UPLOADS_DIR = "data/tmp/senpai_uploads"
 
 
+def get_clips_dir() -> str:
+    """Pasta dos clipes da curadoria; em modo de teste, fica na sandbox (nunca em data/)."""
+    from src.utils.test_isolation import is_test_mode, get_test_sandbox_dir
+    return os.path.join(get_test_sandbox_dir(), "active_learning_clips") if is_test_mode() else DEFAULT_CLIPS_DIR
+
+
 def get_senpai_uploads_dir(ensure_exists: bool = True) -> str:
     """
     Retorna o caminho do diretório padrão para armazenamento de uploads e downloads de vídeos do SenpAI.

@@ -18,6 +18,80 @@ from src.engine.mathematical_calibrator import (
 )
 
 
+DEFAULT_GLOBAL_WEIGHTS = {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15}
+HASUJI_BLEND = 0.15  # 5º pilar: total = base * 0.85 + hasuji * 0.15
+# Pilares que, abaixo do sub-limiar, INVALIDAM o golpe. Configurável por perfil em "pilares_eliminatorios".
+# Padrão desde 05/11/2026 (decisão do usuário): regra FIK estrita — ki-ken-tai-ichi, postura e zanshin são
+# exigidos para Yuko-Datotsu, então todos os pilares eliminam. A regra antiga (só alvo e hasuji) continua
+# disponível como LENIENT_ELIMINATORY_PILLARS.
+FIK_STRICT_ELIMINATORY_PILLARS = ["target_impact", "fumikomi_sync", "posture", "zanshin", "hasuji"]
+LENIENT_ELIMINATORY_PILLARS = ["target_impact", "hasuji"]
+DEFAULT_ELIMINATORY_PILLARS = FIK_STRICT_ELIMINATORY_PILLARS
+
+
+def resolve_weights(config: Dict[str, Any], strike_type: Optional[str] = None) -> Dict[str, float]:
+    """Pesos usados para um golpe: os do tipo de golpe no perfil, senão o padrão do tipo, senão os globais."""
+    global_weights = config.get("weights", DEFAULT_GLOBAL_WEIGHTS)
+    if not strike_type:
+        return global_weights
+    st_clean = strike_type.upper().strip()
+    by_strike = config.get("weights_by_strike_type", {})
+    if st_clean in by_strike:
+        return by_strike[st_clean]
+    if st_clean in DEFAULT_WEIGHTS_BY_STRIKE_TYPE:
+        return DEFAULT_WEIGHTS_BY_STRIKE_TYPE[st_clean]
+    return global_weights
+
+
+def decide_strike(
+    target_score: float,
+    fumikomi_score: float,
+    posture_score: float,
+    zanshin_score: float,
+    config: Dict[str, Any],
+    strike_type: Optional[str] = "MEN",
+    hasuji_score: Optional[float] = None,
+    is_ku_totsu: bool = False
+) -> Dict[str, Any]:
+    """
+    Decisão de ponto (Yuko-Datotsu) — FONTE ÚNICA usada pela análise de luta (CalibrationEngine),
+    pelo otimizador de pesos (BayesianCalibrationOptimizer) e pela trava do Golden Benchmark.
+    Notas em 0..1. Invalidam: nota total abaixo do mínimo, Ku-totsu e os pilares listados em
+    config["pilares_eliminatorios"] abaixo do sub-limiar (padrão: todos — regra FIK estrita). Pilares
+    fora da lista, abaixo do limiar, viram apenas observação.
+    """
+    weights = resolve_weights(config, strike_type)
+    min_total = config.get("min_total_score", 0.65)
+    sub_thresholds = config.get("sub_thresholds", {})
+    base_score = (
+        target_score * weights.get("target_impact", 0.0) +
+        fumikomi_score * weights.get("fumikomi_sync", 0.0) +
+        posture_score * weights.get("posture", 0.0) +
+        zanshin_score * weights.get("zanshin", 0.0)
+    )
+    total_score = base_score * (1.0 - HASUJI_BLEND) + float(hasuji_score) * HASUJI_BLEND if hasuji_score is not None else base_score
+
+    eliminatory = set(config.get("pilares_eliminatorios", DEFAULT_ELIMINATORY_PILLARS))
+    is_valid = total_score >= min_total
+    failed = []
+    if is_ku_totsu:
+        is_valid = False
+        failed.append("KU_TOTSU_VAZIO")
+    checks = [
+        ("target_impact", target_score, 0.40, "ALVO_FORA"),
+        ("fumikomi_sync", fumikomi_score, 0.30, "SEM_FUMIKOMI"),
+        ("posture", posture_score, 0.30, "POSTURA_INCLINADA"),
+        ("zanshin", zanshin_score, 0.20, "SEM_ZANSHIN"),
+        ("hasuji", hasuji_score, 0.40, "HASUJI_INCORRETO"),
+    ]
+    for key, value, default_th, code in checks:
+        if value is not None and value < sub_thresholds.get(key, default_th):
+            failed.append(code)
+            if key in eliminatory:
+                is_valid = False
+    return {"is_valid": is_valid, "total_score": total_score, "weights": weights, "min_total": min_total, "failed": failed}
+
+
 class CalibrationEngine:
     def __init__(self, config_path: str = "config/calibration_profiles.json", profile_name: str = "normal"):
         self.config_path = get_safe_data_path(config_path, 'test_calibration_profiles.json')
@@ -79,22 +153,7 @@ class CalibrationEngine:
         Retorna os pesos especializados para o tipo de golpe (MEN, KOTE, DO, TSUKI).
         Se não fornecido ou não cadastrado, faz fallback para os pesos globais do perfil.
         """
-        global_weights = self.active_config.get(
-            "weights",
-            {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15}
-        )
-
-        if not strike_type:
-            return global_weights
-
-        st_clean = strike_type.upper().strip()
-        by_strike = self.active_config.get("weights_by_strike_type", {})
-        if st_clean in by_strike:
-            return by_strike[st_clean]
-        elif st_clean in DEFAULT_WEIGHTS_BY_STRIKE_TYPE:
-            return DEFAULT_WEIGHTS_BY_STRIKE_TYPE[st_clean]
-
-        return global_weights
+        return resolve_weights(self.active_config, strike_type)
 
     def update_custom_settings(
         self,
@@ -163,51 +222,21 @@ class CalibrationEngine:
         Suporta o 5° Pilar Hasuji e eliminação de Ku-totsu (Eixo 3.1 e 3.2).
         """
         norm_strike = strike_type.upper().strip() if strike_type else "MEN"
-        weights = self.get_weights_for_strike(norm_strike)
-        min_total = self.active_config.get("min_total_score", 0.65)
         sub_thresholds = self.active_config.get("sub_thresholds", {})
-
-        # Se hasuji_score foi fornecido (5° Pilar do Eixo 3.2), combinamos proporcionalmente
-        # mantendo compatibilidade direta com modelos de 4 pilares
-        base_score = (
-            target_score * weights["target_impact"] +
-            fumikomi_score * weights["fumikomi_sync"] +
-            posture_score * weights["posture"] +
-            zanshin_score * weights["zanshin"]
+        decision = decide_strike(
+            target_score, fumikomi_score, posture_score, zanshin_score,
+            config=self.active_config, strike_type=norm_strike,
+            hasuji_score=hasuji_score, is_ku_totsu=is_ku_totsu
         )
-
-        if hasuji_score is not None:
-            # 5° Pilar: Hasuji modula com peso balanceado de 15% reescalonando a base em 85%
-            total_score = (base_score * 0.85) + (float(hasuji_score) * 0.15)
-        else:
-            total_score = base_score
+        weights = decision["weights"]
+        min_total = decision["min_total"]
+        total_score = decision["total_score"]
+        is_valid = decision["is_valid"]
+        failed_subcriteria = decision["failed"]
 
         # Probabilidade Calibrada de Ippon via Platt Scaling (Eixo 1.2)
         prob = self.platt_calibrator.predict_proba(total_score)
         prob_pct = round(prob * 100.0, 1)
-
-        # Checar se atendeu ao escore mínimo global e aos sub-requisitos mínimos
-        is_valid = total_score >= min_total
-
-        # Se um sub-requisito crítico falhou acentuadamente, invalida o ponto mesmo que o total passe
-        failed_subcriteria = []
-        if is_ku_totsu:
-            is_valid = False
-            failed_subcriteria.append("KU_TOTSU_VAZIO")
-
-        if target_score < sub_thresholds.get("target_impact", 0.40):
-            is_valid = False
-            failed_subcriteria.append("ALVO_FORA")
-        if fumikomi_score < sub_thresholds.get("fumikomi_sync", 0.30):
-            failed_subcriteria.append("SEM_FUMIKOMI")
-        if posture_score < sub_thresholds.get("posture", 0.30):
-            failed_subcriteria.append("POSTURA_INCLINADA")
-        if zanshin_score < sub_thresholds.get("zanshin", 0.20):
-            failed_subcriteria.append("SEM_ZANSHIN")
-        hasuji_thresh = sub_thresholds.get("hasuji", 0.40)
-        if hasuji_score is not None and hasuji_score < hasuji_thresh:
-            is_valid = False
-            failed_subcriteria.append("HASUJI_INCORRETO")
 
         sub_scores_dict = {
             "target_impact": round(target_score * 100, 1),

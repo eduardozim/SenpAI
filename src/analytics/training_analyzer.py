@@ -35,6 +35,24 @@ from typing import Dict, List, Any, Optional, Tuple, Sequence
 # ==============================================================================
 # DICIONÁRIO E METADADOS DAS 14 MODALIDADES OFICIAIS DE TREINAMENTO (COM KANJI)
 # ==============================================================================
+MODEL_METHOD = "MODELO"   # modalidade vinda do classificador treinado (I14)
+
+
+def modality_confidence_label(method: Optional[str], confidence: Any) -> str:
+    """
+    Texto honesto da confiança da modalidade: só o classificador treinado (I14) tem probabilidade medida;
+    a regra fixa não tem (os números que ela devolve foram escritos à mão) e a escolha do usuário é manual.
+    """
+    if method == MODEL_METHOD:
+        try:
+            return f"{float(confidence):.0%} de probabilidade (modelo)"
+        except (TypeError, ValueError):
+            return "modelo"
+    if method == "MANUAL_SELECT":
+        return "definida pelo usuário"
+    return "confiança não medida (regra fixa)"
+
+
 TRAINING_MODALITIES_METADATA: Dict[str, Dict[str, Any]] = {
     "ashi_sabaki": {
         "key": "ashi_sabaki",
@@ -1585,10 +1603,11 @@ class TrainingAnalyzer:
 
                 if req_mod in TRAINING_MODALITIES_METADATA:
                     mod_key = req_mod
-                    conf = 1.0
-                    det_m = "MANUAL_SELECT"
+                    det_m = str(seg_spec.get("detection_method") or "MANUAL_SELECT")
+                    conf = float(seg_spec.get("detection_confidence", 1.0)) if det_m == MODEL_METHOD else 1.0
                     mod_title = TRAINING_MODALITIES_METADATA[mod_key]["name"]
-                    just = f"Sessão de {format_training_mmss(s_sec)} a {format_training_mmss(e_sec)} definida como {mod_title}."
+                    who = "pelo classificador de modalidade" if det_m == MODEL_METHOD else "pelo usuário"
+                    just = f"Sessão de {format_training_mmss(s_sec)} a {format_training_mmss(e_sec)} definida como {mod_title} {who}."
                 else:
                     mod_key, conf, just = self.detect_training_modality(
                         primary_history=p_slice if p_slice else primary_hist,
@@ -1944,7 +1963,7 @@ class TrainingAnalyzer:
                 for iv in intervals
             )
             avg_conf = round(float(np.mean(confs)), 2) if confs else 0.85
-            block_method = "MANUAL_SELECT" if "MANUAL_SELECT" in methods else "AUTO_DETECTED"
+            block_method = next((m for m in ("MANUAL_SELECT", MODEL_METHOD) if m in methods), "AUTO_DETECTED")
             block_just = " | ".join(justifications) if justifications else f"Bloco concentrado da modalidade {mod_name}."
 
             # Consolidar métricas de cada Kendoca especificamente neste bloco de modalidade
@@ -2062,7 +2081,8 @@ class TrainingAnalyzer:
         fps: float = 30.0,
         custom_kendoka_names: Optional[Dict[str, str]] = None,
         kenshis_metadata: Optional[List[Dict[str, Any]]] = None,
-        session_segments_override: Optional[List[Dict[str, Any]]] = None
+        session_segments_override: Optional[List[Dict[str, Any]]] = None,
+        model_prediction: Optional[Dict[str, Any]] = None
     ) -> TrainingSessionResult:
         """
         Executa a análise para múltiplos Kenshis (N >= 1) no modo dedicado de treinamento.
@@ -2090,12 +2110,31 @@ class TrainingAnalyzer:
         for s_list in strikes_map.values():
             all_strikes_flat.extend(s_list)
 
+        # Classificador luta × 14 modalidades (I14): sem correção do usuário, os trechos vêm do modelo,
+        # com a probabilidade medida dele. Trechos classificados como "luta" ficam de fora das sessões.
+        model_segs = [s for s in (model_prediction or {}).get("segmentos", []) if s.get("classe") in TRAINING_MODALITIES_METADATA]
+        use_model = bool(model_segs) and not session_segments_override and not (modality_override and modality_override in TRAINING_MODALITIES_METADATA)
+        if use_model:
+            session_segments_override = [{
+                "start_seconds": s["inicio_s"], "end_seconds": s["fim_s"], "modality_key": s["classe"],
+                "detection_method": MODEL_METHOD, "detection_confidence": s["probabilidade"],
+            } for s in model_segs]
+
         if modality_override and modality_override in TRAINING_MODALITIES_METADATA:
             modality_key = modality_override
             confidence = 1.0
             det_method = "MANUAL_SELECT"
             is_override = True
             justification = f"Modalidade selecionada manualmente: {TRAINING_MODALITIES_METADATA[modality_key]['name']}."
+        elif use_model:
+            dur: Dict[str, float] = {}
+            for s in model_segs:
+                dur[s["classe"]] = dur.get(s["classe"], 0.0) + s["fim_s"] - s["inicio_s"]
+            modality_key = max(dur, key=dur.get)
+            confidence = float(np.mean([s["probabilidade"] for s in model_segs if s["classe"] == modality_key]))
+            det_method = MODEL_METHOD
+            is_override = False
+            justification = f"Classificador de modalidade treinado (probabilidade média {confidence:.0%} nos trechos de {TRAINING_MODALITIES_METADATA[modality_key]['name']})."
         else:
             modality_key, confidence, justification = self.detect_training_modality(
                 primary_history=primary_hist,

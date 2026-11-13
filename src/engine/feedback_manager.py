@@ -141,6 +141,20 @@ DEFAULT_CALIBRATION_PROFILES: Dict[str, Any] = {
     }
 }
 
+def _strike_time_text(item: Dict[str, Any]) -> str:
+    """Instante do golpe no vídeo ('mm:ss.mmm') a partir de um item da fila de curadoria."""
+    t = item.get("tempo_golpe_s")
+    sd = item.get("strike_data") or {}
+    if t is None:
+        t = sd.get("timestamp_seconds")
+    if t is None and isinstance(sd.get("timestamp"), str) and ":" in sd["timestamp"] and "T" not in sd["timestamp"]:
+        return sd["timestamp"]
+    if t is None:
+        return ""
+    t = float(t)
+    return f"{int(t // 60):02d}:{t % 60:06.3f}"
+
+
 class FeedbackManager:
     def __init__(
         self,
@@ -737,6 +751,15 @@ class FeedbackManager:
                         human_weight_count += 1
             total_trainings = human_weight_count + shinpan_trainings_count
 
+        # Cada ciclo de treino concluído (Governança > Ciclo de Treino) conta como um treinamento automatizado
+        try:
+            from src.engine.training_cycle import load_cycle_history
+            cycles = sum(1 for c in load_cycle_history() if c.get("terminado_em"))
+        except Exception:
+            cycles = 0
+        auto_trainings_count += cycles
+        total_trainings += cycles
+
         avg_dan = (dan_sum / human_weight_count) if human_weight_count > 0 else 0.0
         avg_dan_round = round(avg_dan, 1)
         avg_dan_int = max(1, min(8, round(avg_dan))) if avg_dan > 0 else 1
@@ -778,7 +801,7 @@ class FeedbackManager:
         auto_pct = round((auto_trainings_count / total_trainings) * 100, 1) if total_trainings > 0 else 0.0
         table_data.append({
             "Dan": "🤖 IA",
-            "Nome Graduação": "Treinamentos Automatizados (IA / Web & Vídeo)",
+            "Nome Graduação": "Ciclos de Treino e treinos automáticos (IA)",
             "Quantidade Treinamentos": auto_trainings_count,
             "Percentual (%)": f"{auto_pct}%"
         })
@@ -1261,17 +1284,19 @@ class FeedbackManager:
 
         # Baselines e Trust Registry
         kenshi_baselines = None
-        if os.path.isfile("data/kenshi_baselines.json"):
+        baselines_path = get_safe_data_path("data/kenshi_baselines.json", "test_kenshi_baselines.json")
+        if os.path.isfile(baselines_path):
             try:
-                with open("data/kenshi_baselines.json", "r", encoding="utf-8") as f:
+                with open(baselines_path, "r", encoding="utf-8") as f:
                     kenshi_baselines = json.load(f)
             except Exception:
                 pass
 
         trust_registry = None
-        if os.path.isfile("data/reviewer_trust_registry.json"):
+        trust_path = get_safe_data_path("data/reviewer_trust_registry.json", "test_reviewer_trust_registry.json")
+        if os.path.isfile(trust_path):
             try:
-                with open("data/reviewer_trust_registry.json", "r", encoding="utf-8") as f:
+                with open(trust_path, "r", encoding="utf-8") as f:
                     trust_registry = json.load(f)
             except Exception:
                 pass
@@ -1669,8 +1694,9 @@ class FeedbackManager:
             k_base = package_data.get("kenshi_baselines")
             if k_base and isinstance(k_base, dict):
                 try:
-                    os.makedirs("data", exist_ok=True)
-                    with open("data/kenshi_baselines.json", "w", encoding="utf-8") as f:
+                    baselines_path = get_safe_data_path("data/kenshi_baselines.json", "test_kenshi_baselines.json")
+                    os.makedirs(os.path.dirname(baselines_path) or ".", exist_ok=True)
+                    with open(baselines_path, "w", encoding="utf-8") as f:
                         json.dump(k_base, f, indent=2, ensure_ascii=False)
                 except Exception:
                     pass
@@ -1802,15 +1828,29 @@ class FeedbackManager:
 
         raise ValueError("Formato de pacote de treinamento inválido.")
 
-    def optimize_profile_config(self, profile_key: str, current_config: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    def review_feedback(self, profile_key: str) -> List[Dict[str, Any]]:
+        """
+        Feedback que pode calibrar: só revisões humanas do vídeo. Rótulos derivados do placar oficial
+        (rotulo_fraco, a decisão dos shinpan) não ensinam validade, e as lutas do golden nunca treinam.
+        """
+        from src.engine.active_learning import is_golden_video
+        return [d for d in self.load_feedback()
+                if (d.get("profile_key") == profile_key or not d.get("profile_key"))
+                and d.get("decision_category") != "rotulo_fraco"
+                and not is_golden_video(d.get("video_name") or "")]
+
+    def optimize_profile_config(self, profile_key: str, current_config: Dict[str, Any],
+                                feedback_list: Optional[List[Dict[str, Any]]] = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Aplica otimização formal bayesiana/numérica dos pesos (Eixo 1).
         Substitui saltos heurísticos manuais (+0.05 / -0.04) por otimização formal
-        de hiperparâmetros (Optuna TPE / Scipy SLSQP), ponderação Dan, decaimento
+        de hiperparâmetros (scipy differential_evolution sobre a decisão de produção), ponderação Dan, decaimento
         temporal exponencial e penalização assimétrica (FP = 3x FN).
         Recalibra min_total_score, sub_thresholds, weights globais e weights_by_strike_type.
         """
-        feedback_list = [d for d in self.load_feedback() if d.get("profile_key") == profile_key or not d.get("profile_key")]
+        # feedback_list explícito = amostras do Banco Único de Rótulos (I11), usado pelo ciclo de treino
+        if feedback_list is None:
+            feedback_list = self.review_feedback(profile_key)
 
         fps = [d for d in feedback_list if d.get("label") == "FP"]
         tps = [d for d in feedback_list if d.get("label") in ["TP", "CONFIRMED"]]
@@ -1822,7 +1862,8 @@ class FeedbackManager:
                 "message": "Nenhum feedback registrado para otimizar este perfil."
             }
 
-        # Executa Otimizador Bayesiano / SLSQP com custo assimétrico (FP=3.0, FN=1.0) e decaimento temporal
+        # Otimizador com a mesma decisão da análise de luta, custo assimétrico (FP=3.0, FN=1.0), decaimento temporal
+        # e validação separada por vídeo (Pendência I4)
         new_config, opt_summary = self.bayesian_optimizer.optimize(
             current_config=current_config,
             feedbacks=feedback_list
@@ -1874,8 +1915,13 @@ class FeedbackManager:
         except Exception as e:
             log_event("WARNING", f"Falha ao validar contra Golden Benchmark: {e}", "feedback_manager")
 
+        if opt_summary.get("status") in ("rejected_validation", "skipped"):
+            changes_summary = [opt_summary.get("message", "Calibração mantida.")] + changes_summary
+        if opt_summary.get("descartados_sem_notas"):
+            changes_summary.append(f"{opt_summary['descartados_sem_notas']} feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas).")
+
         opt_stats = {
-            "status": "success",
+            "status": "success" if opt_summary.get("status") not in ("rejected_validation", "skipped") else opt_summary["status"],
             "profile_key": profile_key,
             "fps_analyzed": len(fps),
             "tps_analyzed": len(tps),
@@ -1884,6 +1930,8 @@ class FeedbackManager:
             "f1_score": opt_summary.get("final_f1"),
             "accuracy": opt_summary.get("accuracy"),
             "loss_reduction_pct": opt_summary.get("loss_reduction_pct"),
+            "validacao_por_video": opt_summary.get("validacao"),
+            "descartados_sem_notas": opt_summary.get("descartados_sem_notas", 0),
             "changes": changes_summary if changes_summary else ["Parâmetros já matematicamente ótimos para o conjunto atual."]
         }
 
@@ -1932,6 +1980,59 @@ class FeedbackManager:
             return self.uncertainty_sampler.clear_queue(delete_clips=delete_clips)
         return {"cleared_items": 0, "clips_deleted": 0}
 
+    def resolve_technique_doubt(self, item_id: str, technique: str, reviewer_dan: Any = 5, notes: str = "") -> bool:
+        """
+        Decide uma dúvida de técnica da curadoria (I12): grava "técnica = X" no Banco Único de Rótulos (I11),
+        de onde o classificador de técnica (I9) aprende no próximo ciclo, e resolve o item na fila.
+        """
+        from src.engine.label_bank import LabelBank
+        from src.engine.weak_labels import normalize_technique
+        from src.engine.mathematical_calibrator import BayesianCalibrationOptimizer
+        tech = normalize_technique(technique)
+        if tech is None:
+            raise ValueError(f"Técnica inválida: {technique}")
+        item = next((it for it in self.uncertainty_sampler.get_queue() if str(it.get("id")) == str(item_id)), None)
+        if item is None:
+            return False
+        time_sec = item.get("tempo_golpe_s")
+        if time_sec is None:
+            time_sec = (item.get("strike_data") or {}).get("timestamp_seconds")
+        LabelBank().add_label(
+            origin="curadoria", video_name=str(item.get("video_source", "")), claim="tecnica", value=tech,
+            time_sec=time_sec, kenshi=item.get("kenshi"), ref=str(item_id),
+            reviewer_weight=BayesianCalibrationOptimizer.get_reviewer_weight({"reviewer_dan": reviewer_dan}),
+            notes=notes or f"Técnica decidida na curadoria: {tech}",
+        )
+        return self.uncertainty_sampler.resolve_item(item_id=item_id, label_approved=True, reviewer_dan=reviewer_dan,
+                                                     notes=notes or f"Técnica: {tech}", decision=f"TECNICA_{tech}")
+
+    def resolve_modality_doubt(self, item_id: str, video_type: str, reviewer_dan: Any = 5, notes: str = "",
+                               labels_path: Optional[str] = None) -> bool:
+        """
+        Decide uma dúvida de modalidade da curadoria: grava o "Tipo do vídeo" no Gabarito de Lutas (o mesmo
+        lugar onde você classifica os vídeos), de onde o Banco Único tira o rótulo no próximo ciclo.
+        Os pontos já preenchidos no gabarito são mantidos.
+        """
+        from src.engine import weak_labels as wl
+        from src.utils.strike_clip_manager import get_cross_platform_basename
+        from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA
+        valid = {wl.VIDEO_TYPE_LUTA, wl.VIDEO_TYPE_DISCARD, *TRAINING_MODALITIES_METADATA}
+        if video_type not in valid:
+            raise ValueError(f"Tipo de vídeo inválido: {video_type}")
+        item = next((it for it in self.uncertainty_sampler.get_queue() if str(it.get("id")) == str(item_id)), None)
+        if item is None:
+            return False
+        name = get_cross_platform_basename(str(item.get("video_source", "")))
+        path = labels_path or wl.DEFAULT_LABELS_PATH
+        data = wl.load_match_labels(path)
+        entry = data["videos"].get(name) or {"pontos": [], "pontos_completos": False}
+        tipo = wl.VIDEO_TYPE_LUTA if video_type in wl.LUTA_ALIASES else video_type
+        entry.update({"tipo": tipo, "ignorar": tipo != wl.VIDEO_TYPE_LUTA, "tipo_decidido_em": "curadoria"})
+        data["videos"][name] = entry
+        wl.save_match_labels(data, path)
+        return self.uncertainty_sampler.resolve_item(item_id=item_id, label_approved=True, reviewer_dan=reviewer_dan,
+                                                     notes=notes or f"Tipo do vídeo: {tipo}", decision=f"MODALIDADE_{tipo}")
+
     def resolve_active_learning_item(
         self,
         item_id: str,
@@ -1942,6 +2043,7 @@ class FeedbackManager:
         cleanup_clip: bool = True,
         decision: Optional[str] = None,
         *args,
+        technique: Optional[str] = None,
         **kwargs
     ) -> Dict[str, Any]:
         """
@@ -1950,6 +2052,12 @@ class FeedbackManager:
         - INVALID_STRIKE: Houve movimento/tentativa, mas o golpe não foi válido.
         - NO_STRIKE: Nenhuma tentativa de movimento para pontuação (detecção espúria).
         - DISCARDED: Lance com resultado indeterminado (descartado sem afetar o treinamento).
+
+        `technique` (MEN/KOTE/DO/TSUKI) é o golpe que o árbitro viu, em IPPON e INVALID_STRIKE. Se for diferente
+        do identificado pelo sistema, o feedback é gravado com o golpe corrigido, a correção de técnica vai ao
+        Banco Único de Rótulos (o classificador de técnica aprende no próximo ciclo) e as notas dos pilares ficam
+        de fora do feedback: foram medidas para o golpe errado (alvo de TSUKI num MEN, por exemplo) e
+        desviariam a calibração e a referência dos golpes validados.
         """
         if not decision:
             decision = kwargs.get("decision", "IPPON" if approved else "INVALID_STRIKE")
@@ -2000,6 +2108,19 @@ class FeedbackManager:
             decision_cat = "INVALID_STRIKE"
             default_notes = "Golpe Inválido (Tentativa sem Ippon) via Curadoria Ativa"
 
+        # Golpe que o árbitro viu × golpe identificado pelo sistema
+        from src.engine.weak_labels import normalize_technique
+        detected_tech = normalize_technique(target_item.get("strike_type")) if target_item else None
+        chosen_tech = normalize_technique(technique) if decision in ("IPPON", "INVALID_STRIKE") else None
+        if technique and decision in ("IPPON", "INVALID_STRIKE") and chosen_tech is None:
+            raise ValueError(f"Técnica inválida: {technique}")
+        tech_corrected = chosen_tech is not None and chosen_tech != detected_tech
+        sub_scores = strike_data.get("sub_scores") or strike_data.get("scores") or {}
+        if tech_corrected:
+            correction_note = f"Técnica corrigida na curadoria: {detected_tech or target_item.get('strike_type', '?')} → {chosen_tech}"
+            notes = f"{notes or default_notes} | {correction_note}"
+            sub_scores = {}
+
         # 2. Registrar no dataset de feedback (apenas se NÃO for descartado)
         if target_item and decision != "DISCARDED" and fb_label is not None:
             self.save_feedback(
@@ -2008,15 +2129,33 @@ class FeedbackManager:
                 event_id=item_id,
                 label=fb_label,
                 decision_category=decision_cat,
-                strike_type=target_item.get("strike_type", "MEN"),
-                timestamp=str(target_item.get("timestamp", "")),
+                strike_type=chosen_tech or target_item.get("strike_type", "MEN"),
+                # Instante do GOLPE no vídeo (o "timestamp" do item é a hora em que ele entrou na fila)
+                timestamp=_strike_time_text(target_item),
                 notes=notes or default_notes,
                 reviewer_dan=reviewer_dan,
                 is_included=eff_approved,
-                sub_scores=strike_data.get("sub_scores", strike_data.get("scores", {})),
-                total_score=float(target_item.get("confidence", 0.50)) * 100.0,
+                sub_scores=sub_scores,
+                total_score=float(strike_data.get("total_score") or float(target_item.get("confidence") or 0.50) * 100.0),
                 enqueue_uncertain=False
             )
+
+        # 2b. Correção de técnica: rótulo "tecnica" no Banco Único (o mesmo da dúvida de técnica)
+        if target_item and tech_corrected:
+            try:
+                from src.engine.label_bank import LabelBank
+                from src.engine.mathematical_calibrator import BayesianCalibrationOptimizer
+                time_sec = target_item.get("tempo_golpe_s")
+                if time_sec is None:
+                    time_sec = strike_data.get("timestamp_seconds")
+                LabelBank().add_label(
+                    origin="curadoria", video_name=str(target_item.get("video_source", "")), claim="tecnica",
+                    value=chosen_tech, time_sec=time_sec, kenshi=target_item.get("kenshi"), ref=str(item_id),
+                    reviewer_weight=BayesianCalibrationOptimizer.get_reviewer_weight({"reviewer_dan": reviewer_dan}),
+                    notes=correction_note,
+                )
+            except Exception as e:
+                log_event("WARNING", f"Falha ao gravar a correção de técnica do item {item_id}: {e}", "feedback_manager")
 
         # 3. Resolver na fila e apagar clipe de demonstração
         resolved = self.uncertainty_sampler.resolve_item(
@@ -2076,6 +2215,8 @@ class FeedbackManager:
             "decision": decision,
             "curated_label": decision,
             "approved": eff_approved,
+            "technique": chosen_tech or detected_tech,
+            "technique_corrected": tech_corrected,
             "retrained": retrained,
             "clip_deleted": cleanup_clip,
             "optimization_stats": opt_stats

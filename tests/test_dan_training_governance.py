@@ -759,23 +759,11 @@ class TestDanTrainingGovernance(unittest.TestCase):
             profiles_path=self.test_profiles_path,
             history_path=self.test_history_path,
             feedback_path=self.test_dataset_path,
-            checkpoint_path=self.test_checkpoint_path
         )
-        auto_engine.retrain_detection_model(
-            effective_scope="modality_suburi",
-            sources_consulted=[
-                {
-                    "title": "Manual FIK Suburi Master",
-                    "type": "Manual Oficial",
-                    "principles": ["Hasuji Estrito no Suburi (FIK Teste)"]
-                }
-            ],
-            intensity="profundo"
-        )
-
+        # Conhecimento registrado na base (o antigo "treino simulado" que inventava acurácia foi removido — P1)
         kb_before = auto_engine.load_knowledge_base()
-        suburi_acc_before = float(kb_before["learned_parameters"]["training_modalities"]["suburi"]["current_accuracy"])
-        self.assertGreater(suburi_acc_before, 40.0)
+        kb_before["learned_parameters"]["training_modalities"]["suburi"]["principles_learned"].append("Hasuji Estrito no Suburi (FIK Teste)")
+        auto_engine.save_knowledge_base(kb_before)
 
         # 5. Exportar pacote completo
         pkg = self.mgr.export_training_package(auto_trainer_instance=auto_engine)
@@ -803,8 +791,8 @@ class TestDanTrainingGovernance(unittest.TestCase):
         self.assertFalse(self.mgr.is_video_reviewed_by_shinpan(video_url=web_stream)[0])
 
         kb_cleared = auto_engine.load_knowledge_base()
-        suburi_acc_cleared = float(kb_cleared["learned_parameters"]["training_modalities"]["suburi"]["current_accuracy"])
-        self.assertLess(suburi_acc_cleared, suburi_acc_before)
+        self.assertNotIn("Hasuji Estrito no Suburi (FIK Teste)",
+                         kb_cleared["learned_parameters"]["training_modalities"]["suburi"]["principles_learned"])
 
         # 7. Importar o pacote baixado (recarregar treinamento)
         import_summary = self.mgr.import_training_package(pkg, auto_trainer_instance=auto_engine)
@@ -837,8 +825,7 @@ class TestDanTrainingGovernance(unittest.TestCase):
 
         # 9. Validar que a Base de Conhecimento e aprendizado de IA foram restaurados
         kb_restored = auto_engine.load_knowledge_base()
-        suburi_acc_restored = float(kb_restored["learned_parameters"]["training_modalities"]["suburi"]["current_accuracy"])
-        self.assertEqual(suburi_acc_restored, suburi_acc_before)
+        self.assertNotIn("current_accuracy", kb_restored["learned_parameters"]["training_modalities"]["suburi"])
         self.assertIn(
             "Hasuji Estrito no Suburi (FIK Teste)",
             kb_restored["learned_parameters"]["training_modalities"]["suburi"]["principles_learned"]
@@ -912,3 +899,18 @@ class TestDanTrainingGovernance(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
+
+class TestCyclesCountAsTrainings(unittest.TestCase):
+    def test_completed_training_cycles_are_counted(self):
+        import tempfile
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            mgr = FeedbackManager(dataset_path=os.path.join(tmp, "f.json"), history_path=os.path.join(tmp, "h.json"))
+            cycles = [{"id": "c1", "terminado_em": "2026-11-07T21:53:42"}, {"id": "c2"}]   # c2 não terminou
+            with mock.patch("src.engine.training_cycle.load_cycle_history", return_value=cycles):
+                m = mgr.get_training_metrics()
+        self.assertEqual(m["auto_trainings_count"], 1)
+        self.assertEqual(m["total_trainings_count"], 1)
+        ia = [r for r in m["dan_distribution"] if r["Dan"] == "🤖 IA"][0]
+        self.assertEqual((ia["Quantidade Treinamentos"], ia["Percentual (%)"]), (1, "100.0%"))

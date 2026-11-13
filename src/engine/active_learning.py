@@ -22,6 +22,18 @@ from src.engine.llm_assistant import KendoLLMAssistant
 # ==============================================================================
 # 4.1 AMOSTRAGEM POR INCERTEZA (UNCERTAINTY SAMPLING)
 # ==============================================================================
+DOUBT_TYPES = ("pontuacao", "golpe_filtro", "tecnica", "regra", "conflito", "modalidade", "padrao", "shinpan")
+# Dúvidas sobre um golpe de luta analisada: o golpe vira um corte de ~10 s em data/videos (treino)
+ANALYSIS_CLIP_DOUBTS = ("pontuacao", "golpe_filtro", "tecnica", "regra", "padrao")
+DOUBT_LABELS = {
+    "pontuacao": "Pontuação", "golpe_filtro": "É golpe?", "tecnica": "Técnica", "regra": "Regra",
+    "conflito": "Conflito entre fontes", "modalidade": "Modalidade",
+    "padrao": "Fora do padrão dos validados",
+    "shinpan": "Decisão dos shinpan a revisar",
+}
+MAX_QUEUE_ITEMS = 100
+
+
 class UncertaintySampler:
     """
     Gerencia a fila de lances prioritários para rotulagem humana (Active Learning),
@@ -78,6 +90,8 @@ class UncertaintySampler:
             return None
 
         uncertainty_score = self.calculate_uncertainty(confidence)
+        # Impacto: um golpe que o SenpAI deu como ponto mexe no placar
+        impact = 1.0 if strike_data.get("is_valid") else 0.7
 
         # Diagnóstico com LLM para acelerar o processo de curadoria do Sensei
         llm_triage = None
@@ -111,14 +125,93 @@ class UncertaintySampler:
             except Exception:
                 pass
 
+        return self.enqueue_doubt(
+            doubt_type="pontuacao",
+            video_source=video_source,
+            strike_data=strike_data,
+            uncertainty=uncertainty_score,
+            impact=impact,
+            reason=f"Nota do golpe na faixa de incerteza ({confidence * 100:.0f}%).",
+            profile_name=profile_name,
+            clip_path=clip_path,
+            confidence=confidence,
+            llm_triage=llm_triage,
+        )
+
+    def enqueue_doubt(
+        self,
+        doubt_type: str,
+        video_source: str,
+        strike_data: Dict[str, Any],
+        uncertainty: float,
+        reason: str,
+        impact: float = 1.0,
+        profile_name: str = "normal",
+        clip_path: Optional[str] = None,
+        confidence: Optional[float] = None,
+        options: Optional[Dict[str, Any]] = None,
+        kenshi: Optional[str] = None,
+        llm_triage: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Fila de Curadoria de TODAS as dúvidas (Pendência I12). Tipos:
+        pontuacao (nota do golpe), golpe_filtro (filtro de golpes), tecnica, regra (ai-uchi, golpe após o
+        yame...), conflito (fontes do banco de rótulos discordam), modalidade, padrao (golpe que destoa
+        dos golpes validados da mesma técnica, pela referência do ciclo de treino), shinpan (golpe em que a decisão
+        dos shinpan aponta ponto, ou o SenpAI e os shinpan discordam: a revisão, com o dan, é o rótulo).
+        Prioridade = incerteza × impacto (as que mais ensinam primeiro). Não repete a mesma dúvida
+        (mesmo vídeo, tipo e instante ±1 s) enquanto ela estiver pendente.
+        """
+        if doubt_type not in DOUBT_TYPES:
+            raise ValueError(f"Tipo de dúvida desconhecido: {doubt_type}")
+        original_source = video_source
+        from src.utils.strike_clip_manager import get_cross_platform_basename
+        if clip_path:
+            try:
+                rel = os.path.relpath(clip_path)
+                clip_path = (rel if not rel.startswith("..") else clip_path).replace("\\", "/")
+            except Exception:
+                clip_path = clip_path.replace("\\", "/")
+        if video_source:
+            try:
+                rel_v = os.path.relpath(video_source)
+                if not rel_v.startswith(".."):
+                    video_source = rel_v.replace("\\", "/")
+                elif "senpai_uploads" in video_source or get_cross_platform_basename(video_source).startswith(("yt_", "upload_")):
+                    video_source = get_cross_platform_basename(video_source)
+            except Exception:
+                pass
+
+        kenshi = kenshi or strike_data.get("kenshi")
+        strike_time = strike_data.get("timestamp_seconds")
+        if strike_time is None and strike_data.get("impact_frame") is not None and strike_data.get("fps"):
+            strike_time = float(strike_data["impact_frame"]) / float(strike_data["fps"])
+
+        queue = self.get_queue()
+        if strike_time is not None:
+            src_base = get_cross_platform_basename(video_source or "")
+            for it in queue:
+                if (it.get("status") == "pending_curation" and it.get("tipo_duvida", "pontuacao") == doubt_type
+                        and get_cross_platform_basename(it.get("video_source") or "") == src_base
+                        and it.get("tempo_golpe_s") is not None and abs(float(it["tempo_golpe_s"]) - float(strike_time)) < 1.0):
+                    return None
+
+        priority = round(max(0.0, min(1.0, float(uncertainty))) * max(0.0, min(1.0, float(impact))), 4)
         entry = {
-            "id": f"unc_{int(time.time() * 1000)}_{len(self.get_queue())}",
+            "id": f"unc_{int(time.time() * 1000)}_{len(queue)}",
             "timestamp": datetime.datetime.now().isoformat(),
             "video_source": video_source,
             "clip_path": clip_path,
             "strike_type": strike_data.get("strike_type", "Men"),
-            "confidence": round(float(confidence), 4),
-            "uncertainty_score": uncertainty_score,
+            # Só números reais: a nota do golpe ou a probabilidade de um modelo (dúvidas de regra/conflito não têm)
+            "confidence": None if confidence is None else round(float(confidence), 4),
+            "uncertainty_score": round(float(uncertainty), 4),
+            "prioridade": priority,
+            "tipo_duvida": doubt_type,
+            "motivo": reason,
+            "opcoes": options or {},
+            "kenshi": kenshi,
+            "tempo_golpe_s": None if strike_time is None else round(float(strike_time), 3),
             "strike_data": strike_data,
             "profile_name": profile_name,
             "llm_triage": llm_triage,
@@ -133,23 +226,26 @@ class UncertaintySampler:
             except Exception:
                 pass
 
-        queue = self.get_queue()
-        # Evita duplicatas se o mesmo id ou dados similares já estiverem pendentes
-        queue.append(entry)
-        # Ordena a fila decrescente por incerteza (as mais incertas primeiro)
-        queue.sort(key=lambda x: x.get("uncertainty_score", 0.0), reverse=True)
+        # Golpe em dúvida numa luta analisada: guarda um corte de ~10 s em data/videos para o treino
+        # (curadoria, gabarito, ciclo). Não repete golpes a menos de 10 s de um corte já guardado.
+        if doubt_type in ANALYSIS_CLIP_DOUBTS and strike_time is not None:
+            try:
+                from src.utils.video_library import save_analysis_clip
+                saved = save_analysis_clip(original_source, float(strike_time))
+                if saved:
+                    entry["corte_treino"] = saved.replace("\\", "/")
+            except Exception:
+                pass
 
-        # Limita a 100 itens mais informativos
-        queue = queue[:100]
+        queue.append(entry)
+        # As dúvidas que mais ensinam primeiro (itens antigos sem prioridade usam a incerteza)
+        queue.sort(key=lambda x: x.get("prioridade", x.get("uncertainty_score", 0.0)), reverse=True)
+        queue = queue[:MAX_QUEUE_ITEMS]
 
         with open(self.queue_file, "w", encoding="utf-8") as f:
             json.dump(queue, f, ensure_ascii=False, indent=2)
 
-        log_event(
-            "INFO",
-            f"Lance incerto enfileirado para Curadoria Ativa (P={confidence:.2f}, Incerteza={uncertainty_score:.2f}, Golpe={entry['strike_type']})",
-            "active_learning"
-        )
+        log_event("INFO", f"Dúvida '{doubt_type}' enfileirada para curadoria (prioridade {priority:.2f}): {reason}", "active_learning")
         return entry
 
     def get_queue(self, status: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -496,42 +592,262 @@ DEFAULT_GOLDEN_BENCHMARK_SAMPLES: List[Dict[str, Any]] = [
 ]
 
 
+GOLDEN_DATASET_DEFAULT_PATH = "data/benchmark_golden/golden_dataset.json"
+GOLDEN_MATCHES_FILE = "golden_matches.json"
+GOLDEN_HISTORY_FILE = "benchmark_history.jsonl"
+REAL_MATCH_CATEGORY = "real_match"
+# Abaixo disso a trava continua com as amostras sintéticas (com poucas amostras, 1 erro pesa demais)
+MIN_REAL_SAMPLES_FOR_GATE = 30
+GOLDEN_FROZEN_FIELDS = ("aka", "shiro", "pontos_completos", "inverter_aka_shiro", "pontos")
+
+
 class GoldenBenchmark:
     """
-    Mantém o conjunto de validação padrão-ouro (data/benchmark_golden/golden_dataset.json)
-    e executa testes obrigatórios de não-regressão antes de qualquer gravação de calibração.
+    Conjunto de validação padrão-ouro do SenpAI (data/benchmark_golden/), único no sistema.
+
+    - Lutas golden: lutas reais congeladas em golden_matches.json (cópia do gabarito no momento do
+      congelamento) e nunca usadas no treino. A VERDADE de cada golpe vem das revisões (kenshi e senseis,
+      pesadas pelo dan), não da decisão dos shinpan: o gabarito só aponta onde revisar.
+    - Amostras (golden_dataset.json): golpes revisados nessas lutas (categoria "real_match"), mais as amostras
+      sintéticas originais, que só valem enquanto houver menos de MIN_REAL_SAMPLES_FOR_GATE golpes reais.
+    - Trava anti-regressão (validate_no_regression) antes de qualquer gravação de calibração.
+    - Benchmark por luta (run_matches): revisão × SenpAI, com histórico (e a concordância shinpan × revisão).
+
+    Todas as métricas usam a fonte única de src.engine.weak_labels
+    (precision_recall_f1, review_metrics, aggregate_review_metrics).
     """
 
-    def __init__(self, dataset_path: str = "data/benchmark_golden/golden_dataset.json"):
-        self.dataset_path = dataset_path
+    def __init__(self, dataset_path: str = GOLDEN_DATASET_DEFAULT_PATH):
+        self.dataset_path = get_safe_data_path(dataset_path, "test_golden_dataset.json")
+        self.golden_dir = os.path.dirname(self.dataset_path) or "."
+        self.matches_path = os.path.join(self.golden_dir, GOLDEN_MATCHES_FILE)
+        self.history_path = os.path.join(self.golden_dir, GOLDEN_HISTORY_FILE)
         self._ensure_storage()
 
     def _ensure_storage(self):
-        os.makedirs(os.path.dirname(self.dataset_path) or ".", exist_ok=True)
+        os.makedirs(self.golden_dir, exist_ok=True)
         if not os.path.exists(self.dataset_path):
-            with open(self.dataset_path, "w", encoding="utf-8") as f:
-                json.dump(DEFAULT_GOLDEN_BENCHMARK_SAMPLES, f, ensure_ascii=False, indent=2)
+            self._write_json(self.dataset_path, DEFAULT_GOLDEN_BENCHMARK_SAMPLES)
 
-    def load_samples(self) -> List[Dict[str, Any]]:
+    @staticmethod
+    def _write_json(path: str, data: Any) -> None:
+        from src.utils.file_utils import safe_write_json
+        safe_write_json(path, data, indent=2)
+
+    # --------------------------------------------------------------------------
+    # Amostras
+    # --------------------------------------------------------------------------
+    def _load_all_samples(self) -> List[Dict[str, Any]]:
         self._ensure_storage()
         try:
             with open(self.dataset_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
-            return DEFAULT_GOLDEN_BENCHMARK_SAMPLES
+            return list(DEFAULT_GOLDEN_BENCHMARK_SAMPLES)
 
+    def load_samples(self) -> List[Dict[str, Any]]:
+        """Golpes reais quando já são suficientes (e têm ao menos 1 positivo); senão, as sintéticas."""
+        samples = self._load_all_samples()
+        real = [s for s in samples if s.get("category") == REAL_MATCH_CATEGORY]
+        if len(real) >= MIN_REAL_SAMPLES_FOR_GATE and any(s.get("ground_truth") for s in real):
+            return real
+        return [s for s in samples if s.get("category") != REAL_MATCH_CATEGORY] or list(DEFAULT_GOLDEN_BENCHMARK_SAMPLES)
+
+    def samples_source(self) -> Dict[str, Any]:
+        """De onde vêm as amostras da trava: 'real' ou 'sintetico', com as contagens."""
+        real = sum(1 for s in self._load_all_samples() if s.get("category") == REAL_MATCH_CATEGORY)
+        in_use = self.load_samples()
+        source = "real" if in_use and in_use[0].get("category") == REAL_MATCH_CATEGORY else "sintetico"
+        return {"fonte": source, "golpes_reais": real, "minimo_reais": MIN_REAL_SAMPLES_FOR_GATE, "amostras_em_uso": len(in_use)}
+
+    def replace_real_samples(self, real_samples: List[Dict[str, Any]]) -> None:
+        """Troca as amostras reais pelas da última execução, preservando as sintéticas."""
+        synthetic = [s for s in self._load_all_samples() if s.get("category") != REAL_MATCH_CATEGORY]
+        assert_not_production_write(self.dataset_path, "GoldenBenchmark.replace_real_samples")
+        self._write_json(self.dataset_path, synthetic + list(real_samples))
+
+    @staticmethod
+    def report_to_samples(report: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Golpes revisados de uma luta golden → amostras (notas 0..1, verdade pela revisão)."""
+        from src.engine import weak_labels as wl
+        samples = []
+        for ev in report["events"]["items"]:
+            if ev["weak_label"] == wl.POSITIVE:
+                truth = True
+            elif ev["weak_label"] in wl.NEGATIVE_LABELS:
+                truth = False
+            else:
+                continue
+            sub = ev.get("sub_scores") or {}
+            if not sub:
+                continue
+            metrics = {k: round(float(sub[k]) / 100.0, 4) for k in ("target_impact", "fumikomi_sync", "posture", "zanshin") if k in sub}
+            if "hasuji" in sub:
+                metrics["hasuji_score"] = round(float(sub["hasuji"]) / 100.0, 4)
+            samples.append({
+                "id": f"{report['video_name']}#{ev['attacker_id']}#{ev['impact_frame']}",
+                "category": REAL_MATCH_CATEGORY,
+                "strike_type": str(ev.get("strike_type") or "MEN").capitalize(),
+                "ground_truth": truth,
+                "description": f"{report['video_name']} — {ev['attacker_id']} em {ev['time_sec']:.1f}s ({ev['weak_label']})",
+                "metrics": metrics,
+            })
+        return samples
+
+    # --------------------------------------------------------------------------
+    # Lutas congeladas
+    # --------------------------------------------------------------------------
+    def load_matches(self) -> Dict[str, Dict[str, Any]]:
+        if not os.path.isfile(self.matches_path):
+            return {}
+        try:
+            with open(self.matches_path, "r", encoding="utf-8") as f:
+                return json.load(f).get("lutas", {})
+        except Exception:
+            return {}
+
+    def _save_matches(self, matches: Dict[str, Dict[str, Any]]) -> None:
+        self._write_json(self.matches_path, {"versao": 1, "lutas": matches})
+
+    def is_golden_video(self, video_name: str) -> bool:
+        return os.path.basename(video_name) in self.load_matches()
+
+    @staticmethod
+    def _frozen_copy(entry: Dict[str, Any]) -> Dict[str, Any]:
+        return {k: json.loads(json.dumps(entry.get(k))) for k in GOLDEN_FROZEN_FIELDS if k in entry}
+
+    def differs_from_gabarito(self, video_name: str, entry: Dict[str, Any]) -> bool:
+        """True quando o gabarito foi editado depois do congelamento da luta."""
+        frozen = self.load_matches().get(os.path.basename(video_name))
+        if not frozen:
+            return False
+        current = self._frozen_copy(entry)
+        return any(frozen.get(k) != current.get(k) for k in GOLDEN_FROZEN_FIELDS)
+
+    def freeze_match(self, video_name: str, entry: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Congela (ou recongela) uma luta. A verdade vem das revisões dos golpes dessa luta (banco de rótulos);
+        o gabarito, se houver, só aponta onde revisar. Por isso basta ser uma luta (não descartada).
+        """
+        from src.engine import weak_labels as wl
+        entry = dict(entry or {})
+        if entry.get("ignorar") or wl.is_entry_discarded(entry):
+            raise ValueError("Vídeo marcado como \"não é luta\" ou descartado: não pode entrar no golden.")
+        if wl.entry_video_type(entry) != wl.VIDEO_TYPE_LUTA:
+            raise ValueError("Só lutas (shiai ou shiai-geiko) entram no golden.")
+        wl.parse_official_points(entry)  # valida tempos e técnicas
+        matches = self.load_matches()
+        frozen = self._frozen_copy(entry)
+        frozen["congelado_em"] = datetime.datetime.now().isoformat(timespec="seconds")
+        matches[os.path.basename(video_name)] = frozen
+        self._save_matches(matches)
+        log_event("INFO", f"Luta congelada no golden benchmark: {os.path.basename(video_name)}", "active_learning")
+        return frozen
+
+    def unfreeze_match(self, video_name: str) -> bool:
+        matches = self.load_matches()
+        removed = matches.pop(os.path.basename(video_name), None) is not None
+        if removed:
+            self._save_matches(matches)
+        return removed
+
+    # --------------------------------------------------------------------------
+    # Benchmark por luta
+    # --------------------------------------------------------------------------
+    def run_matches(
+        self,
+        pipeline,
+        videos_dir: str,
+        tolerance_sec: Optional[float] = None,
+        progress: Optional[Any] = None,
+        record_history: bool = True,
+        update_samples: bool = True
+    ) -> Dict[str, Any]:
+        """
+        Reanalisa as lutas golden (via cache de features) e mede o SenpAI contra as REVISÕES dos golpes.
+        Luta sem golpe revisado não entra na conta. "pedidos_revisao" traz o que os shinpan apontam e ainda
+        ninguém revisou (o ciclo manda para a curadoria).
+        record_history/update_samples=False servem para comparar um modelo desafiante sem alterar o golden.
+        """
+        from src.engine import weak_labels as wl
+        from src.engine.label_bank import LabelBank, relabel_by_reviews, review_requests
+        bank = LabelBank()
+        requests: List[Dict[str, Any]] = []
+        tol = wl.DEFAULT_TOLERANCE_SEC if tolerance_sec is None else tolerance_sec
+        matches = self.load_matches()
+        rows, samples, missing, failures, sem_revisao = [], [], [], [], []
+        names = sorted(matches)
+        for idx, name in enumerate(names, start=1):
+            if progress:
+                progress(idx, len(names), name)
+            video = os.path.join(videos_dir, name)
+            if not os.path.isfile(video):
+                missing.append(name)
+                continue
+            entry = matches[name]
+            try:
+                report = wl.weak_label_video(pipeline, video, entry, tolerance_sec=tol,
+                                             invert_combatants=bool(entry.get("inverter_aka_shiro", False)))
+            except Exception as e:
+                failures.append({"video_name": name, "erro": str(e)})
+                continue
+            relabel_by_reviews(report, bank.corrections_for(name), bank)
+            requests.extend(dict(r, video_path=video) for r in review_requests(report))
+            row = wl.review_metrics(report)
+            if not row["golpes_revisados"] and not row["validos_revisados"]:
+                sem_revisao.append(name)
+                continue
+            rows.append(row)
+            samples.extend(self.report_to_samples(report))
+
+        result = {
+            "executado_em": datetime.datetime.now().isoformat(timespec="seconds"),
+            "perfil": getattr(getattr(pipeline, "calibrator", None), "active_config", {}).get("name", "normal"),
+            "tolerancia_s": tol,
+            "lutas": rows,
+            "total": wl.aggregate_review_metrics(rows),
+            "golpes_reais": len(samples),
+            "videos_ausentes": missing,
+            "falhas": failures,
+            "sem_revisao": sem_revisao,
+            "pedidos_revisao": requests,
+        }
+        if rows:
+            if update_samples:
+                self.replace_real_samples(samples)
+            if record_history:
+                with open(self.history_path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps({k: result[k] for k in ("executado_em", "perfil", "total", "golpes_reais")}, ensure_ascii=False) + "\n")
+        return result
+
+    def load_history(self) -> List[Dict[str, Any]]:
+        if not os.path.isfile(self.history_path):
+            return []
+        rows = []
+        with open(self.history_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        rows.append(json.loads(line))
+                    except Exception:
+                        pass
+        return rows
+
+    # --------------------------------------------------------------------------
+    # Trava anti-regressão (amostras)
+    # --------------------------------------------------------------------------
     def evaluate_profile(self, profile: Dict[str, Any]) -> Dict[str, float]:
         """
         Avalia o perfil fornecido contra as amostras do Golden Benchmark.
-        Calcula Acurácia, Precisão, Recall e F1-score.
+        Calcula Acurácia, Precisão, Recall e F1-score (fórmula única de weak_labels).
         """
+        from src.engine.weak_labels import precision_recall_f1
         samples = self.load_samples()
         if not samples:
             return {"accuracy": 1.0, "precision": 1.0, "recall": 1.0, "f1": 1.0}
 
-        weights = profile.get("weights", {"target_impact": 0.40, "fumikomi_sync": 0.25, "posture": 0.20, "zanshin": 0.15})
-        sub_th = profile.get("sub_thresholds", {"target_impact": 0.50, "fumikomi_sync": 0.40, "posture": 0.40, "zanshin": 0.35})
-        min_total = profile.get("min_total_score", 0.65)
+        from src.engine.calibrator import decide_strike
 
         tp, fp, tn, fn = 0, 0, 0, 0
 
@@ -539,14 +855,11 @@ class GoldenBenchmark:
             m = s["metrics"]
             gt = s["ground_truth"]
 
-            # Cálculo ponderado da pontuação total
-            total_score = sum(weights.get(k, 0.2) * m.get(k, 0.5) for k in weights)
-
-            # Verificação de sub-limiares
-            passes_sub = all(m.get(k, 0.5) >= sub_th.get(k, 0.3) for k in sub_th)
-
-            # Decisão do motor
-            predicted_ippon = (total_score >= min_total) and passes_sub
+            # Mesma decisão da análise de luta (pesos por tipo de golpe, mistura do hasuji, só alvo/hasuji eliminam)
+            predicted_ippon = decide_strike(
+                m.get("target_impact", 0.5), m.get("fumikomi_sync", 0.5), m.get("posture", 0.5), m.get("zanshin", 0.5),
+                config=profile, strike_type=s.get("strike_type", "MEN"), hasuji_score=m.get("hasuji_score")
+            )["is_valid"]
 
             if predicted_ippon and gt:
                 tp += 1
@@ -558,18 +871,16 @@ class GoldenBenchmark:
                 fn += 1
 
         total = len(samples)
-        accuracy = (tp + tn) / total if total > 0 else 0.0
-        precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-        recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-        f1 = (2 * precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
-
+        prf = precision_recall_f1(tp, fp, fn)
+        # Indefinido (0/0) vira 0.0 aqui: a trava compara números
         return {
-            "accuracy": round(accuracy, 4),
-            "precision": round(precision, 4),
-            "recall": round(recall, 4),
-            "f1": round(f1, 4),
+            "accuracy": round((tp + tn) / total, 4) if total > 0 else 0.0,
+            "precision": prf["precisao"] or 0.0,
+            "recall": prf["recall"] or 0.0,
+            "f1": prf["f1"] or 0.0,
             "tp": tp, "fp": fp, "tn": tn, "fn": fn,
-            "total_samples": total
+            "total_samples": total,
+            "source": "real" if samples[0].get("category") == REAL_MATCH_CATEGORY else "sintetico"
         }
 
     def validate_no_regression(
@@ -609,6 +920,14 @@ class GoldenBenchmark:
             log_event("INFO", f"Recalibração aprovada no Golden Benchmark (F1={new_metrics['f1']:.3f}).", "active_learning")
 
         return passed, report
+
+
+def is_golden_video(video_name: str) -> bool:
+    """Atalho: a luta pertence ao golden benchmark (e por isso não pode virar treino)?"""
+    try:
+        return GoldenBenchmark().is_golden_video(video_name)
+    except Exception:
+        return False
 
 
 # ==============================================================================
@@ -713,7 +1032,7 @@ class ReviewerTrustManager:
     """
 
     def __init__(self, storage_file: str = "data/reviewer_trust_registry.json", half_life_days: float = 180.0):
-        self.storage_file = storage_file
+        self.storage_file = get_safe_data_path(storage_file, "test_reviewer_trust_registry.json")
         self.half_life_days = half_life_days
         self._ensure_storage()
 

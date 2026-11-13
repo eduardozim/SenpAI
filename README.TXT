@@ -4,7 +4,7 @@
 
           Sistema de Avaliação e Análise Biomecânica de Kendo com IA
 
-                              Versão: v 0.3.8.0
+                              Versão: v 0.4.2.0
 
 ===============================================================================
 
@@ -719,7 +719,91 @@ mudanças, consulte o arquivo manual.md.
 
 -------------------------------------------------------------------------------
 
-8. NOVIDADES DA VERSÃO (v 0.3.8.0)
+8. NOVIDADES DA VERSÃO (v 0.4.2.0) - ATUALIZAÇÃO DO MÉTODO DE TREINAMENTO
+
+-------------------------------------------------------------------------------
+
+- Validade dos golpes pelas revisões, não pelos shinpan:
+  • A decisão dos shinpan (Gabarito de Lutas) só aponta golpes a revisar na Fila de Curadoria.
+  • A validade de cada golpe vem das revisões de kenshi e senseis, pesadas pelo dan.
+  • O antigo detector visual de bandeiras foi removido.
+
+- Referência dos Golpes Validados:
+  • Distribuição real das notas dos pilares por técnica (MEN, KOTE, DO, TSUKI) no lugar
+    do antigo padrão de números fixos, com retorno por pilar na análise.
+
+- Pré-processamento das lutas da internet:
+  • Os golpes em dúvida das lutas baixadas vão para a Fila de Curadoria; as respostas
+    viram rótulos e o próximo ciclo de treino aprende com elas.
+
+- Fila de Curadoria na Governança de Treinamento:
+  • Transferida de Perfis de Calibração para logo após o Ciclo de Treino.
+  • O Eixo 4 de Perfis de Calibração passa a se chamar Golden Benchmark.
+  • Seleção "Qual golpe foi?" pré-marcada com o golpe identificado: se a tentativa foi
+    de outro golpe (ex.: TSUKI no lugar de MEN), o árbitro corrige e decide Ippon ou
+    Golpe Inválido; a correção também ensina o classificador de técnica.
+
+-------------------------------------------------------------------------------
+
+   NOVIDADES DA VERSÃO ANTERIOR (v 0.4.1.0)
+
+-------------------------------------------------------------------------------
+
+- Reestruturação Completa da Governança de Treinamento:
+  • Painel de Revisão por Dan, métricas de graduação e gestão de espaço em disco consolidados.
+  • Tabela desacoplada de Modalidades de Treinamento com métrica de acurácia individual calibrada.
+  • Separação estrita entre Manuais Canônicos de fábrica e fontes web mineradas dinamicamente.
+  • Integração do Gabarito de Lutas diretamente na Governança de Treinamento.
+  • Renomeação oficial para "Ciclo de Treino" e inclusão do painel "O que o SenpAI já aprendeu"
+    com visão geral dos princípios regulamentares e detalhamento por modalidade.
+
+- Coleta Contínua na Internet com Atualização Automática (Fragment 3s):
+  • Busca e download programado de vídeos e diretrizes na web com barra de progresso, tempo
+    decorrido e término previsto.
+  • Atualização automática da interface a cada 3 segundos via @st.fragment, sem intervenção manual.
+  • Silenciamento inteligente de avisos repetitivos de runtime JavaScript do yt-dlp.
+
+- Aba Dedicada "Variáveis do Sistema":
+  • Nova aba no menu de configurações para cadastro de chaves de API do Google Gemini, OpenAI e
+    SerpApi com isolamento seguro em 'config/api_keys.local.json'.
+
+- Resiliência de I/O e Escrita Atômica no Windows (file_utils.py):
+  • Eliminação definitiva de erros de colisão de arquivos temporários ([WinError 5] Acesso negado)
+    através de safe_replace e safe_write_json com retries exponenciais, locks e fallback de cópia direta.
+
+- Banco Único de Rótulos & Detecção de Bandeiras:
+  • Implementação do LabelBank unificando anotações humanas, mineradas e automáticas.
+  • Detecção computadorizada de bandeiras de árbitros (FlagDetector) para rotulagem automática.
+
+- Expansão da Suíte de Testes para 490 Testes Automatizados:
+  • Auditoria completa com 490 testes em 50 módulos cobrindo todo o ecossistema com 100% de aprovação.
+
+
+-------------------------------------------------------------------------------
+
+9. HISTÓRICO DE VERSÕES ANTERIORES (v 0.4.0.0)
+
+-------------------------------------------------------------------------------
+
+- Limpeza Automática e Otimização de Espaço em Disco:
+  • Rotina de expurgo de temporários em 'data/tmp/senpai_uploads' ativada na
+    inicialização, após uploads e pós-análises.
+  • Botão sob demanda no Menu de Configurações para liberar gigabytes de vídeos obsoletos.
+
+- Compatibilidade Universal de Vídeo Web HTML5:
+  • Garantia de contêiner MP4 com codecs H.264 e AAC (áudio), pixel format yuv420p
+    e atom +faststart em vídeos originais e anotados, eliminando 'Video source error'.
+
+- Auditoria Dinâmica da Suíte de Testes:
+  • Contagem e reflexão automática de testes unitários e de integração no botão da interface.
+
+- Mensagens Humanizadas em Conexões de Streaming:
+  • Feedback descritivo e amigável em português para URLs inválidas ou offline.
+
+
+-------------------------------------------------------------------------------
+
+10. HISTÓRICO DE VERSÕES ANTERIORES (v 0.3.8.0)
 
 -------------------------------------------------------------------------------
 

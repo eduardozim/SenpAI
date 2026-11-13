@@ -27,7 +27,7 @@ class KendoLLMAssistant:
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model_name: str = "gemini-1.5-flash",
+        model_name: Optional[str] = None,
         provider: str = "auto"
     ):
         """
@@ -36,7 +36,8 @@ class KendoLLMAssistant:
         garantindo funcionamento contínuo, seguro e sem falhas em qualquer ambiente.
         """
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or os.environ.get("OPENAI_API_KEY")
-        self.model_name = model_name
+        # gemini-1.5 foi descontinuado; o modelo pode ser trocado em "Chaves de API" (GEMINI_MODEL)
+        self.model_name = model_name or os.environ.get("GEMINI_MODEL") or "gemini-2.5-flash"
         self.provider = provider
 
         # Se provider for auto, detecta pela chave ou convenção
@@ -189,7 +190,7 @@ class KendoLLMAssistant:
                         "responseMimeType": "application/json"
                     }
                 }
-                resp = requests.post(url, json=payload, timeout=8)
+                resp = requests.post(url, json=payload, timeout=45)
                 if resp.status_code == 200:
                     data = resp.json()
                     candidates = data.get("candidates", [])
@@ -212,7 +213,7 @@ class KendoLLMAssistant:
                     "temperature": 0.2,
                     "response_format": {"type": "json_object"}
                 }
-                resp = requests.post(url, headers=headers, json=payload, timeout=8)
+                resp = requests.post(url, headers=headers, json=payload, timeout=45)
                 if resp.status_code == 200:
                     data = resp.json()
                     text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -374,6 +375,23 @@ class KendoLLMAssistant:
     # --------------------------------------------------------------------------
     # 4. EXTRAÇÃO DE RESTRIÇÕES BIOMECÂNICAS EM JSON SCHEMA (EIXO 2.1)
     # --------------------------------------------------------------------------
+    def extract_rule_facts(self, text: str, source_title: str) -> Optional[Dict[str, Any]]:
+        """
+        Coleta na internet (I15): propõe fatos de regra com a citação literal. Só funciona online;
+        o coletor aceita apenas os fatos cuja citação existe no texto (nada inventado entra).
+        """
+        if not self.is_online:
+            return None
+        prompt = (
+            "Do regulamento de kendo abaixo, extraia apenas fatos numéricos escritos explicitamente. "
+            "Para cada fato devolva a frase EXATA do texto que o contém (copie sem alterar).\n"
+            f"Fonte: {source_title}\nTexto:\n{text}\n\n"
+            'Responda só JSON: {"fatos": {"tempo_luta_min": {"rotulo": "...", "valor": 5, "unidade": "min", '
+            '"evidencia": "frase exata"}}}. Chaves possíveis: tempo_luta_min, encho_min, shiaijo_lado_m, '
+            "pontos_para_vencer, spine_tilt_max_deg, fumikomi_hand_foot_window_ms. Omita o que não estiver no texto."
+        )
+        return self._call_remote_llm(prompt)
+
     def extract_physical_constraints(
         self,
         source_text_or_metadata: Union[str, Dict[str, Any]],

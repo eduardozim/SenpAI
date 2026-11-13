@@ -724,9 +724,10 @@ def ensure_browser_compatible_video(video_path: str) -> bool:
         cmd.append(tmp_converted)
 
         try:
+            from src.utils.file_utils import safe_replace
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=calc_timeout)
             if res.returncode == 0 and os.path.exists(tmp_converted) and os.path.getsize(tmp_converted) > 0:
-                os.replace(tmp_converted, video_path)
+                safe_replace(tmp_converted, video_path)
                 return True
         except Exception:
             continue

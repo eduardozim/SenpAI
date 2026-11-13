@@ -71,7 +71,7 @@ for _mod_name in [
 from src.pipeline import SenpAIPipeline, AnalysisWorker
 from src.utils.demo_generator import generate_demo_kendo_video
 from src.engine.feedback_manager import FeedbackManager, DuplicateShinpanReviewError
-from src.engine.auto_trainer import auto_trainer, AUTO_TRAINING_SCOPES, KENDO_KNOWLEDGE_RESOURCES
+from src.engine.auto_trainer import auto_trainer, KENDO_KNOWLEDGE_RESOURCES
 from src.utils.excel_strikes_manager import (
     export_strikes_to_excel,
     import_strikes_from_excel,
@@ -158,6 +158,21 @@ try:
 except Exception:
     pass
 
+# Patch defensivo para compatibilidade ASGI Starlette / Uvicorn (evita crash 'http.response.start' out-of-order em assets)
+try:
+    import streamlit.web.server.starlette.starlette_gzip_middleware as _st_gzip
+    _orig_bypass = _st_gzip._should_bypass_static_gzip
+    def _senpai_robust_static_bypass(path: str) -> bool:
+        if not path or path == "/" or _orig_bypass(path):
+            return True
+        p_lower = path.lower()
+        if any(p_lower.endswith(ext) for ext in ('.js', '.css', '.png', '.jpg', '.jpeg', '.ico', '.svg', '.woff', '.woff2', '.ttf', '.json', '.map')):
+            return True
+        return False
+    _st_gzip._should_bypass_static_gzip = _senpai_robust_static_bypass
+except Exception:
+    pass
+
 
 def render_live_stream_not_started_warning(time_remaining: Optional[str] = None) -> None:
     """Exibe aviso formatado e pedagógico quando uma transmissão ao vivo agendada ainda não iniciou."""
@@ -200,7 +215,7 @@ def render_live_stream_not_started_warning(time_remaining: Optional[str] = None)
         )
 
 # Versão Oficial do Sistema
-SYSTEM_VERSION = "v 0.3.8.0"
+SYSTEM_VERSION = "v 0.4.2.0"
 
 st.set_page_config(
     page_title=f"SenpAI ({SYSTEM_VERSION}) - AI Kendo Referee & Analysis System",
@@ -765,9 +780,16 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
         st.info("ℹ️ Nenhuma métrica de treinamento disponível para este vídeo.")
         return
 
+    # Conferência luta × treino do classificador de modalidade (I14); só existe com modelo ativo
+    modality_warning = (res.get("modality_check") or {}).get("aviso")
+    if modality_warning:
+        st.warning(f"🧠 {modality_warning}")
+
     mod_key = train_data.get("modality_key", "suburi")
-    mod_conf = int(train_data.get("detection_confidence", 0.8) * 100)
     det_method = train_data.get("detection_method", "AUTO_DETECTED")
+    from src.analytics.training_analyzer import modality_confidence_label, MODEL_METHOD
+    mod_conf_text = modality_confidence_label(det_method, train_data.get("detection_confidence"))
+    mod_badge = {"MANUAL_SELECT": "⚙️ Segmentação / Manual", MODEL_METHOD: "🧠 Classificador de modalidade"}.get(det_method, "📏 Regra fixa")
     kendokas_raw = train_data.get("kendokas", [])
     kendokas = list(reversed(kendokas_raw)) if (is_inverted and len(kendokas_raw) > 1) else kendokas_raw
     dur_sec = train_data.get("duration_seconds", res.get("duration_seconds", 0.0))
@@ -825,7 +847,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                 </div>
                 <div style="text-align: right;">
                     <span style="background: rgba(99, 102, 241, 0.25); color: #C7D2FE; border: 1px solid #6366F1; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700;">
-                        {'🔍 IA Detectou' if 'AUTO' in str(det_method).upper() else '⚙️ Segmentação / Manual'} ({mod_conf}% Confiança)
+                        {mod_badge} ({html.escape(mod_conf_text)})
                     </span>
                     <div style="color: #94A3B8; font-size: 11px; margin-top: 3px;">⏱️ Duração: {dur_sec:.1f}s • 🗂️ Sessões: {max(1, len(sub_sessions))} • 🥋 Praticantes: {len(kendokas)}</div>
                 </div>
@@ -863,7 +885,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
         curr_reviews = st.session_state.get("session_reviews", {})
         try:
             def _get_training_pkg_bytes() -> bytes:
-                return export_training_session_package(
+                pkg_data = export_training_session_package(
                     analysis_result=res,
                     video_path=curr_v_path,
                     annotated_video_path=curr_ann_path,
@@ -871,6 +893,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     invert_aka_shiro=is_inverted,
                     session_reviews=curr_reviews
                 )
+                return pkg_data if isinstance(pkg_data, bytes) else b""
             st.download_button(
                 label="📦 Salvar Análise (.zip)",
                 data=_get_training_pkg_bytes,
@@ -923,7 +946,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
             s_mname = ss.get("modality_name", ss.get("modality_key", "Kihon"))
             s_mcat = ss.get("modality_category", "Treino")
             s_reps = int(ss.get("total_repetitions", 0))
-            s_conf = round(float(ss.get("detection_confidence", 0.90)) * 100)
+            s_conf = modality_confidence_label(ss.get("detection_method"), ss.get("detection_confidence"))
 
             sc1, sc2 = st.columns([4.2, 1.2])
             with sc1:
@@ -936,7 +959,7 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                             <span style="color: #94A3B8; font-size: 11.5px; margin-left: 6px;">({html.escape(s_mcat)})</span>
                         </div>
                         <div style="font-size: 11.5px; color: #CBD5E1;">
-                            ⏱️ <b>{s_dur:.1f}s</b> &nbsp;|&nbsp; 🔁 <b>{s_reps} reps</b> &nbsp;|&nbsp; 🎯 <b>{s_conf}%</b>
+                            ⏱️ <b>{s_dur:.1f}s</b> &nbsp;|&nbsp; 🔁 <b>{s_reps} reps</b> &nbsp;|&nbsp; 🎯 {html.escape(s_conf)}
                         </div>
                     </div>
                     """,
@@ -1046,6 +1069,12 @@ def render_training_analysis_view(res: Dict[str, Any], is_inverted: bool):
                     segments_override=updated_segs,
                     fps=seq_fps
                 )
+                # Correção do usuário vira rótulo de modalidade no Banco Único (I13 → treina o classificador da I14)
+                try:
+                    from src.engine.label_bank import LabelBank
+                    LabelBank().record_training_segments(res.get("video_path", ""), updated_segs)
+                except Exception as err:
+                    log_event("WARNING", f"Não foi possível registrar as correções de modalidade: {err}", "app")
                 sync_kendoka_names_in_training_data(train_data, saved_k_names)
                 res["training_analysis"] = train_data
                 st.session_state["analysis_result"] = res
@@ -1587,7 +1616,7 @@ if "_senpai_startup_cleanup" not in st.session_state:
         pass
 
 # Estilização CSS Moderna, Equilibrada (Escala 90%) e sem Cortes na Interface
-st.markdown("""
+_custom_css = """
 <style>
     /* 1. Escala Global Ajustada para 90% via Container Principal para não interferir em Popovers/Comboboxes */
     .stApp {
@@ -2062,7 +2091,11 @@ st.markdown("""
         display: none !important;
     }
 </style>
-""", unsafe_allow_html=True)
+"""
+if hasattr(st, "html"):
+    st.html(_custom_css)
+else:
+    st.markdown(_custom_css, unsafe_allow_html=True)
 
 
 #st.markdown('<div class="main-title">⚔️ SenpAI (先輩 AI)</div>', unsafe_allow_html=True)
@@ -2372,13 +2405,13 @@ def render_welcome_home_page():
             """
             <div style="background: #0B1120; border: 1px solid #334155; border-radius: 10px; padding: 16px 20px;">
                 <div style="color: #F8FAFC; font-weight: 700; font-size: 15px; margin-bottom: 6px;">
-                    🎯 Calibração Realista (&lt; 50% na Fase Inicial)
+                    🎯 Desempenho Medido, Nunca Estimado
                 </div>
                 <div style="color: #CBD5E1; font-size: 13px; line-height: 1.5; margin-bottom: 10px;">
-                    O SenpAI adota uma postura ética de honestidade empírica: modelos de visão computacional em estado bruto sem calibração prévia possuem acurácia preliminar em torno de <b>32% a 46%</b> devido à velocidade dos ataques e propensão a falsos positivos em combates dinâmicos.
+                    A acurácia e a precisão do SenpAI são medidas em lutas reais cujos golpes foram revisados por kenshi e senseis (<b>Golden Benchmark</b>), que nunca são usadas no treino. A decisão dos shinpan não é a verdade. Enquanto não houver lutas golden, nenhum número de desempenho é exibido.
                 </div>
                 <div style="color: #94A3B8; font-size: 12.5px; line-height: 1.45;">
-                    À medida que o <b>Treinador Automático por IA</b> processa manuais da FIK e que <b>árbitros graduados (1º ao 8º Dan)</b> cadastram revisões no dataset, a acurácia é refinada progressivamente, eliminando falsos positivos e ajustando limiares de impacto, <i>Fumikomi</i> e <i>Zanshin</i>.
+                    A calibração melhora quando <b>árbitros graduados (1º ao 8º Dan)</b> e o gabarito de lutas oficiais alimentam o dataset de revisões; cada mudança é conferida contra o Golden Benchmark antes de ser gravada.
                 </div>
             </div>
             """
@@ -2493,6 +2526,9 @@ current_nav_val = st.session_state.get("sidebar_nav_radio", "home")
 if current_nav_val == "analysis":
     current_nav_val = "match"
     st.session_state["sidebar_nav_radio"] = "match"
+elif current_nav_val == "labels":
+    current_nav_val = "settings"
+    st.session_state["sidebar_nav_radio"] = "settings"
 elif current_nav_val not in page_nav_options:
     current_nav_val = "home"
     st.session_state["sidebar_nav_radio"] = "home"
@@ -2615,10 +2651,11 @@ elif nav_page == "settings":
     default_device_pref = st.session_state.get("device_preference", saved_sys_settings.get("processing_device", "cpu"))
     default_vision_pref = st.session_state.get("vision_model_preference", saved_sys_settings.get("vision_model", "yolov8"))
 
-    tab_hw, tab_train, tab_calib, tab_diag, tab_docs = st.tabs([
+    tab_hw, tab_train, tab_calib, tab_vars, tab_diag, tab_docs = st.tabs([
         "🖥️ Processamento & Hardware",
         "🎓 Governança de Treinamento",
         "🎛️ Perfis de Calibração",
+        "⚙️ Variáveis do Sistema",
         "🐛 Diagnóstico, Alertas & Logs",
         "📚 Documentação & Manuais"
     ])
@@ -2838,91 +2875,16 @@ elif nav_page == "settings":
                     st.info("💻 **Computador rodando em Modo CPU.** Nenhuma GPU NVIDIA dedicada detectada.")
 
     # --------------------------------------------------------------------------
-    # GUIA 2: GOVERNANÇA DE TREINAMENTO & PAINEL DE REVISÃO POR DAN
+    # GUIA: GOVERNANÇA DE TREINAMENTO & PAINEL DE REVISÃO POR DAN
     # --------------------------------------------------------------------------
     with tab_train:
         st.markdown("### 🎓 Governança de Treinamento & Painel de Revisão por Dan")
-        st.caption("Acompanhe as métricas globais de retreinamento do modelo, distribuição por graduação Dan e gerencie os dados de revisão.")
+        st.caption("Quanto o sistema já foi treinado (rótulos, golden, modelos, ciclos e disco), as revisões por Dan e o controle do dataset.")
 
         training_metrics = feedback_mgr.get_training_metrics()
-        storage_info = training_metrics.get("storage_info", feedback_mgr.get_training_storage_info())
-
-        shinpan_count = training_metrics.get("shinpan_trainings_count", 0)
-        m_col1, m_col2, m_col3, m_col4, m_col5 = st.columns(5)
-        m_col1.metric("Total de Treinamentos", training_metrics["total_trainings_count"])
-        m_col2.metric("Nível Médio (Dan)", training_metrics["average_dan_label"])
-        m_col3.metric("Decisões dos Shinpans", f"{shinpan_count} sessões")
-        m_col4.metric("Total de Marcações", training_metrics["total_review_items"])
-        m_col5.metric(
-            "Espaço em Disco",
-            storage_info["total_formatted"],
-            help="Espaço total em disco ocupado pelos dados de feedback, histórico de retreinamento, modelos neurais e base de conhecimento da IA."
-        )
-
-        # ----------------------------------------------------------------------
-        # DETALHAMENTO DO ESPAÇO EM DISCO OCUPADO PELO TREINAMENTO
-        # ----------------------------------------------------------------------
-        st.markdown("#### 💾 Ocupação de Espaço em Disco do Treinamento:")
-        with st.container(border=True):
-            st.markdown(
-                '<div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">'
-                '<div style="display: flex; align-items: center; gap: 8px;">'
-                '<span style="font-size: 1.25rem;">💾</span>'
-                '<span style="font-weight: 700; font-size: 1.05rem; color: #F8FAFC;">Armazenamento Consolidado do Sistema de Treinamento</span>'
-                '</div>'
-                f'<span style="background: rgba(99, 102, 241, 0.2); color: #C7D2FE; border: 1px solid rgba(99, 102, 241, 0.4); font-size: 0.88rem; font-weight: 700; padding: 4px 14px; border-radius: 9999px;">Total em Disco: {storage_info["total_formatted"]}</span>'
-                '</div>',
-                unsafe_allow_html=True
-            )
-
-            cat_d = storage_info["categories"].get("datasets", {})
-            cat_m = storage_info["categories"].get("models", {})
-            cat_k = storage_info["categories"].get("knowledge_config", {})
-
-            sc_col1, sc_col2, sc_col3 = st.columns(3)
-            with sc_col1:
-                st.markdown(
-                    f'<div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 10px; padding: 12px 14px; min-height: 115px;">'
-                    f'<div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">'
-                    f'<span style="font-size: 0.78rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">📂 Datasets & Histórico</span>'
-                    f'<span style="font-size: 1.15rem; font-weight: 700; color: #38BDF8;">{cat_d.get("formatted", "0 B")}</span>'
-                    f'</div>'
-                    f'<div style="font-size: 0.82rem; color: #CBD5E1; font-weight: 500;">Pasta: <code>{cat_d.get("folder", "data/")}</code></div>'
-                    f'<div style="font-size: 0.74rem; color: #94A3B8; margin-top: 4px;">{cat_d.get("description", "")}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-            with sc_col2:
-                st.markdown(
-                    f'<div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(129, 140, 248, 0.35); border-radius: 10px; padding: 12px 14px; min-height: 115px;">'
-                    f'<div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">'
-                    f'<span style="font-size: 0.78rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">🧠 Modelos de IA & Pesos</span>'
-                    f'<span style="font-size: 1.15rem; font-weight: 700; color: #818CF8;">{cat_m.get("formatted", "0 B")}</span>'
-                    f'</div>'
-                    f'<div style="font-size: 0.82rem; color: #CBD5E1; font-weight: 500;">Pasta: <code>{cat_m.get("folder", "models/")}</code></div>'
-                    f'<div style="font-size: 0.74rem; color: #94A3B8; margin-top: 4px;">{cat_m.get("description", "")}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-            with sc_col3:
-                st.markdown(
-                    f'<div style="background: rgba(15, 23, 42, 0.65); border: 1px solid rgba(52, 211, 153, 0.35); border-radius: 10px; padding: 12px 14px; min-height: 115px;">'
-                    f'<div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">'
-                    f'<span style="font-size: 0.78rem; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em;">⚙️ Conhecimento & Calibração</span>'
-                    f'<span style="font-size: 1.15rem; font-weight: 700; color: #34D399;">{cat_k.get("formatted", "0 B")}</span>'
-                    f'</div>'
-                    f'<div style="font-size: 0.82rem; color: #CBD5E1; font-weight: 500;">Pasta: <code>{cat_k.get("folder", "config/")}</code></div>'
-                    f'<div style="font-size: 0.74rem; color: #94A3B8; margin-top: 4px;">{cat_k.get("description", "")}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-
-            with st.expander("🔍 Ver arquivos detalhados e caminhos físicos no disco", expanded=False):
-                files_table_md = "| Arquivo | Localização / Caminho | Categoria | Tamanho em Disco | Status |\n| :--- | :--- | :--- | :---: | :---: |\n"
-                for f_item in storage_info["files"]:
-                    status_badge = "🟢 Ativo no Disco" if f_item.get("exists", True) else "⚪ Não inicializado"
-                    files_table_md += f"| `{f_item['name']}` | `{f_item['path']}` | {f_item['category']} | **{f_item['formatted']}** | {status_badge} |\n"
-                st.markdown(files_table_md)
+        # Métricas de treinamento e disco pela mesma lista do apagar/exportar (src/engine/training_dataset.py)
+        from src.utils.training_metrics_panel import render_training_metrics
+        render_training_metrics(training_metrics)
 
         st.markdown("#### 📊 Distribuição de Treinamentos por Graduação Dan:")
         dan_table_md = "| Dan | Nome da Graduação | Quantidade de Treinamentos | Percentual (%) |\n| :--- | :--- | :---: | :---: |\n"
@@ -2949,754 +2911,271 @@ elif nav_page == "settings":
             else:
                 st.info("ℹ️ Nenhum link de vídeo com Decisão dos Shinpans registrado até o momento.")
 
-        st.markdown("#### 🛠️ Gerenciamento do Dataset de Treinamento:")
-
-        if st.session_state.get("training_reset_confirmed_msg"):
-            st.success(st.session_state["training_reset_confirmed_msg"], icon="✅")
-            st.toast("🗑️ Dados de treinamento apagados com sucesso!", icon="✅")
-            if st.button("✖️ Fechar Aviso de Confirmação", key="btn_dismiss_reset_alert", type="tertiary"):
-                del st.session_state["training_reset_confirmed_msg"]
-                st.rerun()
-
-        if st.session_state.get("training_download_success_msg"):
-            st.success(st.session_state["training_download_success_msg"], icon="📥")
-            st.toast("📥 Pacote de treinamento e configurações baixado com sucesso!", icon="✅")
-            if st.button("✖️ Fechar Aviso de Download", key="btn_dismiss_dl_alert", type="tertiary"):
-                del st.session_state["training_download_success_msg"]
-                st.rerun()
-
-        if st.session_state.get("training_import_success_msg"):
-            st.success(st.session_state["training_import_success_msg"], icon="🎉")
-            st.toast("📤 Pacote de treinamento importado com sucesso!", icon="🎉")
-            if st.button("✖️ Fechar Aviso de Importação", key="btn_dismiss_import_alert", type="tertiary"):
-                del st.session_state["training_import_success_msg"]
-                st.rerun()
-
-        act_col1, act_col2, act_col3 = st.columns(3)
-
-        with act_col1:
-            st.markdown("**🗑️ Apagar Treinamento do Sistema**")
-            st.caption("Reseta todo o histórico de revisões e restaura o modelo ao estágio inicial.")
-            reset_chk_ver = st.session_state.get("reset_chk_ver", 0)
-            confirm_reset = st.checkbox("Confirmo que desejo apagar todo o treinamento", key=f"chk_confirm_reset_{reset_chk_ver}")
-            if st.button("🗑️ Apagar Treinamento", type="secondary", width="stretch", key="btn_reset_train_tab"):
-                if confirm_reset:
-                    feedback_mgr.reset_all_training_data()
-                    auto_trainer.reset_knowledge_base()
-                    if hasattr(auto_trainer, "clear_active_learning_queue"):
-                        auto_trainer.clear_active_learning_queue(include_history=True, delete_clips=True)
-                    if hasattr(feedback_mgr, "clear_active_learning_queue"):
-                        feedback_mgr.clear_active_learning_queue(include_history=True, delete_clips=True)
-                    if "last_auto_train_res" in st.session_state:
-                        del st.session_state["last_auto_train_res"]
-                    st.session_state["training_reset_confirmed_msg"] = (
-                        "✅ **Todos os dados de treinamento foram apagados com sucesso!**\n\n"
-                        "O histórico de revisões por Dan, a base de Decisão dos Shinpans, as calibrações personalizadas, "
-                        "a Fila de Curadoria Ativa (com seus clipes de vídeo) e a Base de Conhecimento do Auto-Trainer "
-                        "foram completamente resetados. "
-                        "O sistema e seus modelos foram restaurados ao estágio inicial padrão de fábrica."
-                    )
-                    st.session_state["reset_chk_ver"] = reset_chk_ver + 1
-                    st.rerun()
-                else:
-                    st.warning("⚠️ Marque a caixa de confirmação acima antes de apagar.")
-
-        with act_col2:
-            st.markdown("**📥 Baixar Treinamento Atual**")
-            st.caption("Exporta pacote completo consolidando revisões por Dan, Decisão dos Shinpans, Base de Conhecimento de IA e **todos os clipes de vídeo das pendências**.")
-            
-            def _export_full_training_pkg_zip() -> bytes:
-                return feedback_mgr.export_training_package_zip(auto_trainer_instance=auto_trainer)
-
-            dl_train_clicked = st.download_button(
-                label="📦 Baixar Pacote Completo (.zip)",
-                data=_export_full_training_pkg_zip,
-                file_name=f"senpai_pacote_treinamento_completo_{int(time.time())}.zip",
-                mime="application/zip",
-                width="stretch",
-                key="btn_dl_train_zip_tab",
-                help="Gera arquivo .zip contendo todo o aprendizado, fila de pendências arbitrais e os vídeos reais (.mp4) de cada lance para transferir ao computador local."
-            )
-            if dl_train_clicked:
-                st.session_state["training_download_success_msg"] = (
-                    "✅ **Download do Pacote Completo (.zip) realizado com sucesso!**\n\n"
-                    "O arquivo ZIP foi gerado e baixado contendo "
-                    "todas as revisões por Dan, Decisões dos Shinpans, fila de pendências da Curadoria Ativa, "
-                    "todos os clipes de vídeo dos lances para auditoria e a Base de Conhecimento do Auto-Trainer."
-                )
-                st.toast("📥 Pacote completo (.zip) baixado com sucesso!", icon="✅")
-                st.success("✅ **Download realizado com sucesso!** Arquivo `.zip` gerado e salvo.", icon="📥")
-            elif st.session_state.get("training_download_success_msg"):
-                st.success("✅ Pacote baixado recentemente.", icon="📥")
-
-            with st.expander("📄 Exportar apenas metadados (.json)", expanded=False):
-                def _export_training_pkg_json() -> str:
-                    pkg_data = feedback_mgr.export_training_package(auto_trainer_instance=auto_trainer)
-                    return json.dumps(pkg_data, indent=2, ensure_ascii=False)
-
-                st.download_button(
-                    label="📥 Baixar Apenas JSON",
-                    data=_export_training_pkg_json,
-                    file_name=f"senpai_training_package_{int(time.time())}.json",
-                    mime="application/json",
-                    width="stretch",
-                    key="btn_dl_train_json_tab"
-                )
-
-        with act_col3:
-            st.markdown("**📤 Carregar Treinamento Baixado**")
-            st.caption("Importa pacote (.zip ou .json) para restaurar revisões, links de streaming, clipes de vídeo e aprendizado da IA.")
-            imported_file = st.file_uploader(
-                "Selecione pacote (.zip ou .json)",
-                type=["zip", "json"],
-                max_upload_size=get_max_upload_size_mb(),
-                key="import_pkg_file_tab"
-            )
-            if imported_file is not None:
-                max_pkg_mb = get_max_upload_size_mb()
-                if getattr(imported_file, "size", 0) > max_pkg_mb * 1024 * 1024:
-                    limit_label = f"{max_pkg_mb // 1024} GB" if max_pkg_mb >= 1024 else f"{max_pkg_mb} MB"
-                    st.error(f"❌ O pacote excede o limite máximo permitido de {limit_label}.")
-                    st.stop()
-                st.info(f"📄 **Arquivo selecionado:** `{imported_file.name}` ({imported_file.size / 1024:.1f} KB)\n\nPronto para restauração. Clique no botão abaixo para restaurar configurações, descompactar clipes e retreinar o modelo.")
-                if st.button("📤 Importar e Retreinar Modelo", type="primary", width="stretch", key="btn_import_train_tab"):
-                    with st.spinner("⏳ Processando e aplicando pacote de treinamento..."):
-                        try:
-                            import_res = feedback_mgr.import_training_package_archive(imported_file, auto_trainer_instance=auto_trainer)
-                            clips_count_msg = f"• **{import_res.get('clips_extracted_count', 0)}** clipes de vídeo (.mp4) descompactados e prontos para curadoria.\n" if import_res.get('clips_extracted_count') else ""
-                            al_count_msg = f"• **{import_res.get('active_learning_queue_imported', 0)}** pendências integradas à Fila de Curadoria Ativa.\n" if import_res.get('active_learning_queue_imported') else ""
-                            success_msg = (
-                                f"🎉 **Pacote de Treinamento e Configurações importado com sucesso!**\n\n"
-                                f"• **{import_res['new_items_added']}** novas revisões por Dan/Shinpans integradas ao modelo.\n"
-                                f"• **{import_res.get('shinpan_videos_imported', 0)}** links de streaming / vídeos de Shinpans registrados.\n"
-                                f"• **{import_res.get('imported_trainings_count', 0)}** sessões integradas ao histórico de treinamento.\n"
-                                f"{al_count_msg}"
-                                f"{clips_count_msg}"
-                                f"• Base de Conhecimento de IA e 14 modalidades pedagógicas recalibradas com sucesso.\n"
-                                f"• **Dan Médio Atual:** {import_res['average_dan_now']}."
-                            )
-                            st.session_state["training_import_success_msg"] = success_msg
-                            st.toast("🎉 Pacote importado e configurações aplicadas com sucesso!", icon="✅")
-                            st.rerun()
-                        except Exception as ex:
-                            st.error(f"❌ Erro ao importar pacote de treinamento: {ex}")
-            elif st.session_state.get("training_import_success_msg"):
-                st.success("✅ Pacote importado com sucesso.", icon="🎉")
+        # Apagar / baixar / carregar: mesma lista do que é treinamento (src/engine/training_dataset.py)
+        from src.utils.training_dataset_panel import render_training_dataset_panel
+        render_training_dataset_panel(feedback_mgr=feedback_mgr, auto_trainer=auto_trainer)
 
         # ----------------------------------------------------------------------
-        # SEÇÃO: TREINAMENTO AUTOMÁTICO POR IA (WEB & VÍDEO KNOWLEDGE INGESTION)
+        # MODALIDADES OFICIAIS DE TREINAMENTO (Tabela separada com métrica de acurácia)
         # ----------------------------------------------------------------------
         st.markdown("---")
-        st.markdown("#### 🤖 Treinamento Automático por Inteligência Artificial (Web & Vídeo)")
+        st.markdown("#### 🥋 Modalidades Oficiais de Treinamento")
         st.caption(
-            "O SenpAI realiza busca e mineração autônoma de diretrizes técnicas (FIK, AJKF/ZNKR, artigos de biomecânica "
-            "e vídeos de referência na internet) para aprender e recalibrar a avaliação das 14 modalidades pedagógicas, "
-            "lutas (Shiai), detecção em tempo real ou treinamento geral, conforme a necessidade mais latente do sistema."
+            "Pesos biomecânicos dos 3 Pilares (Movimentação, Precisão e Constância), cadência ideal "
+            "e métrica de acurácia de detecção/classificação para cada uma das 14 modalidades oficiais de Kendo."
         )
 
-        with st.container(border=True):
-            at_col1, at_col2 = st.columns([1.5, 1])
-
-            with at_col1:
-                scope_keys = list(AUTO_TRAINING_SCOPES.keys())
-                sel_scope_key_raw = st.selectbox(
-                    "🎯 Foco / Escopo do Treinamento:",
-                    options=scope_keys,
-                    index=0,
-                    format_func=lambda k: AUTO_TRAINING_SCOPES.get(str(k), {}).get("name", str(k)),
-                    key="auto_train_scope_select",
-                    help="Selecione a área que deseja treinar ou utilize a detecção automática da necessidade mais latente."
+        modalities_data = auto_trainer.get_modalities_reference()
+        if modalities_data:
+            mod_table_rows = []
+            for m in modalities_data:
+                m_name = m.get("name", "")
+                m_cat = m.get("category", "")
+                m_pillars = f"<span style='color: #F8FAFC;'>M: {m.get('pillar_movement_pct', 35)}%</span> | <span style='color: #38BDF8;'>P: {m.get('pillar_precision_pct', 35)}%</span> | <span style='color: #A78BFA;'>C: {m.get('pillar_constancy_pct', 30)}%</span>"
+                m_cadence = str(m.get("cadence_optimal", "20-60 cpm"))
+                m_acc_str = m.get("accuracy_display", "—")
+                m_status = m.get("accuracy_status", "Calibrada")
+                badge_color = "#10B981" if "Modelo" in m_status or "Dataset" in m_status else "#38BDF8"
+                m_acc_badge = (
+                    f"<span style='background-color: rgba(56, 189, 248, 0.15); color: {badge_color}; "
+                    f"padding: 3px 8px; border-radius: 6px; font-weight: 700; font-family: monospace; font-size: 12px;'>"
+                    f"🎯 {m_acc_str}</span> "
+                    f"<span style='color: #64748B; font-size: 11px;'>({m_status})</span>"
                 )
-                sel_scope_key: str = sel_scope_key_raw or "latent_need"
-                scope_desc = AUTO_TRAINING_SCOPES.get(sel_scope_key, {}).get("description", "")
-                st.caption(f"ℹ️ {scope_desc}")
-
-            with at_col2:
-                duration_opts = ["1", "5", "10", "15", "30", "60", "120", "custom"]
-                sel_dur_opt_raw = st.selectbox(
-                    "⏱️ Tempo Determinado para o Treinamento:",
-                    options=duration_opts,
-                    index=1,
-                    format_func=lambda x: {
-                        "1": "1 minuto (Teste Rápido)",
-                        "5": "5 minutos (Padrão)",
-                        "10": "10 minutos (Recomendado)",
-                        "15": "15 minutos (Aprofundado)",
-                        "30": "30 minutos (Intensivo)",
-                        "60": "1 hora (Completo)",
-                        "120": "2 horas (Especialista)",
-                        "custom": "⚙️ Personalizado (definir minutos)"
-                    }.get(str(x), str(x)),
-                    key="auto_train_duration_select",
-                    help="Tempo limite máximo para o ciclo de pesquisa, mineração cinemática e otimização por IA."
+                mod_table_rows.append(
+                    f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.08);'>"
+                    f"<td style='padding: 10px 14px; font-weight: 700; color: #F8FAFC;'>{m_name}</td>"
+                    f"<td style='padding: 10px 14px; color: #CBD5E1;'>{m_cat}</td>"
+                    f"<td style='padding: 10px 14px; font-size: 12px; font-family: monospace;'>{m_pillars}</td>"
+                    f"<td style='padding: 10px 14px; color: #94A3B8; font-size: 12px;'>{m_cadence}</td>"
+                    f"<td style='padding: 10px 14px;'>{m_acc_badge}</td>"
+                    f"</tr>"
                 )
-                sel_dur_opt: str = sel_dur_opt_raw or "5"
 
-                if sel_dur_opt == "custom":
-                    custom_min_val = st.number_input(
-                        "Duração em Minutos:",
-                        min_value=1,
-                        max_value=480,
-                        value=20,
-                        step=1,
-                        key="auto_train_custom_min"
-                    )
-                    effective_duration_min: float = float(custom_min_val or 20)
-                else:
-                    effective_duration_min: float = float(sel_dur_opt)
-
-                if effective_duration_min >= 10.0:
-                    st.caption(
-                        f"⏱️ **Pesquisa Ativa Contínua ({int(effective_duration_min)} min):** O motor de IA pesquisará referências técnicas e processará amostras biomecânicas durante todo o período programado, com gravação incremental contínua."
-                    )
-
-            # Indicador de Acurácia Atual Acumulada do Escopo Selecionado
-            scope_acc_data = auto_trainer.get_scope_current_accuracy(sel_scope_key)
-            c_acc = scope_acc_data["current_accuracy"]
-            b_acc = scope_acc_data["initial_baseline_accuracy"]
-            g_acc = scope_acc_data["gain_pct"]
-            s_count = scope_acc_data["sessions_count"]
-            tot_trains = scope_acc_data["total_system_auto_trainings"]
-
-            if s_count > 0:
-                acc_badge = f"<span style='background: rgba(16, 185, 129, 0.2); color: #34D399; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;'>🟢 Calibrado (+{g_acc:.1f}% em {s_count} treinos)</span>"
-            elif tot_trains > 0:
-                acc_badge = f"<span style='background: rgba(56, 189, 248, 0.2); color: #38BDF8; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;'>🔵 Em Calibração ({tot_trains} treinos globais)</span>"
+            mod_tbody_html = "".join(mod_table_rows)
+            mod_table_html = (
+                "<div style='overflow-x: auto; border: 1px solid #334155; border-radius: 8px; background: #0F172A; margin-top: 10px; margin-bottom: 16px;'>"
+                "<table style='width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;'>"
+                "<thead>"
+                "<tr style='background: #1E293B; color: #A5B4FC; font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;'>"
+                "<th style='padding: 10px 14px;'>🥋 Modalidade Oficial & Kanji</th>"
+                "<th style='padding: 10px 14px;'>🏷️ Categoria Pedagógica</th>"
+                "<th style='padding: 10px 14px;'>⚖️ 3 Pilares (M / P / C)</th>"
+                "<th style='padding: 10px 14px;'>⏱️ Cadência Ideal</th>"
+                "<th style='padding: 10px 14px;'>🎯 Acurácia Medida / Estimada</th>"
+                "</tr>"
+                "</thead>"
+                f"<tbody>{mod_tbody_html}</tbody>"
+                "</table>"
+                "</div>"
+            )
+            if hasattr(st, "html"):
+                st.html(mod_table_html)
             else:
-                acc_badge = "<span style='background: rgba(245, 158, 11, 0.2); color: #FBBF24; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;'>⚠️ Fase Inicial (< 50% - Falsos Positivos)</span>"
+                st.markdown(mod_table_html, unsafe_allow_html=True)
 
-            bar_width_pct = min(100, max(0, int(c_acc)))
-            bar_color_gradient = "linear-gradient(90deg, #F59E0B, #EF4444)" if c_acc < 45.0 else ("linear-gradient(90deg, #38BDF8, #F59E0B)" if c_acc < 65.0 else "linear-gradient(90deg, #38BDF8, #4ADE80)")
-            st.markdown(
-                f"""
-                <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 10px 14px; margin-top: 4px; margin-bottom: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                        <span style="font-size: 0.85rem; color: #E2E8F0; font-weight: 600;">
-                            🎯 <b>Acurácia Atual Deste Escopo:</b> <span style="color: #38BDF8; font-weight: 800; font-family: monospace; font-size: 1.05rem;">{c_acc:.1f}%</span>
-                        </span>
-                        {acc_badge}
-                    </div>
-                    <div style="background: #334155; border-radius: 4px; height: 6px; overflow: hidden; width: 100%;">
-                        <div style="width: {bar_width_pct}%; background: {bar_color_gradient}; height: 100%; border-radius: 4px;"></div>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True
+            st.caption(
+                "💡 **Legenda dos 3 Pilares:** **M** = Movimentação (Postura, Coluna, Calcanhar Esquerdo) | "
+                "**P** = Precisão (Trajetória, Hasuji, Ki-Ken-Tai-Ichi) | **C** = Constância (Cadência, Regularidade e Resistência)."
             )
 
-            # Diagnóstico prévio em tempo real quando selecionado 'Necessidade Mais Latente' (Sequência 100% Automática)
-            latent_strategy = "auto"
-            if sel_scope_key == "latent_need":
-                diag_info = auto_trainer.diagnose_latent_need(strategy="auto")
-                diag_reasons_str = " ".join(diag_info.get("diagnosis_reasons", []))
-                seq_step_num = diag_info.get("sequence_step", 1)
-                seq_step_title = diag_info.get("sequence_step_name", "1º Menor Percentual de Aprendizado")
-
-                st.markdown(
-                    f"""
-                    <div style="background: linear-gradient(135deg, rgba(30, 27, 75, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%); border: 1.5px solid #6366F1; border-radius: 8px; padding: 12px 16px; margin-top: 6px; margin-bottom: 12px; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.15);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; border-bottom: 1px solid rgba(99, 102, 241, 0.25); padding-bottom: 4px;">
-                            <span style="color: #A5B4FC; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px;">
-                                🔄 SEQUÊNCIA AUTOMÁTICA DE APRENDIZADO
-                            </span>
-                            <span style="background: rgba(99, 102, 241, 0.3); color: #C7D2FE; border: 1px solid #6366F1; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700;">
-                                Etapa {seq_step_num}/3: {seq_step_title}
-                            </span>
-                        </div>
-                        <div style="color: #FFFFFF; font-size: 13.5px; margin-bottom: 5px;">
-                            🎯 <b>Foco Eleito Automaticamente:</b> <span style="color: #38BDF8; font-weight: 700;">{diag_info['scope_name']}</span>
-                        </div>
-                        <div style="color: #94A3B8; font-size: 11.5px; line-height: 1.45;">
-                            <b>Ciclo Contínuo:</b> 1º Menor Acurácia ➔ 2º Princípios Gerais de Kendo ➔ 3º Modalidade Randômica (Exploração).<br>
-                            <i>{diag_reasons_str}</i>
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-
-            st.markdown("**⚙️ Fontes e Profundidade da Pesquisa por IA:**")
-            opt_c1, opt_c2, opt_c3 = st.columns(3)
-            with opt_c1:
-                inc_vid_chk = st.checkbox("🎥 Análise de Vídeo e Cinemática", value=True, key="chk_auto_vid_opt")
-            with opt_c2:
-                inc_txt_chk = st.checkbox("📖 Manuais Oficiais FIK / ZNKR", value=True, key="chk_auto_txt_opt")
-            with opt_c3:
-                depth_sel_raw = st.selectbox(
-                    "Profundidade da Síntese",
-                    options=["rapido", "padrao", "profundo"],
-                    index=1,
-                    format_func=lambda x: {"rapido": "⚡ Rápida", "padrao": "⚖️ Padrão", "profundo": "🔬 Profunda (Varredura Completa)"}.get(str(x), str(x)),
-                    key="sel_auto_depth_opt"
-                )
-                depth_sel: str = depth_sel_raw or "padrao"
-
-            # Botão de Execução
-            # Exibição e controle de Treinamento Ativo
-            if auto_trainer.is_running():
-                ckpt = auto_trainer.load_checkpoint() or {}
-                t_dur = max(1.0, float(ckpt.get("target_duration_sec") or (effective_duration_min * 60.0)))
-                elap_s = float(ckpt.get("elapsed_seconds") or 0.0)
-                rem_s = max(0.0, float(ckpt.get("remaining_seconds") or (t_dur - elap_s)))
-                pct = int(min(100, max(0, (elap_s / t_dur) * 100)))
-
-                st.progress(pct)
-                acc_val = float(ckpt.get("current_accuracy") or 75.0)
-                init_acc_val = float(ckpt.get("initial_accuracy") or 75.0)
-                acc_gain = round(acc_val - init_acc_val, 1)
-                gain_signal = f"+{acc_gain:.1f}%" if acc_gain >= 0 else f"{acc_gain:.1f}%"
-                samples = int(ckpt.get("samples_processed") or 0)
-                stage_lbl = str(ckpt.get("current_stage") or "Mineração e Aprendizado Biomecânico")
-                subtask_lbl = str(ckpt.get("current_subtask") or "Pesquisa Ativa Contínua")
-
-                def _fmt_sec(s_val: float) -> str:
-                    if s_val >= 60:
-                        m = int(s_val // 60)
-                        s = int(s_val % 60)
-                        return f"{m}m {s:02d}s"
-                    return f"{s_val:.1f}s"
-
-                st.markdown(
-                    f"**Etapa Atual:** `{stage_lbl}`\n\n"
-                    f"🥋 **Aprendizado Ativo:** *{subtask_lbl}*\n\n"
-                    f"⏱️ **Decorrido:** `{_fmt_sec(elap_s)}` &nbsp;|&nbsp; "
-                    f"⏳ **Restante:** `{_fmt_sec(rem_s)}` &nbsp;|&nbsp; "
-                    f"📊 **Progresso:** `{pct}%` &nbsp;|&nbsp; "
-                    f"🔬 **Amostras Biomecânicas:** `{samples:,}`"
-                )
-                st.metric("🎯 Acurácia Biomecânica Estimada", f"{acc_val:.1f}%", gain_signal)
-
-                recent_logs = ckpt.get("training_logs", [])
-                if recent_logs:
-                    logs_md = "\n".join(f"- {log_line}" for log_line in recent_logs[-8:])
-                    st.markdown(f"**Logs da Execução de IA:**\n{logs_md}")
-
-                col_stop, _ = st.columns([1.2, 2])
-                with col_stop:
-                    if st.button("⏹️ Parar Treinamento e Salvar Agora", type="secondary", use_container_width=True, key="btn_stop_auto_train"):
-                        auto_trainer.request_stop()
-                        st.toast("Salvando e consolidando treinamento...", icon="💾")
-                        time.sleep(1.0)
-                        st.rerun()
-
-                time.sleep(1.5)
-                st.rerun()
-            else:
-                # Sincroniza resultado final assim que o treino em background termina
-                last_bg_res = auto_trainer.get_last_result()
-                if last_bg_res and st.session_state.get("last_auto_train_res") != last_bg_res:
-                    st.session_state["last_auto_train_res"] = last_bg_res
-
-                btn_start_train = st.button(
-                    "🚀 Iniciar Procura por IA & Treinamento Automático",
-                    type="primary",
-                    width="stretch",
-                    key="btn_run_auto_trainer"
-                )
-
-                if btn_start_train:
-                    started = auto_trainer.start_training_thread(
-                        scope_key=sel_scope_key,
-                        duration_minutes=effective_duration_min,
-                        intensity=depth_sel,
-                        include_video=inc_vid_chk,
-                        include_text_guidelines=inc_txt_chk,
-                        latent_strategy=latent_strategy
-                    )
-                    if started:
-                        st.toast(f"🚀 Treinamento de {int(effective_duration_min)} min iniciado! Executando pesquisa contínua...", icon="🥋")
-                    else:
-                        st.info("ℹ️ O treinamento já está em execução em segundo plano.")
-                    time.sleep(0.3)
-                    st.rerun()
-
-            # Exibição dos resultados do último treinamento se disponível
-            if "last_auto_train_res" in st.session_state:
-                last_res = st.session_state["last_auto_train_res"]
-                st.markdown("---")
-                if last_res.get("status") == "interrupted_salvaged":
-                    st.warning(
-                        f"🛡️ **Treinamento Interrompido & Aprendizado 100% Salvo:** "
-                        f"Ocorreu uma interrupção durante o ciclo, mas todo o conhecimento obtido "
-                        f"({len(last_res.get('sources_consulted', []))} fontes mineradas, "
-                        f"{last_res.get('samples_processed', 0)} amostras biomecânicas) "
-                        f"foi consolidado e gravado com segurança na Base de Conhecimento do SenpAI."
-                    )
-                st.markdown(f"#### 🎉 Resultado do Último Treinamento: **{last_res.get('scope_name', '')}**")
-                
-                r_c1, r_c2, r_c3, r_c4 = st.columns(4)
-                r_c1.metric("Acurácia Final", f"{last_res.get('final_accuracy_pct', 0.0)}%")
-                r_c2.metric("Ganho de Precisão", f"+{last_res.get('accuracy_gain_pct', 0.0)}%")
-                r_c3.metric("Tempo Total", f"{last_res.get('duration_seconds_actual', 0.0)}s")
-                r_c4.metric("Fontes Mineradas", len(last_res.get("sources_consulted", [])))
-
-                if last_res.get("improvements_summary"):
-                    st.markdown("**Melhorias Biomecânicas e Calibrações Aplicadas:**")
-                    for imp in last_res["improvements_summary"]:
-                        st.markdown(f"- ✅ {imp}")
-
-                with st.expander("📖 Fontes Técnicas & Corpus de Vídeos Consultados", expanded=False):
-                    for src in last_res.get("sources_consulted", []):
-                        st.markdown(f"- **[{src.get('type', 'Referência')}]** {src.get('title', '')}")
-
-                with st.expander("📜 Log Detalhado do Treinamento por IA", expanded=False):
-                    for log_l in last_res.get("training_logs", []):
-                        st.markdown(f"- `{log_l}`")
-
-                # Geração de Relatório em Markdown para Download
-                now_str = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-                report_md = f"""# Relatório de Treinamento Automático por IA - SenpAI
-**Data:** {now_str}  
-**Escopo / Foco do Treinamento:** {last_res.get('scope_name', '')}  
-**Duração Solicitada:** {last_res.get('duration_minutes_requested', 0)} min  
-**Duração Efetiva:** {last_res.get('duration_seconds_actual', 0)}s  
-**Acurácia Inicial:** {last_res.get('initial_accuracy_pct', 0)}%  
-**Acurácia Final Alcançada:** {last_res.get('final_accuracy_pct', 0)}% (+{last_res.get('accuracy_gain_pct', 0)}%)  
-
-## Melhorias Implementadas
-"""
-                for imp in last_res.get("improvements_summary", []):
-                    report_md += f"- {imp}\n"
-
-                report_md += "\n## Fontes Consultadas\n"
-                for src in last_res.get("sources_consulted", []):
-                    report_md += f"- [{src.get('type')}] {src.get('title')}\n"
-
-                report_md += "\n## Histórico de Logs da IA\n"
-                for l in last_res.get("training_logs", []):
-                    report_md += f"- {l}\n"
-
-                dl_c1, dl_c2 = st.columns(2)
-                with dl_c1:
-                    st.download_button(
-                        "📥 Baixar Relatório do Treinamento (.md)",
-                        data=report_md,
-                        file_name=f"senpai_auto_training_report_{int(time.time())}.md",
-                        mime="text/markdown",
-                        width="stretch",
-                        key="btn_dl_auto_train_md"
-                    )
-                with dl_c2:
-                    st.download_button(
-                        "📥 Baixar Base de Conhecimento (.json)",
-                        data=lambda: json.dumps(auto_trainer.load_knowledge_base(), indent=2, ensure_ascii=False),
-                        file_name=f"senpai_ai_knowledge_base_{int(time.time())}.json",
-                        mime="application/json",
-                        width="stretch",
-                        key="btn_dl_auto_train_kb"
-                    )
-
         # ----------------------------------------------------------------------
-        # PAINEL DE EVOLUÇÃO DOS TREINAMENTOS AUTOMATIZADOS POR IA
+        # 1. CORPUS TÉCNICO DE REFERÊNCIA E COLETA NA INTERNET (Separado das Modalidades)
         # ----------------------------------------------------------------------
         st.markdown("---")
-        st.markdown("#### 📈 Painel de Evolução dos Treinamentos Automatizados")
+        st.markdown("#### 📖 1. Corpus Técnico de Referência e Coleta na Internet")
         st.caption(
-            "Acompanhe o histórico de evolução, ganhos de acurácia biomecânica, tempo acumulado de auto-aprendizado "
-            "e o corpus completo de diretrizes técnicas e vídeos já consultados pelo modelo de IA."
+            "Regulamentos oficiais canônicos (FIK / AJKF / Manuais de Arbitragem) e sistema autônomo de busca e coleta de vídeos e regras na internet."
         )
 
-        evo_stats = auto_trainer.get_evolution_statistics()
+        # Coleta ao vivo (textos na web + vídeos no YouTube): sempre visível enquanto roda
+        try:
+            from src.utils.internet_collection_panel import render_live_collection
+            render_live_collection()
+        except Exception as err:
+            st.warning(f"Coleta na internet indisponível: {err}")
 
-        # Métricas de Alto Nível de Evolução
-        ev_c1, ev_c2, ev_c3, ev_c4 = st.columns(4)
-        ev_c1.metric("Ciclos de Auto-Treino", evo_stats["total_auto_trainings"])
-        ev_c2.metric("Tempo Total Acumulado", evo_stats["total_duration_formatted"])
-        ev_c3.metric(
-            "Acurácia Média Atual",
-            f"{evo_stats['average_accuracy_pct']}%",
-            delta=f"+{evo_stats['total_gain_pct']}% acumulado" if evo_stats["total_gain_pct"] > 0 else None
-        )
-        ev_c4.metric("Fontes & Vídeos Indexados", evo_stats["total_sources_indexed"])
-
-        # Abas de visualização detalhada do painel de evolução
-        tab_evo_timeline, tab_evo_modalities, tab_evo_sources, tab_evo_dist = st.tabs([
-            "📊 Evolução & Histórico de Sessões",
-            "🥋 Sumário de Acurácia por Modalidade",
-            "📖 Informações Já Consultadas & Corpus",
-            "🎯 Distribuição por Foco de Treinamento"
+        tab_ref_corpus, tab_ref_internet = st.tabs([
+            "📖 Corpus Técnico de Diretrizes",
+            "🌐 Catálogo e Configuração da Coleta",
         ])
 
-        modalities_data = evo_stats.get("modalities_accuracy_summary", [])
-        if not modalities_data:
-            modalities_data = auto_trainer.get_modalities_accuracy_summary()
-
-        with tab_evo_timeline:
-            if evo_stats["accuracy_timeline"]:
-                st.markdown("**Progressão da Acurácia do Modelo ao Longo dos Treinamentos:**")
-                table_rows = []
-                for item in evo_stats["accuracy_timeline"]:
-                    acc_raw = item.get("Acurácia (%)", 0.0)
-                    try:
-                        acc_val_num = float(acc_raw)
-                        acc_str = f"{acc_val_num:.1f}%"
-                    except Exception:
-                        acc_str = f"{acc_raw}%"
-                    gain_str = str(item.get("Ganho (%)", "+0.0%"))
-                    s_name = str(item.get('Sessão', ''))
-                    d_time = str(item.get('Data/Hora', ''))
-                    scope_t = str(item.get('Escopo', ''))
-                    dur_t = str(item.get('Duração', ''))
-                    table_rows.append(
-                        f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.08);'>"
-                        f"<td style='padding: 10px 14px; font-weight: 700; color: #F8FAFC;'>{s_name}</td>"
-                        f"<td style='padding: 10px 14px; color: #94A3B8;'>{d_time}</td>"
-                        f"<td style='padding: 10px 14px; color: #38BDF8; font-weight: 800; font-family: monospace;'>{acc_str}</td>"
-                        f"<td style='padding: 10px 14px;'><span style='background: rgba(34,197,94,0.15); color: #4ADE80; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 12px;'>{gain_str}</span></td>"
-                        f"<td style='padding: 10px 14px; color: #E2E8F0;'>{scope_t}</td>"
-                        f"<td style='padding: 10px 14px; color: #94A3B8; font-family: monospace;'>{dur_t}</td>"
-                        f"</tr>"
-                    )
-
-                tbody_html = "".join(table_rows)
-                table_html = (
-                    "<div style='overflow-x: auto; border: 1px solid #334155; border-radius: 8px; background: #0F172A; margin-top: 8px; margin-bottom: 14px;'>"
-                    "<table style='width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;'>"
-                    "<thead>"
-                    "<tr style='background: #1E293B; color: #A5B4FC; font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;'>"
-                    "<th style='padding: 10px 14px;'>Sessão</th>"
-                    "<th style='padding: 10px 14px;'>Data/Hora</th>"
-                    "<th style='padding: 10px 14px;'>Acurácia Estimada</th>"
-                    "<th style='padding: 10px 14px;'>Ganho</th>"
-                    "<th style='padding: 10px 14px;'>Escopo / Foco</th>"
-                    "<th style='padding: 10px 14px;'>Duração</th>"
-                    "</tr>"
-                    "</thead>"
-                    f"<tbody>{tbody_html}</tbody>"
-                    "</table>"
-                    "</div>"
-                )
-                if hasattr(st, "html"):
-                    st.html(table_html)
-                else:
-                    st.markdown(table_html, unsafe_allow_html=True)
-            else:
-                st.info("ℹ️ Nenhum treinamento automático foi executado ainda. Inicie um ciclo acima para visualizar a curva de evolução.")
-
-            # Sumário Rápido de Acurácia das Modalidades diretamente na aba de Histórico
-            if modalities_data:
-                with st.expander("🥋 Ver Sumário Rápido da Acurácia Atual das 14 Modalidades Pedagógicas", expanded=False):
-                    st.caption("Resumo dinâmico da acurácia e calibração biomecânica em todas as 14 modalidades oficiais:")
-                    fast_rows = []
-                    for m in modalities_data:
-                        fast_rows.append(
-                            f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.06);'>"
-                            f"<td style='padding: 8px 12px; font-weight: 700; color: #F1F5F9;'>{m['name']}</td>"
-                            f"<td style='padding: 8px 12px; color: #94A3B8;'>{m['category']}</td>"
-                            f"<td style='padding: 8px 12px; color: #38BDF8; font-weight: 800; font-family: monospace;'>{m['current_accuracy']:.1f}%</td>"
-                            f"<td style='padding: 8px 12px;'><span style='background: rgba(34,197,94,0.15); color: #4ADE80; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px;'>{m['gain_formatted']}</span></td>"
-                            f"<td style='padding: 8px 12px;'><span style='background: {m['status_badge_bg']}; color: {m['status_color']}; padding: 2px 6px; border-radius: 4px; font-weight: 700; font-size: 11px;'>{m['status']}</span></td>"
-                            f"</tr>"
-                        )
-                    fast_table_html = (
-                        "<div style='overflow-x: auto; border: 1px solid #334155; border-radius: 8px; background: #0F172A; margin-top: 6px;'>"
-                        "<table style='width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;'>"
-                        "<thead>"
-                        "<tr style='background: #1E293B; color: #A5B4FC; font-weight: 800; text-transform: uppercase; font-size: 10px;'>"
-                        "<th style='padding: 8px 12px;'>Modalidade</th>"
-                        "<th style='padding: 8px 12px;'>Categoria</th>"
-                        "<th style='padding: 8px 12px;'>Acurácia</th>"
-                        "<th style='padding: 8px 12px;'>Ganho</th>"
-                        "<th style='padding: 8px 12px;'>Status</th>"
-                        "</tr>"
-                        "</thead>"
-                        f"<tbody>{''.join(fast_rows)}</tbody>"
-                        "</table>"
-                        "</div>"
-                    )
-                    if hasattr(st, "html"):
-                        st.html(fast_table_html)
-                    else:
-                        st.markdown(fast_table_html, unsafe_allow_html=True)
-
-        with tab_evo_modalities:
-            st.markdown("##### 🥋 Sumário de Acurácia Atual para Cada Modalidade de Aprendizado")
-            st.caption(
-                "Acompanhe o nível atual de precisão do modelo, ganhos acumulados e pesos biomecânicos dos 3 Pilares "
-                "(Movimentação, Precisão e Constância) para todas as 14 modalidades oficiais de treinamento de Kendo (com Kanjis)."
-            )
-
-            # Cartões de Métricas das Modalidades
-            mod_kpi_c1, mod_kpi_c2, mod_kpi_c3, mod_kpi_c4 = st.columns(4)
-            avg_mod_acc = evo_stats.get("average_modality_accuracy_pct", 90.0)
-            best_mod = modalities_data[0] if modalities_data else {"name": "Suburi", "current_accuracy": 93.2}
-            count_high_acc = sum(1 for m in modalities_data if m.get("current_accuracy", 0) >= 90.0)
-
-            mod_kpi_c1.metric("Modalidades Oficiais", f"{len(modalities_data)} de 14")
-            mod_kpi_c2.metric("Acurácia Média das Modalidades", f"{avg_mod_acc:.1f}%")
-            mod_kpi_c3.metric("Maior Acurácia Atual", f"{best_mod['current_accuracy']:.1f}%", help=f"Modalidade: {best_mod['name']}")
-            mod_kpi_c4.metric("Nível Avançado (≥90%)", f"{count_high_acc} / {len(modalities_data)}")
-
-            if modalities_data:
-                mod_table_rows = []
-                for m in modalities_data:
-                    m_name = m.get("name", "")
-                    m_cat = m.get("category", "")
-                    m_acc = float(m.get("current_accuracy", 88.0))
-                    m_gain = str(m.get("gain_formatted", "+0.0%"))
-                    m_status = str(m.get("status", "Calibrado"))
-                    m_status_col = str(m.get("status_color", "#38BDF8"))
-                    m_status_bg = str(m.get("status_badge_bg", "rgba(56,189,248,0.15)"))
-                    m_pillars = f"<span style='color: #F8FAFC;'>M: {m.get('pillar_movement_pct', 35)}%</span> | <span style='color: #38BDF8;'>P: {m.get('pillar_precision_pct', 35)}%</span> | <span style='color: #A78BFA;'>C: {m.get('pillar_constancy_pct', 30)}%</span>"
-                    m_cadence = str(m.get("cadence_optimal", "20-60 cpm"))
-                    m_sessions = f"{m.get('sessions_count', 0)} ({m.get('samples_estimated', 0)} amostras)"
-
-                    # Barra visual de progresso da acurácia
-                    bar_pct = min(100, max(0, int(m_acc)))
-                    progress_bar_html = (
-                        f"<div style='display: flex; align-items: center; gap: 8px;'>"
-                        f"<span style='color: #38BDF8; font-weight: 800; font-family: monospace; min-width: 48px;'>{m_acc:.1f}%</span>"
-                        f"<div style='flex: 1; background: #334155; border-radius: 4px; height: 6px; overflow: hidden; min-width: 60px;'>"
-                        f"<div style='width: {bar_pct}%; background: linear-gradient(90deg, #38BDF8, #4ADE80); height: 100%; border-radius: 4px;'></div>"
-                        f"</div>"
-                        f"</div>"
-                    )
-
-                    mod_table_rows.append(
-                        f"<tr style='border-bottom: 1px solid rgba(255,255,255,0.08);'>"
-                        f"<td style='padding: 10px 14px; font-weight: 700; color: #F8FAFC;'>{m_name}</td>"
-                        f"<td style='padding: 10px 14px; color: #CBD5E1;'>{m_cat}</td>"
-                        f"<td style='padding: 10px 14px;'>{progress_bar_html}</td>"
-                        f"<td style='padding: 10px 14px;'><span style='background: rgba(34,197,94,0.15); color: #4ADE80; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 12px;'>{m_gain}</span></td>"
-                        f"<td style='padding: 10px 14px; font-size: 12px; font-family: monospace;'>{m_pillars}</td>"
-                        f"<td style='padding: 10px 14px; color: #94A3B8; font-size: 12px;'>{m_cadence}</td>"
-                        f"<td style='padding: 10px 14px;'><span style='background: {m_status_bg}; color: {m_status_col}; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 12px;'>{m_status}</span></td>"
-                        f"<td style='padding: 10px 14px; color: #94A3B8; font-size: 12px;'>{m_sessions}</td>"
-                        f"</tr>"
-                    )
-
-                mod_tbody_html = "".join(mod_table_rows)
-                mod_table_html = (
-                    "<div style='overflow-x: auto; border: 1px solid #334155; border-radius: 8px; background: #0F172A; margin-top: 10px; margin-bottom: 16px;'>"
-                    "<table style='width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;'>"
-                    "<thead>"
-                    "<tr style='background: #1E293B; color: #A5B4FC; font-weight: 800; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px;'>"
-                    "<th style='padding: 10px 14px;'>🥋 Modalidade Oficial & Kanji</th>"
-                    "<th style='padding: 10px 14px;'>🏷️ Categoria Pedagógica</th>"
-                    "<th style='padding: 10px 14px; min-width: 150px;'>🎯 Acurácia Atual (%)</th>"
-                    "<th style='padding: 10px 14px;'>📈 Ganho</th>"
-                    "<th style='padding: 10px 14px;'>⚖️ 3 Pilares (M / P / C)</th>"
-                    "<th style='padding: 10px 14px;'>⏱️ Cadência Ideal</th>"
-                    "<th style='padding: 10px 14px;'>🛡️ Status</th>"
-                    "<th style='padding: 10px 14px;'>🔄 Ciclos</th>"
-                    "</tr>"
-                    "</thead>"
-                    f"<tbody>{mod_tbody_html}</tbody>"
-                    "</table>"
-                    "</div>"
-                )
-                if hasattr(st, "html"):
-                    st.html(mod_table_html)
-                else:
-                    st.markdown(mod_table_html, unsafe_allow_html=True)
-
-                st.caption(
-                    "💡 **Legenda dos 3 Pilares:** **M** = Movimentação (Postura, Coluna, Calcanhar Esquerdo) | "
-                    "**P** = Precisão (Trajetória, Hasuji, Ki-Ken-Tai-Ichi) | **C** = Constância (Cadência, Regularidade e Resistência)."
-                )
-
-                st.markdown("---")
-                st.markdown("#### 📖 O Que o SenpAI Já Aprendeu sobre Cada Modalidade")
-                st.caption("Consulte detalhadamente os princípios técnicos consolidados, perfil biomecânico de tolerâncias e fontes mineradas pela IA:")
-
-                mod_inspect_keys = [m.get("key", "") for m in modalities_data if m.get("key")]
-                if not mod_inspect_keys:
-                    mod_inspect_keys = list(TRAINING_MODALITIES_METADATA.keys())
-
-                sel_inspect_key_raw = st.selectbox(
-                    "Selecione a Modalidade para Inspecionar o Conhecimento Acumulado:",
-                    options=mod_inspect_keys,
-                    format_func=lambda k: f"{TRAINING_MODALITIES_METADATA.get(k, {}).get('name', k)} — {TRAINING_MODALITIES_METADATA.get(k, {}).get('category', '')}",
-                    key="sel_modality_inspect_box"
-                )
-                sel_inspect_key = sel_inspect_key_raw or "suburi"
-                mod_learned = auto_trainer.get_modality_learned_knowledge(sel_inspect_key)
-
-                c_info1, c_info2 = st.columns([1.8, 1.2])
-                with c_info1:
-                    st.markdown(f"##### 🥋 {mod_learned.get('name', sel_inspect_key)} (*{mod_learned.get('category', '')}*)")
-                    st.markdown(f"**Nível de Maestria:** `{mod_learned.get('mastery_level', 'Praticante')}` &nbsp;|&nbsp; **Acurácia Atual:** `{mod_learned.get('current_accuracy_pct', 85.0):.1f}%`")
-                    st.markdown(f"**Ciclos de Treinamento:** `{mod_learned.get('training_sessions_count', 0)}` &nbsp;|&nbsp; **Amostras Processadas:** `{mod_learned.get('samples_estimated', 0):,}`")
-
-                    st.markdown("**Princípios Técnicos e Filosóficos Aprendidos:**")
-                    pr_list = mod_learned.get("principles_learned", [])
-                    if pr_list:
-                        for pr in pr_list:
-                            st.markdown(f"- ⚔️ {pr}")
-                    else:
-                        st.caption("Nenhum princípio específico gravado ainda.")
-
-                with c_info2:
-                    st.markdown("##### 🧬 Perfil Biomecânico Esperado")
-                    bio = mod_learned.get("biomechanical_profile", {})
-                    if bio:
-                        st.markdown(f"- **Cadência Ideal:** `{bio.get('cadence_cpm', '20-60')} CPM`")
-                        st.markdown(f"- **Tolerância Postural:** `{bio.get('posture_tilt_tolerance', 'Alta')}`")
-                        st.markdown(f"- **Elevação de Calcanhar:** `{bio.get('heel_elevation_min', 'Simétrica')}`")
-                        st.markdown(f"- **Foco de Alvo:** `{bio.get('datotsu_target_focus', 'Men, Kote, Do, Tsuki')}`")
-
-                    st.markdown("##### 🌐 Fontes Web Mineradas")
-                    web_src = mod_learned.get("web_sources", [])
-                    if web_src:
-                        for ws in web_src:
-                            st.markdown(f"- 📄 [{ws.get('title', 'Referência')}]({ws.get('url', '#')}) *(Tipo: {ws.get('type', 'Web')})*")
-                    else:
-                        st.caption("Nenhuma fonte externa minerada ainda.")
-
-                evo_log = mod_learned.get("evolution_log", [])
-                if evo_log:
-                    with st.expander(f"📜 Log Histórico de Evolução de {mod_learned.get('name', '')} ({len(evo_log)} registros)", expanded=False):
-                        for log_entry in evo_log:
-                            st.markdown(f"- `{log_entry.get('timestamp', '')}` — **{log_entry.get('event', '')}**: {log_entry.get('details', '')}")
-
-                with st.expander("📚 Ver Princípios Gerais e Fundamentos Universais do Kendo (ZNKR / FIK)", expanded=False):
-                    gen_principles = auto_trainer.get_general_kendo_principles()
-                    for gp in gen_principles:
-                        st.markdown(f"- 🏯 **{gp}**")
-
-
-        with tab_evo_sources:
-            st.markdown("**Corpus Técnico de Diretrizes Oficiais e Vídeos Indexados pela IA:**")
+        with tab_ref_corpus:
+            st.markdown("##### 📖 Corpus Técnico de Diretrizes Oficiais e Manuais")
             consulted_sources = auto_trainer.get_consulted_knowledge_sources()
-            
-            src_col1, src_col2, src_col3, src_col4 = st.columns(4)
-            src_by_type = evo_stats.get("sources_by_type", {})
-            src_col1.metric("Regulamentos FIK", src_by_type.get("Regulamentos FIK", 0))
-            src_col2.metric("Manuais ZNKR/AJKF", src_by_type.get("Manuais AJKF / ZNKR", 0))
-            src_col3.metric("Tratados Biomecânicos", src_by_type.get("Tratados Biomecânicos", 0))
-            src_col4.metric("Vídeos de Referência", src_by_type.get("Corpus de Vídeos de Referência", 0))
 
-            for s_info in consulted_sources:
-                with st.expander(f"📌 [{s_info.get('type', 'Referência')}] {s_info.get('title', '')} — {s_info.get('focus', '')}", expanded=False):
-                    st.markdown(f"**Identificador:** `{s_info.get('id', '')}`")
-                    st.markdown(f"**Categoria / Tipo:** {s_info.get('type', '')}")
-                    st.markdown(f"**Foco Principal:** {s_info.get('focus', '')}")
-                    st.markdown("**Diretrizes Técnicas Extraídas & Regras:**")
-                    for rule_str in s_info.get("key_rules", []):
-                        st.markdown(f"- {rule_str}")
+            if not consulted_sources:
+                st.metric("Fontes no Corpus Técnico", "0 fontes")
+                st.info(
+                    "ℹ️ **Corpus Técnico Zerado:** Nenhuma fonte, manual ou regulamento foi consultado pelo sistema no momento. "
+                    "O treinamento está completamente zerado no estado inicial limpo.\n\n"
+                    "Para alimentar o corpus técnico com regulamentos oficiais e fontes da internet, utilize a aba ao lado **'🌐 Catálogo e Configuração da Coleta'** ou importe um pacote de treinamento."
+                )
+            else:
+                src_by_type = auto_trainer.get_knowledge_sources_by_type()
+                c_src1, c_src2 = st.columns(2)
+                c_src1.metric("Total de Fontes no Corpus", f"{len(consulted_sources)}")
+                c_src2.metric("Categorias / Tipos", f"{len(src_by_type)}")
 
-        with tab_evo_dist:
-            st.markdown("**Frequência de Treinamento por Foco / Escopo:**")
-            scope_counts_data = evo_stats.get("scope_distribution", {})
-            dist_cols = st.columns(len(scope_counts_data))
-            for i, (sc_name, sc_count) in enumerate(scope_counts_data.items()):
-                with dist_cols[i % len(dist_cols)]:
-                    st.metric(sc_name, sc_count)
+                for s_info in consulted_sources:
+                    with st.expander(f"📌 [{s_info.get('type', 'Referência')}] {s_info.get('title', '')} — {s_info.get('focus', '')}", expanded=False):
+                        st.markdown(f"**Identificador:** `{s_info.get('id', '')}`")
+                        st.markdown(f"**Categoria / Tipo:** {s_info.get('type', '')}")
+                        st.markdown(f"**Foco Principal:** {s_info.get('focus', '')}")
+                        if s_info.get("url"):
+                            st.markdown(f"**Fonte:** [{s_info['url']}]({s_info['url']})"
+                                        + (f" · coletada em {str(s_info.get('coletado_em'))[:16].replace('T', ' ')}" if s_info.get("coletado_em") else ""))
+                        if s_info.get("resumo"):
+                            st.caption(s_info["resumo"])
+                        st.markdown("**Diretrizes Técnicas Extraídas & Regras:**")
+                        for rule_str in s_info.get("key_rules", []):
+                            st.markdown(f"- {rule_str}")
 
-        # Botão de Exportação Consolidada do Painel de Evolução
+        with tab_ref_internet:
+            try:
+                from src.utils.internet_collection_panel import render_internet_collection_panel
+                render_internet_collection_panel()
+            except Exception as err:
+                st.warning(f"Coleta na internet indisponível: {err}")
+
+        # ----------------------------------------------------------------------
+        # 2. GABARITO DE LUTAS (Trazido para dentro da Governança de Treinamento)
+        # ----------------------------------------------------------------------
         st.markdown("---")
-        evo_export_c1, evo_export_c2 = st.columns(2)
-        with evo_export_c1:
-            st.download_button(
-                "📥 Baixar Painel de Evolução Completo (.json)",
-                data=lambda: json.dumps(evo_stats, indent=2, ensure_ascii=False),
-                file_name=f"senpai_ai_evolution_stats_{int(time.time())}.json",
-                mime="application/json",
-                width="stretch",
-                key="btn_dl_evo_stats_json"
+        st.markdown("#### 🏷️ 2. Gabarito de Lutas")
+        st.caption("Informe os pontos oficiais de cada luta. Eles registram a decisão dos shinpan, que também erram: servem para apontar os golpes a revisar (curadoria), não como rótulo. A validade de cada golpe vem das revisões de kenshi e senseis, pesadas pelo dan.")
+        if is_web_server:
+            st.info("ℹ️ **Ambiente em Nuvem:** O Gabarito de Lutas utiliza a pasta de vídeos de combate e cache de poses em disco. No ambiente local Desktop/Dojo, todos os dados são persistidos diretamente no seu workspace.")
+        from src.utils.match_labels_page import render_match_labels_page
+        render_match_labels_page(device_preference=st.session_state.get("device_preference", default_device_pref), show_header=False)
+
+        # ----------------------------------------------------------------------
+        # 3. CICLO DE TREINO (Termo 'Real' removido do nome)
+        # ----------------------------------------------------------------------
+        from src.utils.training_cycle_panel import render_training_cycle_panel
+        render_training_cycle_panel(
+            device_preference=st.session_state.get("device_preference", default_device_pref),
+            is_web_server=is_web_server,
+            title="#### 🔄 3. Ciclo de Treino"
+        )
+
+        # ----------------------------------------------------------------------
+        # 4. FILA DE CURADORIA (dúvidas do SenpAI respondidas por humanos)
+        # ----------------------------------------------------------------------
+        from src.utils.curation_queue_panel import render_curation_queue_panel
+        render_curation_queue_panel(auto_trainer, feedback_mgr, title="#### 📥 4. Fila de Curadoria")
+
+        # ----------------------------------------------------------------------
+        # 5. O QUE O SENPAI JÁ APRENDEU (Geral e por cada modalidade)
+        # ----------------------------------------------------------------------
+        st.markdown("---")
+        st.markdown("#### 🧠 5. O Que o SenpAI Já Aprendeu")
+        st.caption(
+            "Consolidação completa de todos os conhecimentos acumulados pela IA até o momento: "
+            "visão geral de princípios e dataset, e detalhamento individual por cada modalidade."
+        )
+
+        tab_learned_general, tab_learned_modality = st.tabs([
+            "🌐 Visão Geral do Aprendizado",
+            "🥋 Aprendizado por Modalidade",
+        ])
+
+        with tab_learned_general:
+            st.markdown("##### 🌐 Princípios Gerais e Fundamentos Universais do Kendo (ZNKR / FIK)")
+            st.caption("Diretrizes filosóficas, biomecânicas e regulamentares universais consolidadas na base de conhecimento do SenpAI:")
+            gen_principles = auto_trainer.get_general_kendo_principles()
+            c_gp1, c_gp2 = st.columns(2)
+            half = (len(gen_principles) + 1) // 2
+            with c_gp1:
+                for gp in gen_principles[:half]:
+                    st.markdown(f"- 🎯 **{gp}**")
+            with c_gp2:
+                for gp in gen_principles[half:]:
+                    st.markdown(f"- 🎯 **{gp}**")
+
+            st.markdown("##### 📊 Estatísticas Consolidadas do Dataset & Aprendizado Geral")
+            c_st1, c_st2, c_st3, c_st4 = st.columns(4)
+            c_st1.metric("Modalidades Mapeadas", f"{len(TRAINING_MODALITIES_METADATA)}")
+            c_st2.metric("Corpus de Diretrizes", f"{len(consulted_sources)} fontes")
+            c_st3.metric("Rótulos / Lutas Registradas", f"{training_metrics.get('total_feedback_count', 0)}")
+            c_st4.metric("Sessões Homologadas Dan", f"{training_metrics.get('shinpan_reviews_count', 0)}")
+            if not consulted_sources and not training_metrics.get("total_feedback_count"):
+                st.caption("ℹ️ O sistema está no estado inicial limpo (zerado). Nenhuma fonte foi consultada e nenhum dado de treinamento foi acumulado ainda.")
+
+            with st.expander("📖 Regras Canônicas de Ippon e Yuko-Datotsu Consolidadas", expanded=False):
+                st.markdown(
+                    """
+                    1. **Definição de Yuko-Datotsu (FIK Art. 12):** O golpe com Shinai em Datotsu-bui (Men, Kote, Do, Tsuki) 
+                       deve possuir Ki-Ken-Tai-Ichi pleno, ângulo de lâmina correto (Hasuji), postura digna e Zanshin vigoroso.
+                    2. **Critérios de Validação Ki-Ken-Tai-Ichi:** Fumikomi synchronism (impacto sonoro sincronizado com pé de ataque dentro da janela de tolerância),
+                       extensão correta dos braços com Tenouchi firme e projeção corporal.
+                    3. **Critérios de Zanshin (FIK Art. 13):** Manutenção contínua de prontidão física e mental contra contra-ataques imediatos.
+                    """
+                )
+
+        with tab_learned_modality:
+            st.markdown("##### 🥋 Conhecimento Acumulado por Modalidade")
+            st.caption("Consulte detalhadamente os princípios técnicos consolidados, perfil biomecânico de tolerâncias e fontes mineradas para cada modalidade:")
+
+            mod_inspect_keys = [m.get("key", "") for m in modalities_data if m.get("key")]
+            if not mod_inspect_keys:
+                mod_inspect_keys = list(TRAINING_MODALITIES_METADATA.keys())
+
+            sel_inspect_key_raw = st.selectbox(
+                "Selecione a Modalidade para Inspecionar o Conhecimento Acumulado:",
+                options=mod_inspect_keys,
+                format_func=lambda k: f"{TRAINING_MODALITIES_METADATA.get(k, {}).get('name', k)} — {TRAINING_MODALITIES_METADATA.get(k, {}).get('category', '')}",
+                key="sel_modality_inspect_box"
             )
-        with evo_export_c2:
-            st.caption(f"🕒 **Última Recalibração do Modelo:** `{evo_stats.get('last_retrained_at', 'N/A')}`")
+            sel_inspect_key = sel_inspect_key_raw or "suburi"
+            mod_learned = auto_trainer.get_modality_learned_knowledge(sel_inspect_key)
+
+            c_info1, c_info2 = st.columns([1.8, 1.2])
+            with c_info1:
+                st.markdown(f"##### 🥋 {mod_learned.get('name', sel_inspect_key)} (*{mod_learned.get('category', '')}*)")
+
+                mod_acc_info = next((m for m in modalities_data if m.get("key") == sel_inspect_key), {})
+                if mod_acc_info:
+                    st.info(f"🎯 **Acurácia de Detecção / Classificação:** `{mod_acc_info.get('accuracy_display', '—')}` *({mod_acc_info.get('accuracy_status', 'Calibrada')})*")
+
+                st.markdown("**Princípios Técnicos e Filosóficos Aprendidos:**")
+                pr_list = mod_learned.get("principles_learned", [])
+                if pr_list:
+                    for pr in pr_list:
+                        st.markdown(f"- ⚔️ {pr}")
+                else:
+                    st.caption("Nenhum princípio específico gravado ainda.")
+
+            with c_info2:
+                st.markdown("##### 🧬 Perfil Biomecânico Esperado")
+                bio = mod_learned.get("biomechanical_profile", {})
+                if bio:
+                    st.markdown(f"- **Cadência Ideal:** `{bio.get('cadence_cpm', '20-60')} CPM`")
+                    st.markdown(f"- **Tolerância Postural:** `{bio.get('posture_tilt_tolerance', 'Alta')}`")
+                    st.markdown(f"- **Elevação de Calcanhar:** `{bio.get('heel_elevation_min', 'Simétrica')}`")
+                    st.markdown(f"- **Foco de Alvo:** `{bio.get('datotsu_target_focus', 'Men, Kote, Do, Tsuki')}`")
+
+                canon_ref = mod_learned.get("canonical_reference")
+                if canon_ref:
+                    st.markdown("##### 📜 Manual de Referência Canônico")
+                    st.markdown(f"- 📖 [{canon_ref.get('title', 'Manual AJKF')}]({canon_ref.get('url', '#')}) *(Padrão de Fábrica)*")
+
+                st.markdown("##### 🌐 Fontes Web Mineradas")
+                web_src = mod_learned.get("web_sources", [])
+                if web_src:
+                    for ws in web_src:
+                        st.markdown(f"- 📄 [{ws.get('title', 'Referência')}]({ws.get('url', '#')}) *(Tipo: {ws.get('type', 'Web')})*")
+                else:
+                    st.caption("⚪ Nenhuma fonte externa minerada na web ainda (utilizando manuais de fábrica).")
+
+            evo_log = mod_learned.get("evolution_log", [])
+            if evo_log:
+                with st.expander(f"📜 Log Histórico de Evolução de {mod_learned.get('name', '')} ({len(evo_log)} registros)", expanded=False):
+                    for log_entry in evo_log:
+                        st.markdown(f"- `{log_entry.get('timestamp', log_entry.get('date', ''))}` — **{log_entry.get('event', log_entry.get('note', ''))}**: {log_entry.get('details', '')}")
+            else:
+                st.caption(f"ℹ️ **Histórico de Evolução:** Nenhum ciclo de treino registrado para {mod_learned.get('name', '')} ainda (histórico limpo).")
+
 
     # --------------------------------------------------------------------------
     # GUIA 3: PERFIS DE CALIBRAÇÃO & CRITÉRIOS DE ANÁLISE
@@ -3894,11 +3373,11 @@ elif nav_page == "settings":
         # ----------------------------------------------------------------------
         st.markdown("---")
         st.markdown("### 🌐 Eixo 2: Conversão da Pesquisa Web em Parâmetros Físicos Acionáveis")
-        st.caption("Extração paramétrica estruturada (JSON Schema), hierarquia regulamentar estrita de fontes (FIK > AJKF > Artigos) e mineração de vídeos de referência oficial.")
+        st.caption("Extração paramétrica estruturada (JSON Schema), hierarquia regulamentar estrita de fontes (FIK > AJKF > Artigos) e a referência real dos golpes validados.")
 
         tab_e2_constraints, tab_e2_empirical, tab_e2_hierarchy = st.tabs([
             "📏 Restrições Biomecânicas (JSON Schema)",
-            "🎬 Distribuições Empíricas de Vídeos Oficiais",
+            "📐 Referência dos Golpes Validados",
             "⚖️ Hierarquia de Fontes & Resolução de Conflitos"
         ])
 
@@ -3933,47 +3412,8 @@ elif nav_page == "settings":
                 st.info("Nenhuma restrição física consolidada registrada no momento.")
 
         with tab_e2_empirical:
-            st.markdown("#### 🏆 Distribuição Empírica de Referência (Oficiais FIK / AJKF)")
-            st.caption("Padrão áureo cinemático extraído de clipes onde árbitros oficiais levantaram bandeira de Ippon (2 ou 3 bandeiras):")
-
-            try:
-                emp_dists_data = auto_trainer.get_empirical_reference_distributions() if hasattr(auto_trainer, "get_empirical_reference_distributions") else {}
-                dists_by_strike = emp_dists_data.get("distributions_by_strike", {})
-            except Exception:
-                emp_dists_data = {}
-                dists_by_strike = {}
-
-            if dists_by_strike:
-                st_tabs = st.tabs(["🔴 Men", "🟡 Kote", "🟢 Do", "🔵 Tsuki"])
-                for s_idx, s_key in enumerate(["MEN", "KOTE", "DO", "TSUKI"]):
-                    with st_tabs[s_idx]:
-                        s_metrics = dists_by_strike.get(s_key, {})
-                        if s_metrics:
-                            rows = []
-                            for m_k, dist_v in s_metrics.items():
-                                rows.append({
-                                    "Métrica": m_k.replace('_', ' ').title(),
-                                    "Média (μ)": f"{dist_v.get('mean', 0.0):.3f}",
-                                    "Desvio (σ)": f"±{dist_v.get('std', 0.0):.3f}",
-                                    "Mediana (p50)": f"{dist_v.get('p50', 0.0):.3f}",
-                                    "p25": f"{dist_v.get('p25', 0.0):.3f}",
-                                    "p75": f"{dist_v.get('p75', 0.0):.3f}",
-                                    "p90": f"{dist_v.get('p90', 0.0):.3f}",
-                                    "Amostras": dist_v.get('sample_count', 0)
-                                })
-                            st.dataframe(pd.DataFrame(rows), width="stretch", hide_index=True)
-                        else:
-                            st.write(f"Sem dados suficientes para {s_key}.")
-
-            if st.button("🎬 Minerar Clipes de Lutas Oficiais (FIK/AJKF)", key="btn_mine_official_clips", width="stretch"):
-                with st.spinner("Minerando métricas cinemáticas dos clipes oficiais confirmados..."):
-                    try:
-                        mine_res = auto_trainer.mine_official_video_clips()
-                        cnt = mine_res.get("metadata", {}).get("total_confirmed_clips_mined", 0)
-                        st.success(f"✅ Mineração concluída! {cnt} clipes oficiais com bandeiras integrados às distribuições empíricas.")
-                        st.rerun()
-                    except Exception as m_err:
-                        st.error(f"Erro na mineração: {m_err}")
+            from src.utils.strike_reference_panel import render_strike_reference_panel
+            render_strike_reference_panel()
 
         with tab_e2_hierarchy:
             st.markdown("#### 🏛️ Hierarquia Estrita de Autoridade Regulamentar")
@@ -4002,32 +3442,19 @@ elif nav_page == "settings":
                 st.info("Nenhum conflito de parâmetros registrado na sessão ativa. A base opera em conformidade estrita com as diretrizes da FIK/AJKF.")
 
         # ----------------------------------------------------------------------
-        # EIXO 4: GOLDEN BENCHMARK, APRENDIZADO ATIVO & ASSISTENTE LLM
+        # EIXO 4: GOLDEN BENCHMARK & ASSISTENTE LLM
+        # (a Fila de Curadoria fica em Governança de Treinamento > 4. Fila de Curadoria)
         # ----------------------------------------------------------------------
         st.markdown("---")
-        st.markdown("### 🎯 Eixo 4: Aprendizado Ativo & Golden Benchmark")
-        st.caption("Validação contra o conjunto padrão-ouro (Golden Dataset) e curadoria de lances incertos assistida por Inteligência Artificial (LLM).")
+        st.markdown("### 🎯 Eixo 4: Golden Benchmark")
+        st.caption("Validação contra o conjunto padrão-ouro (Golden Dataset). As dúvidas do SenpAI são respondidas em Governança de Treinamento > Fila de Curadoria.")
 
         gb_col1, gb_col2 = st.columns([1, 1])
         with gb_col1:
-            st.markdown("#### 🛡️ Conjunto de Validação Padrão-Ouro")
+            st.markdown("#### 🛡️ Desempenho Real do SenpAI (Golden Benchmark)")
             try:
-                fm = getattr(auto_trainer, "feedback_mgr", None)
-                if hasattr(auto_trainer, "get_golden_benchmark_metrics"):
-                    gb_metrics = auto_trainer.get_golden_benchmark_metrics("normal")
-                elif fm is not None and hasattr(fm, "get_golden_benchmark_metrics"):
-                    gb_metrics = fm.get_golden_benchmark_metrics("normal")
-                elif hasattr(feedback_mgr, "get_golden_benchmark_metrics"):
-                    gb_metrics = feedback_mgr.get_golden_benchmark_metrics("normal")
-                else:
-                    gb_metrics = {"accuracy": 1.0, "f1": 1.0, "precision": 1.0, "recall": 1.0}
-
-                m_c1, m_c2, m_c3, m_c4 = st.columns(4)
-                m_c1.metric("Acurácia Padrão-Ouro", f"{gb_metrics['accuracy']*100:.1f}%")
-                m_c2.metric("F1-Score", f"{gb_metrics['f1']:.3f}")
-                m_c3.metric("Precisão", f"{gb_metrics['precision']*100:.1f}%")
-                m_c4.metric("Recall", f"{gb_metrics['recall']*100:.1f}%")
-                st.success("✅ **Salvaguarda Ativa:** O motor de treinamento bloqueia automaticamente qualquer recalibração que cause regressão no Golden Benchmark.")
+                from src.utils.golden_benchmark_panel import render_golden_benchmark_panel
+                render_golden_benchmark_panel()
             except Exception as e:
                 st.caption(f"Status do Golden Benchmark: {e}")
 
@@ -4051,337 +3478,12 @@ elif nav_page == "settings":
                 st.markdown("**Provedor Ativo:** `🟡 Motor Especialista FIK / AJKF (Offline Integrado)`")
             st.caption("O assistente analisa lances de incerteza (45%-65%), diagnostica Ki-Ken-Tai-Ichi e sugere anotações de movimentos para vídeos e treinos.")
 
-        # Fila de Curadoria Ativa
-        unc_queue = []
-        try:
-            fm = getattr(auto_trainer, "feedback_mgr", None)
-            if hasattr(auto_trainer, "get_active_learning_queue"):
-                unc_queue = auto_trainer.get_active_learning_queue(status="pending_curation")
-            elif fm is not None and hasattr(fm, "get_active_learning_queue"):
-                unc_queue = fm.get_active_learning_queue(status="pending_curation")
-            elif hasattr(feedback_mgr, "get_active_learning_queue"):
-                unc_queue = feedback_mgr.get_active_learning_queue(status="pending_curation")
-        except Exception:
-            unc_queue = []
-
-        if "curation_toast" in st.session_state:
-            st.toast(st.session_state.pop("curation_toast"), icon="🥋")
-
-        with st.expander(f"📥 Fila de Curadoria Ativa (Lances com Incerteza Arbitral) — {len(unc_queue)} pendentes", expanded=bool(unc_queue)):
-            if "curation_alert" in st.session_state:
-                st.success(st.session_state.pop("curation_alert"))
-
-            if not unc_queue:
-                st.info("Nenhum lance controverso na faixa de incerteza (45% a 65%) pendente de curadoria no momento.")
-            else:
-                st.caption(
-                    "🥋 **Instruções do Benchmark:** Assista ao trecho do golpe controverso abaixo, avalie a biomecânica de Ki-Ken-Tai-Ichi "
-                    "e registre a decisão arbitral. Ao confirmar, o SenpAI **executará o retreinamento adaptativo** e **apagará o clipe de demonstração** do disco."
-                )
-                for idx, unc_item in enumerate(unc_queue[:5]):
-                    # 1. Obter metadados de origem e timecode do golpe
-                    try:
-                        import src.utils.strike_clip_manager as scm_mod
-                        if not hasattr(scm_mod, "parse_strike_timestamp") or not hasattr(scm_mod, "get_cross_platform_basename"):
-                            import importlib
-                            scm_mod = importlib.reload(scm_mod)
-                        parse_strike_timestamp = getattr(scm_mod, "parse_strike_timestamp")
-                        format_strike_timestamp = getattr(scm_mod, "format_strike_timestamp")
-                        get_cross_platform_basename = getattr(scm_mod, "get_cross_platform_basename")
-                        resolve_source_video_path = getattr(scm_mod, "resolve_source_video_path")
-                    except Exception:
-                        def get_cross_platform_basename(p):
-                            return os.path.basename(str(p).replace("\\", "/")) if p else ""
-                        def parse_strike_timestamp(item):
-                            sd = item.get("strike_data") or {}
-                            return float(sd.get("timestamp_seconds") or item.get("timestamp_seconds") or 0.0)
-                        def format_strike_timestamp(sec):
-                            m = int(sec // 60)
-                            s = sec % 60
-                            return f"{m:02d}:{s:06.3f} ({sec:.1f}s)"
-                        def resolve_source_video_path(p):
-                            return get_cross_platform_basename(p)
-
-                    strike_t = str(unc_item.get("strike_type", "Men")).upper()
-                    raw_src = str(unc_item.get("video_source", "")).strip() or "Vídeo de Combate"
-                    raw_base = get_cross_platform_basename(raw_src)
-                    clean_src_name = re.sub(r"^(upload_\d+_|yt_[^_]+_)", "", raw_base) if raw_base else raw_src
-                    resolved_src_path = resolve_source_video_path(raw_src) if callable(resolve_source_video_path) else raw_src
-                    t_sec = parse_strike_timestamp(unc_item)
-                    formatted_time = format_strike_timestamp(t_sec)
-
-                    # 2. Assegurar clipe de vídeo para visualização do Benchmark
-                    clip_path = None
-                    try:
-                        if hasattr(auto_trainer, "ensure_active_learning_clip"):
-                            clip_path = auto_trainer.ensure_active_learning_clip(unc_item)
-                        elif hasattr(feedback_mgr, "ensure_active_learning_clip"):
-                            clip_path = feedback_mgr.ensure_active_learning_clip(unc_item)
-                        else:
-                            from src.utils.strike_clip_manager import get_or_create_strike_clip
-                            clip_path = get_or_create_strike_clip(unc_item)
-                    except Exception as e:
-                        log_event("WARNING", f"Erro ao preparar clipe de demonstração do item {unc_item.get('id')}: {e}", "app")
-
-                    # Fallback de localização direta caso o caminho no item venha de outro ambiente / servidor
-                    if not (clip_path and os.path.isfile(clip_path)):
-                        direct_clip = unc_item.get("clip_path")
-                        if direct_clip:
-                            if os.path.isfile(direct_clip):
-                                clip_path = direct_clip
-                            else:
-                                c_base = get_cross_platform_basename(direct_clip)
-                                cand_direct = os.path.join("data", "active_learning_clips", c_base)
-                                if os.path.isfile(cand_direct):
-                                    clip_path = cand_direct
-
-                    c_vid, c_info = st.columns([1, 1])
-
-                    with c_vid:
-                        st.markdown('<div class="video-preview-marker"></div>', unsafe_allow_html=True)
-                        if clip_path and os.path.isfile(clip_path):
-                            st.video(clip_path, format="video/mp4")
-                            st.caption(f"🎥 **Corte Real do Golpe ({strike_t}) aos {formatted_time}** de `{clean_src_name}`")
-                        else:
-                            st.warning(
-                                f"⚠️ **Corte de vídeo indisponível:** O arquivo da luta original **`{clean_src_name}`** "
-                                f"(esperado em `{resolved_src_path}`) não foi localizado no disco do servidor para extração do trecho aos `{formatted_time}`."
-                            )
-
-                    with c_info:
-                        st.markdown('<div class="video-side-panel-marker"></div>', unsafe_allow_html=True)
-                        conf_pct = float(unc_item.get("confidence", 0.5)) * 100
-                        unc_pct = float(unc_item.get("uncertainty_score", 0.0)) * 100
-                        st.markdown(f"#### 🥋 Golpe: `{strike_t}`")
-                        if resolved_src_path and resolved_src_path != clean_src_name:
-                            st.markdown(f"- 📁 **Vídeo de Origem:** `{clean_src_name}` &nbsp;(`{resolved_src_path}`)")
-                        else:
-                            st.markdown(f"- 📁 **Vídeo de Origem:** `{clean_src_name}`")
-                        st.markdown(f"- ⏱️ **Momento na Luta:** `{formatted_time}`")
-                        st.markdown(f"- 🤖 **Confiança da IA:** `{conf_pct:.1f}%` &nbsp;|&nbsp; ⚖️ **Incerteza Arbitral:** `{unc_pct:.1f}%`")
-
-                        # Métricas dos 4 Pilares
-                        s_data = unc_item.get("strike_data") or {}
-                        sub_scores = s_data.get("sub_scores") or s_data.get("scores") or {}
-                        if sub_scores:
-                            imp = float(sub_scores.get("target_impact", 0.5)) * 100
-                            fumi = float(sub_scores.get("fumikomi_sync", 0.5)) * 100
-                            pos = float(sub_scores.get("posture", 0.5)) * 100
-                            zan = float(sub_scores.get("zanshin", 0.5)) * 100
-                            st.caption(f"🎯 Alvo: **{imp:.0f}%** | 🦶 Fumikomi: **{fumi:.0f}%** | 🥋 Postura: **{pos:.0f}%** | ⚡ Zanshin: **{zan:.0f}%**")
-
-                        triage = unc_item.get("llm_triage") or {}
-                        if triage:
-                            st.markdown(f"- 🏛️ **Parecer FIK/LLM:** `{triage.get('verdict', 'DOUBTFUL')}` ({triage.get('fik_rule_rationale', '')})")
-                            st.markdown(f"- 💡 **Orientação Técnica:** {triage.get('coaching_advice', '')}")
-
-                        st.markdown("**Decisão do Árbitro / Retorno:**")
-                        st.caption(
-                            "• **✅ Ippon (Válido):** Há movimento e é válido para pontuação.\n"
-                            "• **❌ Golpe Inválido:** Há movimento/tentativa, mas o golpe não foi válido.\n"
-                            "• **🚫 Não tem Golpe:** Nenhuma tentativa de movimento para pontuação (detecção espúria).\n"
-                            "• **🗑️ Descartar:** Não foi possível determinar o resultado do golpe (descarta da fila sem afetar o treinamento)."
-                        )
-                        it_id = str(unc_item.get("id", f"item_{idx}"))
-                        btn_c1, btn_c2, btn_c3, btn_c4 = st.columns(4)
-                        with btn_c1:
-                            if st.button("✅ Ippon (Válido)", key=f"btn_cur_ok_{it_id}", width="stretch", type="primary", help="Há movimento e é válido para pontuação (Ippon legítimo)."):
-                                p_key = unc_item.get("profile_name", "normal")
-                                c_path = unc_item.get("clip_path")
-
-                                # 1. Resolver na fila / feedback com compatibilidade de assinatura
-                                try:
-                                    if hasattr(auto_trainer, "resolve_active_learning_item"):
-                                        try:
-                                            auto_trainer.resolve_active_learning_item(
-                                                it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral",
-                                                trigger_retrain=True, cleanup_clip=True, decision="IPPON"
-                                            )
-                                        except TypeError:
-                                            auto_trainer.resolve_active_learning_item(it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral", decision="IPPON")
-                                    elif hasattr(feedback_mgr, "resolve_active_learning_item"):
-                                        try:
-                                            feedback_mgr.resolve_active_learning_item(
-                                                it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral",
-                                                trigger_retrain=True, cleanup_clip=True, decision="IPPON"
-                                            )
-                                        except TypeError:
-                                            feedback_mgr.resolve_active_learning_item(it_id, True, 5, "Homologado como Ippon via Benchmark Arbitral", decision="IPPON")
-                                except Exception as err:
-                                    log_event("WARNING", f"Erro ao resolver item na curadoria: {err}", "app")
-
-                                # 2. Disparar retreinamento e recalibração formal do modelo
-                                try:
-                                    if hasattr(auto_trainer, "run_mathematical_optimization"):
-                                        auto_trainer.run_mathematical_optimization(p_key)
-                                    elif hasattr(feedback_mgr, "optimize_profile_config"):
-                                        profs = feedback_mgr.load_profiles()
-                                        n_cfg, _ = feedback_mgr.optimize_profile_config(p_key, profs.get(p_key, {}))
-                                        profs[p_key] = n_cfg
-                                        feedback_mgr.save_profiles(profs)
-                                except Exception as err:
-                                    log_event("WARNING", f"Erro no retreinamento explícito pós-curadoria: {err}", "app")
-
-                                # 3. Apagar arquivo de vídeo do golpe em disco
-                                try:
-                                    from src.utils.strike_clip_manager import delete_strike_clip
-                                    if c_path:
-                                        delete_strike_clip(c_path)
-                                    target_c = os.path.join("data", "active_learning_clips", f"{it_id}_corte.mp4")
-                                    if os.path.isfile(target_c):
-                                        delete_strike_clip(target_c)
-                                except Exception as err:
-                                    log_event("WARNING", f"Erro ao excluir corte de vídeo pós-curadoria: {err}", "app")
-
-                                st.session_state["curation_alert"] = f"✅ Golpe {strike_t} homologado como Ippon! Modelo retreinado com sucesso e item removido da Fila de Curadoria."
-                                st.session_state["curation_toast"] = f"✅ Golpe {strike_t} homologado: Modelo retreinado!"
-                                st.rerun()
-
-                        with btn_c2:
-                            if st.button("❌ Golpe Inválido", key=f"btn_cur_inv_{it_id}", width="stretch", help="Há movimento/tentativa de ataque, mas o golpe NÃO atendeu aos critérios para pontuação."):
-                                p_key = unc_item.get("profile_name", "normal")
-                                c_path = unc_item.get("clip_path")
-
-                                # 1. Resolver na fila / feedback com compatibilidade de assinatura
-                                try:
-                                    if hasattr(auto_trainer, "resolve_active_learning_item"):
-                                        try:
-                                            auto_trainer.resolve_active_learning_item(
-                                                it_id, False, 5, "Golpe Inválido (Tentativa de movimento sem pontuação) via Benchmark Arbitral",
-                                                trigger_retrain=True, cleanup_clip=True, decision="INVALID_STRIKE"
-                                            )
-                                        except TypeError:
-                                            auto_trainer.resolve_active_learning_item(it_id, False, 5, "Golpe Inválido via Benchmark Arbitral", decision="INVALID_STRIKE")
-                                    elif hasattr(feedback_mgr, "resolve_active_learning_item"):
-                                        try:
-                                            feedback_mgr.resolve_active_learning_item(
-                                                it_id, False, 5, "Golpe Inválido (Tentativa de movimento sem pontuação) via Benchmark Arbitral",
-                                                trigger_retrain=True, cleanup_clip=True, decision="INVALID_STRIKE"
-                                            )
-                                        except TypeError:
-                                            feedback_mgr.resolve_active_learning_item(it_id, False, 5, "Golpe Inválido via Benchmark Arbitral", decision="INVALID_STRIKE")
-                                except Exception as err:
-                                    log_event("WARNING", f"Erro ao resolver item na curadoria: {err}", "app")
-
-                                # 2. Disparar retreinamento e recalibração formal do modelo
-                                try:
-                                    if hasattr(auto_trainer, "run_mathematical_optimization"):
-                                        auto_trainer.run_mathematical_optimization(p_key)
-                                    elif hasattr(feedback_mgr, "optimize_profile_config"):
-                                        profs = feedback_mgr.load_profiles()
-                                        n_cfg, _ = feedback_mgr.optimize_profile_config(p_key, profs.get(p_key, {}))
-                                        profs[p_key] = n_cfg
-                                        feedback_mgr.save_profiles(profs)
-                                except Exception as err:
-                                    log_event("WARNING", f"Erro no retreinamento explícito pós-curadoria: {err}", "app")
-
-                                # 3. Apagar arquivo de vídeo do golpe em disco
-                                try:
-                                    from src.utils.strike_clip_manager import delete_strike_clip
-                                    if c_path:
-                                        delete_strike_clip(c_path)
-                                    target_c = os.path.join("data", "active_learning_clips", f"{it_id}_corte.mp4")
-                                    if os.path.isfile(target_c):
-                                        delete_strike_clip(target_c)
-                                except Exception as err:
-                                    log_event("WARNING", f"Erro ao excluir corte de vídeo pós-curadoria: {err}", "app")
-
-                                st.session_state["curation_alert"] = f"❌ Golpe {strike_t} classificado como Golpe Inválido. Modelo retreinado com sucesso e item removido da Fila de Curadoria."
-                                st.session_state["curation_toast"] = f"❌ Golpe {strike_t} invalidado: Modelo retreinado!"
-                                st.rerun()
-
-                        with btn_c3:
-                            if st.button("🚫 Não tem Golpe", key=f"btn_cur_none_{it_id}", width="stretch", help="Não existe nenhuma tentativa de movimento para pontuação (detecção espúria)."):
-                                p_key = unc_item.get("profile_name", "normal")
-                                c_path = unc_item.get("clip_path")
-
-                                # 1. Resolver na fila / feedback com compatibilidade de assinatura
-                                try:
-                                    if hasattr(auto_trainer, "resolve_active_learning_item"):
-                                        try:
-                                            auto_trainer.resolve_active_learning_item(
-                                                it_id, False, 5, "Não tem golpe (Nenhuma tentativa de movimento para pontuação) via Benchmark Arbitral",
-                                                trigger_retrain=True, cleanup_clip=True, decision="NO_STRIKE"
-                                            )
-                                        except TypeError:
-                                            auto_trainer.resolve_active_learning_item(it_id, False, 5, "Não tem golpe via Benchmark Arbitral", decision="NO_STRIKE")
-                                    elif hasattr(feedback_mgr, "resolve_active_learning_item"):
-                                        try:
-                                            feedback_mgr.resolve_active_learning_item(
-                                                it_id, False, 5, "Não tem golpe (Nenhuma tentativa de movimento para pontuação) via Benchmark Arbitral",
-                                                trigger_retrain=True, cleanup_clip=True, decision="NO_STRIKE"
-                                            )
-                                        except TypeError:
-                                            feedback_mgr.resolve_active_learning_item(it_id, False, 5, "Não tem golpe via Benchmark Arbitral", decision="NO_STRIKE")
-                                except Exception as err:
-                                    log_event("WARNING", f"Erro ao resolver item na curadoria: {err}", "app")
-
-                                # 2. Disparar retreinamento e recalibração formal do modelo
-                                try:
-                                    if hasattr(auto_trainer, "run_mathematical_optimization"):
-                                        auto_trainer.run_mathematical_optimization(p_key)
-                                    elif hasattr(feedback_mgr, "optimize_profile_config"):
-                                        profs = feedback_mgr.load_profiles()
-                                        n_cfg, _ = feedback_mgr.optimize_profile_config(p_key, profs.get(p_key, {}))
-                                        profs[p_key] = n_cfg
-                                        feedback_mgr.save_profiles(profs)
-                                except Exception as err:
-                                    log_event("WARNING", f"Erro no retreinamento explícito pós-curadoria: {err}", "app")
-
-                                # 3. Apagar arquivo de vídeo do golpe em disco
-                                try:
-                                    from src.utils.strike_clip_manager import delete_strike_clip
-                                    if c_path:
-                                        delete_strike_clip(c_path)
-                                    target_c = os.path.join("data", "active_learning_clips", f"{it_id}_corte.mp4")
-                                    if os.path.isfile(target_c):
-                                        delete_strike_clip(target_c)
-                                except Exception as err:
-                                    log_event("WARNING", f"Erro ao excluir corte de vídeo pós-curadoria: {err}", "app")
-
-                                st.session_state["curation_alert"] = f"🚫 Lance classificado como 'Não tem Golpe' (Detecção Espúria). Modelo retreinado para supressão de falsos disparos e item removido da Fila de Curadoria."
-                                st.session_state["curation_toast"] = f"🚫 Detecção espúria suprimida: Modelo retreinado!"
-                                st.rerun()
-
-                        with btn_c4:
-                            if st.button("🗑️ Descartar", key=f"btn_cur_discard_{it_id}", width="stretch", help="Não foi possível determinar o resultado do golpe. O item será descartado sem afetar o treinamento."):
-                                c_path = unc_item.get("clip_path")
-
-                                # 1. Descartar da fila sem registrar feedback e sem disparar retreinamento
-                                try:
-                                    if hasattr(auto_trainer, "discard_active_learning_item"):
-                                        auto_trainer.discard_active_learning_item(it_id, notes="Descartado: Resultado indeterminado")
-                                    elif hasattr(auto_trainer, "resolve_active_learning_item"):
-                                        auto_trainer.resolve_active_learning_item(
-                                            it_id, False, 5, "Descartado: Resultado indeterminado",
-                                            trigger_retrain=False, cleanup_clip=True, decision="DISCARDED"
-                                        )
-                                    elif hasattr(feedback_mgr, "discard_active_learning_item"):
-                                        feedback_mgr.discard_active_learning_item(it_id, notes="Descartado: Resultado indeterminado")
-                                    elif hasattr(feedback_mgr, "resolve_active_learning_item"):
-                                        feedback_mgr.resolve_active_learning_item(
-                                            it_id, False, 5, "Descartado: Resultado indeterminado",
-                                            trigger_retrain=False, cleanup_clip=True, decision="DISCARDED"
-                                        )
-                                except Exception as err:
-                                    log_event("WARNING", f"Erro ao descartar item da curadoria: {err}", "app")
-
-                                # 2. Apagar arquivo de vídeo do golpe em disco
-                                try:
-                                    from src.utils.strike_clip_manager import delete_strike_clip
-                                    if c_path:
-                                        delete_strike_clip(c_path)
-                                    target_c = os.path.join("data", "active_learning_clips", f"{it_id}_corte.mp4")
-                                    if os.path.isfile(target_c):
-                                        delete_strike_clip(target_c)
-                                except Exception as err:
-                                    log_event("WARNING", f"Erro ao excluir corte de vídeo pós-descarte: {err}", "app")
-
-                                st.session_state["curation_alert"] = f"🗑️ Item descartado da Fila de Curadoria com sucesso (sem afetar o treinamento)."
-                                st.session_state["curation_toast"] = f"🗑️ Item removido da Fila de Curadoria!"
-                                st.rerun()
-
-                    st.markdown("---")
+        # Lutas congeladas e benchmark por luta (único local do golden na interface)
+        from src.utils.golden_benchmark_panel import render_golden_matches_manager
+        render_golden_matches_manager(
+            device_preference=st.session_state.get("device_preference", default_device_pref),
+            is_web_server=is_web_server
+        )
 
         # ----------------------------------------------------------------------
         # EIXO 6: MODELAGEM DO ESTILO INDIVIDUAL & WARM START DE PERFIS
@@ -4476,7 +3578,14 @@ elif nav_page == "settings":
                             st.error(f"Erro ao derivar perfil: {err}")
 
     # --------------------------------------------------------------------------
-    # GUIA 4: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA
+    # GUIA 4: VARIÁVEIS DO SISTEMA & CHAVES DE API
+    # --------------------------------------------------------------------------
+    with tab_vars:
+        from src.utils.system_variables_panel import render_system_variables_panel
+        render_system_variables_panel()
+
+    # --------------------------------------------------------------------------
+    # GUIA 5: DIAGNÓSTICO, ALERTAS & LOG DE DEBUG DO SISTEMA
     # --------------------------------------------------------------------------
     with tab_diag:
         st.markdown("### 🐛 Diagnóstico do Sistema, Alertas & Registros de Debug")
@@ -7720,6 +6829,14 @@ elif nav_page in ["match", "training", "analysis"]:
                         if (app_mode == "training" and st.session_state.get("enable_pre_training_segments"))
                         else None
                     )
+                    # Trechos/modalidade informados pelo usuário antes da análise também são rótulos (I13)
+                    if target_analysis_mode == "training" and (pre_segments_arg or st.session_state.get("training_modality_selected")):
+                        try:
+                            from src.engine.label_bank import LabelBank
+                            LabelBank().record_training_segments(video_file_path, pre_segments_arg or [],
+                                                                 whole_video_modality=st.session_state.get("training_modality_selected"))
+                        except Exception as err:
+                            log_event("WARNING", f"Não foi possível registrar a modalidade informada: {err}", "app")
                     worker = AnalysisWorker(
                         pipeline=pipeline,
                         video_path=video_file_path,
@@ -9134,6 +8251,13 @@ elif nav_page in ["match", "training", "analysis"]:
                                                 st.markdown(f"**Timestamp:** `{current_rev['timestamp']}`" + (f" (Frame {strike_item['impact_frame']})" if strike_item['impact_frame'] > 0 else ""))
                                                 if strike_source == "AI_DETECTED":
                                                     st.markdown(f"**Pontuação original:** `{eval_info['total_score']}%` (Exigido: `{eval_info['min_required']}%`)")
+                                                    if eval_info.get("sub_scores"):
+                                                        try:
+                                                            from src.analytics import strike_reference as _sref
+                                                            st.caption("📐 " + _sref.describe(current_rev['strike_type'], eval_info["sub_scores"],
+                                                                                              _sref.cached_reference()))
+                                                        except Exception as _ref_err:
+                                                            log_event("WARNING", f"Referência dos golpes validados indisponível: {_ref_err}", "app")
 
                                                 st.markdown(badge_html, unsafe_allow_html=True)
                                                 if current_rev.get("notes"):
@@ -9528,6 +8652,9 @@ elif nav_page in ["match", "training", "analysis"]:
                                                 st.markdown(f"- {chg}")
                                     except DuplicateShinpanReviewError as dup_err:
                                         st.error(f"⛔ {str(dup_err)}")
+elif nav_page == "labels":
+    st.session_state["sidebar_nav_radio"] = "settings"
+    st.rerun()
 else:
     # Estado inicial ou fallback se nenhuma página específica for selecionada
     render_welcome_home_page()
