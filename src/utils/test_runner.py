@@ -6,6 +6,7 @@ teste executado e mantém estritamente o último log de testes na pasta de logs.
 
 import os
 import sys
+import contextlib
 import time
 import glob
 import unittest
@@ -286,28 +287,40 @@ def run_automated_tests(test_dir: str = "tests", log_file: str = TEST_LOG_PATH, 
     Função utilitária de alto nível para descobrir e executar todos os testes da pasta tests/,
     gerar o log detalhado e retornar o sumário estruturado.
     """
-    # Os testes rodam dentro do processo do app (botão da tela): o modo de teste precisa ser desfeito ao
-    # final, senão o app continua lendo/gravando na sandbox (tabela por Dan mostrando dados de teste e o
-    # botão Apagar Treinamento zerando a pasta da sandbox em vez dos dados reais).
-    was_test_mode = is_test_mode()
-    enable_test_mode()
-    try:
+    with _test_mode_scope():
         loader = unittest.TestLoader()
         suite = loader.discover(start_dir=test_dir, pattern="test_*.py")
         runner = SenpAITestRunner(verbosity=verbosity, log_file=log_file)
         return runner.run(suite)
+
+
+@contextlib.contextmanager
+def _test_mode_scope():
+    """
+    Liga o modo de teste só durante o bloco e devolve o estado anterior ao sair.
+
+    Descobrir ou rodar os testes dentro do processo do app importa `tests/__init__.py`, que liga
+    SENPAI_TEST_MODE. Sem desfazer, o app inteiro passa a usar a sandbox: a tabela por Dan mostra dados
+    de teste e Apagar/Baixar/Carregar Treinamento agem na sandbox em vez dos dados reais.
+    """
+    was_test_mode = is_test_mode()
+    enable_test_mode()
+    try:
+        yield
     finally:
         if not was_test_mode:
             disable_test_mode()
+
 
 def get_total_test_count(test_dir: str = "tests") -> int:
     """
     Descobre e retorna dinamicamente a contagem real total de testes da suíte.
     """
     try:
-        loader = unittest.TestLoader()
-        suite = loader.discover(start_dir=test_dir, pattern="test_*.py")
-        cnt = suite.countTestCases()
+        with _test_mode_scope():
+            loader = unittest.TestLoader()
+            suite = loader.discover(start_dir=test_dir, pattern="test_*.py")
+            cnt = suite.countTestCases()
         return cnt if cnt > 0 else 317
     except Exception:
         return 317

@@ -59,6 +59,10 @@ TRAINING_STORES: List[Tuple[str, str]] = [
     ("config/ai_knowledge_base.json", "Base de conhecimento"),
 ]
 
+# Itens que já foram treinamento e saíram da lista: pacotes antigos que os trazem são aceitos, mas esses
+# arquivos são ignorados na importação.
+LEGACY_STORES: Tuple[str, ...] = ("data/flag_dataset",)
+
 # Fora do .zip (cache, derivado ou grande e recuperável). O apagar remove mesmo assim.
 EXPORT_EXCLUDES = ("data/internet/regras_texto/", "data/internet/baixando/", "/runs/")
 # Vídeos baixados pela coleta: ficam na pasta única de vídeos (data/videos/internet_*.mp4). O apagar os
@@ -397,12 +401,32 @@ def read_manifest(zf: zipfile.ZipFile) -> Optional[Dict[str, Any]]:
     return manifest
 
 
+def split_package_files(manifest: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """
+    Separa os arquivos do manifest em (restauráveis, ignorados). Ignorados são itens de LEGACY_STORES, que
+    já foram treinamento e saíram da lista: não bloqueiam pacotes antigos, só não são gravados.
+    Caminho com '..', absoluto ou fora das duas listas invalida o pacote inteiro.
+    """
+    keep, skipped = [], []
+    for f in manifest.get("arquivos", []):
+        raw = str(f["caminho"]).replace("\\", "/")
+        rel = _norm(raw)
+        if ".." in raw.split("/") or os.path.isabs(raw) or raw.startswith("/"):
+            raise InvalidPackageError(f"Caminho não permitido no pacote: {f['caminho']}")
+        if _is_training_path(rel):
+            keep.append(f)
+        elif any(rel == p or rel.startswith(p + "/") for p in LEGACY_STORES):
+            skipped.append(rel)
+        else:
+            raise InvalidPackageError(f"Caminho não permitido no pacote: {f['caminho']}")
+    return keep, skipped
+
+
 def validate_package(zf: zipfile.ZipFile, manifest: Dict[str, Any]) -> None:
     names = set(zf.namelist())
-    for f in manifest.get("arquivos", []):
+    keep, _ = split_package_files(manifest)
+    for f in keep:
         rel = _norm(f["caminho"])
-        if ".." in rel.split("/") or os.path.isabs(f["caminho"]) or not _is_training_path(rel):
-            raise InvalidPackageError(f"Caminho não permitido no pacote: {f['caminho']}")
         if rel not in names:
             raise InvalidPackageError(f"Arquivo listado no manifest e ausente do pacote: {rel}")
         if hashlib.sha256(zf.read(rel)).hexdigest() != f["sha256"]:
@@ -424,11 +448,12 @@ def _import_training_zip(data: bytes, root: str, backup: bool) -> Dict[str, Any]
         if manifest is None:
             raise InvalidPackageError("Pacote sem manifest.json (formato antigo).")
         validate_package(zf, manifest)
+        files, skipped = split_package_files(manifest)
         _ensure_idle()
         bkp = _backup(root, "importar") if backup else None
         staging = _abs(root, f"data/.importando_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S_%f')}")
         try:
-            for f in manifest["arquivos"]:
+            for f in files:
                 rel = _norm(f["caminho"])
                 dest = os.path.join(staging, *rel.split("/"))
                 os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -436,7 +461,7 @@ def _import_training_zip(data: bytes, root: str, backup: bool) -> Dict[str, Any]
                     out.write(zf.read(rel))
             trash, moved, _ = _move_to_trash(root)
             try:
-                for f in manifest["arquivos"]:
+                for f in files:
                     rel = _norm(f["caminho"])
                     dest = _abs(root, rel)
                     os.makedirs(os.path.dirname(dest), exist_ok=True)
@@ -457,9 +482,10 @@ def _import_training_zip(data: bytes, root: str, backup: bool) -> Dict[str, Any]
             _write_defaults(root)
     _clear_in_memory_state()
     after = summarize(root)
-    log_event("INFO", f"Treinamento restaurado de pacote de {manifest.get('criado_em')}: {len(manifest['arquivos'])} arquivo(s).",
-              "training_dataset")
-    return {"pacote_criado_em": manifest.get("criado_em"), "arquivos": len(manifest["arquivos"]),
+    log_event("INFO", f"Treinamento restaurado de pacote de {manifest.get('criado_em')}: {len(files)} arquivo(s)"
+              + (f"; {len(skipped)} ignorado(s) por não serem mais treinamento: {sorted(set('/'.join(p.split('/')[:2]) for p in skipped))}" if skipped else "")
+              + ".", "training_dataset")
+    return {"pacote_criado_em": manifest.get("criado_em"), "arquivos": len(files), "ignorados": skipped,
             "resumo_do_pacote": manifest.get("resumo"), "estado_atual": after, "copia_de_seguranca": bkp}
 
 

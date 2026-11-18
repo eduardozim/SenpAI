@@ -147,6 +147,23 @@ class TestTrainingDataset(unittest.TestCase):
         with self.assertRaises(td.InvalidPackageError):
             td.import_training_zip(buf2.getvalue(), self.root)
 
+    def test_legacy_store_in_old_package_is_ignored(self):
+        """Pacote de versão antiga com data/flag_dataset é restaurado; os arquivos legados ficam de fora."""
+        import hashlib
+        files = {"data/feedback_dataset.json": b"[]", "data/flag_dataset/labels.json": b"{}"}
+        manifest = {"formato": td.PACKAGE_FORMAT, "versao": 1, "arquivos": [
+            {"caminho": p, "bytes": len(b), "sha256": hashlib.sha256(b).hexdigest()} for p, b in files.items()]}
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as zf:
+            zf.writestr("manifest.json", json.dumps(manifest))
+            for p, b in files.items():
+                zf.writestr(p, b)
+        res = td.import_training_zip(buf.getvalue(), self.root, backup=False)
+        self.assertEqual(res["arquivos"], 1)
+        self.assertEqual(res["ignorados"], ["data/flag_dataset/labels.json"])
+        self.assertTrue(os.path.isfile(os.path.join(self.root, "data", "feedback_dataset.json")))
+        self.assertFalse(os.path.exists(os.path.join(self.root, "data", "flag_dataset")))
+
     def test_legacy_and_garbage(self):
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w") as zf:

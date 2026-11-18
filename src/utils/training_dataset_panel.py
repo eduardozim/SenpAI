@@ -105,6 +105,9 @@ def render_training_dataset_panel(feedback_mgr=None, auto_trainer=None) -> None:
                             itens = ", ".join(f"{td.SUMMARY_LABELS[k]}: {v}" for k, v in res["estado_atual"].items() if v) or "pacote vazio"
                             text = (f"✅ **Treinamento restaurado** do pacote de {res['pacote_criado_em']} "
                                     f"({res['arquivos']} arquivo(s)). Agora: {itens}."
+                                    + (f"\n\n{len(res['ignorados'])} arquivo(s) de itens que não são mais treinamento foram ignorados "
+                                       f"({', '.join(sorted(set('/'.join(p.split('/')[:2]) for p in res['ignorados'])))})."
+                                       if res.get("ignorados") else "")
                                     + (f"\n\nCópia do estado anterior: `{res['copia_de_seguranca']}`" if res["copia_de_seguranca"] else ""))
                         else:
                             up.seek(0)
