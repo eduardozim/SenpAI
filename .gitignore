@@ -110,3 +110,6 @@ data/backups/
 
 # Chaves de API da coleta (só neste computador)
 config/api_keys.local.json
+
+# Histórico de evolução dos kenshis (nomes de pessoas: fica só neste computador)
+data/training_progress.json

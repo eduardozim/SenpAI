@@ -13,12 +13,22 @@ import html
 import math
 from typing import Dict, List, Any, Optional, Tuple, Sequence
 
+import numpy as np
+
 from src.analytics.training_analyzer import (
     TrainingAnalyzer,
     TRAINING_MODALITIES_METADATA,
     TrainingPillarMetrics,
     format_training_mmss
 )
+from src.analytics.training_feedback import (
+    FUMIKOMI_MODALITIES, KIKENTAI_MIN_MEASURED_FRACTION, build_diagnosis, diagnosis_markdown, legacy_lists,
+    measure_kikentai,
+)
+
+# Quanto do histórico o Ki-Ken-Tai-Ichi espera depois do impacto para medir o pé (a janela é ±0,25 s)
+KIKENTAI_WAIT_SECONDS = 0.3
+RECENT_REPS_FOR_HUD = 10
 
 
 class LiveTrainingSessionManager:
@@ -75,6 +85,14 @@ class LiveTrainingSessionManager:
         self.latest_feedback = "🥋 Mantenha a postura Chudan Kamae estável e inicie as repetições."
         self.feedback_severity = "info"  # "success", "warning", "info"
 
+        # Medidas por repetição (mesmo formato do modo gravado) para o diagnóstico detalhado
+        self.rep_details: List[Dict[str, Any]] = []
+        # Golpes esperando os quadros seguintes para medir o pé do fumikomi: (índice em rep_details, pose do impacto)
+        self._pending_kikentai: List[Tuple[int, Dict[str, Any], float]] = []
+        # Submétricas de movimentação medidas periodicamente (média no fim da sessão)
+        self._movement_sub_records: List[Dict[str, float]] = []
+        self.last_diagnosis: Dict[str, Any] = {}
+
     def process_live_frame(
         self,
         live_pose_histories: List[List[Optional[Dict[str, Any]]]],
@@ -97,6 +115,9 @@ class LiveTrainingSessionManager:
             if p:
                 active_landmarks = p
                 break
+
+        # Ki-Ken-Tai-Ichi dos golpes recentes, medido quando já há quadros suficientes depois do impacto
+        self._resolve_pending_kikentai(primary_history, fps)
 
         # 1. Identificação periódica da modalidade caso seja seleção automática (a cada 40 quadros)
         if self.is_auto_detected and self.frame_count % 40 == 0 and len(primary_history) >= 20:
@@ -210,6 +231,7 @@ class LiveTrainingSessionManager:
                             "feedback": self.latest_feedback
                         }
                         self.rep_history.insert(0, rep_event_info)
+                        self._record_rep_details(active_landmarks, elapsed, posture_frame_score, fps)
 
                 # FASE 3: RETORNO AO KAMAE
                 elif self._strike_phase == "RECOVERY" and wrist_y >= shoulder_y:
@@ -226,7 +248,10 @@ class LiveTrainingSessionManager:
                     fps=fps
                 )
                 self.movement_score = float(pm.movimentacao)
-                self.precision_score = float(pm.precisao)
+                self._movement_sub_records.append(dict(pm.movimentacao_submetrics))
+                # Precisão dos golpes recentes (sem golpes, a janela de poses não tem o que medir)
+                recent_prec = self._precision_from_reps(self.rep_details[-RECENT_REPS_FOR_HUD:])
+                self.precision_score = float(recent_prec[0]) if recent_prec else float(pm.precisao)
 
                 # Constância baseada na regularidade do intervalo entre as repetições
                 cadence_cpm = self.get_current_cadence_cpm()
@@ -276,6 +301,125 @@ class LiveTrainingSessionManager:
             "elapsed_seconds": round(elapsed, 1),
             "elapsed_formatted": self._format_timestamp(elapsed)
         }
+
+    # ------------------------------------------------------------------------------------------------------
+    # Medidas por repetição (mesmas fórmulas do modo gravado, em training_analyzer.calculate_pillar_metrics)
+    # ------------------------------------------------------------------------------------------------------
+    def _record_rep_details(self, lm: Dict[str, Any], elapsed: float, posture_score: float, fps: float) -> None:
+        rep: Dict[str, Any] = {"rep": self.rep_count, "tempo_s": round(elapsed, 2), "postura": round(posture_score, 1)}
+        rw, nose = lm.get("RIGHT_WRIST"), lm.get("NOSE")
+        if rw and nose:
+            lat_dev = abs(rw["x"] - nose["x"])
+            rep["centro"] = round(max(0.0, 1.0 - lat_dev * 5.0) * 100.0, 1)
+            rep["alvo"] = round(max(0.0, 1.0 - lat_dev * 3.5) * 100.0, 1)
+            rep["furikaburi"] = round(float(np.clip(1.0 - (self._furikaburi_peak_y - nose["y"]), 0.0, 1.0)) * 100.0, 1)
+        self.rep_details.append(rep)
+        if self.current_modality_key in FUMIKOMI_MODALITIES:
+            self._pending_kikentai.append((len(self.rep_details) - 1, lm, time.time()))
+
+    def _resolve_pending_kikentai(self, history: Sequence[Optional[Dict[str, Any]]], fps: float) -> None:
+        if not self._pending_kikentai:
+            return
+        now = time.time()
+        still_waiting = []
+        for rep_idx, impact_lm, t_impact in self._pending_kikentai:
+            if now - t_impact < KIKENTAI_WAIT_SECONDS:
+                still_waiting.append((rep_idx, impact_lm, t_impact))
+                continue
+            # A pose do impacto é localizada pela identidade: o histórico é cortado e deslocado durante a sessão
+            idx = next((i for i in range(len(history) - 1, -1, -1) if history[i] is impact_lm), None)
+            res = measure_kikentai(history, idx, fps) if idx is not None else None
+            if res is None:
+                continue
+            offset_ms, score = res
+            rep = self.rep_details[rep_idx]
+            rep["kikentai_ms"], rep["kikentai"] = offset_ms, score
+            if abs(offset_ms) > 60:
+                quando = "depois" if offset_ms > 0 else "antes"
+                self.latest_feedback = (f"⏱️ Repetição #{rep['rep']}: o pé chegou {abs(offset_ms):.0f} ms {quando} "
+                                        f"da espada. Pé e espada juntos (Ki-Ken-Tai-Ichi)!")
+                self.feedback_severity = "warning"
+        self._pending_kikentai = still_waiting
+
+    def _precision_from_reps(self, reps: List[Dict[str, Any]],
+                             modality_key: Optional[str] = None) -> Optional[Tuple[float, Dict[str, float], List[Dict[str, str]]]]:
+        """(nota de Precisão, submétricas, não medidos) a partir das repetições; None sem golpes medidos."""
+        modality_key = modality_key or self.current_modality_key
+        alvo = [r["alvo"] for r in reps if r.get("alvo") is not None]
+        centro = [r["centro"] for r in reps if r.get("centro") is not None]
+        if not alvo or not centro:
+            return None
+        subs = {"trajetoria_alvo": round(float(np.mean(alvo)), 1), "controle_linha_centro": round(float(np.mean(centro)), 1)}
+        kkt = [r["kikentai"] for r in reps if r.get("kikentai") is not None]
+        nao_medidos: List[Dict[str, str]] = []
+        kkt_min = max(2, int(np.ceil(KIKENTAI_MIN_MEASURED_FRACTION * len(reps))))
+        if modality_key in FUMIKOMI_MODALITIES and len(kkt) >= kkt_min:
+            subs["kikentai_sincronismo"] = round(float(np.mean(kkt)), 1)
+            score = subs["trajetoria_alvo"] * 0.40 + subs["kikentai_sincronismo"] * 0.35 + subs["controle_linha_centro"] * 0.25
+        else:
+            score = (subs["trajetoria_alvo"] * 0.40 + subs["controle_linha_centro"] * 0.25) / 0.65
+            motivo = ("não se aplica a esta modalidade (sem fumikomi)" if modality_key not in FUMIKOMI_MODALITIES else
+                      f"o pé do fumikomi foi medido em {len(kkt)} de {len(reps)} golpes (mínimo {kkt_min}): "
+                      "pés fora da imagem ou sem fumikomi visível")
+            nao_medidos.append({"metrica": "kikentai_sincronismo", "label": "Sincronismo Ki-Ken-Tai-Ichi", "motivo": motivo})
+        return round(score, 1), subs, nao_medidos
+
+    def _session_pillars(self, elapsed: float) -> TrainingPillarMetrics:
+        """Métricas da sessão inteira, no mesmo formato do modo gravado, para o diagnóstico detalhado."""
+        reps = self.rep_details
+        # Movimentação: média das medições periódicas da janela de poses
+        mov_sub: Dict[str, float] = {}
+        for key in ("verticalidade_coluna", "nivelamento_ombros", "alinhamento_base_pes", "amplitude_furikaburi"):
+            vals = [r[key] for r in self._movement_sub_records if isinstance(r.get(key), (int, float))]
+            if vals:
+                mov_sub[key] = round(float(np.mean(vals)), 1)
+        if mov_sub:
+            mov = (mov_sub.get("verticalidade_coluna", 75.0) * 0.35 + mov_sub.get("nivelamento_ombros", 80.0) * 0.25
+                   + mov_sub.get("alinhamento_base_pes", 78.0) * 0.20 + mov_sub.get("amplitude_furikaburi", 72.0) * 0.20)
+        else:
+            mov = self.movement_score
+        # Precisão: golpes da sessão
+        prec_res = self._precision_from_reps(reps)
+        if prec_res:
+            prec, prec_sub, nao_medidos = prec_res
+        else:
+            prec, prec_sub = self.precision_score, {}
+            nao_medidos = [{"metrica": "trajetoria_alvo", "label": "Trajetória no alvo", "motivo": "nenhum golpe com o pulso visível"},
+                           {"metrica": "controle_linha_centro", "label": "Controle da linha central", "motivo": "nenhum golpe com o pulso visível"},
+                           {"metrica": "kikentai_sincronismo", "label": "Sincronismo Ki-Ken-Tai-Ichi", "motivo": "nenhum golpe detectado"}]
+        # Constância: intervalos entre golpes, queda de postura ao longo da sessão e cadência da modalidade
+        times = [r["tempo_s"] for r in reps]
+        const_sub: Dict[str, float] = {}
+        std_dev = 0.0
+        if len(times) >= 3:
+            gaps = np.diff(times)
+            std_dev = float(np.std(gaps))
+            const_sub["regularidade_ritmo"] = round(max(0.0, 1.0 - std_dev / max(0.1, float(np.mean(gaps)))) * 100.0, 1)
+        postures = [r["postura"] for r in reps if r.get("postura") is not None]
+        if len(postures) >= 6:
+            half = len(postures) // 2
+            ratio = float(np.mean(postures[half:])) / max(0.01, float(np.mean(postures[:half])))
+            const_sub["resistencia_fadiga"] = round(float(np.clip(ratio * 100.0, 50.0, 100.0)), 1)
+        cpm = self.rep_count / max(0.05, elapsed / 60.0)
+        lo, hi = self.get_expected_cadence_range()
+        if self.rep_count >= 2:
+            if lo <= cpm <= hi:
+                const_sub["adequacao_cadencia"] = 95.0
+            elif cpm < lo:
+                const_sub["adequacao_cadencia"] = round(max(50.0, 95.0 - (lo - cpm) * 3.0), 1)
+            else:
+                const_sub["adequacao_cadencia"] = round(max(60.0, 95.0 - (cpm - hi) * 1.5), 1)
+        if const_sub:
+            w = {"regularidade_ritmo": 0.45, "resistencia_fadiga": 0.35, "adequacao_cadencia": 0.20}
+            const = sum(const_sub[k] * w[k] for k in const_sub) / sum(w[k] for k in const_sub)
+        else:
+            const = self.constancy_score
+        return TrainingPillarMetrics(
+            movimentacao_score=mov, precisao_score=prec, constancia_score=const,
+            movimentacao_submetrics=mov_sub, precisao_submetrics=prec_sub, constancia_submetrics=const_sub,
+            cadence_cpm=cpm, cadence_std_dev_seconds=std_dev, total_repetitions=self.rep_count,
+            rep_details=list(reps), nao_medidos=nao_medidos,
+        )
 
     def get_current_cadence_cpm(self) -> float:
         """Calcula a taxa de repetições por minuto (CPM) atual."""
@@ -512,28 +656,23 @@ class LiveTrainingSessionManager:
                 "overall_score": b_ov
             })
 
-        # Diagnósticos pedagógicos
-        strengths = []
-        improvements = []
-        drills = []
-
-        if avg_mov >= 75.0:
-            strengths.append("Excelente postura vertical da coluna (Shisei) e estabilidade de tronco mantida.")
-        else:
-            improvements.append("Oscilação ou inclinação anterior do tronco durante os movimentos.")
-            drills.append("Praticar Suburi diante de espelho focando na verticalidade das costas e ombros relaxados.")
-
-        if avg_prec >= 75.0:
-            strengths.append("Ótimo controle de empunhadura Tenouchi e alinhamento do golpe no centro do alvo.")
-        else:
-            improvements.append("Desalinhamento de ombros ou altura irregular na parada final do Shinai.")
-            drills.append("Executar 50 repetições de Shōmen-uchi pausado conferindo a parada exata na altura dos olhos.")
-
-        if avg_const >= 75.0:
-            strengths.append(f"Cadência rítmica consistente com média de {cpm_final} repetições por minuto.")
-        else:
-            improvements.append("Irregularidade no ritmo de repetição entre os golpes com desaceleração prematura.")
-            drills.append("Exercício de Kakari-geiko e Suburi com metrônomo para condicionamento da constância respiratória.")
+        # Diagnóstico detalhado (o mesmo do modo gravado), na modalidade em que a sessão passou mais tempo
+        diag_modality = (max(modality_blocks, key=lambda b: b["total_duration_seconds"])["modality_key"]
+                         if modality_blocks else self.current_modality_key)
+        diag_meta = TRAINING_MODALITIES_METADATA.get(diag_modality, meta)
+        prev_key = self.current_modality_key
+        self.current_modality_key = diag_modality   # cadência e Precisão avaliadas na modalidade do diagnóstico
+        try:
+            session_pillars = self._session_pillars(elapsed)
+        finally:
+            self.current_modality_key = prev_key
+        diagnosis = build_diagnosis(session_pillars, diag_modality, diag_meta)
+        self.last_diagnosis = diagnosis
+        strengths, improvements, exercises = legacy_lists(diagnosis)
+        drills = [f"{e['name']} — {e['dose']}" for e in exercises]
+        # As notas da sessão passam a ser as do diagnóstico (medidas nos golpes, não na janela de poses)
+        avg_mov, avg_prec, avg_const = session_pillars.movimentacao, session_pillars.precisao, session_pillars.constancia
+        avg_overall = round((avg_mov * 0.40) + (avg_prec * 0.35) + (avg_const * 0.25), 1)
 
         blocks_md_lines = []
         for mb in modality_blocks:
@@ -566,15 +705,8 @@ class LiveTrainingSessionManager:
 
 ---
 
-## 💡 Diagnóstico Pedagógico
-### Pontos Fortes:
-{chr(10).join(f"- ✅ {s}" for s in strengths) if strengths else "- Em consolidação técnica inicial."}
-
-### Pontos de Atenção & Melhoria:
-{chr(10).join(f"- ⚠️ {i}" for i in improvements) if improvements else "- Nenhuma falha biomecânica grave detectada."}
-
-### Prescrições de Exercícios Recomendados:
-{chr(10).join(f"- 🥋 {d}" for d in drills) if drills else "- Manter a rotina habitual de Keiko."}
+## 💡 Diagnóstico Pedagógico ({diag_meta.get('name', diag_modality)})
+{chr(10).join(diagnosis_markdown(diagnosis))}
 
 ---
 *Relatório gerado automaticamente pelo SenpAI em estrita conformidade com os manuais oficiais da FIK e AJKF/ZNKR.*
@@ -595,6 +727,13 @@ class LiveTrainingSessionManager:
             "strengths": strengths,
             "improvements": improvements,
             "prescribed_drills": drills,
+            "recommended_exercises": exercises,
+            "diagnosis": diagnosis,
+            "pillars": session_pillars.to_dict(),
+            "kendoka_id": "AO_VIVO",
+            "session_id": f"aovivo_{int(self.start_time * 1000)}",
+            "created_at": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(self.start_time)),
+            "rep_details": list(self.rep_details),
             "rep_history": self.rep_history,
             "sub_sessions": sub_sessions,
             "modality_blocks": modality_blocks,

@@ -736,6 +736,23 @@ mudanças, consulte o arquivo manual.md.
   • Os golpes em dúvida das lutas baixadas vão para a Fila de Curadoria; as respostas
     viram rótulos e o próximo ciclo de treino aprende com elas.
 
+- Diagnóstico detalhado no modo de treinamento:
+  • Ki-Ken-Tai-Ichi medido de verdade (diferença em ms entre o pé do fumikomi e a espada).
+  • Cada ponto de atenção diz o que foi visto, onde (piores repetições), por que importa,
+    causa provável e gravidade.
+  • Exercícios do catálogo editável (config/exercise_catalog.json) com dose, progressão,
+    pontos de atenção e como medir; plano da semana e metas para a próxima sessão.
+  • Modo ao vivo com o mesmo diagnóstico: Ki-Ken-Tai-Ichi medido em cada golpe (com
+    alerta na hora), Precisão calculada nos golpes e diagnóstico completo no fim da sessão.
+  • Resumo do Sensei no topo do diagnóstico; o botão "Escrever com a IA" reescreve o
+    texto usando só as medidas (o nome do kenshi não é enviado; números que não estão
+    no diagnóstico fazem o texto ser descartado).
+  • Evolução entre sessões: com o kendoca nomeado, a sessão entra no histórico do nome
+    e o diagnóstico mostra o que melhorou, o que caiu e as metas atingidas desde a
+    sessão anterior (data/training_progress.json, fora do git).
+  • Aba Configurações > Catálogo de Exercícios: consultar, filtrar, criar, editar e
+    excluir exercícios, ver a cobertura das métricas e baixar/carregar o catálogo.
+
 - Fila de Curadoria na Governança de Treinamento:
   • Transferida de Perfis de Calibração para logo após o Ciclo de Treino.
   • O Eixo 4 de Perfis de Calibração passa a se chamar Golden Benchmark.

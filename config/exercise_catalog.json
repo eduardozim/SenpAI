@@ -1,0 +1,400 @@
+{
+  "_sobre": "Catálogo de exercícios do modo de treinamento. Pode ser editado por um sensei sem mexer no código. 'corrige' = métricas que o exercício trabalha quando estão fracas; 'reforca' = métricas fortes que o exercício leva adiante; 'formato' = solo, dupla ou bogu (exige armadura e motodachi); 'dose' por gravidade (leve, moderada, prioritaria); 'modalidades' (opcional) limita a quais modalidades ele se aplica.",
+  "versao": 1,
+  "exercicios": [
+    {
+      "id": "kagami_suburi",
+      "nome": "Suburi diante do espelho (Shōmen-uchi lento)",
+      "corrige": ["verticalidade_coluna", "nivelamento_ombros"],
+      "reforca": [],
+      "formato": "solo",
+      "nivel": "todos",
+      "dose": {
+        "leve": "2 séries de 20 Shōmen-uchi lentos, 1 vez ao dia",
+        "moderada": "3 séries de 30 Shōmen-uchi lentos, 1 vez ao dia",
+        "prioritaria": "3 séries de 30 Shōmen-uchi lentos, 2 vezes ao dia, antes de qualquer outro suburi"
+      },
+      "passos": [
+        "De lado para o espelho, para ver a linha orelha-ombro-quadril.",
+        "Depois de frente, para conferir a altura dos dois ombros.",
+        "Por fim, sem espelho, de olhos fechados nas últimas 10 repetições."
+      ],
+      "pontos_de_atencao": ["Queixo recolhido e olhar à frente, não para baixo", "O quadril empurra o golpe; o tronco não se inclina para alcançar", "Ombros baixos e relaxados na subida"],
+      "erros_comuns": ["Curvar a nuca para olhar o alvo", "Projetar o peito à frente na descida", "Elevar o ombro direito ao levantar o shinai"],
+      "como_medir": "Verticalidade da coluna e nivelamento de ombros na próxima sessão gravada."
+    },
+    {
+      "id": "kamae_parede",
+      "nome": "Chūdan-no-kamae encostado na parede",
+      "corrige": ["verticalidade_coluna"],
+      "reforca": [],
+      "formato": "solo",
+      "nivel": "iniciante",
+      "dose": {
+        "leve": "3 vezes de 30 s mantendo o kamae",
+        "moderada": "4 vezes de 45 s mantendo o kamae",
+        "prioritaria": "5 vezes de 60 s mantendo o kamae, todos os dias"
+      },
+      "passos": [
+        "Calcanhares, glúteos e nuca encostados na parede; kamae completo.",
+        "Afaste-se um passo e mantenha a mesma linha sem apoio.",
+        "Faça okuri-ashi para frente e para trás sem perder a linha."
+      ],
+      "pontos_de_atencao": ["Peso distribuído nos dois pés", "Mão esquerda à frente do umbigo, um punho de distância", "Respiração pelo abdômen"],
+      "erros_comuns": ["Afastar a nuca da parede", "Contrair os ombros para manter a posição"],
+      "como_medir": "Verticalidade da coluna medida nos golpes da próxima sessão."
+    },
+    {
+      "id": "okuri_ashi_linha",
+      "nome": "Okuri-ashi sobre linha guia",
+      "corrige": ["alinhamento_base_pes"],
+      "reforca": [],
+      "formato": "solo",
+      "nivel": "todos",
+      "dose": {
+        "leve": "3 minutos de okuri-ashi contínuo",
+        "moderada": "2 séries de 4 minutos com 1 minuto de pausa",
+        "prioritaria": "3 séries de 5 minutos com 1 minuto de pausa, todos os dias"
+      },
+      "passos": [
+        "Pé direito ao lado de uma linha no chão; ponta do pé esquerdo alinhada ao calcanhar direito.",
+        "Desloque-se para frente e para trás mantendo a largura de um punho entre os pés.",
+        "Inclua deslocamentos rápidos (2 passos rápidos, 1 lento) sem perder a base."
+      ],
+      "pontos_de_atencao": ["Calcanhar esquerdo levemente elevado o tempo todo", "Joelhos levemente soltos, nunca travados", "O quadril se move em linha reta, sem subir e descer"],
+      "erros_comuns": ["Apoiar o calcanhar esquerdo no chão", "Cruzar os pés ou abrir demais a base", "Arrastar o pé de trás sem trazê-lo de volta (hikitsuke)"],
+      "como_medir": "Alinhamento da base dos pés na próxima sessão gravada."
+    },
+    {
+      "id": "hikitsuke_fumikomi",
+      "nome": "Fumikomi com hikitsuke imediato",
+      "corrige": ["alinhamento_base_pes", "kikentai_sincronismo"],
+      "reforca": [],
+      "formato": "solo",
+      "nivel": "todos",
+      "dose": {
+        "leve": "2 séries de 15 fumikomi",
+        "moderada": "3 séries de 20 fumikomi",
+        "prioritaria": "4 séries de 20 fumikomi, todos os dias"
+      },
+      "passos": [
+        "Sem shinai: fumikomi com o pé direito e trazer o pé esquerdo de volta à base na mesma hora.",
+        "Com shinai: fumikomi junto com um Shōmen-uchi.",
+        "Com kiai: 'men' no exato instante do pé."
+      ],
+      "pontos_de_atencao": ["O som vem da sola inteira, não do calcanhar", "O pé esquerdo empurra; o direito não sobe alto", "Hikitsuke rápido, sem ficar com as pernas abertas"],
+      "erros_comuns": ["Levantar o joelho direito alto demais", "Bater o calcanhar (risco de lesão)", "Deixar o pé esquerdo para trás depois do golpe"],
+      "como_medir": "Sincronismo Ki-Ken-Tai-Ichi e alinhamento da base na próxima sessão."
+    },
+    {
+      "id": "fumikomi_palma",
+      "nome": "Fumikomi lento com batida de palma",
+      "corrige": ["kikentai_sincronismo"],
+      "reforca": [],
+      "formato": "solo",
+      "nivel": "iniciante",
+      "dose": {
+        "leve": "2 séries de 15 repetições",
+        "moderada": "3 séries de 20 repetições",
+        "prioritaria": "3 séries de 20 repetições, 2 vezes ao dia"
+      },
+      "passos": [
+        "Parado: bata as palmas junto com o fumikomi, buscando um só som.",
+        "Com shinai: Shōmen-uchi lento, pé e espada chegando juntos.",
+        "Na velocidade normal, com kiai."
+      ],
+      "pontos_de_atencao": ["Escute: pé e mão devem soar como uma única batida", "Comece lento e só acelere quando acertar 10 seguidos"],
+      "erros_comuns": ["Bater o pé depois da mão (o mais comum)", "Antecipar o pé e 'esperar' a espada"],
+      "como_medir": "Sincronismo Ki-Ken-Tai-Ichi: diferença em milissegundos entre o pé e o impacto."
+    },
+    {
+      "id": "kihon_men_motodachi",
+      "nome": "Kihon Men com motodachi (Tobikomi-men)",
+      "corrige": ["kikentai_sincronismo", "trajetoria_alvo"],
+      "reforca": ["kikentai_sincronismo"],
+      "formato": "bogu",
+      "nivel": "intermediario",
+      "dose": {
+        "leve": "2 séries de 8 men",
+        "moderada": "3 séries de 10 men",
+        "prioritaria": "4 séries de 10 men, com pausa para conferir cada um"
+      },
+      "passos": [
+        "Do issoku-ittō-no-maai, men grande com fumikomi.",
+        "Men pequeno e rápido mantendo o sincronismo.",
+        "Men após seme do motodachi abrir o centro."
+      ],
+      "pontos_de_atencao": ["Kiai, espada e pé no mesmo instante", "Passar pelo motodachi em linha reta", "Zanshin voltado para o motodachi ao final"],
+      "erros_comuns": ["Parar logo após o golpe", "Bater com os braços sem empurrar com o quadril"],
+      "como_medir": "Sincronismo Ki-Ken-Tai-Ichi e trajetória no alvo."
+    },
+    {
+      "id": "joge_buri",
+      "nome": "Jōge-buri com pegada relaxada",
+      "corrige": ["amplitude_furikaburi"],
+      "reforca": [],
+      "formato": "solo",
+      "nivel": "todos",
+      "dose": {
+        "leve": "2 séries de 30 repetições",
+        "moderada": "3 séries de 40 repetições",
+        "prioritaria": "3 séries de 50 repetições, 2 vezes ao dia"
+      },
+      "passos": [
+        "Movimento grande: a ponta do shinai toca as costas atrás e desce até o joelho.",
+        "Mesmo movimento com okuri-ashi para frente e para trás.",
+        "Transição para Shōmen-uchi grande mantendo a amplitude."
+      ],
+      "pontos_de_atencao": ["Os braços passam por cima da cabeça, não à frente do rosto", "A mão esquerda conduz pela linha central", "Mãos relaxadas, aperto só no final (tenouchi)"],
+      "erros_comuns": ["Levantar só até a testa", "Dobrar os pulsos em vez de usar os ombros", "Puxar com a mão direita"],
+      "como_medir": "Amplitude do furikaburi na próxima sessão."
+    },
+    {
+      "id": "alongamento_ombros",
+      "nome": "Mobilidade de ombros com shinai (antes do treino)",
+      "corrige": ["amplitude_furikaburi", "nivelamento_ombros"],
+      "reforca": [],
+      "formato": "solo",
+      "nivel": "todos",
+      "dose": {
+        "leve": "1 série de 10 passagens",
+        "moderada": "2 séries de 10 passagens",
+        "prioritaria": "2 séries de 15 passagens, antes de todo treino"
+      },
+      "passos": [
+        "Shinai na horizontal, mãos afastadas: passar por cima da cabeça até as costas e voltar.",
+        "Aproximar as mãos aos poucos, sem dobrar os cotovelos.",
+        "Encerrar com 10 Jōge-buri lentos."
+      ],
+      "pontos_de_atencao": ["Sem dor: pare no limite confortável", "Mantenha o tronco vertical durante a passagem"],
+      "erros_comuns": ["Arquear a lombar para compensar", "Fazer rápido, sem controle"],
+      "como_medir": "Amplitude do furikaburi e nivelamento de ombros."
+    },
+    {
+      "id": "shomen_alvo_fixo",
+      "nome": "Shōmen-uchi com alvo fixo na parede",
+      "corrige": ["controle_linha_centro", "trajetoria_alvo"],
+      "reforca": [],
+      "formato": "solo",
+      "nivel": "todos",
+      "dose": {
+        "leve": "2 séries de 20 repetições",
+        "moderada": "3 séries de 30 repetições",
+        "prioritaria": "4 séries de 30 repetições, todos os dias"
+      },
+      "passos": [
+        "Fita vertical na parede: a ponta do shinai sobe e desce sobre a fita, parando na altura da testa.",
+        "Com okuri-ashi, mantendo a ponta na fita.",
+        "Alternar com Sayū-men e voltar ao centro a cada golpe."
+      ],
+      "pontos_de_atencao": ["A mão esquerda fica na linha do umbigo durante todo o golpe", "Parada firme na altura do alvo, sem 'cair' para baixo"],
+      "erros_comuns": ["Puxar com a mão direita, o que desvia a ponta para a esquerda", "Abrir os cotovelos"],
+      "como_medir": "Controle da linha central e trajetória no alvo."
+    },
+    {
+      "id": "sayu_men",
+      "nome": "Sayū-men controlado",
+      "corrige": ["controle_linha_centro"],
+      "reforca": ["controle_linha_centro"],
+      "formato": "solo",
+      "nivel": "intermediario",
+      "dose": {
+        "leve": "2 séries de 20 repetições",
+        "moderada": "3 séries de 30 repetições",
+        "prioritaria": "3 séries de 30 repetições lentas, com pausa no centro a cada golpe"
+      },
+      "passos": [
+        "Furikaburi sempre pela linha central; só a descida faz o ângulo de 45°.",
+        "Com okuri-ashi.",
+        "No ritmo do kirikaeshi."
+      ],
+      "pontos_de_atencao": ["A mão esquerda nunca sai da linha central", "Ângulo de 45°, não horizontal"],
+      "erros_comuns": ["Levantar o shinai já inclinado", "Golpe horizontal (yoko-men)"],
+      "como_medir": "Controle da linha central."
+    },
+    {
+      "id": "suburi_metronomo",
+      "nome": "Suburi com metrônomo",
+      "corrige": ["regularidade_ritmo", "adequacao_cadencia"],
+      "reforca": [],
+      "formato": "solo",
+      "nivel": "todos",
+      "dose": {
+        "leve": "3 séries de 1 minuto no ritmo alvo",
+        "moderada": "4 séries de 1 minuto no ritmo alvo",
+        "prioritaria": "5 séries de 1 minuto no ritmo alvo, todos os dias"
+      },
+      "passos": [
+        "Metrônomo no ritmo da modalidade; um golpe a cada batida.",
+        "Expire no golpe, inspire na subida.",
+        "Aumente 5 batidas por minuto quando completar uma série sem errar a batida."
+      ],
+      "pontos_de_atencao": ["A respiração comanda o ritmo", "Não acelerar no fim da série"],
+      "erros_comuns": ["Sequências rápidas seguidas de pausas", "Prender a respiração"],
+      "como_medir": "Regularidade do ritmo e adequação da cadência."
+    },
+    {
+      "id": "haya_suburi",
+      "nome": "Haya-suburi em blocos",
+      "corrige": ["resistencia_fadiga", "adequacao_cadencia"],
+      "reforca": ["regularidade_ritmo", "resistencia_fadiga"],
+      "formato": "solo",
+      "nivel": "intermediario",
+      "dose": {
+        "leve": "3 blocos de 20 com 30 s de pausa",
+        "moderada": "4 blocos de 30 com 30 s de pausa",
+        "prioritaria": "5 blocos de 30 com 45 s de pausa, 3 vezes por semana"
+      },
+      "passos": [
+        "Blocos curtos mantendo a técnica perfeita.",
+        "Aumente o bloco em 10 repetições quando a postura se mantiver até o fim.",
+        "Feche cada bloco com 5 Shōmen-uchi grandes e lentos."
+      ],
+      "pontos_de_atencao": ["A técnica vale mais que a velocidade", "Pare o bloco se a postura cair"],
+      "erros_comuns": ["Encurtar o movimento quando cansa", "Inclinar o tronco para frente no fim do bloco"],
+      "como_medir": "Resistência à fadiga: postura no último terço comparada com o primeiro."
+    },
+    {
+      "id": "kirikaeshi_blocos",
+      "nome": "Kirikaeshi em blocos progressivos",
+      "corrige": ["resistencia_fadiga", "regularidade_ritmo"],
+      "reforca": ["resistencia_fadiga"],
+      "formato": "bogu",
+      "nivel": "intermediario",
+      "dose": {
+        "leve": "2 kirikaeshi completos com 30 s de pausa",
+        "moderada": "3 kirikaeshi completos com 30 s de pausa",
+        "prioritaria": "4 kirikaeshi completos com 30 s de pausa, 3 vezes por semana"
+      },
+      "passos": [
+        "Kirikaeshi lento e grande, uma respiração por sequência de sayū-men.",
+        "Velocidade normal.",
+        "Kirikaeshi rápido mantendo amplitude e ritmo."
+      ],
+      "pontos_de_atencao": ["Uma respiração para os 4 golpes para frente e outra para os 5 para trás", "Golpes grandes até o último"],
+      "erros_comuns": ["Respirar no meio da sequência", "Golpes ficarem curtos no final"],
+      "como_medir": "Resistência à fadiga e regularidade do ritmo."
+    },
+    {
+      "id": "kakari_geiko_curto",
+      "nome": "Kakari-geiko curto (20 a 30 s)",
+      "corrige": ["resistencia_fadiga"],
+      "reforca": ["resistencia_fadiga", "kikentai_sincronismo"],
+      "formato": "bogu",
+      "nivel": "avancado",
+      "dose": {
+        "leve": "2 rodadas de 20 s",
+        "moderada": "3 rodadas de 25 s",
+        "prioritaria": "4 rodadas de 30 s com 1 minuto de pausa"
+      },
+      "passos": [
+        "Ataques contínuos nas aberturas do motodachi, sem pausa.",
+        "Manter o kiai e a postura até o fim da rodada."
+      ],
+      "pontos_de_atencao": ["Cada golpe com ki-ken-tai completo", "Recuperar o kamae rapidamente"],
+      "erros_comuns": ["Golpes só de braço quando cansa", "Abandonar o zanshin"],
+      "como_medir": "Resistência à fadiga e sincronismo no fim das rodadas."
+    },
+    {
+      "id": "seme_men",
+      "nome": "Seme e Men (pressão no centro)",
+      "corrige": [],
+      "reforca": ["controle_linha_centro", "trajetoria_alvo"],
+      "formato": "bogu",
+      "nivel": "avancado",
+      "dose": {
+        "leve": "2 séries de 6",
+        "moderada": "3 séries de 8",
+        "prioritaria": "3 séries de 8"
+      },
+      "passos": [
+        "Entrar no maai pressionando o centro com a ponta do shinai.",
+        "Golpear men no instante em que o motodachi reage.",
+        "Variar: seme-kote, seme-men."
+      ],
+      "pontos_de_atencao": ["A ponta nunca sai do centro durante o seme", "O golpe sai do seme, sem pausa"],
+      "erros_comuns": ["Recuar a ponta antes de golpear", "Seme só com os braços, sem o corpo"],
+      "como_medir": "Controle da linha central e trajetória no alvo."
+    },
+    {
+      "id": "debana_men",
+      "nome": "Debana-men",
+      "corrige": [],
+      "reforca": ["kikentai_sincronismo", "trajetoria_alvo"],
+      "formato": "bogu",
+      "nivel": "avancado",
+      "dose": {
+        "leve": "2 séries de 6",
+        "moderada": "3 séries de 8",
+        "prioritaria": "3 séries de 8"
+      },
+      "passos": [
+        "Motodachi inicia um ataque; golpear men no início do movimento dele.",
+        "Reduzir o sinal do motodachi até reagir só à intenção."
+      ],
+      "pontos_de_atencao": ["Ki-ken-tai completo mesmo no golpe curto", "Sair para frente, nunca para trás"],
+      "erros_comuns": ["Esperar o ataque chegar", "Golpe curto sem fumikomi"],
+      "como_medir": "Sincronismo Ki-Ken-Tai-Ichi."
+    },
+    {
+      "id": "kata_lento",
+      "nome": "Kata lento com foco em hasuji e maai",
+      "corrige": [],
+      "reforca": [],
+      "formato": "dupla",
+      "nivel": "todos",
+      "modalidades": ["nihon_kendo_kata", "bokuto_kihon_waza"],
+      "dose": {
+        "leve": "1 sequência completa a 50% da velocidade",
+        "moderada": "2 sequências completas a 50% da velocidade",
+        "prioritaria": "3 sequências completas a 50% da velocidade"
+      },
+      "passos": [
+        "Executar a sequência devagar, conferindo o ângulo do corte e o maai a cada passo.",
+        "Repetir na velocidade normal mantendo os mesmos pontos de controle."
+      ],
+      "pontos_de_atencao": ["Hasuji: o fio do bokutō alinhado com a trajetória", "Maai exato antes de cada ação"],
+      "erros_comuns": ["Acelerar e perder o maai", "Esquecer o zanshin entre as técnicas"],
+      "como_medir": "Avaliação do sensei e precisão nos golpes do kata."
+    },
+    {
+      "id": "simulacao_shinsa",
+      "nome": "Simulação de exame (shinsa)",
+      "corrige": [],
+      "reforca": [],
+      "formato": "bogu",
+      "nivel": "todos",
+      "modalidades": ["shinsa"],
+      "dose": {
+        "leve": "1 simulação completa",
+        "moderada": "2 simulações completas",
+        "prioritaria": "3 simulações completas com retorno de um sensei"
+      },
+      "passos": [
+        "Entrada formal, sonkyo, tachiai de 1 minuto e saída regulamentar.",
+        "Buscar 2 ou 3 ataques decisivos com kiai pleno."
+      ],
+      "pontos_de_atencao": ["Compostura e reigi do início ao fim", "Qualidade acima da quantidade de golpes"],
+      "erros_comuns": ["Atacar sem preparo (seme)", "Perder a postura após o golpe"],
+      "como_medir": "Avaliação do sensei."
+    },
+    {
+      "id": "hitori_geiko",
+      "nome": "Hitori-geiko de manutenção",
+      "corrige": [],
+      "reforca": [],
+      "formato": "solo",
+      "nivel": "todos",
+      "manutencao": true,
+      "dose": {
+        "leve": "100 suburi por dia: Shōmen, Sayū-men e Haya-suburi",
+        "moderada": "100 suburi por dia: Shōmen, Sayū-men e Haya-suburi",
+        "prioritaria": "100 suburi por dia: Shōmen, Sayū-men e Haya-suburi"
+      },
+      "passos": ["Shōmen-uchi grande (30)", "Sayū-men (30)", "Haya-suburi (40)"],
+      "pontos_de_atencao": ["Qualidade em cada repetição"],
+      "erros_comuns": ["Contar repetições sem atenção à forma"],
+      "como_medir": "Manutenção das notas atuais na próxima sessão."
+    }
+  ]
+}

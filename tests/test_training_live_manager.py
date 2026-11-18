@@ -92,3 +92,80 @@ class TestLiveTrainingSessionManager(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class _Clock:
+    def __init__(self, t: float = 1000.0):
+        self.t = t
+
+
+def _live_pose(wrist_y: float, foot_x: float) -> dict:
+    return {
+        "NOSE": {"x": 0.50, "y": 0.20},
+        "RIGHT_WRIST": {"x": 0.52, "y": wrist_y}, "LEFT_WRIST": {"x": 0.50, "y": wrist_y},
+        "RIGHT_SHOULDER": {"x": 0.55, "y": 0.30}, "LEFT_SHOULDER": {"x": 0.45, "y": 0.30},
+        "RIGHT_HIP": {"x": 0.55, "y": 0.55}, "LEFT_HIP": {"x": 0.45, "y": 0.55},
+        "LEFT_ANKLE": {"x": 0.45, "y": 0.90}, "RIGHT_ANKLE": {"x": foot_x, "y": 0.90},
+        "RIGHT_FOOT_INDEX": {"x": foot_x + 0.02, "y": 0.92},
+    }
+
+
+def _run_live_session(modality: str, strikes: int = 6, landing_delay: int = 3):
+    """Sessão simulada a 30 fps: kamae, furikaburi, impacto; o pé pousa `landing_delay` quadros depois do impacto."""
+    from unittest import mock
+    clock = _Clock()
+    with mock.patch("time.time", new=lambda: clock.t):
+        mgr = LiveTrainingSessionManager(modality_override=modality, kendoka_name="Edu")
+        history, foot_x = [], 0.55
+        for _ in range(strikes):
+            for f in range(45):
+                wrist = 0.15 if 10 <= f < 20 else (0.31 if f == 20 else 0.35)
+                land = 20 + landing_delay
+                if land - 4 < f <= land:
+                    foot_x += 0.06
+                history.append(_live_pose(wrist, foot_x))
+                mgr.process_live_frame([history], fps=30.0)
+                clock.t += 1.0 / 30.0
+        for _ in range(15):                       # quadros finais para medir o último golpe
+            history.append(_live_pose(0.35, foot_x))
+            mgr.process_live_frame([history], fps=30.0)
+            clock.t += 1.0 / 30.0
+        report = mgr.generate_final_session_report()
+    return mgr, report
+
+
+class TestLiveDiagnosis(unittest.TestCase):
+    def test_kihon_measures_kikentai_per_rep_and_builds_diagnosis(self):
+        mgr, report = _run_live_session("kihon")
+        self.assertEqual(mgr.rep_count, 6)
+        self.assertEqual(len(report["rep_details"]), 6)
+        offsets = [r.get("kikentai_ms") for r in report["rep_details"]]
+        self.assertTrue(all(o is not None and 60 <= o <= 140 for o in offsets), offsets)
+        self.assertIn("kikentai_sincronismo", [f["metrica"] for f in report["diagnosis"]["achados"]])
+        kkt = next(f for f in report["diagnosis"]["achados"] if f["metrica"] == "kikentai_sincronismo")
+        self.assertTrue(kkt["causas"][0].startswith("Medido: em média o pé chega"))
+        self.assertIn("o pé chegou", mgr.latest_feedback)     # alerta durante a sessão
+        self.assertTrue(report["recommended_exercises"])
+        self.assertEqual(len(report["prescribed_drills"]), len(report["recommended_exercises"]))
+        for section in ("Pontos de Atenção", "Plano da Semana", "Metas para a Próxima Sessão"):
+            self.assertIn(section, report["markdown_report"])
+
+    def test_synchronous_feet_give_good_kikentai(self):
+        _, report = _run_live_session("kihon", landing_delay=0)
+        metrics = [f["metrica"] for f in report["diagnosis"]["achados"]]
+        self.assertNotIn("kikentai_sincronismo", metrics)
+        self.assertIn("kikentai_sincronismo", [s["metrica"] for s in report["diagnosis"]["pontos_fortes"]])
+
+    def test_suburi_marks_kikentai_as_not_applicable(self):
+        _, report = _run_live_session("suburi")
+        nm = report["diagnosis"]["nao_medidos"]
+        self.assertEqual(nm[0]["metrica"], "kikentai_sincronismo")
+        self.assertIn("não se aplica", nm[0]["motivo"])
+        self.assertTrue(all(e["formato"] == "solo" for e in report["recommended_exercises"]))
+
+    def test_session_without_reps_does_not_invent_precision(self):
+        mgr = LiveTrainingSessionManager(modality_override="kihon")
+        report = mgr.generate_final_session_report()
+        self.assertEqual(report["total_reps"], 0)
+        self.assertNotIn("trajetoria_alvo", [f["metrica"] for f in report["diagnosis"]["achados"]])
+        self.assertIn("trajetoria_alvo", [n["metrica"] for n in report["diagnosis"]["nao_medidos"]])

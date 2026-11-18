@@ -18,6 +18,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle  # pyrefly:
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY  # pyrefly: ignore[missing-source-for-stubs]
 
 from src.analytics.training_analyzer import TRAINING_MODALITIES_METADATA, get_kendoka_id_aliases
+from src.analytics.training_feedback import metric_text
 
 
 def _resolve_kendoka_pdf_name(kp: Dict[str, Any], saved_names: Dict[str, str], idx_fallback: int = 0) -> str:
@@ -28,6 +29,68 @@ def _resolve_kendoka_pdf_name(kp: Dict[str, Any], saved_names: Dict[str, str], i
         if val and val.strip():
             return val.strip()
     return str(kp.get("custom_name") or k_def).strip()
+
+
+def _structured_diagnosis_rows(diag: Dict[str, Any], body_style: Any, body_bold: Any) -> List[List[Any]]:
+    """Linhas do diagnóstico detalhado (training_feedback) para a tabela do laudo individual."""
+    from src.analytics.training_feedback import SEVERITY_LABEL
+    c = _clean_text_for_pdf
+    rows: List[List[Any]] = []
+    try:
+        from src.analytics.training_narrative import narrative_text
+        nar = narrative_text(diag)
+        fonte = "escrito pela IA a partir das medidas" if nar.get("fonte") == "ia" else "gerado a partir das medidas"
+        rows.append([Paragraph(f"<b>Resumo do Sensei</b> <i>({fonte})</i>", body_bold)])
+        for par in [p for p in nar["texto"].split("\n\n") if p.strip()]:
+            rows.append([Paragraph(c(par), body_style)])
+    except Exception:
+        pass
+    try:
+        from src.analytics.training_progress import evolution_lines
+        evo_lines = evolution_lines(diag.get("evolucao") or {})
+        if evo_lines:
+            rows.append([Paragraph("<b>Evolução:</b>", body_bold)])
+            for t in evo_lines:
+                rows.append([Paragraph(f"- {c(t)}", body_style)])
+    except Exception:
+        pass
+    fortes = diag.get("pontos_fortes", [])
+    if fortes:
+        rows.append([Paragraph("<b>Pontos Fortes:</b>", body_bold)])
+        for s in fortes:
+            rows.append([Paragraph(f"- [OK] <b>{c(s['label'])} ({s['valor']:.0f}%)</b>: {c(s['texto'])}", body_style)])
+    achados = diag.get("achados", [])
+    if achados:
+        rows.append([Paragraph("<b>Pontos de Atenção (do mais urgente ao mais leve):</b>", body_bold)])
+    for f in achados:
+        rows.append([Paragraph(
+            f"<b>[{SEVERITY_LABEL[f['gravidade']]}] {c(f['label'])}: {f['valor']:.0f}% (referência {f['ref']:.0f}%)</b><br/>"
+            f"O que foi visto: {c(f['o_que'])}<br/>"
+            + (f"Onde: {c(f['onde'])}<br/>" if f.get("onde") else "")
+            + f"Por que importa: {c(f['por_que'])}<br/>"
+            f"Causas prováveis: {c('; '.join(f['causas']))}", body_style)])
+    for n in diag.get("nao_medidos", []):
+        rows.append([Paragraph(f"<i>Não medido: {c(n['label'])} ({c(n['motivo'])}).</i>", body_style)])
+    exercicios = diag.get("exercicios", [])
+    if exercicios:
+        rows.append([Paragraph("<b>Exercícios Recomendados:</b>", body_bold)])
+    for ex in exercicios:
+        rows.append([Paragraph(
+            f"<b>{c(ex['name'])}</b> <i>({c(ex['formato'])}, nível {c(ex['nivel'])})</i><br/>"
+            f"Por quê: {c(ex['motivo'])}<br/>Dose: {c(ex['dose'])}"
+            + (f"<br/>Progressão: {c(' -> '.join(ex['passos']))}" if ex.get("passos") else "")
+            + (f"<br/>Pontos de atenção: {c('; '.join(ex['pontos_de_atencao']))}" if ex.get("pontos_de_atencao") else "")
+            + (f"<br/>Erros comuns: {c('; '.join(ex['erros_comuns']))}" if ex.get("erros_comuns") else "")
+            + (f"<br/>Como medir: {c(ex['como_medir'])}" if ex.get("como_medir") else ""), body_style)])
+    if diag.get("plano"):
+        rows.append([Paragraph("<b>Plano da Semana:</b>", body_bold)])
+        for p in diag["plano"]:
+            rows.append([Paragraph(f"- {c(p)}", body_style)])
+    if diag.get("metas"):
+        rows.append([Paragraph("<b>Metas para a Próxima Sessão:</b>", body_bold)])
+        for m in diag["metas"]:
+            rows.append([Paragraph(f"- {c(m['texto'])}", body_style)])
+    return rows
 
 
 def _clean_text_for_pdf(text: Any) -> str:
@@ -72,6 +135,9 @@ def _clean_text_for_pdf(text: Any) -> str:
         "🏷": "[Tag] ",
         "❌": "[X] ",
         "•": "-",
+        # Romanização japonesa com mácron (fora da fonte padrão): Shōmen → Shomen, Chūshin → Chushin
+        "ō": "o", "Ō": "O", "ū": "u", "Ū": "U", "ā": "a", "Ā": "A", "ī": "i", "ē": "e",
+        "→": "->",
     }
     for emoji_char, rep in emoji_map.items():
         s = s.replace(emoji_char, rep)
@@ -761,7 +827,7 @@ def generate_training_pdf_report(
                 Paragraph(
                     f"<b>Score Geral: {prec_sc:.1f}%</b><br/>"
                     f"• Alvo (Datotsu-bui): {prec_subs.get('trajetoria_alvo', 0):.1f}%<br/>"
-                    f"• Ki-Ken-Tai-Ichi: {prec_subs.get('kikentai_sincronismo', 0):.1f}%<br/>"
+                    f"• Ki-Ken-Tai-Ichi: {metric_text(prec_subs, 'kikentai_sincronismo')}<br/>"
                     f"• Linha Central (Chushin): {prec_subs.get('controle_linha_centro', 0):.1f}%<br/>"
                     f"• Hasuji (Alinhamento Lâmina): {prec_subs.get('hasuji_angle_consistency', 85.0):.1f}%",
                     table_cell_style
@@ -793,6 +859,10 @@ def generate_training_pdf_report(
 
         # Diagnóstico Pedagógico: Pontos Fortes e Oportunidades de Melhoria
         diag_rows = []
+        k_diag = kp.get("diagnosis") or {}
+        if k_diag.get("achados") is not None:
+            diag_rows = _structured_diagnosis_rows(k_diag, body_style, body_bold)
+            strengths, improvements, exercises = [], [], []
         if strengths:
             diag_rows.append([
                 Paragraph("<b>Pontos Fortes Biomecânicos Observados:</b>", body_bold),
