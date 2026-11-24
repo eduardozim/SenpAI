@@ -1,8 +1,563 @@
 {
   "version": "2.0.0",
-  "last_updated": "2026-11-18T15:27:40.294180",
-  "total_web_sources_indexed": 0,
-  "sources": {},
+  "last_updated": "2026-11-18T15:38:27.879498",
+  "total_web_sources_indexed": 34,
+  "sources": {
+    "web_56fb606d0c97": {
+      "title": "kendo no ippon - Japan Culture Navi",
+      "type": "web_article",
+      "url": "https://www.haradaeigo.com/japanese-culture/en/ippon-in-kendo",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "zanshin, aiuchi, conteudo",
+      "key_rules": [
+        "Zanshin: “You also need strong spirit, good posture and zanshin, or alertness after the strike.”",
+        "Zanshin: “The rules of the All Japan Kendo Federation say a valid strike needs full spirit, correct posture, the right part of the shinai, or bamboo sword, a proper target, and zanshin, which means staying alert and ready after th”",
+        "Golpes simultâneos (aiuchi): “This is called aiuchi.”",
+        "Conteúdo: “Listen 剣道の一本とは、気勢と姿勢、打ったあとの構えがそろった打突のことです。”",
+        "Conteúdo: “全日本剣道連盟の規則は、有効な打突には、充実した気勢、正しい姿勢、竹刀の決まった部分、正しい打突部位、そして打ったあとも気を抜かずに構える残心が必要だとしています。”"
+      ],
+      "summary": "Listen 剣道の一本とは、気勢と姿勢、打ったあとの構えがそろった打突のことです。",
+      "coletado_em": "2026-11-18T15:41:16",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_f75540ce76e1": {
+      "title": "KENDO RULES - Masked Athletes",
+      "type": "web_article",
+      "url": "https://maskedathletes.wixsite.com/unavathletes/rules-c1vn1",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "jogai",
+      "key_rules": [
+        "Saída do shiaijo (jogai): “A competitor is declared to be out of bounds when bracing the body or part of the shinai outside the court line Falling on to the floor with one body part crossing the court line Its illegal to push the player out of bou”"
+      ],
+      "summary": "",
+      "coletado_em": "2026-11-18T15:41:19",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_b26e52f235cb": {
+      "title": "Kendo Shinpan – kendoinfo.net",
+      "type": "web_article",
+      "url": "https://kendoinfo.wordpress.com/tag/kendo-shinpan/",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "zanshin, jogai, tsubazeriai",
+      "key_rules": [
+        "Zanshin: “He must strike the correct target area with full spirit and correct posture, the strike must have sae or snap and zanshin must be shown after the attack.”",
+        "Zanshin: “Zanshin should be full of spirit without celebration, otherwise you risk withdrawal of the point with torikeshi.”",
+        "Saída do shiaijo (jogai): “For instance, when a competitor is close to the shiai-jo boundary line, referees are drawn to focus on his or her feet to see whether a foot crosses the line and earns a jogai hansoku.”",
+        "Tsubazeriai: “It is all too easy to get caught up in procedural issues, constantly stopping a shiai because contestants are in tsubazeriai, or shinai are twisted, or equipment needs adjusting.”",
+        "Conteúdo: “Posts Comments Posts Tagged ‘Kendo Shinpan’ Ippon Posted in Kendo refereeing , tagged Kendo Ippon , Kendo refereeing , kendo shiai , Kendo Shinpan on March 11, 2012| 1 Comment » Following the 15WKC referee’s seminar in J”",
+        "Conteúdo: “In reality the key function of the shinpan is to facilitate the smooth running of the shiai, whilst accurately judging yuko datotsu.”"
+      ],
+      "summary": "Posts Comments Posts Tagged ‘Kendo Shinpan’ Ippon Posted in Kendo refereeing , tagged Kendo Ippon , Kendo refereeing , kendo shiai , Kendo Shinpan on March 11, 2012| 1 Comment » Following the 15WKC referee’s seminar in Japan and the Paris Taikai and in preparation for the WKC, I am in the process of",
+      "coletado_em": "2026-11-18T15:41:39",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_47a8e4d50f60": {
+      "title": "Kendo",
+      "type": "wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Kendo",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "datotsu_bui, tsubazeriai, zanshin",
+      "key_rules": [
+        "Alvos válidos (datotsu-bui): “Strikes are only made towards specified target areas ( 打突-部位 , datotsu-bui ) on the wrists, head, or body, all of which are protected by armor.”",
+        "Alvos válidos (datotsu-bui): “Two kendōka in tsuba zeriai Kendo target areas, or datotsu-bui Two kendōka , one (left) is playing in nitō (two sword style) and the other (right) is playing in ittō (one sword style).”",
+        "Tsubazeriai: “Two kendōka in tsuba zeriai Kendo target areas, or datotsu-bui Two kendōka , one (left) is playing in nitō (two sword style) and the other (right) is playing in ittō (one sword style).”",
+        "Zanshin: “A scorable point ( 有効打突 , yūkō-datotsu ) in a kendo competition ( tai-kai ) is defined as an accurate strike or thrust made onto a datotsu-bui of the opponent's kendo-gu with the shinai making contact at its datotsu-bu ,”",
+        "Zanshin: “Datotsu-bu of the shinai is the forward, or blade side ( jin-bu ) of the top third ( monouchi ) of the shinai . [ 38 ] Zanshin ( 残心 ) , or continuation of awareness, must be present and shown throughout the execution of ”",
+        "Conteúdo: “Additionally, kendōka execute fumikomi-ashi ( 踏み込み足 ) , an action similar to a stamp of the front foot, during a strike.”",
+        "Conteúdo: “Shiai-geiko ( 試合稽古 ) Competition practice which may also be judged.”"
+      ],
+      "summary": "Additionally, kendōka execute fumikomi-ashi ( 踏み込み足 ) , an action similar to a stamp of the front foot, during a strike.",
+      "coletado_em": "2026-11-18T15:41:41",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_a59426b3fde6": {
+      "title": "What is ki-ken-tai-ichi? - by Gary Pang",
+      "type": "web_article",
+      "url": "https://medium.com/@gary.pang/what-is-ki-ken-tai-ichi-f24b64d82159",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “It is essential to making ippon or valid strikes, and to practicing Kendo that is correct and beautiful.”",
+        "Conteúdo: “The fumikomi — like the kiai — strengthens our strike, and expresses our intent to strike.”"
+      ],
+      "summary": "It is essential to making ippon or valid strikes, and to practicing Kendo that is correct and beautiful.",
+      "coletado_em": "2026-11-18T15:41:58",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_f0701d3b6a34": {
+      "title": "Kendo Terminology: Ki Ken Tai Icchi",
+      "type": "web_article",
+      "url": "https://www.kendo-guide.com/terminology_ki_ken_tai_icchi.html",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “It does not matter how many times you actually \"hit\" men, kote, do or tsuki, you cannot get a point unless you have them all together.”"
+      ],
+      "summary": "It does not matter how many times you actually \"hit\" men, kote, do or tsuki, you cannot get a point unless you have them all together.",
+      "coletado_em": "2026-11-18T15:42:00",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_ab7135548b73": {
+      "title": "Hasegawa hanshi's tai-atari and kakarigeiko",
+      "type": "web_article",
+      "url": "https://kenshi247.net/blog/2016/07/17/hasegawa-hanshis-taiatari-and-kakarigeiko/",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “A short bio of Hasegawa Hisashi sensei Born in Niigata prefecture in 1906, Hasegawa sensei’s first introduction to kendo was as part of P.E. class in school (he was a member of the track and field club, not the kendo one”",
+        "Conteúdo: “During kirikaeshi don’t strike men and go straight into left and right cutting, do tai-atari first.”"
+      ],
+      "summary": "A short bio of Hasegawa Hisashi sensei Born in Niigata prefecture in 1906, Hasegawa sensei’s first introduction to kendo was as part of P.E. class in school (he was a member of the track and field club, not the kendo one).",
+      "coletado_em": "2026-11-18T15:59:10",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_8b7ca36dbdb5": {
+      "title": "Is tsubazeriai unnecessary in kendo?",
+      "type": "web_article",
+      "url": "https://www.kaminarikan.org/en/articles/tsubazeriai-in-kendo",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "tsubazeriai, hansoku, jogai",
+      "key_rules": [
+        "Tsubazeriai: “Is tsubazeriai unnecessary in kendo? — KAMINARIKAN ARTICLE About us Kendo Naginata Dojo Schedule FAQ Contacts News Blog Legal +7 977 990 55 38 РУССКИЙ 日本語 Is tsubazeriai unnecessary in kendo? Taking an enemy on the battl”",
+        "Tsubazeriai: “To put it simply, the rule now states that tsuba-zeriai should last for “one breath, up to three seconds.” If it continues beyond that, a hansoku is called or wakare (separation) is ordered.”",
+        "Faltas (hansoku): “To put it simply, the rule now states that tsuba-zeriai should last for “one breath, up to three seconds.” If it continues beyond that, a hansoku is called or wakare (separation) is ordered.”",
+        "Faltas (hansoku): “However, from watching events such as the 2020 All Japan Kendo Championships and onwards, the impression is that most competitors make an effort to separate within three seconds, and hansoku or wakare calls were rarely s”",
+        "Saída do shiaijo (jogai): “Determining what constitutes a foul is also subtle, and because it takes place in a confined space, it is not easy to see from outside the court.”",
+        "Conteúdo: “Is tsubazeriai unnecessary in kendo? — KAMINARIKAN ARTICLE About us Kendo Naginata Dojo Schedule FAQ Contacts News Blog Legal +7 977 990 55 38 РУССКИЙ 日本語 Is tsubazeriai unnecessary in kendo? Taking an enemy on the battl”",
+        "Conteúdo: “How the ‘Temporary COVID Rules’ Became Permanent and Changed Kendo? Although this is somewhat old news, as of September 1, 2024, the “Provisional Rules and Regulations for Shiai and Shimpan Applicable Until the COVID-19 ”"
+      ],
+      "summary": "Is tsubazeriai unnecessary in kendo? — KAMINARIKAN ARTICLE About us Kendo Naginata Dojo Schedule FAQ Contacts News Blog Legal +7 977 990 55 38 РУССКИЙ 日本語 Is tsubazeriai unnecessary in kendo? Taking an enemy on the battlefield is like a hawk taking a bird.",
+      "coletado_em": "2026-11-18T15:59:21",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_07df0514936b": {
+      "title": "https://www.e-bogu.com/ReviewNew.asp?ProductCode=K...",
+      "type": "web_article",
+      "url": "https://www.e-bogu.com/ReviewNew.asp?ProductCode=KNI%2DPUB%2DBOO%2D4%2D7899%2D2014%2D3%2D",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “Go! Product Kendo Bogu - Kendo Gear In Stock Kendo Bogu (Ready to Ship) Bogu Combination Hand-Stitched Bogu Kendo Bogu by Parts Bogu Bag Tenugui Accessories Kendo Protector Zekken Himo (Strings) & Parts for Kendo Bogu Ke”",
+        "Conteúdo: “Nihon Kendo Kata Instructional Book Your rating Review Title / Subject:”"
+      ],
+      "summary": "Go! Product Kendo Bogu - Kendo Gear In Stock Kendo Bogu (Ready to Ship) Bogu Combination Hand-Stitched Bogu Kendo Bogu by Parts Bogu Bag Tenugui Accessories Kendo Protector Zekken Himo (Strings) & Parts for Kendo Bogu Kendo Bogu Repair Shop Bogu Bag (Carry Cases) for Kendo Shinai - Bamboo Sword for ",
+      "coletado_em": "2026-11-18T16:15:23",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_c616a76575d7": {
+      "title": "International Kendo Federation",
+      "type": "official_manual",
+      "url": "https://en.wikipedia.org/wiki/International_Kendo_Federation",
+      "authority": "FIK Official Rulebook",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “All Japan Kendo Federation ( 全日本剣道連盟 , Zen Nihon Kendō Renmei ) (AJKF / ZNKR) [ 10 ] Hong Kong :”",
+        "Conteúdo: “Retrieved 22 April 2022 . ↑ \"대한검도회\" . www.kumdo.org . ↑ \"United Kendo Federation of the Philippines – United Kendo Federation of the Philippines\" . ↑ \"全日本剣道連盟 | All Japan Kendo Federation\" . 全日本剣道連盟 AJKF . ↑ \"中國香港劍道協會 Ho”"
+      ],
+      "summary": "All Japan Kendo Federation ( 全日本剣道連盟 , Zen Nihon Kendō Renmei ) (AJKF / ZNKR) [ 10 ] Hong Kong :",
+      "coletado_em": "2026-11-18T16:15:25",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_b92e9e79dddb": {
+      "title": "Kendo Kata",
+      "type": "wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Kendo_Kata",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "tsubazeriai, conteudo",
+      "key_rules": [
+        "Tsubazeriai: “Hiki waza Tsubazeriai kara no Hiki Doh Kihon 5:”",
+        "Conteúdo: “Sanbon-me Criticism [ edit ] There has been criticism of the Nihon Kendo Kata by kendoka due to continued usage of outdated forms. [ 1 ] For example, kodachi are no longer used except when wielding two swords. [ 1 ] This”",
+        "Conteúdo: “Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho [ edit ] Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho is a new form of bokken training that is directly translatable to bogu kendo.”"
+      ],
+      "summary": "Sanbon-me Criticism [ edit ] There has been criticism of the Nihon Kendo Kata by kendoka due to continued usage of outdated forms. [ 1 ] For example, kodachi are no longer used except when wielding two swords. [ 1 ] This led to the development of Bokuto Ni Yoru Kendo Kihon-waza Keiko-ho.",
+      "coletado_em": "2026-11-18T16:15:26",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_c1164407821e": {
+      "title": "Kendo Promotional Exam Study Guide",
+      "type": "web_article",
+      "url": "https://www.auskf.org/info/kendo-promotional-exam-study-guide",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "tsubazeriai, aiuchi, zanshin",
+      "key_rules": [
+        "Tsubazeriai: “Hanging at tsuba-zeri-ai is not proper but instead maintaining the correct ma-ai of isoku-itto is what the judges are looking for.”",
+        "Golpes simultâneos (aiuchi): “Defensive hitting is downgraded while even unsuccessful offensive attacks with good spirit that result in ai-uchi (simultaneous strikes by both opponents) will help you pass.”",
+        "Zanshin: “Other factors in ji-geiko are good ki-ai and ki-ken-tai-ichi , seme , sutemi and zanshin which will all be covered in later sections.”",
+        "Zanshin: “A kodansha performing kata must express a strong and true spirit, reasonable mind and balanced zanshin .”",
+        "Conteúdo: “At Yondan the kata must demonstrate a better understanding of the hei-ho of Kendo, the rhythm, seme and zanshin .”",
+        "Conteúdo: “Then how can zanshin be identified in shinai Kendo? Does anyone in shinai Kendo normally take or display the stance zanshin emphasizes in the Nihon Kendo Kata? Obviously the answer will be no.”"
+      ],
+      "summary": "At Yondan the kata must demonstrate a better understanding of the hei-ho of Kendo, the rhythm, seme and zanshin .",
+      "coletado_em": "2026-11-18T16:15:45",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_339f4f227976": {
+      "title": "Shinsa (Promotional Exam) Resources - KendoNotes",
+      "type": "web_article",
+      "url": "https://kendonotes.wordpress.com/2019/10/29/shinsa-promotional-exam-resources/",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “KendoNotes To Help Develop the Mind and Body Shinsa (Promotional Exam) Resources October 29, 2019 April 14, 2024 kiai Here are resources on promotional grading in kendo referred to as shinsa ( 審査) and organized as follow”",
+        "Conteúdo: “Articles Geoff Salmon sensei has written a large number of articles tagged with “grading” and “shinsa” on KendoInfo.net including this subset of them: “More grading exam tips,” KendoInfo.net , Oct 2016. “Reigi in kendo g”"
+      ],
+      "summary": "KendoNotes To Help Develop the Mind and Body Shinsa (Promotional Exam) Resources October 29, 2019 April 14, 2024 kiai Here are resources on promotional grading in kendo referred to as shinsa ( 審査) and organized as follows:",
+      "coletado_em": "2026-11-18T16:15:47",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_792d7ab54c45": {
+      "title": "SCKF Guidelines for Promotion",
+      "type": "web_article",
+      "url": "https://www.eanet.com/sckf/refinfo/shinsa.htm",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "zanshin, conteudo",
+      "key_rules": [
+        "Zanshin: “Zanshin should be asserted with strong kigurai.”",
+        "Conteúdo: “For dan ranks and for kata, record \"Y\" or \"N\" to pass or fail the kenshi, based on the kendo or kata demonstrated by the kenshi.”"
+      ],
+      "summary": "For dan ranks and for kata, record \"Y\" or \"N\" to pass or fail the kenshi, based on the kendo or kata demonstrated by the kenshi.",
+      "coletado_em": "2026-11-18T16:15:49",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_f7d660b7a368": {
+      "title": "剣道",
+      "type": "wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/剣道",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “また、剣道は 有効打突 の判定基準が曖昧で、フェンシングのように電気審判機も導入されていないため、特に国際試合では 審判 が難しい問題もある [ 21 ] 。”",
+        "Conteúdo: “素振り 切り返し 打ち込み稽古（打突） 追込み稽古 掛かり稽古 互角稽古 （地稽古） 試合 稽古 立ち切り 形稽古 [ 編集 ] 日本剣道形 の稽古 木刀 、 模擬刀 、刃引で行う形の稽古。”"
+      ],
+      "summary": "また、剣道は 有効打突 の判定基準が曖昧で、フェンシングのように電気審判機も導入されていないため、特に国際試合では 審判 が難しい問題もある [ 21 ] 。",
+      "coletado_em": "2026-11-18T16:33:59",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_107f7ff576d6": {
+      "title": "短剣道",
+      "type": "wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/短剣道",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “剣道のような防具を身につけて短い 竹刀 を用いて 打突 しあう 競技 である [ 1 ] 。”",
+        "Conteúdo: “歴史 [ 編集 ] 旧日本軍の短剣術 [ 編集 ] 着剣していない状態の 銃剣 短剣道の稽古に使用する 木刀 、 竹刀 明治維新 後に発足した 大日本帝国陸軍 は、 フランス陸軍 から教官を招聘し、 フェンシング と西洋式の 銃剣術 を訓練した。”"
+      ],
+      "summary": "剣道のような防具を身につけて短い 竹刀 を用いて 打突 しあう 競技 である [ 1 ] 。",
+      "coletado_em": "2026-11-18T16:34:00",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_d7298ec75672": {
+      "title": "剣道試合・審判規則",
+      "type": "official_manual",
+      "url": "https://www.kendo.or.jp/wp/wp-content/themes/kendo/assets/library/pdf/kendo-shiai_regulations.pdf",
+      "authority": "AJKF Referee Handbook",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “第 2 節 有効打突 （有効打突） 第12条 有効打突は、充実した 気勢、適正な姿勢をもって、 竹刀の打突部で打突部位を刃 筋正しく打突し、残心あるも のとする。”",
+        "Conteúdo: “②主審は、当該試合運営の全 般に関する権限を有し、審 判旗 （以下旗とする） を持っ て有効打突および反則など の表示と宣告を行う。”"
+      ],
+      "summary": "第 2 節 有効打突 （有効打突） 第12条 有効打突は、充実した 気勢、適正な姿勢をもって、 竹刀の打突部で打突部位を刃 筋正しく打突し、残心あるも のとする。",
+      "coletado_em": "2026-11-18T16:34:21",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_b63c12a80ac1": {
+      "title": "剣道試合審判規則",
+      "type": "official_manual",
+      "url": "https://www.kendo.or.jp/old/kendo/rules/rule1.html",
+      "authority": "AJKF Referee Handbook",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “ページ上へ [有効打突] 第12条 有効打突は、充実した気勢、適正な姿勢をもって、竹刀の打突部で打突部位を刃筋正しく打突し、残心あるものとする。”",
+        "Conteúdo: “2.主審は、当該試合運営の全般に関する権限を有し、審判旗 （以下旗とする）を持って有効打突および反則などの表示と宣告を行う。”"
+      ],
+      "summary": "ページ上へ [有効打突] 第12条 有効打突は、充実した気勢、適正な姿勢をもって、竹刀の打突部で打突部位を刃筋正しく打突し、残心あるものとする。",
+      "coletado_em": "2026-11-18T16:34:23",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_f04ee512ff4c": {
+      "title": "資料1 剣道試合審判規則",
+      "type": "web_article",
+      "url": "https://www.mext.go.jp/a_menu/sports/jyujitsu/__icsFiles/afieldfile/2011/05/24/1306064_05.pdf",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “(ｲ) 主審は，当該試合運営の全般に関する権限を有し，審判旗（以下旗とする）を 持って有効打突および反則などの表示と宣告を行う。”",
+        "Conteúdo: “- 80 - ５ 宣告と旗の表示 (1) 宣告 審判員の宣告は，開始・終了・再開・中止・分かれ・有効打突・勝敗・合議・反則 などについて行 い，その要領 は表1のとおりとする。”"
+      ],
+      "summary": "(ｲ) 主審は，当該試合運営の全般に関する権限を有し，審判旗（以下旗とする）を 持って有効打突および反則などの表示と宣告を行う。",
+      "coletado_em": "2026-11-18T16:34:39",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_cd7fb81af186": {
+      "title": "日本剣道形",
+      "type": "wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/日本剣道形",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “剣道における礼法、目付、 構え 、姿勢、呼吸、太刀筋、間合、気位、足さばき、 残心 等の習得のために稽古する。”",
+        "Conteúdo: “剣道形と 竹刀稽古 は 車の両輪 にたとえられ、いずれも体得が必須とされているが、現在、剣道形は 昇段審査 や 公開演武 のときだけ付け焼刃で稽古されることが多く、竹刀稽古に比べて軽視されている。”"
+      ],
+      "summary": "剣道における礼法、目付、 構え 、姿勢、呼吸、太刀筋、間合、気位、足さばき、 残心 等の習得のために稽古する。",
+      "coletado_em": "2026-11-18T16:34:49",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_0234ea5f05ad": {
+      "title": "剣道の応じ技の種類｜すり上げ・返し・抜き・打ち落とし",
+      "type": "web_article",
+      "url": "https://bushizo.com/blogs/oyakutdachi/kendo-oji-waza-types?srsltid=AYCX9vJSfGHdSNwKVgXT3gFWGrXsAFGiPamBkUXwBjGcCdZtzcWigblo",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “【信武】竹刀完成品 胴張実戦型 床W仕組 38サイズ(高校生用) （税込4,000円〜）：高校生の稽古・試合用に。”",
+        "Conteúdo: “意味と剣道の有効打突との関係、身につける稽古法 で詳しく解説しています。”"
+      ],
+      "summary": "【信武】竹刀完成品 胴張実戦型 床W仕組 38サイズ(高校生用) （税込4,000円〜）：高校生の稽古・試合用に。",
+      "coletado_em": "2026-11-18T16:53:22",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_983f6987899f": {
+      "title": "剣道における「応じていく技」とは｜応じ技の意味・種類 ...",
+      "type": "web_article",
+      "url": "https://gen-do.jp/entry/2026/04/09/oujiwaza",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “TOP 用語一覧 基本 心構え 剣道具 昇段審査 試合観戦 剣道形 稽古記録 その他 2026 - 04 - 09 剣道における「応じていく技」とは｜応じ技の意味・種類・本質をわかりやすく解説 昇段審査 基本 剣道には大きく分けて 「しかけ技」 と「応じ技」があります。”",
+        "Conteúdo: “連続技「小手面」を具… 2025-12-29 今週の稽古記録（2025/12/21〜2025/12/27） 剣道の稽古記録（2025/12/21〜12/27）間合い・技・攻めの組み立… 2025-12-28 剣道における「残心」とは 剣道における残心とは何か。”"
+      ],
+      "summary": "TOP 用語一覧 基本 心構え 剣道具 昇段審査 試合観戦 剣道形 稽古記録 その他 2026 - 04 - 09 剣道における「応じていく技」とは｜応じ技の意味・種類・本質をわかりやすく解説 昇段審査 基本 剣道には大きく分けて 「しかけ技」 と「応じ技」があります。",
+      "coletado_em": "2026-11-18T16:53:25",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_f6770eec6241": {
+      "title": "応じ技（おうじわざ）とは？種類とやり方【剣道用語】",
+      "type": "web_article",
+      "url": "https://girls-kendo.com/oujiwaza",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “種類とやり方【剣道用語】 剣道の稽古と技 Twitter Facebook はてブ LINE コピー 2020.02.11 2019.12.03 目次 応じ技（おうじわざ）とは 5種類の応じ技 応じ技の種類1．返し技 応じ技の種類2．抜き技 応じ技の種類3．すり上げ技 応じ技の種類4．打ち落とし技 応じ技の種類5．出ばな技（出頭技） 応じ技（おうじわざ）とは 応じ技は、相手が攻めて打ち込んできた技を竹刀を向かえるように応じ、 相手の攻撃”",
+        "Conteúdo: “種類とやり方【剣道用語】 すり上げ技とはすり上げ技は、相手が打ち込んできた竹刀を自分の竹刀の右側面または左側面ですり上げ、軌道をそらして相手の竹... girls-kendo.com 2019.12.03 応じ技の種類4．打ち落とし技 打ち落とし技は、相手が構えていたり打ち込もうとしている瞬間の竹刀を打ち落とし、自分が打突を繰り出す技です。”"
+      ],
+      "summary": "種類とやり方【剣道用語】 剣道の稽古と技 Twitter Facebook はてブ LINE コピー 2020.02.11 2019.12.03 目次 応じ技（おうじわざ）とは 5種類の応じ技 応じ技の種類1．返し技 応じ技の種類2．抜き技 応じ技の種類3．すり上げ技 応じ技の種類4．打ち落とし技 応じ技の種類5．出ばな技（出頭技） 応じ技（おうじわざ）とは 応じ技は、相手が攻めて打ち込んできた技を竹刀を向かえるように応じ、 相手の攻撃を利用して素早く打ち込む技 です。",
+      "coletado_em": "2026-11-18T16:53:29",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_43e9d39f0cb2": {
+      "title": "https://kendojinko.com/cgi-bin/bbs/patio.cgi?mode=...",
+      "type": "web_article",
+      "url": "https://kendojinko.com/cgi-bin/bbs/patio.cgi?mode=past&no=2046",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “私は高校から剣道を始めたのですが、 いまになってようやく一緒に始めた他校の子たちに 面で一本とったりできるようになってきました。”",
+        "Conteúdo: “左足の膝の裏（ヒカガミ）が構え、打突、打突後、常に伸びた状態になっていますか？”"
+      ],
+      "summary": "私は高校から剣道を始めたのですが、 いまになってようやく一緒に始めた他校の子たちに 面で一本とったりできるようになってきました。",
+      "coletado_em": "2026-11-18T17:10:25",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_a0171c5ad200": {
+      "title": "一足一刀の踏込みは床を割らない｜一本歯下駄で醸す剣道家",
+      "type": "web_article",
+      "url": "https://sports.boy.jp/2026/05/18/kendo-fumikomi-force-ipponba-core-training/",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “一流の剣士は一足一刀の間合いから0.18秒で床反力(GRF)を体重の3倍弱まで立ち上げ、気剣体一致のままで竹刀の物打ちを面金へ届かせる。”",
+        "Conteúdo: “要旨（この記事の5本柱） 剣道家の有効打突の差は脚力ではなく、踏込みの GRF立ち上がり時間(RFD) で決まる。”"
+      ],
+      "summary": "一流の剣士は一足一刀の間合いから0.18秒で床反力(GRF)を体重の3倍弱まで立ち上げ、気剣体一致のままで竹刀の物打ちを面金へ届かせる。",
+      "coletado_em": "2026-11-18T17:10:29",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_e507e29377b8": {
+      "title": "日本剣道形をわかりやすく解説【動画で重要ポイントを総点検】",
+      "type": "web_article",
+      "url": "https://kendobeginner.com/kendo-kata/",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “日本剣道形をわかりやすく解説します【動画で重要ポイントを総点検】 | 剣道初心者のための、初段への近道 コンテンツへスキップ 竹刀の持ち方、構え、足さばきなど超基本や日本剣道形 剣道初心者のための、初段への近道 剣道初段合格 剣道１級審査合格 剣道の基本総点検 日本剣道形 剣道初心者あるある 防具や竹刀の選び方 剣道初段合格 剣道１級審査合格 剣道の基本総点検 日本剣道形 剣道初心者あるある 防具や竹刀の選び方 スポンサーリンク 防具や”",
+        "Conteúdo: “目次 日本剣道形全体の共通ポイント 大きな声（気勢） すり足でつま先を上げない 相手の目を見る（目付け） 打太刀が先に動く 急がない、慌てない 残心をとる 日本剣道形の礼法のポイント 日本剣道形１本目、２本目、３本目のポイント １本目のポイント ２本目のポイント ３本目のポイント 日本剣道形４本目、５本目のポイント ４本目のポイント ５本目のポイント 日本剣道形６本目、７本目のポイント ６本目のポイント ７本目のポイント 日本剣道形小太”"
+      ],
+      "summary": "日本剣道形をわかりやすく解説します【動画で重要ポイントを総点検】 | 剣道初心者のための、初段への近道 コンテンツへスキップ 竹刀の持ち方、構え、足さばきなど超基本や日本剣道形 剣道初心者のための、初段への近道 剣道初段合格 剣道１級審査合格 剣道の基本総点検 日本剣道形 剣道初心者あるある 防具や竹刀の選び方 剣道初段合格 剣道１級審査合格 剣道の基本総点検 日本剣道形 剣道初心者あるある 防具や竹刀の選び方 スポンサーリンク 防具や竹刀など剣道用品は職人さんのいる専門店で選ぶのが安心です。",
+      "coletado_em": "2026-11-18T17:11:09",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_4fe9dc45afd4": {
+      "title": "https://kendojinko.com/cgi-bin/bbs/patio.cgi?mode=...",
+      "type": "web_article",
+      "url": "https://kendojinko.com/cgi-bin/bbs/patio.cgi?mode=view&no=2625",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “1 | Re: 二段昇段審査の形について ( No.1 ) 日時： 2018/10/09 03:12:58 名前： 形 全日本剣道連盟のHPに動画があるので、それを参考に道場で稽古するしかないでしょう。”",
+        "Conteúdo: “道場で稽古される際にはまず最初に形を稽古してから、竹刀稽古に移っていくのが本来の姿と思います。”"
+      ],
+      "summary": "1 | Re: 二段昇段審査の形について ( No.1 ) 日時： 2018/10/09 03:12:58 名前： 形 全日本剣道連盟のHPに動画があるので、それを参考に道場で稽古するしかないでしょう。",
+      "coletado_em": "2026-11-18T17:11:16",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_156918609f82": {
+      "title": "昇段審査とは 人気・最新記事を集めました",
+      "type": "web_article",
+      "url": "https://d.hatena.ne.jp/keyword/%E6%98%87%E6%AE%B5%E5%AF%A9%E6%9F%BB",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “本記事では、全日本剣道連盟が掲げる剣道の理念と修錬の心構えについて、わかりやすくまとめ、日々の稽古でどう意識すれば良いのかも含めて考えていきたいと思います（昇段審査でもよく出題されます）。”",
+        "Conteúdo: “有効打突は、剣道試合・審判規則第12条に、充実した気勢、適正な姿勢をもって、竹刀の打突部で打突部位を刃筋正しく打突し、残心あるものと規定されている。”"
+      ],
+      "summary": "本記事では、全日本剣道連盟が掲げる剣道の理念と修錬の心構えについて、わかりやすくまとめ、日々の稽古でどう意識すれば良いのかも含めて考えていきたいと思います（昇段審査でもよく出題されます）。",
+      "coletado_em": "2026-11-18T17:11:21",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_5e46f648b6d4": {
+      "title": "剣道の段級位制",
+      "type": "wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/剣道の段級位制",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "conteudo",
+      "key_rules": [
+        "Conteúdo: “剣道の技術的力量（ 竹刀 剣道と 日本剣道形 演武 の 実技 ）および学科の審査会を経て授与される。”",
+        "Conteúdo: “審査は 試合 （3人以上の リーグ戦 ）、 形 、 筆答 が実施され、査定委員会（ 警務部長 、 警務課長 、 消防課長 、 監察官 および警務部長の指名する武道 師範 教師10名（剣道柔道各5名））が審査した。”"
+      ],
+      "summary": "剣道の技術的力量（ 竹刀 剣道と 日本剣道形 演武 の 実技 ）および学科の審査会を経て授与される。",
+      "coletado_em": "2026-11-18T17:11:25",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_e8bc544e9163": {
+      "title": "Yuko-datotsu",
+      "type": "web_article",
+      "url": "https://kenshi247.net/blog/2010/09/21/yuko-datotsu/",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "datotsu_bui, yuko_datotsu, conteudo",
+      "key_rules": [
+        "Alvos válidos (datotsu-bui): “According to the rules, a waza is complete when the following conditions are met: showing a fullness of spirit and appropriate posture, striking a datotsu-bui (striking zone) of the opponent with the striking region of o”",
+        "Definição de yuko-datotsu: “But then I’m reminded by other kendoka, what is written above… namely that if the strike is on target (lets say kote to a jodan player) and the aggressor finishes with all the other elements of yuko-datotsu is this a poi”",
+        "Conteúdo: “According to the rules, a waza is complete when the following conditions are met: showing a fullness of spirit and appropriate posture, striking a datotsu-bui (striking zone) of the opponent with the striking region of o”",
+        "Conteúdo: “If the necessary conditions are met, ippon is also given in the following cases: when ones strikes the opponent as soon as the opponent drops his/her shinai, steps out of court, or falls down, and when one strikes the op”"
+      ],
+      "summary": "According to the rules, a waza is complete when the following conditions are met: showing a fullness of spirit and appropriate posture, striking a datotsu-bui (striking zone) of the opponent with the striking region of one’s own shinai while using correct ha-suji, and expressing zan-shin.",
+      "coletado_em": "2026-11-18T17:30:08",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_f60121c4aa6e": {
+      "title": "Yuko datotsu - Queen Mary Kendo Club - WordPress.com",
+      "type": "web_article",
+      "url": "https://qmkendo.wordpress.com/glossary/yuko-datotsu/",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "yuko_datotsu, datotsu_bui, zanshin",
+      "key_rules": [
+        "Definição de yuko-datotsu: “Yuko datotsu | Queen Mary Kendo Club Menu Home About People Paid members Glossary Basics Counting Equipment Exercises Dojo commands Techniques Yuko datotsu Resources Gallery Join/Contact Links Queen Mary Kendo Club \" alt”",
+        "Alvos válidos (datotsu-bui): “Yuko datotsu | Queen Mary Kendo Club Menu Home About People Paid members Glossary Basics Counting Equipment Exercises Dojo commands Techniques Yuko datotsu Resources Gallery Join/Contact Links Queen Mary Kendo Club \" alt”",
+        "Zanshin: “Yuko datotsu | Queen Mary Kendo Club Menu Home About People Paid members Glossary Basics Counting Equipment Exercises Dojo commands Techniques Yuko datotsu Resources Gallery Join/Contact Links Queen Mary Kendo Club \" alt”",
+        "Conteúdo: “6. hasuji – The shinai must travel in the correct path and land in the correct angle; and you must cut only with the side of the shinai opposite the tsuru (string) 7. ki – You must have full spirit (kiai) and an upright ”"
+      ],
+      "summary": "6. hasuji – The shinai must travel in the correct path and land in the correct angle; and you must cut only with the side of the shinai opposite the tsuru (string) 7. ki – You must have full spirit (kiai) and an upright posture throughout the waza 8. ki-ken-tai no ichi – The landing of the shinai mu",
+      "coletado_em": "2026-11-18T17:30:09",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_e613a88f2edc": {
+      "title": "Episode 167: Analysing The Definition of Yūkō Datotsu",
+      "type": "web_article",
+      "url": "https://kendo-podcast.com/episode-167-analysing-the-definition-of-yuko-datotsu/",
+      "authority": "Blogs, fóruns e redes",
+      "focus": "yuko_datotsu, datotsu_bui, zanshin",
+      "key_rules": [
+        "Definição de yuko-datotsu: “Yuko-datotsu is defined as an accurate strike or thrust made onto a datotsu-bui on the opponent’s kendo-gu with the shinai’s datotsu-bu in high spirits and with correct posture, being followed by zanshin.”",
+        "Alvos válidos (datotsu-bui): “Yuko-datotsu is defined as an accurate strike or thrust made onto a datotsu-bui on the opponent’s kendo-gu with the shinai’s datotsu-bu in high spirits and with correct posture, being followed by zanshin.”",
+        "Alvos válidos (datotsu-bui): “( Datotsu-bui ) Article 14:”",
+        "Zanshin: “Yuko-datotsu is defined as an accurate strike or thrust made onto a datotsu-bui on the opponent’s kendo-gu with the shinai’s datotsu-bu in high spirits and with correct posture, being followed by zanshin.”",
+        "Conteúdo: “We all talk about what ippon is but then have we talked about what yūkō datotsu is? I wanted to analyse what it is using the definition of yūkōd datotsu from the shiai regulations.”",
+        "Conteúdo: “The Regulations of Kendo Shiai and Shinpan The subsidiary Rules of Kendo Shiai and Shinpan Revised September 2, 2017 Regulations:”"
+      ],
+      "summary": "We all talk about what ippon is but then have we talked about what yūkō datotsu is? I wanted to analyse what it is using the definition of yūkōd datotsu from the shiai regulations.",
+      "coletado_em": "2026-11-18T17:30:11",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_2cc8bab87ac9": {
+      "title": "Handbook for Kendo Shiai and Shinpan Management",
+      "type": "official_manual",
+      "url": "http://www.kendo-fik.org/wp-content/uploads/2024/02/FIK-Handbook-for-Kendo-Shiai-and-Shinpan-Management-20230726-1.pdf",
+      "authority": "FIK Official Rulebook",
+      "focus": "tsubazeriai, datotsu_bui, zanshin",
+      "key_rules": [
+        "Tsubazeriai: “About Tsubazeriai IV .”",
+        "Tsubazeriai: “About Tsubazeriai Tsubazeriai represents the closest and tensest point between two opponents when they enter a close-quarters tussle with tsuba joined together.”",
+        "Alvos válidos (datotsu-bui): “Yuko-Datotsu (Valid Strikes) Criteria for yuko-datotsu are stipulated in Article 12 of the “Regulations.” It states that an accurate strike or thrust made onto designated targets (datotsu-bui ) of the opponent’s kendo-gu”",
+        "Zanshin: “The strike or thrust must be executed in high spirits with correct posture, using the striking section (datosu-bu) of the shinai with correct angle (hasuji), and followed by zanshin.”",
+        "Zanshin: “Interpreting and Discerning Zanshin Zanshin is a general term for the mental and physical posture taken after executing a strike.”",
+        "Golpes simultâneos (aiuchi): “It is important to identify different types of technique for yuko-datotsu and not simply assume that it is “invalid as ippon because it was too light.” It is easy to conclude that techniques are invalid if executed at th”",
+        "Golpes simultâneos (aiuchi): “Shinpan-in should understand and act in accordance with the notion that there is no such thing as aiuchi. – 7 – Yuko-Datotsu (Ki-ken-tai-no-itchi) – 8 – II.”",
+        "Faltas (hansoku): “Recognizing Foul Play (hansoku) Concepts of what are “illegal,” “unfair,” “lawful” and “appropriate” must be interpreted correctly. “illegal” conduct is defined by that which is contrary to the regulations.”",
+        "Faltas (hansoku): “Various Prohibited Acts (Article 17) (Case 1) What should be done if a shiai-sha commits two hansoku simultaneously? – 24 – (Explanation) (1) It is unlikely that two hansoku are committed exactly at the same time, so tim”",
+        "Invalidação de ponto: “Nevertheless, strikes made with a shoto from the tsubazeriai position will not be considered valid in principle.”"
+      ],
+      "summary": "If the shinpan-in’s decisions for yuko-datotsu are vague or careless, the qualitative value of yuko-datotsu as ippon and the characteristics of kendo may be compromised.",
+      "coletado_em": "2026-11-18T17:30:20",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    },
+    "web_cd5ac8024dcc": {
+      "title": "The Regulations of Kendo Shiai and Shinpan",
+      "type": "official_manual",
+      "url": "https://www.kendo-fik.org/wp-content/uploads/2025/04/Regulations-of-Kendo-Shiai-and-Shinpan-EN_Jul2023.pdf",
+      "authority": "FIK Official Rulebook",
+      "focus": "datotsu_bui, yuko_datotsu, zanshin",
+      "key_rules": [
+        "Lado do shiaijo: 9 a 11 m — “The shiai-jo should be a square or a rectangle with sides of 9 to 11 meters in length inclusive of the width of the line.”",
+        "Tempo regulamentar da luta: 5 min — “The standard duration for shiai shall be five minutes, and encho shall be three minutes.”",
+        "Tempo do encho (prorrogação): 3 min — “The standard duration for shiai shall be five minutes, and encho shall be three minutes.”",
+        "Pontos para vencer (sanbon-shobu): 2 pontos — “In sanbon-shobu, the shiai-sha who first scores two points within the shiai duration shall be the winner.”",
+        "Alvos válidos (datotsu-bui): “Yuko-datotsu Article 12 Yuko-datotsu ......................5 Article 13 Datotsu-bu of Shinai .........6 Article 14 Datotsu-bui ........................6 Chapter 3:”",
+        "Alvos válidos (datotsu-bui): “Datotsu-bui in Article 14 of the “Regulations” CONTENTS the Regulations the Subsidiary Rules Article 15 Use or possession of prohibited substances.......7 Article 16 Insulting or Offensive Behavior ......................”",
+        "Definição de yuko-datotsu: “A yuko-datotsu is defined as an accurate strike or thrust made onto designated targets (datotsu-bui) of the opponent’s kendo-gu .”",
+        "Definição de yuko-datotsu: “When the shiai-sha who has scored yuko-datotsu is not alert in spirit and/or posture to a possible counterattack by the opponent.”",
+        "Zanshin: “The strike or thrust must be executed in high spirits with correct posture, using the striking section (datotsu-bu) of the shinai with the correct angle (hasuji), and followed by zanshin.”",
+        "Saída do shiaijo (jogai): “Jogai, or stepping out of the shiai-jo while the match is in play. of the World Anti-Doping Agency (WADA).”"
+      ],
+      "summary": "The strike or thrust must be executed in high spirits with correct posture, using the striking section (datotsu-bu) of the shinai with the correct angle (hasuji), and followed by zanshin.",
+      "coletado_em": "2026-11-18T17:30:35",
+      "origem": "coleta_internet",
+      "modo_extracao": "regras"
+    }
+  },
   "learned_parameters": {
     "auto_learning_sequence_step": 0,
     "general_kendo_principles": [

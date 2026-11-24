@@ -1,7 +1,7 @@
 """
 Testes da correção de golpe na Fila de Curadoria Ativa: o árbitro escolhe qual golpe houve (pré-marcado com o
-identificado pelo sistema). Golpe trocado → feedback com o golpe corrigido, rótulo "tecnica" no Banco Único e
-notas dos pilares fora do feedback (foram medidas para o golpe errado).
+identificado pelo sistema). Confirmado ou trocado, o golpe vira rótulo "tecnica" no Banco Único; trocado, o
+feedback leva o golpe corrigido e as notas dos pilares ficam fora (foram medidas para o golpe errado).
 Só usa mocks: nada é gravado em data/ nem em config/.
 """
 
@@ -49,11 +49,15 @@ class TestCurationTechniqueCorrection(unittest.TestCase):
         self.assertEqual(add_label.call_args.kwargs["value"], "KOTE")
         self.assertTrue(res["technique_corrected"])
 
-    def test_same_technique_keeps_scores_and_adds_no_technique_label(self):
+    def test_confirmed_technique_keeps_scores_and_also_teaches_technique(self):
+        """O gabarito pede só o tipo do vídeo: a técnica confirmada na curadoria também vira rótulo."""
         res, save, add_label, _ = self._resolve(_item("MEN"), decision="IPPON", technique="MEN")
         self.assertEqual(save.call_args.kwargs["strike_type"], "MEN")
         self.assertEqual(save.call_args.kwargs["sub_scores"], SUB_SCORES)
-        add_label.assert_not_called()
+        add_label.assert_called_once()
+        lb = add_label.call_args.kwargs
+        self.assertEqual((lb["claim"], lb["value"], lb["reviewer_weight"] > 0), ("tecnica", "MEN", True))
+        self.assertIn("confirmada", lb["notes"])
         self.assertFalse(res["technique_corrected"])
 
     def test_without_technique_behaves_as_before(self):

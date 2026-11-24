@@ -102,7 +102,7 @@ def render_internet_preprocess_section(videos_dir: str, device_preference: str =
 def render_training_cycle_panel(
     device_preference: str = "gpu",
     is_web_server: bool = False,
-    title: str = "#### 🔄 3. Ciclo de Treino"
+    title: str = "#### 🔄 4. Ciclo de Treino"
 ) -> None:
     st.markdown("---")
     st.markdown(title)

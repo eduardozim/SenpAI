@@ -1,1 +1,4799 @@
-[]
+[
+  {
+    "id": "train_curation_20261118T174908_1",
+    "timestamp": "2026-11-18T17:49:08",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034777366_39",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "skipped",
+      "profile_key": "normal",
+      "fps_analyzed": 1,
+      "tps_analyzed": 0,
+      "fns_analyzed": 0,
+      "optimization_method": null,
+      "f1_score": null,
+      "accuracy": null,
+      "loss_reduction_pct": null,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 1,
+      "changes": [
+        "Nenhuma amostra com as notas do golpe para calibrar.",
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "1 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T174920_2",
+    "timestamp": "2026-11-18T17:49:20",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034781522_40",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "skipped",
+      "profile_key": "normal",
+      "fps_analyzed": 2,
+      "tps_analyzed": 0,
+      "fns_analyzed": 0,
+      "optimization_method": null,
+      "f1_score": null,
+      "accuracy": null,
+      "loss_reduction_pct": null,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 2,
+      "changes": [
+        "Nenhuma amostra com as notas do golpe para calibrar.",
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "2 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T174932_3",
+    "timestamp": "2026-11-18T17:49:32",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034785090_41",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "skipped",
+      "profile_key": "normal",
+      "fps_analyzed": 3,
+      "tps_analyzed": 0,
+      "fns_analyzed": 0,
+      "optimization_method": null,
+      "f1_score": null,
+      "accuracy": null,
+      "loss_reduction_pct": null,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 3,
+      "changes": [
+        "Nenhuma amostra com as notas do golpe para calibrar.",
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "3 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T174941_4",
+    "timestamp": "2026-11-18T17:49:41",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034788819_42",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "skipped",
+      "profile_key": "normal",
+      "fps_analyzed": 4,
+      "tps_analyzed": 0,
+      "fns_analyzed": 0,
+      "optimization_method": null,
+      "f1_score": null,
+      "accuracy": null,
+      "loss_reduction_pct": null,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 4,
+      "changes": [
+        "Nenhuma amostra com as notas do golpe para calibrar.",
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "4 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T175012_5",
+    "timestamp": "2026-11-18T17:50:12",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034792988_43",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "skipped",
+      "profile_key": "normal",
+      "fps_analyzed": 5,
+      "tps_analyzed": 0,
+      "fns_analyzed": 0,
+      "optimization_method": null,
+      "f1_score": null,
+      "accuracy": null,
+      "loss_reduction_pct": null,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 5,
+      "changes": [
+        "Nenhuma amostra com as notas do golpe para calibrar.",
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "5 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T175036_6",
+    "timestamp": "2026-11-18T17:50:36",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034638167_20",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "skipped",
+      "profile_key": "normal",
+      "fps_analyzed": 6,
+      "tps_analyzed": 0,
+      "fns_analyzed": 0,
+      "optimization_method": null,
+      "f1_score": null,
+      "accuracy": null,
+      "loss_reduction_pct": null,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 6,
+      "changes": [
+        "Nenhuma amostra com as notas do golpe para calibrar.",
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "6 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T175110_7",
+    "timestamp": "2026-11-18T17:51:10",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034666614_24",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "skipped",
+      "profile_key": "normal",
+      "fps_analyzed": 7,
+      "tps_analyzed": 0,
+      "fns_analyzed": 0,
+      "optimization_method": null,
+      "f1_score": null,
+      "accuracy": null,
+      "loss_reduction_pct": null,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 7,
+      "changes": [
+        "Nenhuma amostra com as notas do golpe para calibrar.",
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "7 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T175121_8",
+    "timestamp": "2026-11-18T17:51:21",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034837256_56",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "IPPON",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 7,
+      "tps_analyzed": 1,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.0,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 7,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "7 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T175130_9",
+    "timestamp": "2026-11-18T17:51:30",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034887952_73",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 8,
+      "tps_analyzed": 1,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.5,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 7,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "7 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T175154_10",
+    "timestamp": "2026-11-18T17:51:54",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034864518_66",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 9,
+      "tps_analyzed": 1,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.5,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 8,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "8 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T175228_11",
+    "timestamp": "2026-11-18T17:52:28",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034524227_3",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "IPPON",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 9,
+      "tps_analyzed": 2,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.5,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T175256_12",
+    "timestamp": "2026-11-18T17:52:56",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034827650_53",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 10,
+      "tps_analyzed": 2,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.6667,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T175332_13",
+    "timestamp": "2026-11-18T17:53:32",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034842451_58",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 11,
+      "tps_analyzed": 2,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.75,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": null,
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T181802_14",
+    "timestamp": "2026-11-18T18:18:02",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034548136_7",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 12,
+      "tps_analyzed": 2,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.75,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 1,
+        "perda_atual": 0.0,
+        "perda_nova": 0.0,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T181919_15",
+    "timestamp": "2026-11-18T18:19:19",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034567740_10",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "IPPON",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 12,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.75,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 2,
+        "perda_atual": 0.5,
+        "perda_nova": 0.5,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T181940_16",
+    "timestamp": "2026-11-18T18:19:40",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034624040_18",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 13,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.75,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 3,
+        "perda_atual": 0.3333,
+        "perda_nova": 0.3333,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T181954_17",
+    "timestamp": "2026-11-18T18:19:54",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034647458_22",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 14,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.75,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 4,
+        "perda_atual": 0.25,
+        "perda_nova": 0.25,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182014_18",
+    "timestamp": "2026-11-18T18:20:14",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034656979_23",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 15,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.75,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 5,
+        "perda_atual": 0.2,
+        "perda_nova": 0.2,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182027_19",
+    "timestamp": "2026-11-18T18:20:27",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034855910_63",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 16,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 5,
+        "perda_atual": 0.2,
+        "perda_nova": 0.2,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182159_20",
+    "timestamp": "2026-11-18T18:21:59",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034861637_65",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 17,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8334,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 5,
+        "perda_atual": 0.2,
+        "perda_nova": 0.2,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182213_21",
+    "timestamp": "2026-11-18T18:22:13",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034882410_71",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 18,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 5,
+        "perda_atual": 0.2,
+        "perda_nova": 0.2,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182230_22",
+    "timestamp": "2026-11-18T18:22:30",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034528900_4",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 19,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 6,
+        "perda_atual": 0.1667,
+        "perda_nova": 0.1667,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 9,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "9 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182300_23",
+    "timestamp": "2026-11-18T18:23:00",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034533540_5",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 20,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 6,
+        "perda_atual": 0.1667,
+        "perda_nova": 0.1667,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 10,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "10 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182346_24",
+    "timestamp": "2026-11-18T18:23:46",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034538311_6",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 21,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 6,
+        "perda_atual": 0.1667,
+        "perda_nova": 0.1667,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 11,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "11 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182401_25",
+    "timestamp": "2026-11-18T18:24:01",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034557621_9",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 22,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 7,
+        "perda_atual": 0.1429,
+        "perda_nova": 0.1429,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 11,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "11 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182416_26",
+    "timestamp": "2026-11-18T18:24:16",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034595586_13",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 23,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 7,
+        "perda_atual": 0.1429,
+        "perda_nova": 0.1429,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 12,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "12 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182433_27",
+    "timestamp": "2026-11-18T18:24:33",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034604928_14",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 24,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 8,
+        "perda_atual": 0.125,
+        "perda_nova": 0.125,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 12,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "12 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182447_28",
+    "timestamp": "2026-11-18T18:24:47",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034619163_17",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 25,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 9,
+        "perda_atual": 0.1111,
+        "perda_nova": 0.1111,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 12,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "12 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182458_29",
+    "timestamp": "2026-11-18T18:24:58",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034642736_21",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 26,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 10,
+        "perda_atual": 0.1,
+        "perda_nova": 0.1,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 12,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "12 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182517_30",
+    "timestamp": "2026-11-18T18:25:17",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034676512_25",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 27,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 10,
+        "perda_atual": 0.1,
+        "perda_nova": 0.1,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 13,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "13 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182541_31",
+    "timestamp": "2026-11-18T18:25:41",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034681168_26",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 28,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 11,
+        "perda_atual": 0.0909,
+        "perda_nova": 0.0909,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 13,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "13 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182601_32",
+    "timestamp": "2026-11-18T18:26:01",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034696040_28",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 29,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 11,
+        "perda_atual": 0.0909,
+        "perda_nova": 0.0909,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 14,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "14 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182656_33",
+    "timestamp": "2026-11-18T18:26:56",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034714815_31",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 30,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8572,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 12,
+        "perda_atual": 0.0833,
+        "perda_nova": 0.0833,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 14,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "14 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182718_34",
+    "timestamp": "2026-11-18T18:27:18",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034822334_51",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 31,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.875,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 12,
+        "perda_atual": 0.0833,
+        "perda_nova": 0.0833,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 14,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "14 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182742_35",
+    "timestamp": "2026-11-18T18:27:42",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034848009_60",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 32,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.875,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 12,
+        "perda_atual": 0.0833,
+        "perda_nova": 0.0833,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 15,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "15 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182811_36",
+    "timestamp": "2026-11-18T18:28:11",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034879549_70",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 33,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.8889,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 12,
+        "perda_atual": 0.0833,
+        "perda_nova": 0.0833,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 15,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "15 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182835_37",
+    "timestamp": "2026-11-18T18:28:35",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034894151_75",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 34,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 12,
+        "perda_atual": 0.0833,
+        "perda_nova": 0.0833,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 15,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "15 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182847_38",
+    "timestamp": "2026-11-18T18:28:47",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034900005_77",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 35,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9091,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 12,
+        "perda_atual": 0.0833,
+        "perda_nova": 0.0833,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 15,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "15 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182909_39",
+    "timestamp": "2026-11-18T18:29:09",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034906555_79",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 36,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9091,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 12,
+        "perda_atual": 0.0833,
+        "perda_nova": 0.0833,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 16,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "16 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182929_40",
+    "timestamp": "2026-11-18T18:29:29",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034909498_80",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 37,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9091,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 12,
+        "perda_atual": 0.0833,
+        "perda_nova": 0.0833,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 17,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "17 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182941_41",
+    "timestamp": "2026-11-18T18:29:41",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034919174_82",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 38,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9167,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 12,
+        "perda_atual": 0.0833,
+        "perda_nova": 0.0833,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 17,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "17 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T182956_42",
+    "timestamp": "2026-11-18T18:29:56",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034552770_8",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 39,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9167,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 13,
+        "perda_atual": 0.0769,
+        "perda_nova": 0.0769,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 17,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "17 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183018_43",
+    "timestamp": "2026-11-18T18:30:18",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034845244_59",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 40,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9231,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 13,
+        "perda_atual": 0.0769,
+        "perda_nova": 0.0769,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 17,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "17 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183037_44",
+    "timestamp": "2026-11-18T18:30:37",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034686189_27",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 41,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9231,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 13,
+        "perda_atual": 0.0769,
+        "perda_nova": 0.0769,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 18,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "18 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183051_45",
+    "timestamp": "2026-11-18T18:30:51",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034858271_64",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 42,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9286,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 13,
+        "perda_atual": 0.0769,
+        "perda_nova": 0.0769,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 18,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "18 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183106_46",
+    "timestamp": "2026-11-18T18:31:06",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034916265_81",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 43,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9334,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 13,
+        "perda_atual": 0.0769,
+        "perda_nova": 0.0769,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 18,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "18 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183137_47",
+    "timestamp": "2026-11-18T18:31:37",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034819731_50",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 44,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9375,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 13,
+        "perda_atual": 0.0769,
+        "perda_nova": 0.0769,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 18,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "18 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183150_48",
+    "timestamp": "2026-11-18T18:31:50",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034850839_61",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 45,
+      "tps_analyzed": 3,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9412,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 13,
+        "perda_atual": 0.0769,
+        "perda_nova": 0.0769,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 18,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "18 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183236_49",
+    "timestamp": "2026-11-18T18:32:36",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034700451_29",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "IPPON",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 45,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9412,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 13,
+        "perda_atual": 0.0769,
+        "perda_nova": 0.0769,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 19,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "19 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183249_50",
+    "timestamp": "2026-11-18T18:32:49",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034853398_62",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 46,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9445,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 13,
+        "perda_atual": 0.0769,
+        "perda_nova": 0.0769,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 19,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "19 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183302_51",
+    "timestamp": "2026-11-18T18:33:02",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034614436_16",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 47,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9445,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 14,
+        "perda_atual": 0.0714,
+        "perda_nova": 0.0714,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 19,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "19 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183326_52",
+    "timestamp": "2026-11-18T18:33:26",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034890978_74",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 48,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9445,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 14,
+        "perda_atual": 0.0714,
+        "perda_nova": 0.0714,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 20,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "20 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183402_53",
+    "timestamp": "2026-11-18T18:34:02",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034581580_12",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 49,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9445,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 14,
+        "perda_atual": 0.0714,
+        "perda_nova": 0.0714,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183435_54",
+    "timestamp": "2026-11-18T18:34:35",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034609584_15",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 50,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9445,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 15,
+        "perda_atual": 0.0667,
+        "perda_nova": 0.0667,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183448_55",
+    "timestamp": "2026-11-18T18:34:48",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034705430_30",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 51,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9445,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 16,
+        "perda_atual": 0.0625,
+        "perda_nova": 0.0625,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183501_56",
+    "timestamp": "2026-11-18T18:35:01",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034725001_32",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 52,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9445,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183529_57",
+    "timestamp": "2026-11-18T18:35:29",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034802534_44",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 53,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9474,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183538_58",
+    "timestamp": "2026-11-18T18:35:38",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034806021_45",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 54,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.95,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183550_59",
+    "timestamp": "2026-11-18T18:35:50",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034808761_46",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 55,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9524,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183601_60",
+    "timestamp": "2026-11-18T18:36:01",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034811505_47",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 56,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9546,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183613_61",
+    "timestamp": "2026-11-18T18:36:13",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034814221_48",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 57,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9565,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183625_62",
+    "timestamp": "2026-11-18T18:36:25",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034816989_49",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 58,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9584,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183639_63",
+    "timestamp": "2026-11-18T18:36:39",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034825003_52",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 59,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.96,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183653_64",
+    "timestamp": "2026-11-18T18:36:53",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034830691_54",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 60,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9616,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 21,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "21 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183707_65",
+    "timestamp": "2026-11-18T18:37:07",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034833643_55",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 61,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9616,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 22,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "22 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183722_66",
+    "timestamp": "2026-11-18T18:37:22",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034839786_57",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 62,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.963,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 22,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "22 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183735_67",
+    "timestamp": "2026-11-18T18:37:35",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034867743_67",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 63,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9643,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 22,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "22 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183747_68",
+    "timestamp": "2026-11-18T18:37:47",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034870627_68",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 64,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9655,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 22,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "22 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183801_69",
+    "timestamp": "2026-11-18T18:38:01",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034873522_69",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 65,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9667,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 22,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "22 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183830_70",
+    "timestamp": "2026-11-18T18:38:30",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034885025_72",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 66,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9667,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 23,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "23 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183845_71",
+    "timestamp": "2026-11-18T18:38:45",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034896901_76",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 67,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9678,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 23,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "23 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T183952_72",
+    "timestamp": "2026-11-18T18:39:52",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_2mUArQWvHt0.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034902726_78",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 68,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9688,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 17,
+        "perda_atual": 0.0588,
+        "perda_nova": 0.0588,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 23,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "23 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T184007_73",
+    "timestamp": "2026-11-18T18:40:07",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034633321_19",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 69,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9688,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 23,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "23 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T184051_74",
+    "timestamp": "2026-11-18T18:40:51",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_02h8igC7sPo.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795034577027_11",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 70,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9688,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 24,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "24 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T185825_75",
+    "timestamp": "2026-11-18T18:58:25",
+    "reviewer_dan": 3,
+    "reviewer_dan_name": "3º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038590998_100",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 71,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9688,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 25,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "25 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T185842_76",
+    "timestamp": "2026-11-18T18:58:42",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038593732_100",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 72,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9688,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 26,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "26 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T185856_77",
+    "timestamp": "2026-11-18T18:58:56",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038596545_100",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 73,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9688,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 27,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "27 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T185908_78",
+    "timestamp": "2026-11-18T18:59:08",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038450017_65",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 74,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9697,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 27,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "27 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T185923_79",
+    "timestamp": "2026-11-18T18:59:23",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038273873_18",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 75,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9706,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 27,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "27 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T185937_80",
+    "timestamp": "2026-11-18T18:59:37",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038542110_88",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 76,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9714,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 27,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "27 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T185959_81",
+    "timestamp": "2026-11-18T18:59:59",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038309790_27",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 77,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9722,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 27,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "27 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T190013_82",
+    "timestamp": "2026-11-18T19:00:13",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038521025_84",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 78,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.973,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 27,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "27 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T190053_83",
+    "timestamp": "2026-11-18T19:00:53",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038249756_12",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 79,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.973,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 28,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "28 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T190109_84",
+    "timestamp": "2026-11-18T19:01:09",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038349885_38",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 80,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9737,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 28,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "28 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T190237_85",
+    "timestamp": "2026-11-18T19:02:37",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038588375_100",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 81,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9744,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 28,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "28 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T190442_86",
+    "timestamp": "2026-11-18T19:04:42",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038199937_0",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 82,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.975,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 28,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "28 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T192317_87",
+    "timestamp": "2026-11-18T19:23:17",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038332502_33",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 83,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.975,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 29,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "29 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T192351_88",
+    "timestamp": "2026-11-18T19:23:51",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038501476_79",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 84,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9756,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 29,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "29 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T192439_89",
+    "timestamp": "2026-11-18T19:24:39",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038292164_23",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 85,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9762,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 29,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "29 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T192457_90",
+    "timestamp": "2026-11-18T19:24:57",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038322950_30",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 86,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9768,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 29,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "29 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T192510_91",
+    "timestamp": "2026-11-18T19:25:10",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038335914_34",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 87,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9773,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 29,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "29 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T192551_92",
+    "timestamp": "2026-11-18T19:25:51",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038375392_45",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 88,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9778,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 29,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "29 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T192642_93",
+    "timestamp": "2026-11-18T19:26:42",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038531738_86",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 89,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9783,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 29,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "29 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T192730_94",
+    "timestamp": "2026-11-18T19:27:30",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038552153_91",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 90,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9787,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 29,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "29 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T192835_95",
+    "timestamp": "2026-11-18T19:28:35",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038569120_95",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 91,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9787,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 30,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "30 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T193036_96",
+    "timestamp": "2026-11-18T19:30:36",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038572405_96",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 92,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9787,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T193118_97",
+    "timestamp": "2026-11-18T19:31:18",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038425671_59",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 93,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9792,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261118T193146_98",
+    "timestamp": "2026-11-18T19:31:46",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038485077_74",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 94,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9796,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261119T093034_99",
+    "timestamp": "2026-11-19T09:30:34",
+    "reviewer_dan": 3,
+    "reviewer_dan_name": "3º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038414917_56",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 95,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9802,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261119T093102_100",
+    "timestamp": "2026-11-19T09:31:02",
+    "reviewer_dan": 3,
+    "reviewer_dan_name": "3º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038325927_31",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 96,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9808,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261119T093115_101",
+    "timestamp": "2026-11-19T09:31:15",
+    "reviewer_dan": 3,
+    "reviewer_dan_name": "3º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038369051_43",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 97,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9813,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261119T093129_102",
+    "timestamp": "2026-11-19T09:31:29",
+    "reviewer_dan": 3,
+    "reviewer_dan_name": "3º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038342967_36",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 98,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9819,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261123T191639_103",
+    "timestamp": "2026-11-23T19:16:39",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038504665_80",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 99,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9822,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261123T191654_104",
+    "timestamp": "2026-11-23T19:16:54",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038222758_7",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 100,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9826,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261123T191710_105",
+    "timestamp": "2026-11-23T19:17:10",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038507618_81",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 101,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9829,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261123T191727_106",
+    "timestamp": "2026-11-23T19:17:27",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038517673_83",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 102,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9832,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261123T191743_107",
+    "timestamp": "2026-11-23T19:17:43",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038411441_55",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 103,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9835,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261123T191800_108",
+    "timestamp": "2026-11-23T19:18:00",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038548843_90",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 104,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9838,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261123T191814_109",
+    "timestamp": "2026-11-23T19:18:14",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038289622_22",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 105,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9841,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261123T191843_110",
+    "timestamp": "2026-11-23T19:18:43",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038432463_61",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 106,
+      "tps_analyzed": 4,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9844,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261124T100527_111",
+    "timestamp": "2026-11-24T10:05:27",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038283963_21",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "IPPON",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 106,
+      "tps_analyzed": 5,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9672,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261124T100546_112",
+    "timestamp": "2026-11-24T10:05:46",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038405232_53",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 107,
+      "tps_analyzed": 5,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9678,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261124T100605_113",
+    "timestamp": "2026-11-24T10:06:05",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038494884_77",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 108,
+      "tps_analyzed": 5,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9683,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261124T100735_114",
+    "timestamp": "2026-11-24T10:07:35",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038229835_8",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 109,
+      "tps_analyzed": 5,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9688,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261124T100758_115",
+    "timestamp": "2026-11-24T10:07:58",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038528313_85",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 110,
+      "tps_analyzed": 5,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9694,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261124T100824_116",
+    "timestamp": "2026-11-24T10:08:24",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038239358_10",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 111,
+      "tps_analyzed": 5,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9698,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 31,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "31 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261124T100855_117",
+    "timestamp": "2026-11-24T10:08:55",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038365610_42",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 112,
+      "tps_analyzed": 5,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9698,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 32,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "32 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261124T101010_118",
+    "timestamp": "2026-11-24T10:10:10",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038203227_1",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 113,
+      "tps_analyzed": 5,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9703,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 32,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "32 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261124T101025_119",
+    "timestamp": "2026-11-24T10:10:25",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038206282_2",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "NO_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 114,
+      "tps_analyzed": 5,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9708,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 32,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "32 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  },
+  {
+    "id": "train_curation_20261124T101054_120",
+    "timestamp": "2026-11-24T10:10:54",
+    "reviewer_dan": 2,
+    "reviewer_dan_name": "2º Dan (Curadoria Ativa)",
+    "is_shinpan_decision": false,
+    "video_name": "data/videos/internet_3mUlr8grsic.mp4",
+    "video_url": "",
+    "video_identifier": "curation:unc_1795038209495_3",
+    "profile_key": "normal",
+    "items_count": 1,
+    "curation_decision": "INVALID_STRIKE",
+    "optimization_summary": {
+      "status": "success",
+      "profile_key": "normal",
+      "fps_analyzed": 115,
+      "tps_analyzed": 5,
+      "fns_analyzed": 0,
+      "optimization_method": "differential_evolution",
+      "f1_score": 0.0,
+      "accuracy": 0.9712,
+      "loss_reduction_pct": 0.0,
+      "validacao_por_video": {
+        "videos": [
+          "data/videos/internet_02h8igC7sPo.mp4"
+        ],
+        "amostras": 18,
+        "perda_atual": 0.0555,
+        "perda_nova": 0.0555,
+        "f1_atual": 0.0,
+        "f1_novo": 0.0,
+        "aceito": true
+      },
+      "descartados_sem_notas": 32,
+      "changes": [
+        "Ponderação especializada por tipo de golpe (Men, Kote, Do, Tsuki) calibrada.",
+        "✅ Validação no Golden Benchmark aprovada (Acurácia: 100.0%, F1: 1.000).",
+        "32 feedback(s) sem as notas do golpe ignorado(s) (sem notas inventadas)."
+      ]
+    }
+  }
+]

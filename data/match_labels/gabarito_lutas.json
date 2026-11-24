@@ -1,0 +1,213 @@
+{
+  "versao": 1,
+  "videos": {
+    "internet_02h8igC7sPo.mp4": {
+      "origem": "manual",
+      "aka": "0",
+      "shiro": "2",
+      "pontos_completos": true,
+      "inverter_aka_shiro": false,
+      "tipo": "luta",
+      "ignorar": false,
+      "pontos": [
+        {
+          "kenshi": "SHIRO",
+          "tecnica": "KOTE",
+          "tempo": "02:26.794"
+        },
+        {
+          "kenshi": "SHIRO",
+          "tecnica": "MEN",
+          "tempo": "03:09.055"
+        }
+      ],
+      "observacoes": ""
+    },
+    "internet_2mUArQWvHt0.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_3mUlr8grsic.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_7VEsMGimqBA.mp4": {
+      "origem": "manual",
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "inverter_aka_shiro": false,
+      "tipo": "descartar",
+      "ignorar": true,
+      "pontos": [],
+      "observacoes": ""
+    },
+    "internet_8NKJpDinRok.mp4": {
+      "origem": "manual",
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "inverter_aka_shiro": false,
+      "tipo": "kihon",
+      "ignorar": true,
+      "pontos": [],
+      "observacoes": ""
+    },
+    "internet_9_CpN07qgpk.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_DwSIcUdSREo.mp4": {
+      "origem": "manual",
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "inverter_aka_shiro": false,
+      "tipo": "descartar",
+      "ignorar": true,
+      "pontos": [],
+      "observacoes": ""
+    },
+    "internet_EJA5i76mG0s.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_IAGbFZo_X2g.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_KpjWDUp-5yc.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_PQEUJf2l6sc.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_Xr7ADDcnkOk.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_ZUcw6ugd4wU.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_kvvU8l9r0Rs.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_m1DmeDCq1pk.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_nA3nv5GpkcU.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_nNT_VAEgZ2k.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_ptKlU1qV5jU.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_t9g--2djqL4.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_wIj7dnD_eyU.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    },
+    "internet_xWwnza7khAE.mp4": {
+      "aka": "",
+      "shiro": "",
+      "pontos_completos": false,
+      "pontos": [],
+      "origem": "manual",
+      "tipo": "luta",
+      "ignorar": false
+    }
+  }
+}

@@ -754,7 +754,7 @@ mudanças, consulte o arquivo manual.md.
     excluir exercícios, ver a cobertura das métricas e baixar/carregar o catálogo.
 
 - Fila de Curadoria na Governança de Treinamento:
-  • Transferida de Perfis de Calibração para logo após o Ciclo de Treino.
+  • Transferida de Perfis de Calibração para a Governança (item 3, antes do Ciclo de Treino).
   • O Eixo 4 de Perfis de Calibração passa a se chamar Golden Benchmark.
   • Seleção "Qual golpe foi?" pré-marcada com o golpe identificado: se a tentativa foi
     de outro golpe (ex.: TSUKI no lugar de MEN), o árbitro corrige e decide Ippon ou

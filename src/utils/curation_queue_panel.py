@@ -292,7 +292,8 @@ def render_curation_queue_panel(auto_trainer, feedback_mgr, title: str = "#### �
                         index=TECHNIQUES.index(detected_tech) if detected_tech in TECHNIQUES else 0,
                         horizontal=True, key=f"sel_cur_strike_{it_id}",
                         help="Pré-marcado com o golpe identificado pelo SenpAI. Se a tentativa foi de outro golpe, "
-                             "troque aqui antes de decidir Ippon ou Golpe Inválido.",
+                             "troque aqui antes de decidir Ippon ou Golpe Inválido. Confirmada ou corrigida, a técnica "
+                             "ensina o classificador de técnica no próximo ciclo.",
                     )
                     if chosen_tech != detected_tech:
                         st.caption(f"✏️ Golpe corrigido de **{detected_tech or strike_t}** para **{chosen_tech}**: "

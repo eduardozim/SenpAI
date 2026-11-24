@@ -61,39 +61,41 @@
       "target_impact": 0.72,
       "fumikomi_sync": 0.75,
       "posture": 0.75,
-      "zanshin": 0.72
+      "zanshin": 0.72,
+      "hasuji": 0.4
     },
     "weights_by_strike_type": {
       "MEN": {
-        "target_impact": 0.35,
-        "fumikomi_sync": 0.3,
+        "target_impact": 0.4,
+        "fumikomi_sync": 0.25,
         "posture": 0.2,
         "zanshin": 0.15
       },
       "KOTE": {
-        "target_impact": 0.45,
+        "target_impact": 0.4,
         "fumikomi_sync": 0.25,
-        "posture": 0.18,
-        "zanshin": 0.12
+        "posture": 0.2,
+        "zanshin": 0.15
       },
       "DO": {
-        "target_impact": 0.45,
-        "fumikomi_sync": 0.15,
+        "target_impact": 0.4,
+        "fumikomi_sync": 0.25,
         "posture": 0.2,
-        "zanshin": 0.2
+        "zanshin": 0.15
       },
       "TSUKI": {
-        "target_impact": 0.5,
-        "fumikomi_sync": 0.2,
-        "posture": 0.15,
+        "target_impact": 0.4,
+        "fumikomi_sync": 0.25,
+        "posture": 0.2,
         "zanshin": 0.15
       }
     },
     "platt_scaling": {
-      "a": 12.0,
-      "b": -8.8,
-      "is_fitted": false
-    }
+      "a": 1.0,
+      "b": -3.2329,
+      "is_fitted": true
+    },
+    "last_calibrated_at": "2026-11-24T13:10:56.247412+00:00"
   },
   "rigido": {
     "name": "Campeonato / Audit de Dan (Rígido)",

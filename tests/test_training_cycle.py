@@ -157,7 +157,7 @@ class TestCacheAndReadiness(unittest.TestCase):
             with mock.patch("src.engine.active_learning.UncertaintySampler.get_queue", return_value=[]):
                 r = tc.readiness(tmp, labels)
         got = {it["chave"]: it["quantidade"] for it in r["pendencias"]}
-        self.assertEqual(got, {"videos": 1, "lutas": 1})
+        self.assertEqual(got, {"videos": 1})          # pontos das lutas não são mais pedidos
         self.assertFalse(r["pronto"])
         self.assertEqual(r["videos"], 3)   # o corte de análise não conta
 

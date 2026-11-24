@@ -600,7 +600,7 @@ O módulo de **Decisão dos Shinpans** foi concebido para atender às exigência
 O módulo de Aprendizado Ativo (*Active Learning*) automatiza o ciclo de evolução do SenpAI, priorizando instâncias que trazem maior ganho informativo e blindando o modelo contra o esquecimento catastrófico:
 
 - **Amostragem por Incerteza & Fila de Curadoria Ativa (`UncertaintySampler` & `strike_clip_manager.py`)**:
-  - Na interface, a fila fica em *Configurações > Governança de Treinamento > 4. Fila de Curadoria*; o Golden Benchmark continua em *Perfis de Calibração > Eixo 4*.
+  - Na interface, a fila fica em *Configurações > Governança de Treinamento > 3. Fila de Curadoria*; o Golden Benchmark continua em *Perfis de Calibração > Eixo 4*.
   - Em vez de solicitar rotulagem humana para golpes óbvios (confiança muito alta $> 85\%$ ou muito baixa $< 30\%$), o algoritmo calcula o índice de incerteza da predição:
     $$\text{Incerteza}(x) = 1.0 - 2 \cdot |P(\text{Ippon}) - 0.5|$$
   - Golpes cuja probabilidade/score de aprovação situa-se na faixa de contorno e ambiguidade regulamentar (**45% a 65%**) recebem incerteza elevada ($\ge 0.70$) e são automaticamente enfileirados em `data/active_learning_queue.json`.
@@ -913,7 +913,7 @@ Total de **490 testes automatizados** distribuídos em 50 módulos, executados e
   - Analisa cada luta baixada (com o cache de poses) e manda à Fila de Curadoria os golpes em que o SenpAI está em dúvida: nota na faixa de incerteza, filtro de golpes e técnica indecisos, possível ai-uchi ou golpe após o yame, golpe fora do padrão dos validados.
   - Cada vídeo é analisado uma vez; o passo para sozinho com a fila quase cheia, para nenhuma dúvida ser descartada sem ninguém ver.
 - **Fila de Curadoria na Governança de Treinamento ([curation_queue_panel.py](file:///d:/Projetos/SenpAI/Dev/src/utils/curation_queue_panel.py) & [app.py](file:///d:/Projetos/SenpAI/Dev/app.py))**:
-  - A fila saiu de Perfis de Calibração > Eixo 4 e passou a ser o item *4. Fila de Curadoria* da Governança de Treinamento, logo após o Ciclo de Treino que gera as dúvidas. "O Que o SenpAI Já Aprendeu" passa a ser o item 5.
+  - A fila saiu de Perfis de Calibração > Eixo 4 e passou a ser o item *3. Fila de Curadoria* da Governança de Treinamento, logo antes do *4. Ciclo de Treino*. "O Que o SenpAI Já Aprendeu" passa a ser o item 5.
   - O Eixo 4 de Perfis de Calibração passa a se chamar *Golden Benchmark*.
   - O código da fila foi extraído do `app.py` para um painel próprio.
   - **Diagnóstico detalhado no modo de treinamento ([training_feedback.py](file:///d:/Projetos/SenpAI/Dev/src/analytics/training_feedback.py), [training_diagnosis_panel.py](file:///d:/Projetos/SenpAI/Dev/src/utils/training_diagnosis_panel.py) & [exercise_catalog.json](file:///d:/Projetos/SenpAI/Dev/config/exercise_catalog.json))**:

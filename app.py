@@ -2992,19 +2992,56 @@ def _render_settings_tab_training(default_device_pref):
             c_src1.metric("Total de Fontes no Corpus", f"{len(consulted_sources)}")
             c_src2.metric("Categorias / Tipos", f"{len(src_by_type)}")
 
-            for s_info in consulted_sources:
-                with st.expander(f"📌 [{s_info.get('type', 'Referência')}] {s_info.get('title', '')} — {s_info.get('focus', '')}", expanded=False):
-                    st.markdown(f"**Identificador:** `{s_info.get('id', '')}`")
-                    st.markdown(f"**Categoria / Tipo:** {s_info.get('type', '')}")
-                    st.markdown(f"**Foco Principal:** {s_info.get('focus', '')}")
-                    if s_info.get("url"):
-                        st.markdown(f"**Fonte:** [{s_info['url']}]({s_info['url']})"
-                                    + (f" · coletada em {str(s_info.get('coletado_em'))[:16].replace('T', ' ')}" if s_info.get("coletado_em") else ""))
-                    if s_info.get("resumo"):
-                        st.caption(s_info["resumo"])
-                    st.markdown("**Diretrizes Técnicas Extraídas & Regras:**")
-                    for rule_str in s_info.get("key_rules", []):
-                        st.markdown(f"- {rule_str}")
+            # Lista compacta: recolhida por padrão; aberta, vira tabela com rolagem + detalhes da fonte escolhida
+            if st.toggle(f"📋 Mostrar a lista de fontes ({len(consulted_sources)})", value=False, key="corpus_sources_show"):
+                f_c1, f_c2 = st.columns([2, 1])
+                with f_c1:
+                    corpus_q = st.text_input("Buscar fonte", placeholder="título, foco ou regra...", key="corpus_sources_query")
+                with f_c2:
+                    corpus_types = sorted({str(s.get("type", "Referência")) for s in consulted_sources})
+                    corpus_type = st.selectbox("Tipo", ["(todos)"] + corpus_types, key="corpus_sources_type")
+                shown_sources = [
+                    s for s in consulted_sources
+                    if (corpus_type == "(todos)" or str(s.get("type", "Referência")) == corpus_type)
+                    and (not corpus_q.strip() or corpus_q.strip().lower() in " ".join(
+                        [str(s.get("title", "")), str(s.get("focus", ""))] + [str(r) for r in s.get("key_rules", [])]).lower())
+                ]
+                st.caption(f"{len(shown_sources)} de {len(consulted_sources)} fonte(s)")
+                if shown_sources:
+                    st.dataframe(
+                        pd.DataFrame([{
+                            "Tipo": s.get("type", "Referência"),
+                            "Título": s.get("title", ""),
+                            "Foco": s.get("focus", ""),
+                            "Regras": len(s.get("key_rules", [])),
+                            "Coletada em": str(s.get("coletado_em") or "")[:10],
+                            "Link": s.get("url") or None,
+                        } for s in shown_sources]),
+                        hide_index=True, width="stretch", height=min(300, 38 + 35 * len(shown_sources)),
+                        column_config={
+                            "Link": st.column_config.LinkColumn("Link", display_text="abrir"),
+                            "Regras": st.column_config.NumberColumn("Regras", help="Diretrizes e regras extraídas da fonte"),
+                        },
+                    )
+                    sel_idx = st.selectbox(
+                        "Ver detalhes da fonte", list(range(len(shown_sources))), index=None,
+                        placeholder="Escolha uma fonte para ver as regras extraídas",
+                        format_func=lambda i: f"[{shown_sources[i].get('type', 'Referência')}] {shown_sources[i].get('title', '')}",
+                        key="corpus_sources_detail",
+                    )
+                    if sel_idx is not None:
+                        s_info = shown_sources[sel_idx]
+                        with st.container(border=True):
+                            st.markdown(f"**{s_info.get('title', '')}** · `{s_info.get('id', '')}`")
+                            st.markdown(f"**Categoria / Tipo:** {s_info.get('type', '')} · **Foco Principal:** {s_info.get('focus', '')}")
+                            if s_info.get("url"):
+                                st.markdown(f"**Fonte:** [{s_info['url']}]({s_info['url']})"
+                                            + (f" · coletada em {str(s_info.get('coletado_em'))[:16].replace('T', ' ')}" if s_info.get("coletado_em") else ""))
+                            if s_info.get("resumo"):
+                                st.caption(s_info["resumo"])
+                            st.markdown("**Diretrizes Técnicas Extraídas & Regras:**")
+                            for rule_str in s_info.get("key_rules", []):
+                                st.markdown(f"- {rule_str}")
 
     with tab_ref_internet:
         try:
@@ -3018,27 +3055,27 @@ def _render_settings_tab_training(default_device_pref):
     # ----------------------------------------------------------------------
     st.markdown("---")
     st.markdown("#### 🏷️ 2. Gabarito de Lutas")
-    st.caption("Informe os pontos oficiais de cada luta. Eles registram a decisão dos shinpan, que também erram: servem para apontar os golpes a revisar (curadoria), não como rótulo. A validade de cada golpe vem das revisões de kenshi e senseis, pesadas pelo dan.")
+    st.caption("Classifique cada vídeo pelo tipo (luta, modalidade de treino/exame ou não aproveitável). As lutas são analisadas sozinhas e os golpes em dúvida vão para a Fila de Curadoria, onde a sua revisão (com o dan) decide a validade e a técnica.")
     if is_web_server:
         st.info("ℹ️ **Ambiente em Nuvem:** O Gabarito de Lutas utiliza a pasta de vídeos de combate e cache de poses em disco. No ambiente local Desktop/Dojo, todos os dados são persistidos diretamente no seu workspace.")
     from src.utils.match_labels_page import render_match_labels_page
     render_match_labels_page(device_preference=st.session_state.get("device_preference", default_device_pref), show_header=False)
 
     # ----------------------------------------------------------------------
-    # 3. CICLO DE TREINO (Termo 'Real' removido do nome)
+    # 3. FILA DE CURADORIA (dúvidas do SenpAI respondidas por humanos)
+    # ----------------------------------------------------------------------
+    from src.utils.curation_queue_panel import render_curation_queue_panel
+    render_curation_queue_panel(auto_trainer, feedback_mgr, title="#### 📥 3. Fila de Curadoria")
+
+    # ----------------------------------------------------------------------
+    # 4. CICLO DE TREINO (Termo 'Real' removido do nome)
     # ----------------------------------------------------------------------
     from src.utils.training_cycle_panel import render_training_cycle_panel
     render_training_cycle_panel(
         device_preference=st.session_state.get("device_preference", default_device_pref),
         is_web_server=is_web_server,
-        title="#### 🔄 3. Ciclo de Treino"
+        title="#### 🔄 4. Ciclo de Treino"
     )
-
-    # ----------------------------------------------------------------------
-    # 4. FILA DE CURADORIA (dúvidas do SenpAI respondidas por humanos)
-    # ----------------------------------------------------------------------
-    from src.utils.curation_queue_panel import render_curation_queue_panel
-    render_curation_queue_panel(auto_trainer, feedback_mgr, title="#### 📥 4. Fila de Curadoria")
 
     # ----------------------------------------------------------------------
     # 5. O QUE O SENPAI JÁ APRENDEU (Geral e por cada modalidade)
@@ -3416,7 +3453,7 @@ def _render_settings_tab_calibration(default_device_pref):
 
     # ----------------------------------------------------------------------
     # EIXO 4: GOLDEN BENCHMARK & ASSISTENTE LLM
-    # (a Fila de Curadoria fica em Governança de Treinamento > 4. Fila de Curadoria)
+    # (a Fila de Curadoria fica em Governança de Treinamento > 3. Fila de Curadoria)
     # ----------------------------------------------------------------------
     st.markdown("---")
     st.markdown("### 🎯 Eixo 4: Golden Benchmark")

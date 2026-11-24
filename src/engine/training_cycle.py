@@ -407,9 +407,6 @@ def readiness(videos_dir: str, labels_path: Optional[str] = None) -> Dict[str, A
 
     add("videos", sum(1 for e in entries.values() if not is_classified(e)),
         "vídeo(s) sem tipo (luta, treino, exame ou descartado)", "Gabarito de Lutas > Tipo do vídeo")
-    add("lutas", sum(1 for e in entries.values() if wl.entry_video_type(e) == wl.VIDEO_TYPE_LUTA and (e or {}).get("tipo")
-                     and not wl.is_entry_filled(e)),
-        "luta(s) sem os pontos preenchidos", "Gabarito de Lutas > pontos da luta")
     try:
         from src.engine.active_learning import UncertaintySampler
         add("curadoria", len([q for q in UncertaintySampler().get_queue() if q.get("status") == "pending_curation"]),
